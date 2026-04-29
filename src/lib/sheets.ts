@@ -41,6 +41,11 @@ export interface Lead {
   websiteQualityTier: WebsiteQualityTier; // column L — set after verification
   enrichedInfo: string; // column M — JSON, set when marked Interesseret
   email: string;        // column N — from scraper or website
+  emailSentAt: string;       // kolonne O
+  emailOpenedAt: string;     // kolonne P
+  emailClickedAt: string;    // kolonne Q
+  emailStatus: string;       // kolonne R: "" | "sent" | "opened" | "clicked" | "replied"
+  followupSentAt: string;    // kolonne S
 }
 
 export interface Client {
@@ -55,7 +60,7 @@ export interface Client {
   setupFee: string;
 }
 
-const LEADS_RANGE = "Leads!A2:N";
+const LEADS_RANGE = "Leads!A2:S";
 const CLIENTS_RANGE = "Clients!A2:I";
 
 export async function getLeads(): Promise<Lead[]> {
@@ -81,6 +86,11 @@ export async function getLeads(): Promise<Lead[]> {
     websiteQualityTier: (row[11] as WebsiteQualityTier) ?? "",
     enrichedInfo: row[12] ?? "",
     email: row[13] ?? "",
+    emailSentAt:    row[14] ?? "",
+    emailOpenedAt:  row[15] ?? "",
+    emailClickedAt: row[16] ?? "",
+    emailStatus:    row[17] ?? "",
+    followupSentAt: row[18] ?? "",
   }));
 }
 
@@ -231,6 +241,31 @@ export async function saveLeadEmail(rowIndex: number, email: string): Promise<vo
     range: `Leads!N${row}`,
     valueInputOption: "RAW",
     requestBody: { values: [[email]] },
+  });
+}
+
+export async function updateLeadEmailStatus(
+  rowIndex: number,
+  fields: {
+    emailSentAt?: string;
+    emailOpenedAt?: string;
+    emailClickedAt?: string;
+    emailStatus?: string;
+    followupSentAt?: string;
+  }
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  const data: { range: string; values: string[][] }[] = [];
+  if (fields.emailSentAt    !== undefined) data.push({ range: `Leads!O${row}`, values: [[fields.emailSentAt]] });
+  if (fields.emailOpenedAt  !== undefined) data.push({ range: `Leads!P${row}`, values: [[fields.emailOpenedAt]] });
+  if (fields.emailClickedAt !== undefined) data.push({ range: `Leads!Q${row}`, values: [[fields.emailClickedAt]] });
+  if (fields.emailStatus    !== undefined) data.push({ range: `Leads!R${row}`, values: [[fields.emailStatus]] });
+  if (fields.followupSentAt !== undefined) data.push({ range: `Leads!S${row}`, values: [[fields.followupSentAt]] });
+  if (data.length === 0) return;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
   });
 }
 

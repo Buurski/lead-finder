@@ -28,6 +28,11 @@ export async function POST() {
         websiteQualityTier: "" as const,
         enrichedInfo: "",
         email: p.email ?? "",
+        emailSentAt: "",
+        emailOpenedAt: "",
+        emailClickedAt: "",
+        emailStatus: "",
+        followupSentAt: "",
       }));
 
     if (newLeads.length > 0) {
