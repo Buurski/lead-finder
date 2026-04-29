@@ -55,6 +55,23 @@ export default async function LeadsPage() {
         </div>
       </div>
 
+      {/* Local-only feature notice */}
+      <div style={{
+        background: "oklch(98% 0.01 250)",
+        border: "1px solid oklch(88% 0.04 250)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        fontSize: 12,
+        color: "oklch(40% 0.05 250)",
+        lineHeight: 1.6,
+      }}>
+        <span style={{ fontWeight: 700, color: "oklch(35% 0.08 250)" }}>Kører du lokalt?</span>
+        {" "}Du kan bruge alle funktioner. Kører du online (Vercel) virker kun{" "}
+        <span style={{ color: "oklch(40% 0.15 145)", fontWeight: 600 }}>✓ Se leads · Ændre status · Se klienter · Udfylde brief</span>.
+        {" "}Disse kræver din PC:{" "}
+        <span style={{ color: "oklch(50% 0.15 25)", fontWeight: 600 }}>✗ Hent leads · Verificer alle · Deep research · Opret CLAUDE.md</span>.
+      </div>
+
       <LeadTable leads={leads} />
     </div>
   );
