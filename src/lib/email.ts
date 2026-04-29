@@ -15,7 +15,7 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
   advokat: "professional", revisor: "professional",
   fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
-  restaurant: "food", café: "food", fotograf: "food",
+  restaurant: "food", café: "food", fotograf: "professional",
   frisørsalon: "beauty",
 };
 
@@ -38,7 +38,6 @@ interface TemplateVars {
   branch: string;
   city: string;
   trackingPixelUrl: string;
-  trackedReplyUrl: string;
 }
 
 function buildHtml(body: string, trackingPixelUrl: string): string {
@@ -172,8 +171,7 @@ export function getEmailTemplate(
   const group = getBranchGroup(branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const trackingPixelUrl = buildTrackingPixelUrl(vars.leadId);
-  const trackedReplyUrl = buildTrackedClickUrl(vars.leadId, `mailto:${process.env.GMAIL_USER}`);
-  return template({ ...vars, trackingPixelUrl, trackedReplyUrl });
+  return template({ ...vars, trackingPixelUrl });
 }
 
 export async function sendLeadEmail(
