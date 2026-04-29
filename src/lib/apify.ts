@@ -13,20 +13,29 @@ export interface ApifyPlace {
   city: string | null;
 }
 
-const DEFAULT_QUERIES = [
-  "tømrer Herning",
-  "tømrer Ikast",
-  "maler Herning",
-  "maler Ikast",
-  "frisør Herning",
-  "frisør Ikast",
-  "elektriker Herning",
-  "elektriker Ikast",
-  "VVS Herning",
-  "VVS Ikast",
+export const BRANCHES = [
+  // Håndværk
+  "tømrer", "maler", "elektriker", "VVS-installatør", "blikkenslager", "tagdækker", "murermester",
+  // Service
+  "rengøringsvirksomhed", "vinduespudser", "anlægsgartner",
+  // Professionelle
+  "advokat", "revisor", "fysioterapeut", "tandlæge", "optiker",
+  // Mad & oplevelse
+  "restaurant", "café", "fotograf",
+  // Skønhed
+  "frisørsalon",
 ];
 
-export async function runScraper(queries = DEFAULT_QUERIES): Promise<ApifyPlace[]> {
+export const CITIES = [
+  "Herning", "Ikast", "Silkeborg", "Viborg", "Holstebro",
+  "Ringkøbing", "Struer", "Skive", "Lemvig", "Horsens",
+];
+
+export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {
+  return branches.flatMap((b) => cities.map((c) => `${b} ${c}`));
+}
+
+export async function runScraper(queries = buildQueries()): Promise<ApifyPlace[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("APIFY_TOKEN not set");
 
