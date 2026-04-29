@@ -3,11 +3,12 @@ import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { leadId: string } }
+  { params }: { params: Promise<{ leadId: string }> }
 ) {
   const url = req.nextUrl.searchParams.get("url") ?? "/";
   try {
-    const rowIndex = parseInt(params.leadId) - 2;
+    const { leadId } = await params;
+    const rowIndex = parseInt(leadId) - 2;
     if (!isNaN(rowIndex) && rowIndex >= 0) {
       const leads = await getLeads();
       const lead = leads[rowIndex];

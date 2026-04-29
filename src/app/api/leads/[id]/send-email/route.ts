@@ -4,12 +4,13 @@ import { sendLeadEmail } from "@/lib/email";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { type = "cold" } = await req.json().catch(() => ({}));
     const leads = await getLeads();
-    const rowIndex = parseInt(params.id) - 2;
+    const { id } = await params;
+    const rowIndex = parseInt(id) - 2;
     const lead = leads[rowIndex];
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });

@@ -4,6 +4,7 @@ import { MapPin, Phone, Globe, ExternalLink, X, RefreshCw, AlertCircle, CheckCir
 import type { Lead, LeadStatus } from "@/lib/sheets";
 import type { AnalysisResult } from "@/app/api/leads/[id]/analyze/route";
 import type { EnrichedInfo } from "@/app/api/leads/[id]/enrich/route";
+import EmailPanel from "./EmailPanel";
 
 const STATUS: Record<LeadStatus, { color: string; bg: string; label: string }> = {
   new:        { color: "#4338ca", bg: "#e0e7ff", label: "Ny" },
@@ -638,6 +639,16 @@ export default function LeadTable({ leads: initial }: { leads: Lead[] }) {
                 </div>
               )}
             </div>
+
+            <EmailPanel
+              lead={selected}
+              onUpdate={(updated) => {
+                setSelected((prev) => prev ? { ...prev, ...updated } : prev);
+                setLeads((prev) =>
+                  prev.map((l) => (l.id === selected.id ? { ...l, ...updated } : l))
+                );
+              }}
+            />
 
             {/* Notes */}
             <div>

@@ -8,10 +8,11 @@ const PIXEL = Buffer.from(
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { leadId: string } }
+  { params }: { params: Promise<{ leadId: string }> }
 ) {
   try {
-    const rowIndex = parseInt(params.leadId) - 2;
+    const { leadId } = await params;
+    const rowIndex = parseInt(leadId) - 2;
     if (!isNaN(rowIndex) && rowIndex >= 0) {
       const leads = await getLeads();
       const lead = leads[rowIndex];
