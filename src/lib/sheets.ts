@@ -1,0 +1,246 @@
+import { google } from "googleapis";
+
+const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
+
+function getAuth() {
+  // On Vercel: set GOOGLE_SERVICE_ACCOUNT_JSON to the full service account JSON string
+  // Locally: set GOOGLE_KEY_FILE to the path of the service account JSON file
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    return new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+  }
+  return new google.auth.GoogleAuth({
+    keyFile: process.env.GOOGLE_KEY_FILE,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+}
+
+function getSheetsClient() {
+  return google.sheets({ version: "v4", auth: getAuth() });
+}
+
+export type LeadStatus = "new" | "called" | "interested" | "client" | "skip";
+export type WebsiteQualityTier = "modern" | "mediocre" | "old" | "dead" | "";
+
+export interface Lead {
+  id: string;
+  name: string;
+  branch: string;
+  phone: string;
+  city: string;
+  score: number;
+  source: string;
+  website: string;
+  websiteStatus: "none" | "dead" | "old" | "ok";
+  status: LeadStatus;
+  notes: string;
+  lastUpdated: string;
+  websiteQualityTier: WebsiteQualityTier; // column L — set after verification
+  enrichedInfo: string; // column M — JSON, set when marked Interesseret
+  email: string;        // column N — from scraper or website
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  branch: string;
+  phone: string;
+  briefFilled: boolean;
+  projectFolder: string;
+  websiteStatus: "demo" | "in progress" | "live";
+  monthlyFee: string;
+  setupFee: string;
+}
+
+const LEADS_RANGE = "Leads!A2:N";
+const CLIENTS_RANGE = "Clients!A2:I";
+
+export async function getLeads(): Promise<Lead[]> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: LEADS_RANGE,
+  });
+  const rows = res.data.values ?? [];
+  return rows.map((row, i) => ({
+    id: String(i + 2),
+    name: row[0] ?? "",
+    branch: row[1] ?? "",
+    phone: row[2] ?? "",
+    city: row[3] ?? "",
+    score: Number(row[4]) || 0,
+    source: row[5] ?? "",
+    website: row[6] ?? "",
+    websiteStatus: (row[7] as Lead["websiteStatus"]) ?? "none",
+    status: (row[8] as LeadStatus) ?? "new",
+    notes: row[9] ?? "",
+    lastUpdated: row[10] ?? "",
+    websiteQualityTier: (row[11] as WebsiteQualityTier) ?? "",
+    enrichedInfo: row[12] ?? "",
+    email: row[13] ?? "",
+  }));
+}
+
+export async function updateLeadStatus(
+  rowIndex: number,
+  status: LeadStatus,
+  notes?: string
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!I${row}:K${row}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[status, notes ?? "", new Date().toISOString()]],
+    },
+  });
+}
+
+export async function getClients(): Promise<Client[]> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: CLIENTS_RANGE,
+  });
+  const rows = res.data.values ?? [];
+  return rows.map((row, i) => ({
+    id: String(i + 2),
+    name: row[0] ?? "",
+    branch: row[1] ?? "",
+    phone: row[2] ?? "",
+    briefFilled: row[3] === "Yes",
+    projectFolder: row[4] ?? "",
+    websiteStatus: (row[5] as Client["websiteStatus"]) ?? "demo",
+    monthlyFee: row[6] ?? "",
+    setupFee: row[7] ?? "",
+  }));
+}
+
+export async function addClient(lead: Lead): Promise<void> {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Clients!A:I",
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[lead.name, lead.branch, lead.phone, "No", "", "demo", "", ""]],
+    },
+  });
+}
+
+export async function updateClientFolder(
+  rowIndex: number,
+  folderPath: string
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Clients!E${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[folderPath]] },
+  });
+}
+
+// Website quality bonus added to base score
+export function websiteQualityBonus(tier: WebsiteQualityTier, websiteStatus: string): number {
+  if (websiteStatus === "none") return 0; // already +30 at scrape time
+  if (tier === "dead")     return 25;
+  if (tier === "old")      return 20;
+  if (tier === "mediocre") return 8;
+  if (tier === "modern")   return 0;
+  return 0;
+}
+
+export async function saveEnrichedInfo(rowIndex: number, info: string): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!M${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[info]] },
+  });
+}
+
+export async function batchUpdateLeadVerifications(
+  updates: Array<{ rowIndex: number; qualityTier: WebsiteQualityTier; adjustedScore: number; email?: string }>
+): Promise<void> {
+  if (updates.length === 0) return;
+  const sheets = getSheetsClient();
+  const data = updates.flatMap(({ rowIndex, qualityTier, adjustedScore, email }) => {
+    const row = rowIndex + 2;
+    const entries: { range: string; values: (string | number)[][] }[] = [
+      { range: `Leads!E${row}`, values: [[adjustedScore]] },
+      { range: `Leads!L${row}`, values: [[qualityTier]] },
+    ];
+    if (email) entries.push({ range: `Leads!N${row}`, values: [[email]] });
+    return entries;
+  });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
+export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
+  const sheets = getSheetsClient();
+  const values = leads.map((l) => [
+    l.name,
+    l.branch,
+    l.phone,
+    l.city,
+    l.score,
+    l.source,
+    l.website,
+    l.websiteStatus,
+    l.status,
+    l.notes,
+    l.lastUpdated,
+    l.websiteQualityTier ?? "",
+    l.enrichedInfo ?? "",
+    l.email ?? "",
+  ]);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Leads!A:A",
+    valueInputOption: "RAW",
+    requestBody: { values },
+  });
+}
+
+export async function getLeadNames(): Promise<string[]> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Leads!A2:A",
+  });
+  return (res.data.values ?? []).map((r) => r[0] ?? "");
+}
+
+export async function saveLeadEmail(rowIndex: number, email: string): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!N${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[email]] },
+  });
+}
+
+export async function markBriefFilled(rowIndex: number): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Clients!D${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [["Yes"]] },
+  });
+}

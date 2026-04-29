@@ -1,26 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: oklch(96.5% 0.007 250);
+  --bg-2: oklch(99% 0.004 250);
+  --bg-3: oklch(93% 0.008 250);
+  --surface: oklch(99.5% 0.003 250);
+  --border: oklch(89% 0.009 250);
+  --border-light: oklch(82% 0.012 250);
+  --text: oklch(18% 0.012 250);
+  --text-muted: oklch(48% 0.012 250);
+  --text-dim: oklch(70% 0.008 250);
+  --green: #16a34a;
+  --green-dim: #16a34a14;
+  --amber: #d97706;
+  --amber-dim: #d9770614;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --blue-dim: #2563eb14;
+  --primary: #4f46e5;
+  --primary-dim: #4f46e514;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--primary);
+  color: white;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0ms !important; animation-duration: 0ms !important; }
 }
