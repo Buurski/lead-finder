@@ -15,6 +15,8 @@ export async function POST(
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     if (!lead.email) return NextResponse.json({ error: "Lead has no email" }, { status: 400 });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(lead.email)) return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
 
     await sendLeadEmail(lead, type as "cold" | "followup");
 

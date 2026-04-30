@@ -3,6 +3,7 @@ import LeadTable from "@/components/LeadTable";
 import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
+import EmailStatsPanel from "@/components/EmailStatsPanel";
 
 export const revalidate = 0;
 
@@ -57,6 +58,8 @@ export default async function LeadsPage() {
       </div>
 
       <BulkEmailPanel />
+
+      <EmailStatsPanel leads={leads} />
 
       {/* Local-only feature notice */}
       <div style={{

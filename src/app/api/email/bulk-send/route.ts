@@ -9,10 +9,12 @@ function getTier(score: number): "A" | "B" | "C" {
 }
 
 export async function GET() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const leads = await getLeads();
   const count = leads.filter(
     (l) =>
       l.email &&
+      emailRegex.test(l.email) &&
       !l.emailSentAt &&
       (getTier(l.score) === "A" || getTier(l.score) === "B") &&
       l.status !== "skip" &&
@@ -23,10 +25,12 @@ export async function GET() {
 
 export async function POST() {
   const leads = await getLeads();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
     .filter(({ lead }) =>
       lead.email &&
+      emailRegex.test(lead.email) &&
       !lead.emailSentAt &&
       (getTier(lead.score) === "A" || getTier(lead.score) === "B") &&
       lead.status !== "skip" &&
