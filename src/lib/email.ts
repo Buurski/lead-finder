@@ -38,6 +38,8 @@ interface TemplateVars {
   branch: string;
   city: string;
   trackingPixelUrl: string;
+  websiteStatus: string;      // "none" | "dead" | "old" | "ok"
+  websiteQualityTier: string; // "modern" | "mediocre" | "old" | "dead" | ""
 }
 
 function buildHtml(body: string, trackingPixelUrl: string): string {
@@ -49,105 +51,145 @@ ${body}
 </body></html>`;
 }
 
+function websiteLine(v: TemplateVars): string {
+  if (v.websiteStatus === "none")
+    return "Jeg kan se I ikke har en hjemmeside endnu — det kunne gøre en stor forskel for at tiltrække nye kunder.";
+  if (v.websiteQualityTier === "dead" || v.websiteStatus === "dead")
+    return "Jeg har kigget på jeres hjemmeside, og den ser ud til at have tekniske problemer — det koster jer sikkert kunder uden I ved det.";
+  if (v.websiteQualityTier === "old" || v.websiteStatus === "old")
+    return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer fortjener noget der tiltrækker flere kunder — den nuværende er ikke helt med i dag.";
+  if (v.websiteQualityTier === "mediocre")
+    return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer godt kunne have noget der giver et bedre førstehåndsindtryk overfor kunderne.";
+  return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer fortjener noget der virkelig tiltrækker kunder.";
+}
+
 const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) => EmailTemplate>> = {
   craft: {
-    cold: (v) => ({
-      subject: `Gratis hjemmeside til ${v.name}?`,
-      text: `Hej ${v.name},\n\nMit navn er Lucas, og jeg arbejder som webdesigner med fokus på lokale ${v.branch}-firmaer i ${v.city}-området.\n\nJeg har lavet en gratis demo-hjemmeside specielt til dig — du kan se den uden at binde dig til noget som helst.\n\nSynes du det lyder interessant, så svar bare på denne mail.\n\nVenlig hilsen\nLucas`,
-      html: buildHtml(`
+    cold: (v) => {
+      const ws = websiteLine(v);
+      return {
+        subject: `Gratis hjemmeside til ${v.name}?`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch}-firmaer i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne her hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Mit navn er Lucas, og jeg arbejder som webdesigner med fokus på lokale <strong>${v.branch}</strong>-firmaer i ${v.city}-området.</p>
-<p>Jeg har lavet en gratis demo-hjemmeside specielt til dig — du kan se den uden at binde dig til noget som helst.</p>
-<p>Synes du det lyder interessant, så svar bare på denne mail.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong>-firmaer i området.</p>
+<p>${ws}</p>
+<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
+<p>Svar gerne her hvis det lyder interessant.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
-    }),
+      };
+    },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nJeg vil bare følge op på min mail fra forrige uge om den gratis demo-hjemmeside til ${v.branch}-firmaer i ${v.city}.\n\nDen er stadig klar — helt uforpligtende. Svar gerne hvis du er nysgerrig.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branch}-firmaer i området.\n\nDen er stadig klar — svar bare her hvis du vil se den.\n\nVenlig hilsen\nLucas`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg vil bare følge op på min mail fra forrige uge om den gratis demo-hjemmeside til <strong>${v.branch}</strong>-firmaer i ${v.city}.</p>
-<p>Den er stadig klar — helt uforpligtende. Svar gerne hvis du er nysgerrig.</p>
+<p>Følger lige op på min mail fra forrige uge om demo-hjemmesiden til <strong>${v.branch}</strong>-firmaer i området.</p>
+<p>Den er stadig klar — svar bare her hvis du vil se den.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
     }),
   },
 
   service: {
-    cold: (v) => ({
-      subject: `Gratis hjemmeside til ${v.name}?`,
-      text: `Hej ${v.name},\n\nJeg hedder Lucas og er webdesigner. Jeg har lavet en gratis demo-hjemmeside til ${v.branch}-virksomheder i ${v.city} — du kan se den uden at forpligte dig til noget.\n\nInteresseret? Svar på denne mail.\n\nVenlig hilsen\nLucas`,
-      html: buildHtml(`
+    cold: (v) => {
+      const ws = websiteLine(v);
+      return {
+        subject: `Gratis hjemmeside til ${v.name}?`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.\n\nSvar gerne hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas og er webdesigner. Jeg har lavet en gratis demo-hjemmeside til <strong>${v.branch}</strong>-virksomheder i ${v.city} — du kan se den uden at forpligte dig til noget.</p>
-<p>Interesseret? Svar på denne mail.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.</p>
+<p>${ws}</p>
+<p>Jeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.</p>
+<p>Svar gerne hvis det lyder interessant.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
-    }),
+      };
+    },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nBare en hurtig opfølgning — demo-hjemmesiden til din virksomhed i ${v.city} er stadig klar. Gratis og uforpligtende.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nBare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.\n\nGratis og uforpligtende. Svar bare her.\n\nVenlig hilsen\nLucas`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Bare en hurtig opfølgning — demo-hjemmesiden til din virksomhed i ${v.city} er stadig klar. Gratis og uforpligtende.</p>
+<p>Bare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.</p>
+<p>Gratis og uforpligtende. Svar bare her.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
     }),
   },
 
   professional: {
-    cold: (v) => ({
-      subject: `Digital tilstedeværelse til ${v.name}`,
-      text: `Hej ${v.name},\n\nMit navn er Lucas, og jeg er webdesigner. Jeg har udarbejdet en gratis demo-hjemmeside specifikt til ${v.branch} i ${v.city}-området.\n\nDer er ingen forpligtelse — jeg sender den gerne til dig så du kan se hvad jeg mener.\n\nVenlig hilsen\nLucas`,
-      html: buildHtml(`
+    cold: (v) => {
+      const ws = websiteLine(v);
+      return {
+        subject: `Gratis hjemmeside til ${v.name}?`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne her hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Mit navn er Lucas, og jeg er webdesigner. Jeg har udarbejdet en gratis demo-hjemmeside specifikt til <strong>${v.branch}</strong> i ${v.city}-området.</p>
-<p>Der er ingen forpligtelse — jeg sender den gerne til dig så du kan se hvad jeg mener.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}-området.</p>
+<p>${ws}</p>
+<p>Jeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.</p>
+<p>Svar gerne her hvis det lyder interessant.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
-    }),
+      };
+    },
     followup: (v) => ({
       subject: `Re: Demo-hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nOpfølgning på min mail fra forrige uge. Demo-hjemmesiden er klar og du er stadig velkommen til at se den gratis.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nOpfølgning på min mail fra forrige uge om demo-hjemmesiden.\n\nDen er stadig klar — gratis og uforpligtende.\n\nVenlig hilsen\nLucas`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Opfølgning på min mail fra forrige uge. Demo-hjemmesiden er klar og du er stadig velkommen til at se den gratis.</p>
+<p>Opfølgning på min mail fra forrige uge om demo-hjemmesiden.</p>
+<p>Den er stadig klar — gratis og uforpligtende.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
     }),
   },
 
   food: {
-    cold: (v) => ({
-      subject: `Gratis hjemmeside til ${v.name}?`,
-      text: `Hej ${v.name},\n\nJeg hedder Lucas og laver hjemmesider til lokale spisesteder og kafeer i ${v.city}. Jeg har lavet en gratis demo specielt til jer — I kan se den uden at binde jer til noget.\n\nInteresseret? Skriv endelig!\n\nVenlig hilsen\nLucas`,
-      html: buildHtml(`
+    cold: (v) => {
+      const ws = websiteLine(v);
+      return {
+        subject: `Gratis hjemmeside til ${v.name}?`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her hvis I er nysgerrige!\n\nVenlig hilsen\nLucas`,
+        html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas og laver hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}. Jeg har lavet en gratis demo specielt til jer — I kan se den uden at binde jer til noget.</p>
-<p>Interesseret? Skriv endelig!</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}.</p>
+<p>${ws}</p>
+<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
+<p>Skriv gerne her hvis I er nysgerrige!</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
-    }),
+      };
+    },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen!\n\nFølger lige op på min mail fra sidst om den gratis demo til ${v.name} i ${v.city}. Den er stadig klar hvis I vil se den.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen!\n\nFølger op på min mail fra sidst om den gratis demo til ${v.name} i ${v.city}.\n\nDen er stadig klar — svar bare her.\n\nVenlig hilsen\nLucas`,
       html: buildHtml(`
 <p>Hej igen!</p>
-<p>Følger lige op på min mail fra sidst om den gratis demo til <strong>${v.name}</strong> i ${v.city}. Den er stadig klar hvis I vil se den.</p>
+<p>Følger op på min mail fra sidst om den gratis demo til <strong>${v.name}</strong> i ${v.city}.</p>
+<p>Den er stadig klar — svar bare her.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
     }),
   },
 
   beauty: {
-    cold: (v) => ({
-      subject: `Gratis hjemmeside til ${v.name}?`,
-      text: `Hej ${v.name},\n\nJeg hedder Lucas og laver hjemmesider til frisørsaloner i ${v.city}. Jeg har lavet en gratis demo til jer — I kan se den uden at binde jer til noget overhovedet.\n\nSvar bare på mailen hvis I er nysgerrige!\n\nVenlig hilsen\nLucas`,
-      html: buildHtml(`
+    cold: (v) => {
+      const ws = websiteLine(v);
+      return {
+        subject: `Gratis hjemmeside til ${v.name}?`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen hvis I er nysgerrige!\n\nVenlig hilsen\nLucas`,
+        html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas og laver hjemmesider til frisørsaloner i ${v.city}. Jeg har lavet en gratis demo til jer — I kan se den uden at binde jer til noget overhovedet.</p>
-<p>Svar bare på mailen hvis I er nysgerrige!</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.</p>
+<p>${ws}</p>
+<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
+<p>Svar gerne på mailen hvis I er nysgerrige!</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
-    }),
+      };
+    },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name}!\n\nFølger op på min mail om den gratis demo-hjemmeside. Den venter stadig på jer hvis I vil se den.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name}!\n\nFølger op på min mail om den gratis demo-hjemmeside.\n\nDen venter stadig — svar bare her.\n\nVenlig hilsen\nLucas`,
       html: buildHtml(`
 <p>Hej igen ${v.name}!</p>
-<p>Følger op på min mail om den gratis demo-hjemmeside. Den venter stadig på jer hvis I vil se den.</p>
+<p>Følger op på min mail om den gratis demo-hjemmeside.</p>
+<p>Den venter stadig — svar bare her.</p>
 <p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
     }),
   },
@@ -166,7 +208,7 @@ export function buildTrackedClickUrl(leadId: string, destination: string): strin
 export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
-  vars: Omit<TemplateVars, "trackingPixelUrl" | "trackedReplyUrl"> & { leadId: string }
+  vars: Omit<TemplateVars, "trackingPixelUrl"> & { leadId: string }
 ): EmailTemplate {
   const group = getBranchGroup(branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
@@ -175,7 +217,7 @@ export function getEmailTemplate(
 }
 
 export async function sendLeadEmail(
-  lead: { id: string; name: string; branch: string; city: string; email: string },
+  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string },
   type: "cold" | "followup"
 ): Promise<void> {
   const template = getEmailTemplate(lead.branch, type, {
@@ -183,6 +225,8 @@ export async function sendLeadEmail(
     name: lead.name,
     branch: lead.branch,
     city: lead.city,
+    websiteStatus: lead.websiteStatus,
+    websiteQualityTier: lead.websiteQualityTier,
   });
   await transporter.sendMail({
     from: `Lucas <${process.env.GMAIL_USER}>`,
@@ -194,7 +238,7 @@ export async function sendLeadEmail(
 }
 
 export function previewEmailTemplate(
-  lead: { id: string; name: string; branch: string; city: string },
+  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string },
   type: "cold" | "followup"
 ): EmailTemplate {
   return getEmailTemplate(lead.branch, type, {
@@ -202,5 +246,7 @@ export function previewEmailTemplate(
     name: lead.name,
     branch: lead.branch,
     city: lead.city,
+    websiteStatus: lead.websiteStatus,
+    websiteQualityTier: lead.websiteQualityTier,
   });
 }
