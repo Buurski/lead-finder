@@ -195,14 +195,18 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
   },
 };
 
+function getAppUrl(): string {
+  if (process.env.APP_URL && !process.env.APP_URL.includes("localhost")) return process.env.APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.APP_URL ?? "http://localhost:3000";
+}
+
 export function buildTrackingPixelUrl(leadId: string): string {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base}/api/email/track/open/${leadId}`;
+  return `${getAppUrl()}/api/email/track/open/${leadId}`;
 }
 
 export function buildTrackedClickUrl(leadId: string, destination: string): string {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base}/api/email/track/click/${leadId}?url=${encodeURIComponent(destination)}`;
+  return `${getAppUrl()}/api/email/track/click/${leadId}?url=${encodeURIComponent(destination)}`;
 }
 
 export function getEmailTemplate(
