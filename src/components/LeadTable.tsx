@@ -5,6 +5,7 @@ import type { Lead, LeadStatus } from "@/lib/sheets";
 import type { AnalysisResult } from "@/app/api/leads/[id]/analyze/route";
 import type { EnrichedInfo } from "@/app/api/leads/[id]/enrich/route";
 import EmailPanel from "./EmailPanel";
+import type { EmailFilter } from "./EmailStatsPanel";
 
 const STATUS: Record<LeadStatus, { color: string; bg: string; label: string }> = {
   new:        { color: "#4338ca", bg: "#e0e7ff", label: "Ny" },
@@ -60,7 +61,7 @@ function ScoreCell({ rank, score }: { rank: number; score: number }) {
 type FilterStatus = LeadStatus | "all";
 type ScoreTier = "all" | "A" | "B" | "C";
 
-export default function LeadTable({ leads: initial }: { leads: Lead[] }) {
+export default function LeadTable({ leads: initial, emailFilter = "all" }: { leads: Lead[]; emailFilter?: EmailFilter }) {
   const [leads, setLeads] = useState(initial);
   const [selected, setSelected] = useState<Lead | null>(null);
   const [notes, setNotes] = useState("");
@@ -107,9 +108,15 @@ export default function LeadTable({ leads: initial }: { leads: Lead[] }) {
            l.websiteStatus === "old"  ? "old"  : "");
         if (tier !== filterWebRating) return false;
       }
+      // Email stats panel filter
+      if (emailFilter === "with-email" && !l.email) return false;
+      if (emailFilter === "sent" && !["sent", "opened", "clicked"].includes(l.emailStatus)) return false;
+      if (emailFilter === "opened" && !["opened", "clicked"].includes(l.emailStatus)) return false;
+      if (emailFilter === "clicked" && l.emailStatus !== "clicked") return false;
+      if (emailFilter === "followup" && !l.followupSentAt) return false;
       return true;
     });
-  }, [sorted, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating]);
+  }, [sorted, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
 
   async function updateStatus(lead: Lead, status: LeadStatus) {
     setUpdating(lead.id);
@@ -479,12 +486,12 @@ export default function LeadTable({ leads: initial }: { leads: Lead[] }) {
                             {enriched.website.description}
                           </p>
                         )}
-                        {enriched.website.headings.length > 0 && (
+                        {(enriched.website.headings?.length ?? 0) > 0 && (
                           <div style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.6 }}>
                             {enriched.website.headings.slice(0, 3).join(" · ")}
                           </div>
                         )}
-                        {enriched.website.services.length > 0 && (
+                        {(enriched.website.services?.length ?? 0) > 0 && (
                           <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {enriched.website.services.map(s => (
                               <span key={s} style={{ fontSize: 10, background: "var(--blue-dim)", color: "var(--blue)", borderRadius: 4, padding: "1px 6px" }}>{s}</span>
@@ -702,6 +709,19 @@ export default function LeadTable({ leads: initial }: { leads: Lead[] }) {
                   }}
                 >
                   Spring over
+                </button>
+              )}
+              {selected.status !== "new" && (
+                <button
+                  onClick={() => updateStatus(selected, "new")}
+                  disabled={updating === selected.id}
+                  style={{
+                    background: "transparent", color: "#b45309",
+                    border: "1px solid #fde68a", borderRadius: 8,
+                    padding: "7px 0", fontSize: 12, cursor: "pointer",
+                  }}
+                >
+                  ↩ Nulstil til Ny
                 </button>
               )}
             </div>

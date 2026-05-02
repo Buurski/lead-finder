@@ -69,24 +69,24 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch}-firmaer i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne her hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch}-firmaer i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong>-firmaer i området.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Svar gerne her hvis det lyder interessant.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Svar gerne på mailen, eller ring/skriv til mig på <strong>+45 23 24 24 82</strong> — det er helt uforpligtende.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branch}-firmaer i området.\n\nDen er stadig klar — svar bare her hvis du vil se den.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branch}-firmaer i området.\n\nDen er stadig klar — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Følger lige op på min mail fra forrige uge om demo-hjemmesiden til <strong>${v.branch}</strong>-firmaer i området.</p>
-<p>Den er stadig klar — svar bare her hvis du vil se den.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Den er stadig klar — svar på mailen eller ring/skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
   },
 
@@ -95,24 +95,24 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.\n\nSvar gerne hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.\n\nSvar gerne på mailen, eller kontakt mig direkte på +45 23 24 24 82 — det er helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.</p>
-<p>Svar gerne hvis det lyder interessant.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Svar gerne på mailen, eller kontakt mig direkte på <strong>+45 23 24 24 82</strong> — det er helt uforpligtende.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nBare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.\n\nGratis og uforpligtende. Svar bare her.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nBare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.\n\nGratis og uforpligtende — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Bare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.</p>
-<p>Gratis og uforpligtende. Svar bare her.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Gratis og uforpligtende — svar på mailen eller ring/skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
   },
 
@@ -121,24 +121,24 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne her hvis det lyder interessant.\n\nVenlig hilsen\nLucas`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne på mailen, eller kontakt mig på +45 23 24 24 82 — I forpligter jer ikke til noget.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}-området.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.</p>
-<p>Svar gerne her hvis det lyder interessant.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Svar gerne på mailen, eller kontakt mig på <strong>+45 23 24 24 82</strong> — I forpligter jer ikke til noget.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => ({
       subject: `Re: Demo-hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nOpfølgning på min mail fra forrige uge om demo-hjemmesiden.\n\nDen er stadig klar — gratis og uforpligtende.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name},\n\nOpfølgning på min mail fra forrige uge om demo-hjemmesiden.\n\nDen er stadig klar — svar på mailen eller giv mig et ring/besked på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Opfølgning på min mail fra forrige uge om demo-hjemmesiden.</p>
-<p>Den er stadig klar — gratis og uforpligtende.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Den er stadig klar — svar på mailen eller giv mig et ring/besked på <strong>+45 23 24 24 82</strong>.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
   },
 
@@ -147,24 +147,24 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her hvis I er nysgerrige!\n\nVenlig hilsen\nLucas`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her, eller tag fat i mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Skriv gerne her hvis I er nysgerrige!</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Skriv gerne her, eller tag fat i mig på <strong>+45 23 24 24 82</strong> — helt uforpligtende!</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen!\n\nFølger op på min mail fra sidst om den gratis demo til ${v.name} i ${v.city}.\n\nDen er stadig klar — svar bare her.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen!\n\nFølger op på min mail fra sidst om den gratis demo til ${v.name} i ${v.city}.\n\nDen er stadig klar — svar her eller skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen!</p>
 <p>Følger op på min mail fra sidst om den gratis demo til <strong>${v.name}</strong> i ${v.city}.</p>
-<p>Den er stadig klar — svar bare her.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Den er stadig klar — svar her eller skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
   },
 
@@ -173,24 +173,24 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen hvis I er nysgerrige!\n\nVenlig hilsen\nLucas`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Svar gerne på mailen hvis I er nysgerrige!</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Svar gerne på mailen, eller ring/skriv til mig på <strong>+45 23 24 24 82</strong> — helt uforpligtende!</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name}!\n\nFølger op på min mail om den gratis demo-hjemmeside.\n\nDen venter stadig — svar bare her.\n\nVenlig hilsen\nLucas`,
+      text: `Hej igen ${v.name}!\n\nFølger op på min mail om den gratis demo-hjemmeside.\n\nDen venter stadig — svar her eller tag fat i mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen ${v.name}!</p>
 <p>Følger op på min mail om den gratis demo-hjemmeside.</p>
-<p>Den venter stadig — svar bare her.</p>
-<p>Venlig hilsen<br>Lucas</p>`, v.trackingPixelUrl),
+<p>Den venter stadig — svar her eller tag fat i mig på <strong>+45 23 24 24 82</strong>.</p>
+<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
   },
 };
@@ -229,7 +229,7 @@ export async function sendLeadEmail(
     websiteQualityTier: lead.websiteQualityTier,
   });
   await transporter.sendMail({
-    from: `Lucas <${process.env.GMAIL_USER}>`,
+    from: `Lucas Buur <${process.env.GMAIL_USER}>`,
     to: lead.email,
     subject: template.subject,
     text: template.text,

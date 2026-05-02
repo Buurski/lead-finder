@@ -1,9 +1,8 @@
 import { getLeads } from "@/lib/sheets";
-import LeadTable from "@/components/LeadTable";
 import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
-import EmailStatsPanel from "@/components/EmailStatsPanel";
+import EmailDashboardClient from "@/components/EmailDashboardClient";
 
 export const revalidate = 0;
 
@@ -59,8 +58,6 @@ export default async function LeadsPage() {
 
       <BulkEmailPanel />
 
-      <EmailStatsPanel leads={leads} />
-
       {/* Local-only feature notice */}
       <div style={{
         background: "oklch(98% 0.01 250)",
@@ -78,7 +75,7 @@ export default async function LeadsPage() {
         <span style={{ color: "oklch(50% 0.15 25)", fontWeight: 600 }}>✗ Hent leads · Verificer alle · Deep research · Opret CLAUDE.md</span>.
       </div>
 
-      <LeadTable leads={leads} />
+      <EmailDashboardClient leads={leads} />
     </div>
   );
 }
