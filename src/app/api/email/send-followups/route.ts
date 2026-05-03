@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
+import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
+
+export const maxDuration = 300;
 
 const FOLLOWUP_DAYS = 5;
 
@@ -42,6 +44,9 @@ export async function POST() {
       await updateLeadEmailStatus(rowIndex, {
         followupSentAt: new Date().toISOString(),
       });
+      if (lead.status === "new") {
+        await updateLeadStatus(rowIndex, "called");
+      }
       results.push({ name: lead.name, email: lead.email, ok: true });
       await new Promise((r) => setTimeout(r, 500));
     } catch (err) {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { runScraper, scoreLead, detectWebsiteStatus } from "@/lib/apify";
 import { appendLeads, getLeadNames } from "@/lib/sheets";
 
+export const maxDuration = 300;
+
 export async function POST() {
   try {
     const places = await runScraper();

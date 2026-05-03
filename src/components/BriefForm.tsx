@@ -49,7 +49,8 @@ export default function BriefForm({
 }) {
   const [form, setForm] = useState<FormData>({ ...EMPTY, ...initialValues });
   const [loading, setLoading] = useState(false);
-  const [folderPath, setFolderPath] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [researching, setResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
@@ -103,21 +104,35 @@ export default function BriefForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(deepResearch ? { ...form, deepResearch } : form),
       });
-      const data = await res.json();
-      setFolderPath(data.folderPath);
+      if (!res.ok) throw new Error("Fejl ved oprettelse");
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const name = match?.[1] ?? `${form.clientName}-CLAUDE.md`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setFileName(name);
+      setDownloaded(true);
     } finally {
       setLoading(false);
     }
   }
 
   function copy() {
-    if (!folderPath) return;
-    navigator.clipboard.writeText(folderPath);
+    if (!fileName) return;
+    navigator.clipboard.writeText(fileName);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (folderPath) {
+  if (downloaded) {
     return (
       <div style={{
         background: "var(--surface)",
@@ -140,10 +155,10 @@ export default function BriefForm({
         </div>
         <div>
           <h2 style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: 18, color: "var(--text)" }}>
-            Projekt oprettet
+            CLAUDE.md hentet
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
-            CLAUDE.md er klar med alt kontekst
+            Flyt filen til <code style={{ fontSize: 12 }}>~/Clients/{"{clientnavn)"}/</code> og åbn mappen i Claude Code
           </p>
         </div>
         <div style={{
@@ -160,8 +175,8 @@ export default function BriefForm({
           fontSize: 12,
           color: "var(--text-muted)",
         }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{folderPath}</span>
-          <button onClick={copy} style={{ cursor: "pointer", flexShrink: 0 }} aria-label="Kopier sti">
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileName}</span>
+          <button onClick={copy} style={{ cursor: "pointer", flexShrink: 0 }} aria-label="Kopier filnavn">
             {copied
               ? <Check size={15} style={{ color: "var(--green)" }} />
               : <Copy size={15} style={{ color: "var(--text-dim)" }} />
@@ -169,7 +184,7 @@ export default function BriefForm({
           </button>
         </div>
         <p style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 360 }}>
-          Åbn mappen i Claude Code og brug <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>huashu-design</span> eller <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>impeccable</span> skill.
+          Brug <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>huashu-design</span> eller <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>impeccable</span> skill i Claude Code.
         </p>
       </div>
     );

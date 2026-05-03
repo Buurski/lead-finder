@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getLeads, batchUpdateLeadVerifications, websiteQualityBonus } from "@/lib/sheets";
 import type { WebsiteQualityTier } from "@/lib/sheets";
 
+export const maxDuration = 300;
+
 // Re-uses website analysis logic inline (avoids circular imports)
 function detectCms(html: string): string | null {
   if (/wp-content|wp-includes|wordpress/i.test(html)) return "WordPress";

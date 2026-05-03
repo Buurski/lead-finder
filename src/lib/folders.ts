@@ -1,6 +1,3 @@
-import fs from "fs";
-import path from "path";
-import os from "os";
 import type { DeepResearch } from "@/app/api/leads/[id]/deep-research/route";
 
 export interface BriefData {
@@ -16,18 +13,7 @@ export interface BriefData {
   hasLogo: string;
 }
 
-export function createClientProject(brief: BriefData, research?: DeepResearch): string {
-  const folderName = brief.clientName.replace(/[^a-zA-Z0-9æøåÆØÅ\s-]/g, "").trim();
-  const folderPath = path.join(os.homedir(), "Clients", folderName);
-  fs.mkdirSync(folderPath, { recursive: true });
-
-  const claudeMd = buildClaudeMd(brief, research);
-  fs.writeFileSync(path.join(folderPath, "CLAUDE.md"), claudeMd, "utf-8");
-
-  return folderPath;
-}
-
-function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
+export function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   const lines: string[] = [];
 
   lines.push(`# ${brief.clientName} — Website Project`);
@@ -36,7 +22,6 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   lines.push(`> Konteksten nedenfor er hentet automatisk — brug den til at svare på skillenes spørgsmål hurtigt.`);
   lines.push("");
 
-  // ── BASIC INFO ──────────────────────────────────────────────
   lines.push("## Virksomhed");
   lines.push(`- **Navn:** ${brief.clientName}`);
   lines.push(`- **Branche:** ${brief.branch}`);
@@ -55,7 +40,6 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   }
   lines.push("");
 
-  // ── EXISTING ONLINE PRESENCE ────────────────────────────────
   lines.push("## Nuværende online tilstedeværelse");
   if (brief.clientName && research?.website) {
     lines.push(`- **Hjemmeside:** ${research.website}`);
@@ -70,7 +54,6 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   }
   lines.push("");
 
-  // ── BRIEF (for skills) ──────────────────────────────────────
   lines.push("## Brief");
   lines.push(`- **Kunder:** ${brief.customers}`);
   lines.push(`- **Tone i 3 ord:** ${brief.tone}`);
@@ -85,14 +68,12 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   lines.push(brief.services);
   lines.push("");
 
-  // ── GOOGLE MAPS DESCRIPTION ─────────────────────────────────
   if (research?.googleDescription) {
     lines.push("## Google Maps beskrivelse");
     lines.push(research.googleDescription);
     lines.push("");
   }
 
-  // ── WEBSITE BACKGROUND RESEARCH ─────────────────────────────
   if (research?.websitePages?.length) {
     lines.push("## Indhold fra nuværende hjemmeside");
     lines.push("*Automatisk hentet og renset — brug dette til at forstå virksomhedens sprog og tone.*");
@@ -105,7 +86,6 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
     }
   }
 
-  // ── PRODUCT.MD for impeccable ────────────────────────────────
   lines.push("## PRODUCT.md (for impeccable skill)");
   lines.push("```");
   lines.push(`# ${brief.clientName}`);
@@ -132,14 +112,12 @@ function buildClaudeMd(brief: BriefData, research?: DeepResearch): string {
   lines.push("```");
   lines.push("");
 
-  // ── BRAND BRIEF for huashu-design ───────────────────────────
   lines.push("## Brand Brief (for huashu-design / impeccable)");
   lines.push(`- **Farvestemning:** ${brief.colorVibe}`);
   lines.push(`- **Logo:** ${brief.hasLogo}`);
   lines.push(`- **Differentiator:** ${brief.differentiator}`);
   lines.push("");
 
-  // ── INSTRUCTIONS ────────────────────────────────────────────
   lines.push("## Instruktioner til Claude Code");
   lines.push("");
   lines.push("Brug én af disse skills:");

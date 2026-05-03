@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLeads, saveEnrichedInfo, saveLeadEmail } from "@/lib/sheets";
 
+export const maxDuration = 300;
+
 const BASE = "https://api.apify.com/v2";
 
 export interface DeepResearch {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
+import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
 
 export async function POST(
@@ -26,6 +26,10 @@ export async function POST(
       ...(isFollowup ? { followupSentAt: now } : { emailSentAt: now }),
       emailStatus: isFollowup ? lead.emailStatus || "sent" : "sent",
     });
+
+    if (lead.status === "new") {
+      await updateLeadStatus(rowIndex, "called");
+    }
 
     return NextResponse.json({ ok: true, sentAt: now });
   } catch (err) {
