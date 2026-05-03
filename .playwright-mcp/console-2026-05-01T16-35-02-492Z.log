@@ -1,0 +1,4 @@
+[      -1ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://docs.google.com/spreadsheets/u/0/d/1dRIv4PM9bvqutcNML4syoGcvxsb-I35okIIf5PYzY_8/edit?pli=1&authuser=2:0
+[      56ms] [LOG] %c%s color: red; background: yellow; font-size: 24px; ADVARSEL! @ https://www.gstatic.com/_/mss/boq-drive/_/js/k=boq-drive.DriveShareAccessDeniedUi.da.NysQ3BgpizI.2018.O/am=AAAAgFk/d=1/excm=_b,_tp,accessdeniedview/ed=1/dg=0/wt=2/ujg=1/rs=AH299ocJasiGj0YkTNGrF2kCcKSSHb02yg/dti=1/m=_b,_tp:256
+[      56ms] [LOG] %c%s font-size: 18px; Når du bruger denne konsol, kan det give hackere mulighed for at stjæle dine oplysninger ved hjælp af en angreb kaldet Self-XSS.
+Angiv eller indsæt ikke kode, som du ikke forstår. @ https://www.gstatic.com/_/mss/boq-drive/_/js/k=boq-drive.DriveShareAccessDeniedUi.da.NysQ3BgpizI.2018.O/am=AAAAgFk/d=1/excm=_b,_tp,accessdeniedview/ed=1/dg=0/wt=2/ujg=1/rs=AH299ocJasiGj0YkTNGrF2kCcKSSHb02yg/dti=1/m=_b,_tp:256

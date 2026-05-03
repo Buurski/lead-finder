@@ -1,0 +1,928 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: ls/
+      - generic [ref=e5]:
+        - link "Leads" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - text: Leads
+        - link "Klienter" [ref=e8] [cursor=pointer]:
+          - /url: /clients
+      - generic [ref=e11]: live
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - heading "Lead Pipeline" [level=1] [ref=e16]
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: "2317"
+              - generic [ref=e20]: total
+            - generic [ref=e21]:
+              - generic [ref=e22]: "2220"
+              - generic [ref=e23]: nye
+            - generic [ref=e24]:
+              - generic [ref=e25]: "0"
+              - generic [ref=e26]: interesserede
+            - generic [ref=e27]:
+              - generic [ref=e28]: "1"
+              - generic [ref=e29]: klienter
+        - generic [ref=e30]:
+          - button "Verificer alle" [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+            - text: Verificer alle
+          - button "+ Hent leads" [ref=e35] [cursor=pointer]
+      - generic [ref=e37]:
+        - button "619 Leads m. email" [ref=e38] [cursor=pointer]:
+          - generic [ref=e39]: "619"
+          - generic [ref=e40]: Leads m. email
+        - button "96 Sendt" [ref=e41] [cursor=pointer]:
+          - generic [ref=e42]: "96"
+          - generic [ref=e43]: Sendt
+        - button "0 Åbnet" [ref=e44] [cursor=pointer]:
+          - generic [ref=e45]: "0"
+          - generic [ref=e46]: Åbnet
+        - button "0 Klikket" [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]: "0"
+          - generic [ref=e49]: Klikket
+        - button "0 Follow-ups" [ref=e50] [cursor=pointer]:
+          - generic [ref=e51]: "0"
+          - generic [ref=e52]: Follow-ups
+        - button "0% Åbningsrate" [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]: 0%
+          - generic [ref=e55]: Åbningsrate
+        - button "0% Klikrate" [ref=e56] [cursor=pointer]:
+          - generic [ref=e57]: 0%
+          - generic [ref=e58]: Klikrate
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: Filter
+          - combobox [ref=e62] [cursor=pointer]:
+            - option "Alle statusser" [selected]
+            - option "Ny"
+            - option "Ringet"
+            - option "Interesseret"
+            - option "Klient ✓"
+            - option "Skip"
+          - combobox [ref=e63] [cursor=pointer]:
+            - option "Alle prioriteter" [selected]
+            - option "A — Høj (70+)"
+            - option "B — Medium (40–69)"
+            - option "C — Lav (0–39)"
+          - combobox [ref=e64] [cursor=pointer]:
+            - option "Alle brancher" [selected]
+            - option "Advokat"
+            - option "Advokatfirma"
+            - option "Almen praktiserende advokat"
+            - option "Anlægsgartner"
+            - option "Automationsvirksomhed"
+            - option "Automekaniker"
+            - option "Bageri"
+            - option "Bar"
+            - option "Barbersalon"
+            - option "Besøgscenter"
+            - option "Biograf"
+            - option "Bistro"
+            - option "Blikkenslager"
+            - option "Boghandel"
+            - option "Bogholder"
+            - option "Bogholderi"
+            - option "Brolægger"
+            - option "Bryllupsfotograf"
+            - option "Burgerrestaurant"
+            - option "Butik"
+            - option "Butik med vvs-udstyr"
+            - option "Byggefirma"
+            - option "Byggemarked"
+            - option "Børnetandlæge"
+            - option "Cafeteria"
+            - option "Café"
+            - option "Catering"
+            - option "Chokoladebutik"
+            - option "Cocktailbar"
+            - option "Dansk restaurant"
+            - option "Diner"
+            - option "Dækservice"
+            - option "Elektriker"
+            - option "Elektronikbutik"
+            - option "Elinstallatør"
+            - option "Elselskab"
+            - option "Energiselskab"
+            - option "Engrossalg af eludstyr"
+            - option "Entreprenør"
+            - option "Familierestaurant"
+            - option "Farvehandel"
+            - option "Fastfoodrestaurant"
+            - option "Fiskerestaurant"
+            - option "Forening / Organisation"
+            - option "Fotograf"
+            - option "Fotohandler"
+            - option "Frisør"
+            - option "Fysioterapeut"
+            - option "Fysioterapiklinik"
+            - option "Fødevarebutik"
+            - option "Gartner"
+            - option "Gourmetrestaurant"
+            - option "Grossist"
+            - option "Grossist af elektroniske produkter"
+            - option "Gulvbehandling"
+            - option "Have"
+            - option "Havepleje"
+            - option "Hospitalsafdeling"
+            - option "Hotel"
+            - option "Hovedentreprenør"
+            - option "Hovedkontor"
+            - option "Hvidevareforhandler"
+            - option "Hårde hvidevarer"
+            - option "Højtryksrensning"
+            - option "Indisk restaurant"
+            - option "Indkøbscenter"
+            - option "Indretningsdekoratør"
+            - option "Ingeniør"
+            - option "Interessepunkt"
+            - option "Isbutik"
+            - option "Italiensk restaurant"
+            - option "Japansk restaurant"
+            - option "Juridisk rådgivning"
+            - option "Kaffebar"
+            - option "Keramikproducent"
+            - option "Kinesisk restaurant"
+            - option "Kiropraktor"
+            - option "Kommunekontor"
+            - option "Konditori"
+            - option "Konsulent"
+            - option "Kontorhotel"
+            - option "Kranservice"
+            - option "Kunsthåndværk"
+            - option "Lampeforretning"
+            - option "Landskabsarkitekt"
+            - option "Libanesisk restaurant"
+            - option "Lystbådehavn"
+            - option "Læge"
+            - option "Lægeklinik"
+            - option "Maler"
+            - option "Massage"
+            - option "Massage spa"
+            - option "Mexicansk restaurant"
+            - option "Murer"
+            - option "Møbelforretning"
+            - option "Offentligt kontor"
+            - option "Optiker"
+            - option "Osteopat"
+            - option "Pasfoto"
+            - option "Pizzeria"
+            - option "Producent"
+            - option "Regnskabsfirma"
+            - option "Reklamefotograf"
+            - option "Rekrutteringsbureau"
+            - option "Rengøring"
+            - option "Rengøringsservice"
+            - option "Rengøringstjeneste"
+            - option "Renseri"
+            - option "Restaurant"
+            - option "Restaurant med takeaway"
+            - option "Revisor"
+            - option "Selskabslokale"
+            - option "Skovbrugsvæsen"
+            - option "Skulptur"
+            - option "Skønhedssalon"
+            - option "Slikbutik"
+            - option "Specialtandlæge"
+            - option "Sportshal"
+            - option "Sportsklub"
+            - option "Statsautoriseret revisor"
+            - option "Steakhouse"
+            - option "Sundhed"
+            - option "Sundhedshus"
+            - option "Supermarked"
+            - option "Sushirestaurant"
+            - option "Sygehus"
+            - option "Tagdækning"
+            - option "Tandklinik"
+            - option "Tandlæge"
+            - option "Tandprotesecenter"
+            - option "Tapasrestaurant"
+            - option "Thailandsk restaurant"
+            - option "Tjenester"
+            - option "Træbeskærer"
+            - option "Træningscenter"
+            - option "Tømrer"
+            - option "Uddannelsesinstitution"
+            - option "VVS-installatør"
+            - option "Vandland"
+            - option "Vandrerhjem"
+            - option "Varehus"
+            - option "Vaskeri"
+            - option "Venue"
+            - option "Videoproduktion"
+            - option "Vinbar"
+            - option "Vinduespolering"
+            - option "Økonomisk planlægger"
+          - combobox [ref=e65] [cursor=pointer]:
+            - option "Alle byer" [selected]
+            - option "Aalborg"
+            - option "Alstrup"
+            - option "Arnborg"
+            - option "Aulum"
+            - option "Balling"
+            - option "Birgittelyst"
+            - option "Bjerringbro"
+            - option "Bonnet"
+            - option "Borbjerg"
+            - option "Bording"
+            - option "Bording Kirkeby"
+            - option "Boulstrup"
+            - option "Brande"
+            - option "Bremdal"
+            - option "Brodal"
+            - option "Bruunshåb"
+            - option "Bækmarksbro"
+            - option "Daugbjerg"
+            - option "Drewsensvej 52"
+            - option "Ebeltoft"
+            - option "Ejstrupholm"
+            - option "Fasterholt"
+            - option "Favrholt"
+            - option "Finderup"
+            - option "Fousing"
+            - option "Fredericia"
+            - option "Frederiks"
+            - option "Frederikshavn"
+            - option "Funder Kirkeby"
+            - option "Galten"
+            - option "Gammelsogn"
+            - option "Give"
+            - option "Gjessø"
+            - option "Glyngøre"
+            - option "Grauballe"
+            - option "Gudum"
+            - option "Gødstrup"
+            - option "Harboøre"
+            - option "Hauge"
+            - option "Havnstrup"
+            - option "Hedensted"
+            - option "Hee"
+            - option "Herning"
+            - option "Hjerm"
+            - option "Holstebro"
+            - option "Hornsyld"
+            - option "Horsens"
+            - option "Hovedgård"
+            - option "Humlum"
+            - option "Hvide Sande"
+            - option "Højmark"
+            - option "Højslev"
+            - option "Højslev Stationsby"
+            - option "Hørning"
+            - option "Idom"
+            - option "Ikast"
+            - option "Isenvad"
+            - option "Juelsminde"
+            - option "Kjeldbjerg"
+            - option "Kjellerup"
+            - option "Klinkby"
+            - option "Kloster"
+            - option "Kragelund"
+            - option "København"
+            - option "Kølkær"
+            - option "Lem"
+            - option "Lemming"
+            - option "Lemvig"
+            - option "Lomborg"
+            - option "Løgstrup"
+            - option "Mejlby"
+            - option "Mønsted"
+            - option "Nautrup"
+            - option "Nørre Felding"
+            - option "Nørre Kollund"
+            - option "Nørre Nissum"
+            - option "Ramme"
+            - option "Rask Mølle"
+            - option "Ravnstrup"
+            - option "Ringkøbing"
+            - option "Roslev"
+            - option "Rødkærsbro"
+            - option "Rønbjerg"
+            - option "Sejling"
+            - option "Sevel"
+            - option "Silkeborg"
+            - option "Sinding"
+            - option "Skals"
+            - option "Skave"
+            - option "Skive"
+            - option "Skjern"
+            - option "Skægkær"
+            - option "Skærbæk"
+            - option "Sorring"
+            - option "Spjald"
+            - option "Spøttrup"
+            - option "Struer"
+            - option "Studsgård"
+            - option "Svejbæk"
+            - option "Svostrup"
+            - option "Søndervig"
+            - option "Tapdrup"
+            - option "Them"
+            - option "Thisted"
+            - option "Thorning"
+            - option "Thyborøn"
+            - option "Thyholm Makholmvej 45"
+            - option "Tjele"
+            - option "Tulstrup"
+            - option "Tvis"
+            - option "Ulfborg"
+            - option "Ulfborg Kirkeby"
+            - option "Vammen"
+            - option "Vejle"
+            - option "Vemb"
+            - option "Venø By"
+            - option "Vestbirk"
+            - option "Viborg"
+            - option "Videbæk"
+            - option "Vildbjerg"
+            - option "Vinderup"
+            - option "Vinkel"
+            - option "Virklund"
+            - option "Voel"
+            - option "Vridsted"
+            - option "Øksenvad"
+            - option "Ørum"
+            - option "Øster Dølby"
+          - combobox [ref=e66] [cursor=pointer]:
+            - option "Alle hjemmesider" [selected]
+            - option "Har hjemmeside"
+            - option "Ingen hjemmeside"
+          - combobox [ref=e67] [cursor=pointer]:
+            - option "Alle ratings" [selected]
+            - option "Ingen hjemmeside"
+            - option "Død"
+            - option "Forældet"
+            - option "Middel"
+            - option "Moderne"
+          - generic [ref=e68]: 2317 / 2317 leads
+        - generic [ref=e70]:
+          - table [ref=e71]:
+            - rowgroup [ref=e72]:
+              - row "Rang Virksomhed Branch By Hjemmeside Status" [ref=e73]:
+                - columnheader "Rang" [ref=e74]
+                - columnheader "Virksomhed" [ref=e75]
+                - columnheader "Branch" [ref=e76]
+                - columnheader "By" [ref=e77]
+                - columnheader "Hjemmeside" [ref=e78]
+                - columnheader "Status" [ref=e79]
+            - rowgroup [ref=e80]:
+              - row "#1 A 80 Tømrerfirmaet Smith A/S Tømrer Ikast Død Ny" [ref=e81] [cursor=pointer]:
+                - cell "#1 A 80" [ref=e82]:
+                  - generic [ref=e83]:
+                    - generic [ref=e84]: "#1"
+                    - generic [ref=e85]: A
+                    - generic [ref=e86]: "80"
+                - cell "Tømrerfirmaet Smith A/S" [ref=e87]
+                - cell "Tømrer" [ref=e88]
+                - cell "Ikast" [ref=e89]
+                - cell "Død" [ref=e90]
+                - cell "Ny" [ref=e91]
+              - row "#2 A 80 Malerfirmaet Hansen & Mortensen Maler Ikast Død Ny" [ref=e92] [cursor=pointer]:
+                - cell "#2 A 80" [ref=e93]:
+                  - generic [ref=e94]:
+                    - generic [ref=e95]: "#2"
+                    - generic [ref=e96]: A
+                    - generic [ref=e97]: "80"
+                - cell "Malerfirmaet Hansen & Mortensen" [ref=e98]
+                - cell "Maler" [ref=e99]
+                - cell "Ikast" [ref=e100]
+                - cell "Død" [ref=e101]
+                - cell "Ny" [ref=e102]
+              - row "#3 A 80 Lind Elteknik ApS Elektriker Herning Død Ny" [ref=e103] [cursor=pointer]:
+                - cell "#3 A 80" [ref=e104]:
+                  - generic [ref=e105]:
+                    - generic [ref=e106]: "#3"
+                    - generic [ref=e107]: A
+                    - generic [ref=e108]: "80"
+                - cell "Lind Elteknik ApS" [ref=e109]
+                - cell "Elektriker" [ref=e110]
+                - cell "Herning" [ref=e111]
+                - cell "Død" [ref=e112]
+                - cell "Ny" [ref=e113]
+              - row "#4 A 80 Mikkelsen Torben Frank VVS-installatør Herning Død Ny" [ref=e114] [cursor=pointer]:
+                - cell "#4 A 80" [ref=e115]:
+                  - generic [ref=e116]:
+                    - generic [ref=e117]: "#4"
+                    - generic [ref=e118]: A
+                    - generic [ref=e119]: "80"
+                - cell "Mikkelsen Torben Frank" [ref=e120]
+                - cell "VVS-installatør" [ref=e121]
+                - cell "Herning" [ref=e122]
+                - cell "Død" [ref=e123]
+                - cell "Ny" [ref=e124]
+              - row "#5 A 80 Kibæk Malerfirma Maler Herning Død Ny" [ref=e125] [cursor=pointer]:
+                - cell "#5 A 80" [ref=e126]:
+                  - generic [ref=e127]:
+                    - generic [ref=e128]: "#5"
+                    - generic [ref=e129]: A
+                    - generic [ref=e130]: "80"
+                - cell "Kibæk Malerfirma" [ref=e131]
+                - cell "Maler" [ref=e132]
+                - cell "Herning" [ref=e133]
+                - cell "Død" [ref=e134]
+                - cell "Ny" [ref=e135]
+              - row "#6 A 80 Schwané Salon Frisør Ikast Død Ny" [ref=e136] [cursor=pointer]:
+                - cell "#6 A 80" [ref=e137]:
+                  - generic [ref=e138]:
+                    - generic [ref=e139]: "#6"
+                    - generic [ref=e140]: A
+                    - generic [ref=e141]: "80"
+                - cell "Schwané Salon" [ref=e142]
+                - cell "Frisør" [ref=e143]
+                - cell "Ikast" [ref=e144]
+                - cell "Død" [ref=e145]
+                - cell "Ny" [ref=e146]
+              - row "#7 A 80 Byggefirmaet Elmholt Entreprenør Herning Død Ny" [ref=e147] [cursor=pointer]:
+                - cell "#7 A 80" [ref=e148]:
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: "#7"
+                    - generic [ref=e151]: A
+                    - generic [ref=e152]: "80"
+                - cell "Byggefirmaet Elmholt" [ref=e153]
+                - cell "Entreprenør" [ref=e154]
+                - cell "Herning" [ref=e155]
+                - cell "Død" [ref=e156]
+                - cell "Ny" [ref=e157]
+              - row "#8 A 80 EL:CON A/S Elektriker Holstebro Død Ny" [ref=e158] [cursor=pointer]:
+                - cell "#8 A 80" [ref=e159]:
+                  - generic [ref=e160]:
+                    - generic [ref=e161]: "#8"
+                    - generic [ref=e162]: A
+                    - generic [ref=e163]: "80"
+                - cell "EL:CON A/S" [ref=e164]
+                - cell "Elektriker" [ref=e165]
+                - cell "Holstebro" [ref=e166]
+                - cell "Død" [ref=e167]
+                - cell "Ny" [ref=e168]
+              - row "#9 A 80 ELEKTRONIKHUSET Elektronikbutik Ringkøbing Død Ny" [ref=e169] [cursor=pointer]:
+                - cell "#9 A 80" [ref=e170]:
+                  - generic [ref=e171]:
+                    - generic [ref=e172]: "#9"
+                    - generic [ref=e173]: A
+                    - generic [ref=e174]: "80"
+                - cell "ELEKTRONIKHUSET" [ref=e175]
+                - cell "Elektronikbutik" [ref=e176]
+                - cell "Ringkøbing" [ref=e177]
+                - cell "Død" [ref=e178]
+                - cell "Ny" [ref=e179]
+              - row "#10 A 80 Ryevad & Henriksen A/S VVS-installatør Ringkøbing Død Ny" [ref=e180] [cursor=pointer]:
+                - cell "#10 A 80" [ref=e181]:
+                  - generic [ref=e182]:
+                    - generic [ref=e183]: "#10"
+                    - generic [ref=e184]: A
+                    - generic [ref=e185]: "80"
+                - cell "Ryevad & Henriksen A/S" [ref=e186]
+                - cell "VVS-installatør" [ref=e187]
+                - cell "Ringkøbing" [ref=e188]
+                - cell "Død" [ref=e189]
+                - cell "Ny" [ref=e190]
+              - row "#11 A 80 LindeCare - Din jordemoder og fysioterapeut i Herning Fysioterapeut Herning Død Ny" [ref=e191] [cursor=pointer]:
+                - cell "#11 A 80" [ref=e192]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: "#11"
+                    - generic [ref=e195]: A
+                    - generic [ref=e196]: "80"
+                - cell "LindeCare - Din jordemoder og fysioterapeut i Herning" [ref=e197]
+                - cell "Fysioterapeut" [ref=e198]
+                - cell "Herning" [ref=e199]
+                - cell "Død" [ref=e200]
+                - cell "Ny" [ref=e201]
+              - row "#12 A 80 Sundhuset Horsens Fysioterapeut Horsens Død Ny" [ref=e202] [cursor=pointer]:
+                - cell "#12 A 80" [ref=e203]:
+                  - generic [ref=e204]:
+                    - generic [ref=e205]: "#12"
+                    - generic [ref=e206]: A
+                    - generic [ref=e207]: "80"
+                - cell "Sundhuset Horsens" [ref=e208]
+                - cell "Fysioterapeut" [ref=e209]
+                - cell "Horsens" [ref=e210]
+                - cell "Død" [ref=e211]
+                - cell "Ny" [ref=e212]
+              - row "#13 A 80 Multishine - Outdoor Cleaning Vinduespolering Død Ny" [ref=e213] [cursor=pointer]:
+                - cell "#13 A 80" [ref=e214]:
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: "#13"
+                    - generic [ref=e217]: A
+                    - generic [ref=e218]: "80"
+                - cell "Multishine - Outdoor Cleaning" [ref=e219]
+                - cell "Vinduespolering" [ref=e220]
+                - cell [ref=e221]
+                - cell "Død" [ref=e222]
+                - cell "Ny" [ref=e223]
+              - row "#14 A 80 Louis Nielsen Herning City Optiker Herning Død Ny" [ref=e224] [cursor=pointer]:
+                - cell "#14 A 80" [ref=e225]:
+                  - generic [ref=e226]:
+                    - generic [ref=e227]: "#14"
+                    - generic [ref=e228]: A
+                    - generic [ref=e229]: "80"
+                - cell "Louis Nielsen Herning City" [ref=e230]
+                - cell "Optiker" [ref=e231]
+                - cell "Herning" [ref=e232]
+                - cell "Død" [ref=e233]
+                - cell "Ny" [ref=e234]
+              - row "#15 A 80 Louis Nielsen Herning Centret Optiker Herning Død Ny" [ref=e235] [cursor=pointer]:
+                - cell "#15 A 80" [ref=e236]:
+                  - generic [ref=e237]:
+                    - generic [ref=e238]: "#15"
+                    - generic [ref=e239]: A
+                    - generic [ref=e240]: "80"
+                - cell "Louis Nielsen Herning Centret" [ref=e241]
+                - cell "Optiker" [ref=e242]
+                - cell "Herning" [ref=e243]
+                - cell "Død" [ref=e244]
+                - cell "Ny" [ref=e245]
+              - row "#16 A 80 Louis Nielsen Ikast Optiker Ikast Død Ny" [ref=e246] [cursor=pointer]:
+                - cell "#16 A 80" [ref=e247]:
+                  - generic [ref=e248]:
+                    - generic [ref=e249]: "#16"
+                    - generic [ref=e250]: A
+                    - generic [ref=e251]: "80"
+                - cell "Louis Nielsen Ikast" [ref=e252]
+                - cell "Optiker" [ref=e253]
+                - cell "Ikast" [ref=e254]
+                - cell "Død" [ref=e255]
+                - cell "Ny" [ref=e256]
+              - row "#17 A 80 Louis Nielsen Silkeborg Optiker Silkeborg Død Ny" [ref=e257] [cursor=pointer]:
+                - cell "#17 A 80" [ref=e258]:
+                  - generic [ref=e259]:
+                    - generic [ref=e260]: "#17"
+                    - generic [ref=e261]: A
+                    - generic [ref=e262]: "80"
+                - cell "Louis Nielsen Silkeborg" [ref=e263]
+                - cell "Optiker" [ref=e264]
+                - cell "Silkeborg" [ref=e265]
+                - cell "Død" [ref=e266]
+                - cell "Ny" [ref=e267]
+              - row "#18 A 80 Louis Nielsen Holstebro City Optiker Holstebro Død Ny" [ref=e268] [cursor=pointer]:
+                - cell "#18 A 80" [ref=e269]:
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: "#18"
+                    - generic [ref=e272]: A
+                    - generic [ref=e273]: "80"
+                - cell "Louis Nielsen Holstebro City" [ref=e274]
+                - cell "Optiker" [ref=e275]
+                - cell "Holstebro" [ref=e276]
+                - cell "Død" [ref=e277]
+                - cell "Ny" [ref=e278]
+              - row "#19 A 80 Louis Nielsen Holstebro - Bilka Optiker Holstebro Død Ny" [ref=e279] [cursor=pointer]:
+                - cell "#19 A 80" [ref=e280]:
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: "#19"
+                    - generic [ref=e283]: A
+                    - generic [ref=e284]: "80"
+                - cell "Louis Nielsen Holstebro - Bilka" [ref=e285]
+                - cell "Optiker" [ref=e286]
+                - cell "Holstebro" [ref=e287]
+                - cell "Død" [ref=e288]
+                - cell "Ny" [ref=e289]
+              - row "#20 A 80 Louis Nielsen Viborg Optiker Viborg Død Ny" [ref=e290] [cursor=pointer]:
+                - cell "#20 A 80" [ref=e291]:
+                  - generic [ref=e292]:
+                    - generic [ref=e293]: "#20"
+                    - generic [ref=e294]: A
+                    - generic [ref=e295]: "80"
+                - cell "Louis Nielsen Viborg" [ref=e296]
+                - cell "Optiker" [ref=e297]
+                - cell "Viborg" [ref=e298]
+                - cell "Død" [ref=e299]
+                - cell "Ny" [ref=e300]
+              - row "#21 A 80 Louis Nielsen Ringkøbing Optiker Ringkøbing Død Ny" [ref=e301] [cursor=pointer]:
+                - cell "#21 A 80" [ref=e302]:
+                  - generic [ref=e303]:
+                    - generic [ref=e304]: "#21"
+                    - generic [ref=e305]: A
+                    - generic [ref=e306]: "80"
+                - cell "Louis Nielsen Ringkøbing" [ref=e307]
+                - cell "Optiker" [ref=e308]
+                - cell "Ringkøbing" [ref=e309]
+                - cell "Død" [ref=e310]
+                - cell "Ny" [ref=e311]
+              - row "#22 A 80 Louis Nielsen Skive Optiker Skive Død Ny" [ref=e312] [cursor=pointer]:
+                - cell "#22 A 80" [ref=e313]:
+                  - generic [ref=e314]:
+                    - generic [ref=e315]: "#22"
+                    - generic [ref=e316]: A
+                    - generic [ref=e317]: "80"
+                - cell "Louis Nielsen Skive" [ref=e318]
+                - cell "Optiker" [ref=e319]
+                - cell "Skive" [ref=e320]
+                - cell "Død" [ref=e321]
+                - cell "Ny" [ref=e322]
+              - row "#23 A 80 Optik Hallmann Optiker Horsens Død Ny" [ref=e323] [cursor=pointer]:
+                - cell "#23 A 80" [ref=e324]:
+                  - generic [ref=e325]:
+                    - generic [ref=e326]: "#23"
+                    - generic [ref=e327]: A
+                    - generic [ref=e328]: "80"
+                - cell "Optik Hallmann" [ref=e329]
+                - cell "Optiker" [ref=e330]
+                - cell "Horsens" [ref=e331]
+                - cell "Død" [ref=e332]
+                - cell "Ny" [ref=e333]
+              - row "#24 A 80 Louis Nielsen Horsens Optiker Horsens Død Ny" [ref=e334] [cursor=pointer]:
+                - cell "#24 A 80" [ref=e335]:
+                  - generic [ref=e336]:
+                    - generic [ref=e337]: "#24"
+                    - generic [ref=e338]: A
+                    - generic [ref=e339]: "80"
+                - cell "Louis Nielsen Horsens" [ref=e340]
+                - cell "Optiker" [ref=e341]
+                - cell "Horsens" [ref=e342]
+                - cell "Død" [ref=e343]
+                - cell "Ny" [ref=e344]
+              - row "#25 A 80 Viborg Golf Café Restaurant Viborg Død Ny" [ref=e345] [cursor=pointer]:
+                - cell "#25 A 80" [ref=e346]:
+                  - generic [ref=e347]:
+                    - generic [ref=e348]: "#25"
+                    - generic [ref=e349]: A
+                    - generic [ref=e350]: "80"
+                - cell "Viborg Golf Café" [ref=e351]
+                - cell "Restaurant" [ref=e352]
+                - cell "Viborg" [ref=e353]
+                - cell "Død" [ref=e354]
+                - cell "Ny" [ref=e355]
+              - row "#26 A 80 Hair Fashion By Karina Frisør Bremdal Død Ny" [ref=e356] [cursor=pointer]:
+                - cell "#26 A 80" [ref=e357]:
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: "#26"
+                    - generic [ref=e360]: A
+                    - generic [ref=e361]: "80"
+                - cell "Hair Fashion By Karina" [ref=e362]
+                - cell "Frisør" [ref=e363]
+                - cell "Bremdal" [ref=e364]
+                - cell "Død" [ref=e365]
+                - cell "Ny" [ref=e366]
+              - row "#27 A 79 Vestfjends VVS VVS-installatør Vridsted Død Klient ✓" [ref=e367] [cursor=pointer]:
+                - cell "#27 A 79" [ref=e368]:
+                  - generic [ref=e369]:
+                    - generic [ref=e370]: "#27"
+                    - generic [ref=e371]: A
+                    - generic [ref=e372]: "79"
+                - cell "Vestfjends VVS" [ref=e373]
+                - cell "VVS-installatør" [ref=e374]
+                - cell "Vridsted" [ref=e375]
+                - cell "Død" [ref=e376]
+                - cell "Klient ✓" [ref=e377]
+              - row "#28 A 79 Wium Optik Optiker Holstebro Død Ny" [ref=e378] [cursor=pointer]:
+                - cell "#28 A 79" [ref=e379]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: "#28"
+                    - generic [ref=e382]: A
+                    - generic [ref=e383]: "79"
+                - cell "Wium Optik" [ref=e384]
+                - cell "Optiker" [ref=e385]
+                - cell "Holstebro" [ref=e386]
+                - cell "Død" [ref=e387]
+                - cell "Ny" [ref=e388]
+              - row "#29 A 78 ABJ Rengøring Rengøring Ikast Død Ny" [ref=e389] [cursor=pointer]:
+                - cell "#29 A 78" [ref=e390]:
+                  - generic [ref=e391]:
+                    - generic [ref=e392]: "#29"
+                    - generic [ref=e393]: A
+                    - generic [ref=e394]: "78"
+                - cell "ABJ Rengøring" [ref=e395]
+                - cell "Rengøring" [ref=e396]
+                - cell "Ikast" [ref=e397]
+                - cell "Død" [ref=e398]
+                - cell "Ny" [ref=e399]
+              - row "#30 A 78 Silk Rengøring ApS Rengøring Silkeborg Død Ny" [ref=e400] [cursor=pointer]:
+                - cell "#30 A 78" [ref=e401]:
+                  - generic [ref=e402]:
+                    - generic [ref=e403]: "#30"
+                    - generic [ref=e404]: A
+                    - generic [ref=e405]: "78"
+                - cell "Silk Rengøring ApS" [ref=e406]
+                - cell "Rengøring" [ref=e407]
+                - cell "Silkeborg" [ref=e408]
+                - cell "Død" [ref=e409]
+                - cell "Ny" [ref=e410]
+              - row "#31 A 77 Sebastians VVS Teknik VVS-installatør Skive Død Ny" [ref=e411] [cursor=pointer]:
+                - cell "#31 A 77" [ref=e412]:
+                  - generic [ref=e413]:
+                    - generic [ref=e414]: "#31"
+                    - generic [ref=e415]: A
+                    - generic [ref=e416]: "77"
+                - cell "Sebastians VVS Teknik" [ref=e417]
+                - cell "VVS-installatør" [ref=e418]
+                - cell "Skive" [ref=e419]
+                - cell "Død" [ref=e420]
+                - cell "Ny" [ref=e421]
+              - row "#32 A 77 Fotograf Art by Nina P. Fotograf Vammen Død Ny" [ref=e422] [cursor=pointer]:
+                - cell "#32 A 77" [ref=e423]:
+                  - generic [ref=e424]:
+                    - generic [ref=e425]: "#32"
+                    - generic [ref=e426]: A
+                    - generic [ref=e427]: "77"
+                - cell "Fotograf Art by Nina P." [ref=e428]
+                - cell "Fotograf" [ref=e429]
+                - cell "Vammen" [ref=e430]
+                - cell "Død" [ref=e431]
+                - cell "Ny" [ref=e432]
+              - row "#33 A 75 Tømrerkompagniet Aps Tømrer Ikast Forældet Ny" [ref=e433] [cursor=pointer]:
+                - cell "#33 A 75" [ref=e434]:
+                  - generic [ref=e435]:
+                    - generic [ref=e436]: "#33"
+                    - generic [ref=e437]: A
+                    - generic [ref=e438]: "75"
+                - cell "Tømrerkompagniet Aps" [ref=e439]
+                - cell "Tømrer" [ref=e440]
+                - cell "Ikast" [ref=e441]
+                - cell "Forældet" [ref=e442]
+                - cell "Ny" [ref=e443]
+              - row "#34 A 75 In2tek A/S Elektriker Herning Forældet Ny" [ref=e444] [cursor=pointer]:
+                - cell "#34 A 75" [ref=e445]:
+                  - generic [ref=e446]:
+                    - generic [ref=e447]: "#34"
+                    - generic [ref=e448]: A
+                    - generic [ref=e449]: "75"
+                - cell "In2tek A/S" [ref=e450]
+                - cell "Elektriker" [ref=e451]
+                - cell "Herning" [ref=e452]
+                - cell "Forældet" [ref=e453]
+                - cell "Ny" [ref=e454]
+              - row "#35 A 75 El-Installatør Peter Christensen Elektriker Ikast Forældet Ringet" [ref=e455] [cursor=pointer]:
+                - cell "#35 A 75" [ref=e456]:
+                  - generic [ref=e457]:
+                    - generic [ref=e458]: "#35"
+                    - generic [ref=e459]: A
+                    - generic [ref=e460]: "75"
+                - cell "El-Installatør Peter Christensen" [ref=e461]
+                - cell "Elektriker" [ref=e462]
+                - cell "Ikast" [ref=e463]
+                - cell "Forældet" [ref=e464]
+                - cell "Ringet" [ref=e465]
+              - row "#36 A 75 Bundgaard El Elektriker Isenvad Forældet Ringet" [ref=e466] [cursor=pointer]:
+                - cell "#36 A 75" [ref=e467]:
+                  - generic [ref=e468]:
+                    - generic [ref=e469]: "#36"
+                    - generic [ref=e470]: A
+                    - generic [ref=e471]: "75"
+                - cell "Bundgaard El" [ref=e472]
+                - cell "Elektriker" [ref=e473]
+                - cell "Isenvad" [ref=e474]
+                - cell "Forældet" [ref=e475]
+                - cell "Ringet" [ref=e476]
+              - row "#37 A 75 Frisør i Herning | City Salon Frisør Herning Ingen Ny" [ref=e477] [cursor=pointer]:
+                - cell "#37 A 75" [ref=e478]:
+                  - generic [ref=e479]:
+                    - generic [ref=e480]: "#37"
+                    - generic [ref=e481]: A
+                    - generic [ref=e482]: "75"
+                - cell "Frisør i Herning | City Salon" [ref=e483]
+                - cell "Frisør" [ref=e484]
+                - cell "Herning" [ref=e485]
+                - cell "Ingen" [ref=e486]
+                - cell "Ny" [ref=e487]
+              - row "#38 A 75 Rebecca Herem Photography Fotograf Gammelsogn Forældet Ny" [ref=e488] [cursor=pointer]:
+                - cell "#38 A 75" [ref=e489]:
+                  - generic [ref=e490]:
+                    - generic [ref=e491]: "#38"
+                    - generic [ref=e492]: A
+                    - generic [ref=e493]: "75"
+                - cell "Rebecca Herem Photography" [ref=e494]
+                - cell "Fotograf" [ref=e495]
+                - cell "Gammelsogn" [ref=e496]
+                - cell "Forældet" [ref=e497]
+                - cell "Ny" [ref=e498]
+              - row "#39 A 75 Fotograf Lars Holm Fotograf Viborg Forældet Ny" [ref=e499] [cursor=pointer]:
+                - cell "#39 A 75" [ref=e500]:
+                  - generic [ref=e501]:
+                    - generic [ref=e502]: "#39"
+                    - generic [ref=e503]: A
+                    - generic [ref=e504]: "75"
+                - cell "Fotograf Lars Holm" [ref=e505]
+                - cell "Fotograf" [ref=e506]
+                - cell "Viborg" [ref=e507]
+                - cell "Forældet" [ref=e508]
+                - cell "Ny" [ref=e509]
+              - row "#40 A 75 Nice Cut Frisør Struer Forældet Ny" [ref=e510] [cursor=pointer]:
+                - cell "#40 A 75" [ref=e511]:
+                  - generic [ref=e512]:
+                    - generic [ref=e513]: "#40"
+                    - generic [ref=e514]: A
+                    - generic [ref=e515]: "75"
+                - cell "Nice Cut" [ref=e516]
+                - cell "Frisør" [ref=e517]
+                - cell "Struer" [ref=e518]
+                - cell "Forældet" [ref=e519]
+                - cell "Ny" [ref=e520]
+              - row "#41 A 75 Det italienske bøfhus Italiensk restaurant Skive Forældet Ny" [ref=e521] [cursor=pointer]:
+                - cell "#41 A 75" [ref=e522]:
+                  - generic [ref=e523]:
+                    - generic [ref=e524]: "#41"
+                    - generic [ref=e525]: A
+                    - generic [ref=e526]: "75"
+                - cell "Det italienske bøfhus" [ref=e527]
+                - cell "Italiensk restaurant" [ref=e528]
+                - cell "Skive" [ref=e529]
+                - cell "Forældet" [ref=e530]
+                - cell "Ny" [ref=e531]
+              - row "#42 A 75 Olivers Kaffevogn Restaurant Ikast Ingen Ny" [ref=e532] [cursor=pointer]:
+                - cell "#42 A 75" [ref=e533]:
+                  - generic [ref=e534]:
+                    - generic [ref=e535]: "#42"
+                    - generic [ref=e536]: A
+                    - generic [ref=e537]: "75"
+                - cell "Olivers Kaffevogn" [ref=e538]
+                - cell "Restaurant" [ref=e539]
+                - cell "Ikast" [ref=e540]
+                - cell "Ingen" [ref=e541]
+                - cell "Ny" [ref=e542]
+              - row "#43 A 75 Café Victoria Café Ringkøbing Ingen Ny" [ref=e543] [cursor=pointer]:
+                - cell "#43 A 75" [ref=e544]:
+                  - generic [ref=e545]:
+                    - generic [ref=e546]: "#43"
+                    - generic [ref=e547]: A
+                    - generic [ref=e548]: "75"
+                - cell "Café Victoria" [ref=e549]
+                - cell "Café" [ref=e550]
+                - cell "Ringkøbing" [ref=e551]
+                - cell "Ingen" [ref=e552]
+                - cell "Ny" [ref=e553]
+              - row "#44 A 75 Den Glade Gulerod Café Ringkøbing Ingen Ny" [ref=e554] [cursor=pointer]:
+                - cell "#44 A 75" [ref=e555]:
+                  - generic [ref=e556]:
+                    - generic [ref=e557]: "#44"
+                    - generic [ref=e558]: A
+                    - generic [ref=e559]: "75"
+                - cell "Den Glade Gulerod" [ref=e560]
+                - cell "Café" [ref=e561]
+                - cell "Ringkøbing" [ref=e562]
+                - cell "Ingen" [ref=e563]
+                - cell "Ny" [ref=e564]
+              - row "#45 A 75 Havnegrillen Restaurant Ringkøbing Ingen Ny" [ref=e565] [cursor=pointer]:
+                - cell "#45 A 75" [ref=e566]:
+                  - generic [ref=e567]:
+                    - generic [ref=e568]: "#45"
+                    - generic [ref=e569]: A
+                    - generic [ref=e570]: "75"
+                - cell "Havnegrillen" [ref=e571]
+                - cell "Restaurant" [ref=e572]
+                - cell "Ringkøbing" [ref=e573]
+                - cell "Ingen" [ref=e574]
+                - cell "Ny" [ref=e575]
+              - row "#46 A 75 Havanna Pizza Struer Pizzeria Struer Ingen Ny" [ref=e576] [cursor=pointer]:
+                - cell "#46 A 75" [ref=e577]:
+                  - generic [ref=e578]:
+                    - generic [ref=e579]: "#46"
+                    - generic [ref=e580]: A
+                    - generic [ref=e581]: "75"
+                - cell "Havanna Pizza Struer" [ref=e582]
+                - cell "Pizzeria" [ref=e583]
+                - cell "Struer" [ref=e584]
+                - cell "Ingen" [ref=e585]
+                - cell "Ny" [ref=e586]
+              - row "#47 A 75 Claudis Have Restaurant Lemvig Ingen Ny" [ref=e587] [cursor=pointer]:
+                - cell "#47 A 75" [ref=e588]:
+                  - generic [ref=e589]:
+                    - generic [ref=e590]: "#47"
+                    - generic [ref=e591]: A
+                    - generic [ref=e592]: "75"
+                - cell "Claudis Have" [ref=e593]
+                - cell "Restaurant" [ref=e594]
+                - cell "Lemvig" [ref=e595]
+                - cell "Ingen" [ref=e596]
+                - cell "Ny" [ref=e597]
+              - row "#48 A 75 City-cafeen Bar Herning Ingen Ny" [ref=e598] [cursor=pointer]:
+                - cell "#48 A 75" [ref=e599]:
+                  - generic [ref=e600]:
+                    - generic [ref=e601]: "#48"
+                    - generic [ref=e602]: A
+                    - generic [ref=e603]: "75"
+                - cell "City-cafeen" [ref=e604]
+                - cell "Bar" [ref=e605]
+                - cell "Herning" [ref=e606]
+                - cell "Ingen" [ref=e607]
+                - cell "Ny" [ref=e608]
+              - row "#49 A 75 Café Perlen Café Holstebro Ingen Ny" [ref=e609] [cursor=pointer]:
+                - cell "#49 A 75" [ref=e610]:
+                  - generic [ref=e611]:
+                    - generic [ref=e612]: "#49"
+                    - generic [ref=e613]: A
+                    - generic [ref=e614]: "75"
+                - cell "Café Perlen" [ref=e615]
+                - cell "Café" [ref=e616]
+                - cell "Holstebro" [ref=e617]
+                - cell "Ingen" [ref=e618]
+                - cell "Ny" [ref=e619]
+              - row "#50 A 75 Café Badevej Café Søndervig Ingen Ny" [ref=e620] [cursor=pointer]:
+                - cell "#50 A 75" [ref=e621]:
+                  - generic [ref=e622]:
+                    - generic [ref=e623]: "#50"
+                    - generic [ref=e624]: A
+                    - generic [ref=e625]: "75"
+                - cell "Café Badevej" [ref=e626]
+                - cell "Café" [ref=e627]
+                - cell "Søndervig" [ref=e628]
+                - cell "Ingen" [ref=e629]
+                - cell "Ny" [ref=e630]
+          - generic [ref=e631]:
+            - button "← Forrige" [disabled] [ref=e632]
+            - generic [ref=e633]: Side 1 / 47 (2317 leads)
+            - button "Næste →" [ref=e634] [cursor=pointer]
+  - alert [ref=e635]

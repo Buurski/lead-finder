@@ -1,0 +1,28 @@
+[       0ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://docs.google.com/spreadsheets/u/0/d/1dRIv4PM9bvqutcNML4syoGcvxsb-I35okIIf5PYzY_8/edit?pli=1&authuser=1:0
+[      48ms] [LOG] %c%s color: red; background: yellow; font-size: 24px; ADVARSEL! @ https://www.gstatic.com/_/mss/boq-drive/_/js/k=boq-drive.DriveShareAccessDeniedUi.da.NysQ3BgpizI.2018.O/am=AAAAgFk/d=1/excm=_b,_tp,accessdeniedview/ed=1/dg=0/wt=2/ujg=1/rs=AH299ocJasiGj0YkTNGrF2kCcKSSHb02yg/dti=1/m=_b,_tp:256
+[      48ms] [LOG] %c%s font-size: 18px; Når du bruger denne konsol, kan det give hackere mulighed for at stjæle dine oplysninger ved hjælp af en angreb kaldet Self-XSS.
+Angiv eller indsæt ikke kode, som du ikke forstår. @ https://www.gstatic.com/_/mss/boq-drive/_/js/k=boq-drive.DriveShareAccessDeniedUi.da.NysQ3BgpizI.2018.O/am=AAAAgFk/d=1/excm=_b,_tp,accessdeniedview/ed=1/dg=0/wt=2/ujg=1/rs=AH299ocJasiGj0YkTNGrF2kCcKSSHb02yg/dti=1/m=_b,_tp:256
+[    5000ms] [ERROR] Refused to get unsafe header "X-Sg-Cs" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    5000ms] [ERROR] Refused to get unsafe header "X-Sorry-Redirect" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    5168ms] [ERROR] Refused to get unsafe header "X-Sg-Cs" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    5168ms] [ERROR] Refused to get unsafe header "X-Sorry-Redirect" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    5901ms] [ERROR] Refused to get unsafe header "X-Sg-Cs" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    5901ms] [ERROR] Refused to get unsafe header "X-Sorry-Redirect" @ https://www.google.com/search?q=sheets&rlz=1C1CHBF_enDK1113DK1113&oq=shee&gs_lcrp=EgZjaHJvbWUqDggAEEUYJxg7GIAEGIoFMg4IABBFGCcYOxiABBiKBTIGCAEQRRg5MgwIAhAjGCcYgAQYigUyBwgDEAAYgAQyBwgEEAAYgAQyBwgFEAAYgAQyBggGEEUYPDIGCAcQRRg90gEHNzgzajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8:21
+[    6084ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[    7544ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[    7633ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[    7823ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[    7874ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[    8411ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://docs.google.com/spreadsheets/u/0/d/1HUuIwUNZH8W0xgOmf9w6drSRz51gn-rV7bzrKVc1jAY/bind?id=1HUuIwUNZH8W0xgOmf9w6drSRz51gn-rV7bzrKVc1jAY&sid=101a383e2444efc1&token=AOqKD6ACwOAFM7eDX0Vrc8P6RXxS%3A1777653311661&ouid=117709856080223425438&includes_info_params=true&cros_files=false&nded=false&VER=8&lsq=1777653311527&u=17442625174393914035&vc=1&c=1&w=1&flr=0&gsi=0&smv=2147483647&smb=%5B2147483647%2C%20APwr%5D&cimpl=1&SID=CC72334E3740B0A5&RID=76174&TYPE=terminate&zx=l5pro222j1rv:0
+[    9381ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   10936ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   11045ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   11051ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   11053ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   12200ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   13224ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://docs.google.com/drivesharing/clientmodel?id=1RN1L2_JZQC7y6t8Xwn80c4nS3NhmIiSH9uRT_chRjZ8&foreignService=ritz&authuser=0&origin=https%3A%2F%2Fdocs.google.com:0
+[   13487ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   13926ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   13945ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   13950ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[   13952ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0

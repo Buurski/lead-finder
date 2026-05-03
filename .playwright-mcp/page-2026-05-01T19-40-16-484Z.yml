@@ -1,0 +1,703 @@
+- generic [active] [ref=e1]:
+  - dialog "Your privacy matters" [ref=e2]:
+    - generic [ref=e3]:
+      - tabpanel "Consent" [ref=e6]:
+        - generic [ref=e8]:
+          - heading "Your privacy matters" [level=2] [ref=e9]
+          - generic [ref=e10]:
+            - text: We use cookies to enhance your experience, analyse traffic, and serve personalised content. 'Accept all' to consent per our
+            - link "Cookie" [ref=e11] [cursor=pointer]:
+              - /url: https://www.envato.com/cookies/
+            - text: and
+            - link "Privacy" [ref=e12] [cursor=pointer]:
+              - /url: https://www.envato.com/privacy/
+            - text: policies.
+      - generic [ref=e16]:
+        - button "Reject all" [ref=e17] [cursor=pointer]
+        - button "Manage preferences" [ref=e18] [cursor=pointer]: Manage preferences
+        - button "Accept all" [ref=e20] [cursor=pointer]
+  - banner [ref=e21]:
+    - link "Unlimited creative stock assets, all in one place. Subscribe to Envato. Let's go!" [ref=e23] [cursor=pointer]:
+      - /url: https://elements.envato.com/pricing?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_headerbar_14APR2025
+      - generic [ref=e24]:
+        - strong [ref=e25]: Unlimited creative stock assets, all in one place.
+        - text: Subscribe to Envato.
+        - generic [ref=e26]: Let's go!
+    - generic [ref=e27]:
+      - link "Mixkit - Free assets for your next video project" [ref=e28] [cursor=pointer]:
+        - /url: /
+        - img [ref=e29]
+      - generic [ref=e35]:
+        - generic [ref=e36] [cursor=pointer]:
+          - generic [ref=e37]: Videos
+          - generic:
+            - generic: Videos
+            - generic: Music
+            - generic: Sound Effects
+            - generic: Templates
+            - generic: Icons
+        - generic [ref=e38]:
+          - searchbox "Enter Search Text" [ref=e39]: Plumbing
+          - button "Clear" [ref=e40] [cursor=pointer]:
+            - img [ref=e41]
+      - navigation "global-navigation" [ref=e44]:
+        - link "Video" [ref=e45] [cursor=pointer]:
+          - /url: /free-stock-video/
+        - link "Music" [ref=e46] [cursor=pointer]:
+          - /url: /free-stock-music/
+        - link "Sound Effects" [ref=e47] [cursor=pointer]:
+          - /url: /free-sound-effects/
+        - generic [ref=e48]:
+          - link "Templates" [ref=e49] [cursor=pointer]:
+            - /url: /free-video-templates/
+          - generic:
+            - link "Premiere Pro":
+              - /url: /free-premiere-pro-templates/
+            - link "After Effects":
+              - /url: /free-after-effects-templates/
+            - link "Final Cut Pro":
+              - /url: /free-final-cut-pro-templates/
+            - link "DaVinci Resolve":
+              - /url: /free-davinci-resolve-templates/
+        - generic [ref=e50]:
+          - link "Unlimited stock assets" [ref=e51] [cursor=pointer]:
+            - /url: https://elements.envato.com/all-items?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_nav_switcher_31JULY2024
+            - text: Unlimited stock assets
+          - link "Envato Elements The ultimate creative subscription Unlimited stock assets Millions of premium assets Lifetime commercial licence Let's create Mixkit icon.":
+            - /url: https://elements.envato.com/all-items?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_nav_switcher_31JULY2024
+            - generic:
+              - img "Envato Elements"
+              - generic:
+                - paragraph: The ultimate creative subscription
+                - generic:
+                  - list:
+                    - listitem: Unlimited stock assets
+                    - listitem: Millions of premium assets
+                    - listitem: Lifetime commercial licence
+              - generic: Let's create
+            - generic:
+              - img "Mixkit icon."
+    - navigation [ref=e54]:
+      - link "New" [ref=e56] [cursor=pointer]:
+        - /url: /free-stock-video/new/
+      - link "Backgrounds" [ref=e58] [cursor=pointer]:
+        - /url: /free-stock-video/background/
+      - link "Vertical" [ref=e60] [cursor=pointer]:
+        - /url: /free-vertical-videos/
+      - generic [ref=e61]:
+        - link "Nature" [ref=e62] [cursor=pointer]:
+          - /url: /free-stock-video/nature/
+        - generic:
+          - generic:
+            - link "Sky":
+              - /url: /free-stock-video/sky/
+            - link "Sea":
+              - /url: /free-stock-video/sea/
+            - link "Beach":
+              - /url: /free-stock-video/beach/
+            - link "Water":
+              - /url: /free-stock-video/water/
+            - link "Flower":
+              - /url: /free-stock-video/flower/
+            - link "Snow":
+              - /url: /free-stock-video/snow/
+            - link "Rain":
+              - /url: /free-stock-video/rain/
+            - link "Fire":
+              - /url: /free-stock-video/fire/
+            - link "Forest":
+              - /url: /free-stock-video/forest/
+            - link "Sunset":
+              - /url: /free-stock-video/sunset/
+            - link "Sun":
+              - /url: /free-stock-video/sun/
+            - link "Smoke":
+              - /url: /free-stock-video/smoke/
+            - link "Night":
+              - /url: /free-stock-video/night/
+            - link "Space":
+              - /url: /free-stock-video/space/
+            - link "Earth":
+              - /url: /free-stock-video/earth/
+            - link "Clouds":
+              - /url: /free-stock-video/cloud/
+      - generic [ref=e63]:
+        - link "Lifestyle" [ref=e64] [cursor=pointer]:
+          - /url: /free-stock-video/lifestyle/
+        - generic:
+          - generic:
+            - link "People":
+              - /url: /free-stock-video/people/
+            - link "Woman":
+              - /url: /free-stock-video/woman/
+            - link "Man":
+              - /url: /free-stock-video/man/
+            - link "Couple":
+              - /url: /free-stock-video/couple/
+            - link "Girl":
+              - /url: /free-stock-video/girl/
+            - link "Business":
+              - /url: /free-stock-video/business/
+            - link "Sport":
+              - /url: /free-stock-video/sport/
+            - link "Dance":
+              - /url: /free-stock-video/dance/
+            - link "Music":
+              - /url: /free-stock-video/music/
+            - link "House":
+              - /url: /free-stock-video/house/
+            - link "Love":
+              - /url: /free-stock-video/love/
+            - link "Family":
+              - /url: /free-stock-video/family/
+            - link "Party":
+              - /url: /free-stock-video/party/
+            - link "Fashion":
+              - /url: /free-stock-video/fashion/
+            - link "Baby":
+              - /url: /free-stock-video/baby/
+      - generic [ref=e65]:
+        - link "Animals" [ref=e66] [cursor=pointer]:
+          - /url: /free-stock-video/animal/
+        - generic:
+          - generic:
+            - link "Pets":
+              - /url: /free-stock-video/pet/
+            - link "Dogs":
+              - /url: /free-stock-video/dog/
+            - link "Cats":
+              - /url: /free-stock-video/cat/
+            - link "Birds":
+              - /url: /free-stock-video/bird/
+            - link "Monkey":
+              - /url: /free-stock-video/monkey/
+            - link "Shark":
+              - /url: /free-stock-video/shark/
+            - link "Reptiles":
+              - /url: /free-stock-video/reptile/
+            - link "Safari":
+              - /url: /free-stock-video/safari/
+            - link "Zoo":
+              - /url: /free-stock-video/zoo/
+            - link "Kitten":
+              - /url: /free-stock-video/kitten/
+            - link "Fish":
+              - /url: /free-stock-video/fish/
+            - link "Wildlife":
+              - /url: /free-stock-video/wildlife/
+      - generic [ref=e67]:
+        - link "Food" [ref=e68] [cursor=pointer]:
+          - /url: /free-stock-video/food/
+        - generic:
+          - generic:
+            - link "Drink":
+              - /url: /free-stock-video/drink/
+            - link "Coffee":
+              - /url: /free-stock-video/coffee/
+            - link "Tea":
+              - /url: /free-stock-video/tea/
+            - link "Fruit":
+              - /url: /free-stock-video/fruit/
+            - link "Corn":
+              - /url: /free-stock-video/corn/
+            - link "Beer":
+              - /url: /free-stock-video/beer/
+            - link "Cocktail":
+              - /url: /free-stock-video/cocktail/
+            - link "Salad":
+              - /url: /free-stock-video/salad/
+            - link "Eating":
+              - /url: /free-stock-video/eating/
+            - link "Vegetable":
+              - /url: /free-stock-video/vegetable/
+            - link "Fast Food":
+              - /url: /free-stock-video/fast-food/
+            - link "Restaurant":
+              - /url: /free-stock-video/restaurant/
+      - generic [ref=e69]:
+        - link "Transport" [ref=e70] [cursor=pointer]:
+          - /url: /free-stock-video/transport/
+        - generic:
+          - generic:
+            - link "Car":
+              - /url: /free-stock-video/car/
+            - link "Street":
+              - /url: /free-stock-video/street/
+            - link "City":
+              - /url: /free-stock-video/city/
+            - link "Traffic":
+              - /url: /free-stock-video/traffic/
+            - link "Trains":
+              - /url: /free-stock-video/trains/
+            - link "Truck":
+              - /url: /free-stock-video/truck/
+            - link "Airplane":
+              - /url: /free-stock-video/airplane/
+            - link "Taxi":
+              - /url: /free-stock-video/taxi/
+            - link "Bicycle":
+              - /url: /free-stock-video/bicycle/
+            - link "Motorcycle":
+              - /url: /free-stock-video/motorcycle/
+            - link "Drive":
+              - /url: /free-stock-video/drive/
+            - link "Road":
+              - /url: /free-stock-video/road/
+      - generic [ref=e71]:
+        - link "More Videos" [ref=e72] [cursor=pointer]:
+          - /url: "#"
+        - generic:
+          - generic:
+            - link "Double Exposure":
+              - /url: /free-stock-video/double-exposure/
+            - link "Valentines":
+              - /url: /free-stock-video/valentines-day/
+            - link "Vertical Backgrounds":
+              - /url: https://mixkit.co/free-stock-video/discover/background/?orientation=vertical
+            - link "Green Screen":
+              - /url: /free-stock-video/green-screen/
+            - link "Music":
+              - /url: /free-stock-video/music/
+            - link "Gore":
+              - /url: /free-stock-video/gore/
+            - link "Christmas":
+              - /url: /free-stock-video/christmas/
+            - link "Abstract":
+              - /url: /free-stock-video/abstract/
+            - link "Light":
+              - /url: /free-stock-video/light/
+            - link "4K":
+              - /url: /free-stock-video/discover/?resolution=4k
+            - link "Countdown":
+              - /url: /free-stock-video/countdown/
+            - link "Kiss":
+              - /url: /free-stock-video/kiss/
+            - link "Romance":
+              - /url: /free-stock-video/romance/
+            - link "Funny":
+              - /url: /free-stock-video/funny/
+            - link "Intro":
+              - /url: /free-stock-video/intro/
+            - link "Drone":
+              - /url: /free-drone-footage/
+            - link "Spark":
+              - /url: /free-stock-video/spark/
+            - link "Horror":
+              - /url: /free-stock-video/horror/
+  - main [ref=e73]:
+    - generic [ref=e74]:
+      - link "Mixkit" [ref=e75] [cursor=pointer]:
+        - /url: https://mixkit.co/
+      - link "Free Stock Video" [ref=e76] [cursor=pointer]:
+        - /url: https://mixkit.co/free-stock-video/
+      - text: Plumbing
+    - generic [ref=e78]:
+      - heading "16 Free Plumbing Stock Videos" [level=1] [ref=e79]
+      - generic [ref=e81]:
+        - text: All plumbing stock video clips can be downloaded for free, without watermark, to be used in your next awesome video project under the
+        - link "Mixkit License" [ref=e82] [cursor=pointer]:
+          - /url: /license/#videoFree
+        - text: "! Also check out"
+        - link "Water" [ref=e83] [cursor=pointer]:
+          - /url: /free-stock-video/water/
+        - text: ","
+        - link "Bathroom" [ref=e84] [cursor=pointer]:
+          - /url: /free-stock-video/bathroom/
+        - text: ","
+        - link "Plumber" [ref=e85] [cursor=pointer]:
+          - /url: /free-stock-video/plumber/
+        - text: ","
+        - link "Audio" [ref=e86] [cursor=pointer]:
+          - /url: /free-stock-video/audio/
+        - text: ","
+        - link "Cables" [ref=e87] [cursor=pointer]:
+          - /url: /free-stock-video/cables/
+        - text: ","
+        - link "Domestic" [ref=e88] [cursor=pointer]:
+          - /url: /free-stock-video/domestic/
+        - text: and
+        - link "Home" [ref=e89] [cursor=pointer]:
+          - /url: /free-stock-video/home/
+        - text: .
+    - generic [ref=e91]:
+      - generic [ref=e96]:
+        - link "Envato Elements" [ref=e98] [cursor=pointer]:
+          - /url: https://elements.envato.com/stock-video/plumbing?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_video_tag_results_31JULY2024
+          - img "Envato Elements" [ref=e99]
+        - generic [ref=e100]:
+          - paragraph [ref=e101]: Quality artist-created videos
+          - paragraph [ref=e102]: Create with unlimited stock video, templates, music & more, all in one value-packed subscription.
+        - link "Start creating now" [ref=e104] [cursor=pointer]:
+          - /url: https://elements.envato.com/stock-video/plumbing?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_video_tag_results_31JULY2024
+      - generic [ref=e110]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - img "Faucet of a bath and shower dripping." [ref=e116]
+            - generic [ref=e119]:
+              - link "Faucet of a bath and shower dripping" [ref=e120] [cursor=pointer]:
+                - /url: /free-stock-video/faucet-of-a-bath-and-shower-dripping-47071/
+              - button "View Fullscreen" [ref=e121] [cursor=pointer]
+          - heading "Faucet of a bath and shower dripping" [level=2] [ref=e123]:
+            - link "Faucet of a bath and shower dripping" [ref=e124] [cursor=pointer]:
+              - /url: /free-stock-video/faucet-of-a-bath-and-shower-dripping-47071/
+        - generic [ref=e126]:
+          - generic [ref=e127]:
+            - img "Young woman looks for a new shower head in the supermarket." [ref=e130]
+            - generic [ref=e133]:
+              - link "Young woman looks for a new shower head in the supermarket" [ref=e134] [cursor=pointer]:
+                - /url: /free-stock-video/young-woman-looks-for-a-new-shower-head-in-the-49345/
+              - button "View Fullscreen" [ref=e135] [cursor=pointer]
+          - heading "Young woman looks for a new shower head in the supermarket" [level=2] [ref=e137]:
+            - link "Young woman looks for a new shower head in the supermarket" [ref=e138] [cursor=pointer]:
+              - /url: /free-stock-video/young-woman-looks-for-a-new-shower-head-in-the-49345/
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - img "Young man looks for plumbing parts at the supermarket." [ref=e144]
+            - generic [ref=e147]:
+              - link "Young man looks for plumbing parts at the supermarket" [ref=e148] [cursor=pointer]:
+                - /url: /free-stock-video/young-man-looks-for-plumbing-parts-at-the-supermarket-49344/
+              - button "View Fullscreen" [ref=e149] [cursor=pointer]
+          - heading "Young man looks for plumbing parts at the supermarket" [level=2] [ref=e151]:
+            - link "Young man looks for plumbing parts at the supermarket" [ref=e152] [cursor=pointer]:
+              - /url: /free-stock-video/young-man-looks-for-plumbing-parts-at-the-supermarket-49344/
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - img "Turning the tap on in a Bath." [ref=e158]
+            - generic [ref=e161]:
+              - link "Turning the tap on in a Bath" [ref=e162] [cursor=pointer]:
+                - /url: /free-stock-video/turning-the-tap-on-in-a-bath-47070/
+              - button "View Fullscreen" [ref=e163] [cursor=pointer]
+          - heading "Turning the tap on in a Bath" [level=2] [ref=e165]:
+            - link "Turning the tap on in a Bath" [ref=e166] [cursor=pointer]:
+              - /url: /free-stock-video/turning-the-tap-on-in-a-bath-47070/
+        - generic [ref=e168]:
+          - generic [ref=e169]:
+            - img "Water rushing through a plug in a sink." [ref=e172]
+            - generic [ref=e175]:
+              - link "Water rushing through a plug in a sink" [ref=e176] [cursor=pointer]:
+                - /url: /free-stock-video/water-rushing-through-a-plug-in-a-sink-45666/
+              - button "View Fullscreen" [ref=e177] [cursor=pointer]
+          - heading "Water rushing through a plug in a sink" [level=2] [ref=e179]:
+            - link "Water rushing through a plug in a sink" [ref=e180] [cursor=pointer]:
+              - /url: /free-stock-video/water-rushing-through-a-plug-in-a-sink-45666/
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - img "Water falls into a sink and flow down the drain." [ref=e186]
+            - generic [ref=e189]:
+              - link "Water falls into a sink and flow down the drain" [ref=e190] [cursor=pointer]:
+                - /url: /free-stock-video/water-falls-into-a-sink-and-flow-down-the-drain-45374/
+              - button "View Fullscreen" [ref=e191] [cursor=pointer]
+          - heading "Water falls into a sink and flow down the drain" [level=2] [ref=e193]:
+            - link "Water falls into a sink and flow down the drain" [ref=e194] [cursor=pointer]:
+              - /url: /free-stock-video/water-falls-into-a-sink-and-flow-down-the-drain-45374/
+        - generic [ref=e196]:
+          - generic [ref=e197]:
+            - img "Water running down a sink drain ." [ref=e200]
+            - generic [ref=e203]:
+              - link "Water running down a sink drain" [ref=e204] [cursor=pointer]:
+                - /url: /free-stock-video/water-running-down-a-sink-drain-47366/
+              - button "View Fullscreen" [ref=e205] [cursor=pointer]
+          - heading "Water running down a sink drain" [level=2] [ref=e207]:
+            - link "Water running down a sink drain" [ref=e208] [cursor=pointer]:
+              - /url: /free-stock-video/water-running-down-a-sink-drain-47366/
+        - generic [ref=e210]:
+          - generic [ref=e211]:
+            - img "Water from a tap pouring into a sink." [ref=e214]
+            - generic [ref=e217]:
+              - link "Water from a tap pouring into a sink" [ref=e218] [cursor=pointer]:
+                - /url: /free-stock-video/water-from-a-tap-pouring-into-a-sink-47069/
+              - button "View Fullscreen" [ref=e219] [cursor=pointer]
+          - heading "Water from a tap pouring into a sink" [level=2] [ref=e221]:
+            - link "Water from a tap pouring into a sink" [ref=e222] [cursor=pointer]:
+              - /url: /free-stock-video/water-from-a-tap-pouring-into-a-sink-47069/
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - img "Water bubbling rapidly." [ref=e228]
+            - generic [ref=e231]:
+              - link "Water bubbling rapidly" [ref=e232] [cursor=pointer]:
+                - /url: /free-stock-video/water-bubbling-rapidly-47059/
+              - button "View Fullscreen" [ref=e233] [cursor=pointer]
+          - heading "Water bubbling rapidly" [level=2] [ref=e235]:
+            - link "Water bubbling rapidly" [ref=e236] [cursor=pointer]:
+              - /url: /free-stock-video/water-bubbling-rapidly-47059/
+        - generic [ref=e238]:
+          - generic [ref=e239]:
+            - img "Filling a sink with water." [ref=e242]
+            - generic [ref=e245]:
+              - link "Filling a sink with water" [ref=e246] [cursor=pointer]:
+                - /url: /free-stock-video/filling-a-sink-with-water-47058/
+              - button "View Fullscreen" [ref=e247] [cursor=pointer]
+          - heading "Filling a sink with water" [level=2] [ref=e249]:
+            - link "Filling a sink with water" [ref=e250] [cursor=pointer]:
+              - /url: /free-stock-video/filling-a-sink-with-water-47058/
+        - generic [ref=e252]:
+          - generic [ref=e253]:
+            - img "Old fossil fuel energy pumping unit." [ref=e256]
+            - generic [ref=e259]:
+              - link "Old fossil fuel energy pumping unit" [ref=e260] [cursor=pointer]:
+                - /url: /free-stock-video/old-fossil-fuel-energy-pumping-unit-48353/
+              - button "View Fullscreen" [ref=e261] [cursor=pointer]
+          - heading "Old fossil fuel energy pumping unit" [level=2] [ref=e263]:
+            - link "Old fossil fuel energy pumping unit" [ref=e264] [cursor=pointer]:
+              - /url: /free-stock-video/old-fossil-fuel-energy-pumping-unit-48353/
+        - generic [ref=e266]:
+          - generic [ref=e267]:
+            - img "Person plucking petals from a chamomile flower." [ref=e270]
+            - generic [ref=e273]:
+              - link "Person plucking petals from a chamomile flower" [ref=e274] [cursor=pointer]:
+                - /url: /free-stock-video/person-plucking-petals-from-a-chamomile-flower-34701/
+              - button "View Fullscreen" [ref=e275] [cursor=pointer]
+          - heading "Person plucking petals from a chamomile flower" [level=2] [ref=e277]:
+            - link "Person plucking petals from a chamomile flower" [ref=e278] [cursor=pointer]:
+              - /url: /free-stock-video/person-plucking-petals-from-a-chamomile-flower-34701/
+        - generic [ref=e280]:
+          - generic [ref=e281]:
+            - img "Plugging in a USB drive." [ref=e284]
+            - generic [ref=e287]:
+              - link "Plugging in a USB drive" [ref=e288] [cursor=pointer]:
+                - /url: /free-stock-video/plugging-in-a-usb-drive-21721/
+              - button "View Fullscreen" [ref=e289] [cursor=pointer]
+          - heading "Plugging in a USB drive" [level=2] [ref=e291]:
+            - link "Plugging in a USB drive" [ref=e292] [cursor=pointer]:
+              - /url: /free-stock-video/plugging-in-a-usb-drive-21721/
+        - generic [ref=e294]:
+          - generic [ref=e295]:
+            - img "Doctor pumping the pressure device." [ref=e298]
+            - generic [ref=e301]:
+              - link "Doctor pumping the pressure device" [ref=e302] [cursor=pointer]:
+                - /url: /free-stock-video/doctor-pumping-the-pressure-device-17489/
+              - button "View Fullscreen" [ref=e303] [cursor=pointer]
+          - heading "Doctor pumping the pressure device" [level=2] [ref=e305]:
+            - link "Doctor pumping the pressure device" [ref=e306] [cursor=pointer]:
+              - /url: /free-stock-video/doctor-pumping-the-pressure-device-17489/
+        - generic [ref=e308]:
+          - generic [ref=e309]:
+            - img "Plugging in sound cables." [ref=e312]
+            - generic [ref=e315]:
+              - link "Plugging in sound cables" [ref=e316] [cursor=pointer]:
+                - /url: /free-stock-video/plugging-in-sound-cables-25423/
+              - button "View Fullscreen" [ref=e317] [cursor=pointer]
+          - heading "Plugging in sound cables" [level=2] [ref=e319]:
+            - link "Plugging in sound cables" [ref=e320] [cursor=pointer]:
+              - /url: /free-stock-video/plugging-in-sound-cables-25423/
+        - generic [ref=e322]:
+          - generic [ref=e323]:
+            - img "Plugging in cables to a recorder." [ref=e326]
+            - generic [ref=e329]:
+              - link "Plugging in cables to a recorder" [ref=e330] [cursor=pointer]:
+                - /url: /free-stock-video/plugging-in-cables-to-a-recorder-21822/
+              - button "View Fullscreen" [ref=e331] [cursor=pointer]
+          - heading "Plugging in cables to a recorder" [level=2] [ref=e333]:
+            - link "Plugging in cables to a recorder" [ref=e334] [cursor=pointer]:
+              - /url: /free-stock-video/plugging-in-cables-to-a-recorder-21822/
+    - generic [ref=e335]:
+      - generic [ref=e336]: Related Video Categories
+      - generic [ref=e338]:
+        - link "Water" [ref=e339] [cursor=pointer]:
+          - /url: /free-stock-video/water/
+        - link "Bathroom" [ref=e340] [cursor=pointer]:
+          - /url: /free-stock-video/bathroom/
+        - link "Plumber" [ref=e341] [cursor=pointer]:
+          - /url: /free-stock-video/plumber/
+        - link "Audio" [ref=e342] [cursor=pointer]:
+          - /url: /free-stock-video/audio/
+        - link "Cables" [ref=e343] [cursor=pointer]:
+          - /url: /free-stock-video/cables/
+        - link "Domestic" [ref=e344] [cursor=pointer]:
+          - /url: /free-stock-video/domestic/
+        - link "Home" [ref=e345] [cursor=pointer]:
+          - /url: /free-stock-video/home/
+    - generic [ref=e347]:
+      - link "Envato Elements" [ref=e348] [cursor=pointer]:
+        - /url: https://elements.envato.com/all-items?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_banner_31JULY2024
+        - img "Envato Elements" [ref=e349]
+      - paragraph [ref=e350]: Unlimited creative stock assets, all in one place.
+      - list [ref=e351]:
+        - listitem [ref=e352]: Millions of premium assets
+        - listitem [ref=e353]: Lifetime commercial licence
+      - link "Start creating now" [ref=e354] [cursor=pointer]:
+        - /url: https://elements.envato.com/all-items?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_cs_banner_31JULY2024
+  - contentinfo [ref=e355]:
+    - generic [ref=e356]:
+      - generic [ref=e357]:
+        - generic [ref=e358]:
+          - link "Videos" [ref=e360] [cursor=pointer]:
+            - /url: /free-stock-video/
+          - generic [ref=e361]:
+            - link "4K Videos" [ref=e362] [cursor=pointer]:
+              - /url: /free-stock-video/discover/?resolution=4k
+            - link "Nature" [ref=e363] [cursor=pointer]:
+              - /url: /free-stock-video/nature/
+            - link "Lifestyle" [ref=e364] [cursor=pointer]:
+              - /url: /free-stock-video/lifestyle/
+            - link "Business" [ref=e365] [cursor=pointer]:
+              - /url: /free-stock-video/business/
+            - link "Animals" [ref=e366] [cursor=pointer]:
+              - /url: /free-stock-video/animal/
+            - link "Zoom Backgrounds" [ref=e367] [cursor=pointer]:
+              - /url: /free-stock-video/zoom-virtual-background/
+            - link "Vertical" [ref=e368] [cursor=pointer]:
+              - /url: /free-vertical-videos/
+            - link "Backgrounds" [ref=e369] [cursor=pointer]:
+              - /url: /free-video-backgrounds/
+        - generic [ref=e370]:
+          - link "Music" [ref=e372] [cursor=pointer]:
+            - /url: /free-stock-music/
+          - generic [ref=e373]:
+            - link "Ambient" [ref=e374] [cursor=pointer]:
+              - /url: /free-stock-music/ambient/
+            - link "Drum & Bass" [ref=e375] [cursor=pointer]:
+              - /url: /free-stock-music/drum-and-bass/
+            - link "Funk" [ref=e376] [cursor=pointer]:
+              - /url: /free-stock-music/funk/
+            - link "Hip-Hop" [ref=e377] [cursor=pointer]:
+              - /url: /free-stock-music/hip-hop/
+            - link "Jazz" [ref=e378] [cursor=pointer]:
+              - /url: /free-stock-music/jazz/
+        - generic [ref=e379]:
+          - link "Sound Effects" [ref=e381] [cursor=pointer]:
+            - /url: /free-sound-effects/
+          - generic [ref=e382]:
+            - link "Animals" [ref=e383] [cursor=pointer]:
+              - /url: /free-sound-effects/animals/
+            - link "Game" [ref=e384] [cursor=pointer]:
+              - /url: /free-sound-effects/game/
+            - link "Human" [ref=e385] [cursor=pointer]:
+              - /url: /free-sound-effects/human/
+            - link "Instrument" [ref=e386] [cursor=pointer]:
+              - /url: /free-sound-effects/instrument/
+            - link "Lifestyle" [ref=e387] [cursor=pointer]:
+              - /url: /free-sound-effects/lifestyle/
+            - link "Nature" [ref=e388] [cursor=pointer]:
+              - /url: /free-sound-effects/nature/
+            - link "Technology" [ref=e389] [cursor=pointer]:
+              - /url: /free-sound-effects/technology/
+            - link "Transition" [ref=e390] [cursor=pointer]:
+              - /url: /free-sound-effects/transition/
+            - link "Warfare" [ref=e391] [cursor=pointer]:
+              - /url: /free-sound-effects/warfare/
+        - generic [ref=e392]:
+          - link "Premiere Pro" [ref=e394] [cursor=pointer]:
+            - /url: /free-premiere-pro-templates
+          - generic [ref=e395]:
+            - link "Subscribe" [ref=e396] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/subscribe/
+            - link "Instagram" [ref=e397] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/instagram/
+            - link "Logo" [ref=e398] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/logo/
+            - link "Lower-thirds" [ref=e399] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/lower-thirds/
+            - link "Opener" [ref=e400] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/openers/
+            - link "Slideshows" [ref=e401] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/slideshow/
+            - link "Titles" [ref=e402] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/titles/
+            - link "Transitions" [ref=e403] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/transitions/
+            - link "YouTube" [ref=e404] [cursor=pointer]:
+              - /url: /free-premiere-pro-templates/youtube/
+        - generic [ref=e405]:
+          - link "After Effects" [ref=e407] [cursor=pointer]:
+            - /url: /free-after-effects-templates
+          - generic [ref=e408]:
+            - link "Audio visualizer" [ref=e409] [cursor=pointer]:
+              - /url: /free-after-effects-templates/audio-visualizer/
+            - link "Call-outs" [ref=e410] [cursor=pointer]:
+              - /url: /free-after-effects-templates/call-outs/
+            - link "Instagram" [ref=e411] [cursor=pointer]:
+              - /url: /free-after-effects-templates/instagram/
+            - link "Lower-thirds" [ref=e412] [cursor=pointer]:
+              - /url: /free-after-effects-templates/lower-thirds/
+            - link "Opener" [ref=e413] [cursor=pointer]:
+              - /url: /free-after-effects-templates/openers/
+            - link "Slideshows" [ref=e414] [cursor=pointer]:
+              - /url: /free-after-effects-templates/slideshow/
+            - link "Titles" [ref=e415] [cursor=pointer]:
+              - /url: /free-after-effects-templates/title/
+            - link "Transitions" [ref=e416] [cursor=pointer]:
+              - /url: /free-after-effects-templates/transitions/
+            - link "YouTube" [ref=e417] [cursor=pointer]:
+              - /url: /free-after-effects-templates/youtube/
+        - generic [ref=e418]:
+          - link "Final Cut Pro" [ref=e420] [cursor=pointer]:
+            - /url: /free-final-cut-pro-templates
+          - generic [ref=e421]:
+            - link "Instagram" [ref=e422] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/instagram/
+            - link "Logo" [ref=e423] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/logo/
+            - link "Lower-thirds" [ref=e424] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/lower-thirds/
+            - link "Opener" [ref=e425] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/openers/
+            - link "Promotion" [ref=e426] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/promotion/
+            - link "Slideshows" [ref=e427] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/slideshow/
+            - link "Titles" [ref=e428] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/title/
+            - link "Transitions" [ref=e429] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/transitions/
+            - link "YouTube" [ref=e430] [cursor=pointer]:
+              - /url: /free-final-cut-pro-templates/youtube/
+        - generic [ref=e431]:
+          - link "DaVinci Resolve" [ref=e433] [cursor=pointer]:
+            - /url: /free-davinci-resolve-templates
+          - generic [ref=e434]:
+            - link "Call-outs" [ref=e435] [cursor=pointer]:
+              - /url: /free-davinci-resolve-templates/call-outs/
+            - link "Instagram" [ref=e436] [cursor=pointer]:
+              - /url: /free-davinci-resolve-templates/instagram/
+            - link "Lower-thirds" [ref=e437] [cursor=pointer]:
+              - /url: /free-davinci-resolve-templates/lower-thirds/
+            - link "Titles" [ref=e438] [cursor=pointer]:
+              - /url: /free-davinci-resolve-templates/titles/
+            - link "YouTube" [ref=e439] [cursor=pointer]:
+              - /url: /free-davinci-resolve-templates/youtube/
+        - generic [ref=e440]:
+          - link "Mixkit" [ref=e442] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e443]:
+            - link "License" [ref=e444] [cursor=pointer]:
+              - /url: /license/
+            - link "Terms" [ref=e445] [cursor=pointer]:
+              - /url: /terms/
+            - link "Sitemap" [ref=e446] [cursor=pointer]:
+              - /url: /sitemap/
+            - link "Privacy" [ref=e447] [cursor=pointer]:
+              - /url: https://envato.com/privacy/
+            - link "Cookies" [ref=e448] [cursor=pointer]:
+              - /url: https://www.envato.com/cookies/
+            - link "Cookie Settings" [ref=e449] [cursor=pointer]:
+              - /url: javascript:void(0)
+            - link "Do not sell or share my personal information" [ref=e450] [cursor=pointer]:
+              - /url: https://www.envato.com/privacy/my-personal-information/
+            - link "Hey AI, learn about Mixkit" [ref=e451] [cursor=pointer]:
+              - /url: /llm-info/
+            - link "Art" [ref=e452] [cursor=pointer]:
+              - /url: /free-stock-art/
+      - generic [ref=e453]:
+        - link "Mixkit home." [ref=e455] [cursor=pointer]:
+          - /url: /
+          - img "Mixkit home." [ref=e456]
+        - paragraph [ref=e458]:
+          - text: Copyright © 2026. All rights reserved - Made by
+          - link "Envato" [ref=e459] [cursor=pointer]:
+            - /url: https://elements.envato.com/?utm_source=mixkit&utm_medium=referral&utm_campaign=elements_mixkit_footer_31JULY2024
+        - generic [ref=e460]:
+          - link "Twitter" [ref=e461] [cursor=pointer]:
+            - /url: https://twitter.com/mixkit_co
+            - img "Twitter" [ref=e462]
+          - link "YouTube" [ref=e464] [cursor=pointer]:
+            - /url: https://www.youtube.com/channel/UCtmuFBbkECnsHJujGDcE9SA
+            - img "YouTube" [ref=e465]
+          - link "Instagram" [ref=e468] [cursor=pointer]:
+            - /url: https://instagram.com/mixkit_co
+            - img "Instagram" [ref=e469]
+          - link "TikTok" [ref=e471] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@mixkit.co
+            - img "TikTok" [ref=e472]
+  - iframe [ref=e474]:
+    

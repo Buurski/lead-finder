@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: ls/
+      - generic [ref=e5]:
+        - link "Leads" [ref=e6] [cursor=pointer]:
+          - /url: /
+        - link "Klienter" [ref=e7] [cursor=pointer]:
+          - /url: /clients
+      - generic [ref=e10]: live
+  - main [ref=e11]:
+    - generic [ref=e13]:
+      - heading "404" [level=1] [ref=e14]
+      - heading "This page could not be found." [level=2] [ref=e16]
+  - alert [ref=e17]

@@ -1,0 +1,537 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - navigation [ref=e6]:
+      - link [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img [ref=e9]
+      - search [ref=e13]:
+        - generic [ref=e14]:
+          - button "Photos" [ref=e16] [cursor=pointer]:
+            - generic [ref=e17]:
+              - img [ref=e18]
+              - generic [ref=e21]: Photos
+              - img [ref=e22]
+          - searchbox "Search for free photos" [ref=e24]
+          - button [ref=e26] [cursor=pointer]:
+            - img [ref=e28]
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - link "Explore" [ref=e32] [cursor=pointer]:
+            - /url: /discover/
+            - generic [ref=e33]: Explore
+          - img [ref=e34]
+        - link "License" [ref=e36] [cursor=pointer]:
+          - /url: /license/
+          - generic [ref=e37]: License
+        - button [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+        - button "Join" [ref=e42] [cursor=pointer]:
+          - generic [ref=e44]: Join
+    - main [ref=e45]:
+      - separator [ref=e46]
+      - generic [ref=e47]:
+        - main [ref=e48]:
+          - separator [ref=e49]
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - link "Alejandro Torres" [ref=e52] [cursor=pointer]:
+                - /url: /@alejandro-torres-111616368/
+                - img "Alejandro Torres" [ref=e56]
+              - generic [ref=e57]:
+                - link "Alejandro Torres" [ref=e58] [cursor=pointer]:
+                  - /url: /@alejandro-torres-111616368/
+                  - heading "Alejandro Torres" [level=5] [ref=e59]
+                - generic [ref=e61]:
+                  - button "Follow" [ref=e62] [cursor=pointer]
+                  - link "Donate" [ref=e64] [cursor=pointer]:
+                    - /url: https://www.paypal.com/cgi-bin/webscr?business=psychonaut1%40gmail.com&cmd=_donations&currency_code=USD&item_name=Alejandro+Torres+-+Pexels&lc=US&return=https://pexels.com/video/close-up-of-plumber-repairing-faucet-9890448/
+                    - generic [ref=e65]: Donate
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - link "Add Text" [ref=e68] [cursor=pointer]:
+                  - /url: https://www.canva.com/content-partner/?utm_medium=acquisitions&utm_source=pexels&utm_campaign=predownload%20button&utm_content=edit%20in%20canva%20action%3Dadd_text_video%20experiment%3Dsiglip_2_head_terms%2Bcontrol&file-url=https%3A%2F%2Fvideos.pexels.com%2Fvideo-files%2F9890448%2F9890448-hd_1920_1080_30fps.mp4&external-id=9890448&onboarding-flow=add-text-to-photo
+                  - generic [ref=e69]:
+                    - img [ref=e70]
+                    - generic [ref=e72]: Add Text
+                - link "Convert to GIF" [ref=e73] [cursor=pointer]:
+                  - /url: https://www.canva.com/content-partner/?utm_medium=acquisitions&utm_source=pexels&utm_campaign=predownload%20button&utm_content=edit%20in%20canva%20action%3Dconvert_to_gif%20experiment%3Dsiglip_2_head_terms%2Bcontrol&file-url=https%3A%2F%2Fvideos.pexels.com%2Fvideo-files%2F9890448%2F9890448-hd_1920_1080_30fps.mp4&external-id=9890448&onboarding-flow=convert-to-gif
+                  - generic [ref=e74]:
+                    - img [ref=e75]
+                    - generic [ref=e77]: Convert to GIF
+                - link "Edit" [ref=e80] [cursor=pointer]:
+                  - /url: https://www.canva.com/content-partner/?utm_medium=acquisitions&utm_source=pexels&utm_campaign=predownload%20button&utm_content=edit%20in%20canva%20experiment%3Dsiglip_2_head_terms%2Bcontrol&file-url=https%3A%2F%2Fvideos.pexels.com%2Fvideo-files%2F9890448%2F9890448-hd_1920_1080_30fps.mp4&external-id=9890448
+                  - generic [ref=e81]:
+                    - img [ref=e82]
+                    - generic [ref=e84]: Edit
+                    - img [ref=e85]
+              - generic [ref=e87]:
+                - button [ref=e88] [cursor=pointer]:
+                  - img [ref=e90]
+                - button "25" [ref=e92] [cursor=pointer]:
+                  - generic [ref=e93]:
+                    - img [ref=e94]
+                    - generic [ref=e96]: "25"
+                - generic [ref=e97]:
+                  - link "Free download" [ref=e98] [cursor=pointer]:
+                    - /url: https://www.pexels.com/download/video/9890448/
+                    - generic [ref=e100]: Free download
+                  - button [ref=e102] [cursor=pointer]:
+                    - img [ref=e104]
+          - separator [ref=e107]
+        - generic [ref=e108]:
+          - region "video player" [ref=e116]:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                - button "pause" [ref=e120] [cursor=pointer]:
+                  - img [ref=e121]
+              - generic:
+                - generic [ref=e124] [cursor=pointer]:
+                  - img [ref=e130]
+                  - slider "seek" [ref=e131]: "0.00587863035653408"
+                  - generic:
+                    - generic: 0:00
+                - generic [ref=e132]:
+                  - generic:
+                    - button "pause" [ref=e133] [cursor=pointer]:
+                      - img [ref=e134]
+                    - progressbar "playback time" [ref=e140]: 0:00 / 0:26
+                    - button "current playback rate 1" [ref=e143] [cursor=pointer]: 1x
+                    - button "enter fullscreen mode" [ref=e144] [cursor=pointer]:
+                      - img [ref=e145]
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - link "Free to use" [ref=e152] [cursor=pointer]:
+                - /url: /license/
+                - paragraph [ref=e153]:
+                  - img [ref=e154]
+                  - text: Free to use
+              - heading "Close-up of a plumber fixing an outdoor faucet using a wrench." [level=1] [ref=e156]:
+                - img [ref=e157]
+                - text: Close-up of a plumber fixing an outdoor faucet using a wrench.
+            - generic [ref=e160]:
+              - button "More info" [ref=e162] [cursor=pointer]:
+                - generic [ref=e163]:
+                  - img [ref=e164]
+                  - generic [ref=e166]: More info
+              - button "Share" [ref=e167] [cursor=pointer]:
+                - generic [ref=e168]:
+                  - img [ref=e169]
+                  - generic [ref=e171]: Share
+              - link [ref=e172] [cursor=pointer]:
+                - /url: /report/?slug=close-up-of-plumber-repairing-faucet-9890448
+                - img [ref=e174]
+          - heading "More like this" [level=3] [ref=e177]
+          - generic [ref=e179]:
+            - generic:
+              - img
+            - link "Brass" [ref=e181] [cursor=pointer]:
+              - /url: /search/videos/brass/
+              - generic [ref=e183]: Brass
+            - link "Building" [ref=e184] [cursor=pointer]:
+              - /url: /search/videos/building/
+              - generic [ref=e186]: Building
+            - link "Close Up" [ref=e187] [cursor=pointer]:
+              - /url: /search/videos/close-up/
+              - generic [ref=e189]: Close Up
+            - link "Connection" [ref=e190] [cursor=pointer]:
+              - /url: /search/videos/connection/
+              - generic [ref=e192]: Connection
+            - link "Craftsman" [ref=e193] [cursor=pointer]:
+              - /url: /search/videos/craftsman/
+              - generic [ref=e195]: Craftsman
+            - link "Diy" [ref=e196] [cursor=pointer]:
+              - /url: /search/videos/diy/
+              - generic [ref=e198]: Diy
+            - link "Equipment" [ref=e199] [cursor=pointer]:
+              - /url: /search/videos/equipment/
+              - generic [ref=e201]: Equipment
+            - link "Faucet" [ref=e202] [cursor=pointer]:
+              - /url: /search/videos/faucet/
+              - generic [ref=e204]: Faucet
+            - link "Fix" [ref=e205] [cursor=pointer]:
+              - /url: /search/videos/fix/
+              - generic [ref=e207]: Fix
+            - link "Fixing" [ref=e208] [cursor=pointer]:
+              - /url: /search/videos/fixing/
+              - generic [ref=e210]: Fixing
+            - link "Glove" [ref=e211] [cursor=pointer]:
+              - /url: /search/videos/glove/
+              - generic [ref=e213]: Glove
+            - link "Hand" [ref=e214] [cursor=pointer]:
+              - /url: /search/videos/hand/
+              - generic [ref=e216]: Hand
+            - link "Hardware" [ref=e217] [cursor=pointer]:
+              - /url: /search/videos/hardware/
+              - generic [ref=e219]: Hardware
+            - link "Home Improvement" [ref=e220] [cursor=pointer]:
+              - /url: /search/videos/home%20improvement/
+              - generic [ref=e222]: Home Improvement
+            - link "House" [ref=e223] [cursor=pointer]:
+              - /url: /search/videos/house/
+              - generic [ref=e225]: House
+            - link "Industry" [ref=e226] [cursor=pointer]:
+              - /url: /search/videos/industry/
+              - generic [ref=e228]: Industry
+            - link "Installation" [ref=e229] [cursor=pointer]:
+              - /url: /search/videos/installation/
+              - generic [ref=e231]: Installation
+            - link "Job" [ref=e232] [cursor=pointer]:
+              - /url: /search/videos/job/
+              - generic [ref=e234]: Job
+            - link "Maintenance" [ref=e235] [cursor=pointer]:
+              - /url: /search/videos/maintenance/
+              - generic [ref=e237]: Maintenance
+            - link "Manual Worker" [ref=e238] [cursor=pointer]:
+              - /url: /search/videos/manual%20worker/
+              - generic [ref=e240]: Manual Worker
+            - link "Metal" [ref=e241] [cursor=pointer]:
+              - /url: /search/videos/metal/
+              - generic [ref=e243]: Metal
+            - link "Metal Pipe" [ref=e244] [cursor=pointer]:
+              - /url: /search/videos/metal%20pipe/
+              - generic [ref=e246]: Metal Pipe
+            - link "Occupation" [ref=e247] [cursor=pointer]:
+              - /url: /search/videos/occupation/
+              - generic [ref=e249]: Occupation
+            - link "Outdoor" [ref=e250] [cursor=pointer]:
+              - /url: /search/videos/outdoor/
+              - generic [ref=e252]: Outdoor
+            - link "Outdoors" [ref=e253] [cursor=pointer]:
+              - /url: /search/videos/outdoors/
+              - generic [ref=e255]: Outdoors
+            - link "Pipe" [ref=e256] [cursor=pointer]:
+              - /url: /search/videos/pipe/
+              - generic [ref=e258]: Pipe
+            - link "Plumber" [ref=e259] [cursor=pointer]:
+              - /url: /search/videos/plumber/
+              - generic [ref=e261]: Plumber
+            - link "Plumbing" [ref=e262] [cursor=pointer]:
+              - /url: /search/videos/plumbing/
+              - generic [ref=e264]: Plumbing
+            - link "Professional" [ref=e265] [cursor=pointer]:
+              - /url: /search/videos/professional/
+              - generic [ref=e267]: Professional
+            - link "Protective Gear" [ref=e268] [cursor=pointer]:
+              - /url: /search/videos/protective%20gear/
+              - generic [ref=e270]: Protective Gear
+            - link "Red" [ref=e271] [cursor=pointer]:
+              - /url: /search/videos/red/
+              - generic [ref=e273]: Red
+            - link "Repair" [ref=e274] [cursor=pointer]:
+              - /url: /search/videos/repair/
+              - generic [ref=e276]: Repair
+            - link "Repairman" [ref=e277] [cursor=pointer]:
+              - /url: /search/videos/repairman/
+              - generic [ref=e279]: Repairman
+            - link "Rotation" [ref=e280] [cursor=pointer]:
+              - /url: /search/videos/rotation/
+              - generic [ref=e282]: Rotation
+            - link "Rust" [ref=e283] [cursor=pointer]:
+              - /url: /search/videos/rust/
+              - generic [ref=e285]: Rust
+            - link "Safety" [ref=e286] [cursor=pointer]:
+              - /url: /search/videos/safety/
+              - generic [ref=e288]: Safety
+            - link "Service" [ref=e289] [cursor=pointer]:
+              - /url: /search/videos/service/
+              - generic [ref=e291]: Service
+            - link "Skill" [ref=e292] [cursor=pointer]:
+              - /url: /search/videos/skill/
+              - generic [ref=e294]: Skill
+            - link "Task" [ref=e295] [cursor=pointer]:
+              - /url: /search/videos/task/
+              - generic [ref=e297]: Task
+            - link "Tool" [ref=e298] [cursor=pointer]:
+              - /url: /search/videos/tool/
+              - generic [ref=e300]: Tool
+            - link "Turning" [ref=e301] [cursor=pointer]:
+              - /url: /search/videos/turning/
+              - generic [ref=e303]: Turning
+            - link "Utilities" [ref=e304] [cursor=pointer]:
+              - /url: /search/videos/utilities/
+              - generic [ref=e306]: Utilities
+            - link "Water" [ref=e307] [cursor=pointer]:
+              - /url: /search/videos/water/
+              - generic [ref=e309]: Water
+            - link "Water Supply" [ref=e310] [cursor=pointer]:
+              - /url: /search/videos/water%20supply/
+              - generic [ref=e312]: Water Supply
+            - link "Work" [ref=e313] [cursor=pointer]:
+              - /url: /search/videos/work/
+              - generic [ref=e315]: Work
+            - link "Wrench" [ref=e316] [cursor=pointer]:
+              - /url: /search/videos/wrench/
+              - generic [ref=e318]: Wrench
+            - img [ref=e319] [cursor=pointer]
+          - generic [ref=e322]:
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - article [ref=e328]:
+                  - link [ref=e329] [cursor=pointer]:
+                    - /url: /video/close-up-of-person-fixing-dripping-faucet-9890452/
+                    - img [ref=e330]
+                  - img [ref=e335]
+                - article [ref=e340]:
+                  - link [ref=e341] [cursor=pointer]:
+                    - /url: /video/close-up-of-plumber-fixing-faucet-9890450/
+                    - img [ref=e342]
+                  - img [ref=e347]
+                - article [ref=e352]:
+                  - link [ref=e353] [cursor=pointer]:
+                    - /url: /video/water-dropping-from-a-faucet-9200530/
+                    - img [ref=e354]
+                  - img [ref=e359]
+                - article [ref=e364]:
+                  - link [ref=e365] [cursor=pointer]:
+                    - /url: /video/a-water-pipe-with-a-faucet-in-the-middle-of-the-woods-28209110/
+                    - img [ref=e366]
+                  - img [ref=e371]
+                - article [ref=e376]:
+                  - link [ref=e377] [cursor=pointer]:
+                    - /url: /video/water-coming-out-of-the-hose-7042887/
+                    - img [ref=e378]
+                  - img [ref=e383]
+              - generic [ref=e386]:
+                - article [ref=e389]:
+                  - link [ref=e390] [cursor=pointer]:
+                    - /url: /video/water-dripping-from-faucet-9890451/
+                    - img [ref=e391]
+                  - img [ref=e396]
+                - article [ref=e401]:
+                  - link [ref=e402] [cursor=pointer]:
+                    - /url: /video/person-turning-a-faucet-on-7301194/
+                    - img [ref=e403]
+                  - img [ref=e408]
+                - article [ref=e413]:
+                  - link [ref=e414] [cursor=pointer]:
+                    - /url: /video/plumbers-wrench-hanged-on-wall-8488162/
+                    - img [ref=e415]
+                  - img [ref=e420]
+                - article [ref=e425]:
+                  - link [ref=e426] [cursor=pointer]:
+                    - /url: /video/close-up-shot-of-a-garden-hose-with-running-water-10843978/
+                    - img [ref=e427]
+                  - img [ref=e432]
+                - article [ref=e437]:
+                  - link [ref=e438] [cursor=pointer]:
+                    - /url: /video/a-person-is-holding-a-blue-water-pipe-27045699/
+                    - img [ref=e439]
+                  - img [ref=e444]
+                - article [ref=e449]:
+                  - link [ref=e450] [cursor=pointer]:
+                    - /url: /video/silver-outdoor-tap-on-brick-wall-33891663/
+                    - img [ref=e451]
+                  - img [ref=e456]
+              - generic [ref=e459]:
+                - generic [ref=e461]:
+                  - generic [ref=e463]:
+                    - link "Create your own video content with Canva" [ref=e464] [cursor=pointer]:
+                      - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                      - generic "Create your own video content with Canva" [ref=e465]
+                    - link "Create your own video content with Canva" [ref=e466] [cursor=pointer]:
+                      - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                      - generic "Create your own video content with Canva" [ref=e467]
+                    - link "Create your own video content with Canva" [ref=e468] [cursor=pointer]:
+                      - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                      - generic "Create your own video content with Canva" [ref=e469]
+                    - link "Create your own video content with Canva" [ref=e470] [cursor=pointer]:
+                      - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                      - generic "Create your own video content with Canva" [ref=e471]
+                  - link "Bring your ideas to life with Canva AI" [ref=e472] [cursor=pointer]:
+                    - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                    - img [ref=e473]
+                    - paragraph [ref=e475]: Bring your ideas to life with Canva AI
+                  - link "Get started for free" [ref=e476] [cursor=pointer]:
+                    - /url: https://www.canva.com/features/ai-video-generator/?utm_source=pexels&utm_campaign=aigc_pexelscampaign&utm_medium=partner&utm_content=%20experiment%3Dsiglip_2_head_terms%2Bcontrol
+                    - generic [ref=e478]: Get started for free
+                - article [ref=e481]:
+                  - link [ref=e482] [cursor=pointer]:
+                    - /url: /video/rustic-water-faucet-with-flowing-stream-33674735/
+                    - img [ref=e483]
+                  - img [ref=e488]
+                - generic [ref=e492]:
+                  - generic [ref=e493]:
+                    - heading "Sponsored Videos" [level=4] [ref=e494]
+                    - link [ref=e495] [cursor=pointer]:
+                      - /url: https://www.istockphoto.com/videos/red?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_logo&utm_term=red
+                      - img [ref=e496]
+                  - generic [ref=e499]:
+                    - link [ref=e500] [cursor=pointer]:
+                      - /url: https://www.istockphoto.com/video/circle-markers-animated-green-screen-gm1266420417-371241512?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_media&utm_term=red
+                      - img [ref=e501]
+                      - img [ref=e503]
+                    - link [ref=e504] [cursor=pointer]:
+                      - /url: https://www.istockphoto.com/video/brush-handwritten-circle-circle-marker-circle-highlight-green-screen-gm2211368046-628359409?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_media&utm_term=red
+                      - img [ref=e505]
+                      - img [ref=e507]
+                    - link [ref=e508] [cursor=pointer]:
+                      - /url: https://www.istockphoto.com/video/cheerful-woman-walking-at-fisherman-village-with-red-rorbu-houses-on-lofoten-gm2249044026-662850247?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_media&utm_term=red
+                      - img [ref=e509]
+                      - img [ref=e511]
+                    - link [ref=e512] [cursor=pointer]:
+                      - /url: https://www.istockphoto.com/video/copy-space-glitter-sparkle-animated-green-screen-3d-animation-ultra-high-definition-gm2196172470-614213536?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_media&utm_term=red
+                      - img [ref=e513]
+                      - img [ref=e515]
+                  - link [ref=e516] [cursor=pointer]:
+                    - /url: https://www.istockphoto.com/videos/red?utm_source=pexels&utm_medium=affiliate&utm_campaign=sponsored_video&utm_content=adp_inline_couponcode&utm_term=red
+                    - img [ref=e519]:
+                      - generic [ref=e520]: Get 20% off with code PEXELS20 »
+            - button "Load More" [ref=e522] [cursor=pointer]:
+              - generic [ref=e524]: Load More
+      - separator [ref=e525]
+    - contentinfo [ref=e526]:
+      - separator [ref=e527]
+      - generic [ref=e528]:
+        - generic [ref=e529]:
+          - heading "Where stories come together." [level=2] [ref=e530]
+          - generic [ref=e531]:
+            - link "Download on iOS" [ref=e532] [cursor=pointer]:
+              - /url: https://itunes.apple.com/us/app/pexels/id1434330413/
+              - generic [ref=e534]: Download on iOS
+            - link "Download on Android" [ref=e535] [cursor=pointer]:
+              - /url: https://play.google.com/store/apps/details?id=com.pexels.app
+              - generic [ref=e537]: Download on Android
+          - list [ref=e538]:
+            - listitem [ref=e539]:
+              - link "Instagram" [ref=e540] [cursor=pointer]:
+                - /url: https://www.instagram.com/pexels/
+                - img [ref=e541]
+            - listitem [ref=e543]:
+              - link "Threads" [ref=e544] [cursor=pointer]:
+                - /url: https://www.threads.net/@pexels/
+                - img [ref=e545]
+            - listitem [ref=e547]:
+              - link "YouTube" [ref=e548] [cursor=pointer]:
+                - /url: https://www.youtube.com/pexelsphotos/
+                - img [ref=e549]
+            - listitem [ref=e551]:
+              - link "TikTok" [ref=e552] [cursor=pointer]:
+                - /url: https://www.tiktok.com/@pexels/
+                - img [ref=e553]
+            - listitem [ref=e555]:
+              - link "LinkedIn" [ref=e556] [cursor=pointer]:
+                - /url: https://www.linkedin.com/company/pexels/
+                - img [ref=e557]
+            - listitem [ref=e559]:
+              - link "X" [ref=e560] [cursor=pointer]:
+                - /url: https://x.com/pexels/
+                - img [ref=e561]
+        - generic [ref=e563]:
+          - list [ref=e564]:
+            - heading "Pexels" [level=3] [ref=e565]
+            - listitem [ref=e566]:
+              - link "Free Stock Photos" [ref=e567] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e568]:
+              - link "Free Videos" [ref=e569] [cursor=pointer]:
+                - /url: /videos/
+            - listitem [ref=e570]:
+              - link "Popular searches" [ref=e571] [cursor=pointer]:
+                - /url: /popular-searches/
+            - listitem [ref=e572]:
+              - link "Collections" [ref=e573] [cursor=pointer]:
+                - /url: /discover/
+            - listitem [ref=e574]:
+              - link "Challenges" [ref=e575] [cursor=pointer]:
+                - /url: /challenges/
+            - listitem [ref=e576]:
+              - link "Leaderboard" [ref=e577] [cursor=pointer]:
+                - /url: /leaderboard/
+            - listitem [ref=e578]:
+              - link "Other plugins & apps" [ref=e579] [cursor=pointer]:
+                - /url: /pro/
+          - list [ref=e580]:
+            - heading "Company" [level=3] [ref=e581]
+            - listitem [ref=e582]:
+              - link "About" [ref=e583] [cursor=pointer]:
+                - /url: /about/
+            - listitem [ref=e584]:
+              - link "Blog" [ref=e585] [cursor=pointer]:
+                - /url: /blog/
+            - listitem [ref=e586]:
+              - link "Help Center" [ref=e587] [cursor=pointer]:
+                - /url: https://help.pexels.com/hc/en-us/
+            - listitem [ref=e588]:
+              - link "Report content" [ref=e589] [cursor=pointer]:
+                - /url: /report/
+            - listitem [ref=e590]:
+              - link "Become a Hero" [ref=e591] [cursor=pointer]:
+                - /url: /hero/
+            - listitem [ref=e592]:
+              - link "Partner with Pexels" [ref=e593] [cursor=pointer]:
+                - /url: /become-a-partner/
+            - listitem [ref=e594]:
+              - link "Image & Video API" [ref=e595] [cursor=pointer]:
+                - /url: /api/
+            - listitem [ref=e596]: Sign Up
+        - list [ref=e597]:
+          - listitem [ref=e598]:
+            - heading "Free Stock Photos" [level=3] [ref=e599]
+          - listitem [ref=e600]:
+            - generic [ref=e602]:
+              - link "Black and white photography" [ref=e604] [cursor=pointer]:
+                - /url: /search/black%20and%20white/
+              - link "Happy birthday images" [ref=e605] [cursor=pointer]:
+                - /url: /search/happy%20birthday/
+              - link "Free business videos" [ref=e606] [cursor=pointer]:
+                - /url: /search/videos/business/
+              - link "Happy new year images" [ref=e607] [cursor=pointer]:
+                - /url: /search/happy%20new%20year/
+              - link "Cool wallpapers" [ref=e608] [cursor=pointer]:
+                - /url: /search/cool%20wallpaper/
+              - link "Best HD wallpapers" [ref=e609] [cursor=pointer]:
+                - /url: /search/hd%20wallpaper/
+              - link "Galaxy wallpaper" [ref=e610] [cursor=pointer]:
+                - /url: /search/galaxy%20wallpaper/
+              - link "Lock screen wallpaper" [ref=e611] [cursor=pointer]:
+                - /url: /search/lock%20screen%20wallpaper/
+              - link "iPhone wallpaper" [ref=e612] [cursor=pointer]:
+                - /url: /search/iphone%20wallpaper/
+              - link "4K wallpaper" [ref=e613] [cursor=pointer]:
+                - /url: /search/4k%20wallpaper/
+              - link "Samsung wallpaper" [ref=e614] [cursor=pointer]:
+                - /url: /search/samsung%20wallpaper/
+              - link "Love wallpaper" [ref=e615] [cursor=pointer]:
+                - /url: /search/love%20wallpaper/
+              - link "Mobile wallpaper" [ref=e616] [cursor=pointer]:
+                - /url: /search/mobile%20wallpaper/
+      - generic [ref=e618]:
+        - generic [ref=e619]: © 2026 Pexels
+        - generic [ref=e621]:
+          - generic:
+            - img
+          - link "Terms of Use" [ref=e623] [cursor=pointer]:
+            - /url: /terms-of-service/
+          - link "Privacy Policy" [ref=e624] [cursor=pointer]:
+            - /url: /privacy-policy/
+          - link "License" [ref=e625] [cursor=pointer]:
+            - /url: /license/
+          - link "Imprint" [ref=e626] [cursor=pointer]:
+            - /url: /imprint/
+          - link "Cookies Policy" [ref=e627] [cursor=pointer]:
+            - /url: /cookies/
+          - generic:
+            - img
+        - button "English" [ref=e630] [cursor=pointer]:
+          - generic [ref=e631]:
+            - img [ref=e632]
+            - generic [ref=e634]: English
+      - separator [ref=e635]
+  - alert [ref=e636]
+  - region "Cookie banner" [ref=e637]:
+    - alertdialog "But first, cookies &#127850;" [ref=e638]:
+      - generic [ref=e640]:
+        - generic [ref=e642]:
+          - heading "But first, cookies 🍪" [level=2] [ref=e643]
+          - paragraph [ref=e644]:
+            - text: We use essential cookies to make Pexels work. We'd like to use other cookies to improve and personalize your visit, tailor ads you see from us on Pexels and partner sites, and to analyze our website's performance, but only if you accept. Learn more about your choices in
+            - link "our cookie policy" [active] [ref=e645] [cursor=pointer]:
+              - /url: https://www.pexels.com/cookies/
+            - text: .
+        - generic [ref=e647]:
+          - button "Cookies Settings" [ref=e648] [cursor=pointer]
+          - button "Reject All" [ref=e649] [cursor=pointer]
+          - button "Accept All Cookies" [ref=e650] [cursor=pointer]
