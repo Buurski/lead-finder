@@ -10,21 +10,26 @@ function getTier(score: number): "A" | "B" | "C" {
   return "C";
 }
 
-// National Danish chains — emailing a branch employee makes no sense
-const CHAIN_BLOCKLIST = [
-  "profiloptik", "synoptik", "specsavers", "fielmann",
-  "matas", "normal store", "søstrene grene", "flying tiger", "tiger stores",
-  "jysk", "h&m", "zara", "elgiganten", "power electronics",
-  "mcdonalds", "mcdonald's", "burger king", "subway", "7-eleven",
-  "netto", "rema 1000", "lidl", "aldi", "bilka", "føtex", "kvickly",
-  "silvan", "xl-byg", "stark",
-  "shell", "circle k", "q8 energie", "ok benzin",
-  "kvik køkken", "ikea",
+const CHAIN_EXACT = [
+  "jysk", "netto", "lidl", "aldi", "zara", "ikea", "matas", "stark", "shell", "subway",
+];
+const CHAIN_CONTAINS = [
+  "synoptik", "profiloptik", "specsavers", "fielmann",
+  "elgiganten", "power electronics",
+  "mcdonalds", "mcdonald's", "burger king", "7-eleven",
+  "rema 1000", "bilka", "føtex", "kvickly",
+  "silvan", "xl-byg",
+  "circle k", "q8 energie", "ok benzin",
+  "kvik køkken", "søstrene grene", "flying tiger", "tiger stores",
+  "normal store", "h&m", "louis nielsen",
 ];
 
 function isChain(name: string): boolean {
   const lower = name.toLowerCase();
-  return CHAIN_BLOCKLIST.some((chain) => lower.includes(chain));
+  for (const chain of CHAIN_EXACT) {
+    if (new RegExp(`\\b${chain}\\b`).test(lower)) return true;
+  }
+  return CHAIN_CONTAINS.some((chain) => lower.includes(chain));
 }
 
 export async function GET() {
