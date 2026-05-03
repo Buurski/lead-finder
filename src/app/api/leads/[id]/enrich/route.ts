@@ -16,21 +16,18 @@ export interface EnrichedInfo {
     category: string;
   } | null;
   facebookSearchUrl: string;
-  email: string | null; // best email found
-  summary: string; // plain Danish summary for display
+  email: string | null;
+  summary: string;
 }
 
 const HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; LeadBot/1.0)" };
 
-function extractEmail(html: string): string | null {
-  // Find mailto: links first (most reliable)
-  const mailto = html.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
+function extractEmail(text: string): string | null {
+  const mailto = text.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
   if (mailto) return mailto[1].toLowerCase();
-  // Fall back to bare email addresses in visible text
-  const bare = html.match(/\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b/);
+  const bare = text.match(/\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b/);
   if (bare) {
     const addr = bare[1].toLowerCase();
-    // Skip common non-business addresses
     if (!addr.includes("noreply") && !addr.includes("example") && !addr.includes("sentry") && !addr.includes("w3.org")) {
       return addr;
     }
@@ -38,87 +35,99 @@ function extractEmail(html: string): string | null {
   return null;
 }
 
-function extractText(html: string, selector: RegExp): string {
-  const m = html.match(selector);
-  return m ? m[1].replace(/<[^>]+>/g, "").trim() : "";
+function extractPhone(text: string): string | null {
+  // Danish phone: 8 digits, optionally prefixed +45
+  const m = text.match(/(?:\+45[\s.]?)?(\d{2}[\s.]\d{2}[\s.]\d{2}[\s.]\d{2}|\d{8})/);
+  return m ? m[0].trim() : null;
 }
 
-function extractMeta(html: string, name: string): string {
-  const m = html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']{5,300})["']`, "i"))
-    || html.match(new RegExp(`<meta[^>]+content=["']([^"']{5,300})["'][^>]+(?:name|property)=["']${name}["']`, "i"));
-  return m ? m[1].trim() : "";
+// Fetch page content via Jina Reader — works on JS-rendered sites
+async function fetchViaJina(url: string): Promise<string | null> {
+  try {
+    const jinaUrl = `https://r.jina.ai/${url.startsWith("http") ? url : `https://${url}`}`;
+    const res = await fetch(jinaUrl, {
+      headers: { ...HEADERS, "Accept": "text/plain", "X-Return-Format": "markdown" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.length > 100 ? text : null;
+  } catch {
+    return null;
+  }
 }
 
-function extractHeadings(html: string): string[] {
-  const matches = [...html.matchAll(/<h[123][^>]*>([^<]{3,80})<\/h[123]>/gi)];
-  return [...new Set(matches.map(m => m[1].trim()))].slice(0, 6);
-}
-
-function detectServices(html: string, branch: string): string[] {
-  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  const danishServiceWords = [
-    "renovering", "installation", "reparation", "montage", "service",
-    "vedligehold", "konsultation", "rådgivning", "projektering", "design",
-    "klipning", "farvning", "behandling", "massage", "rengøring",
-    "maling", "tapetsering", "gulv", "tag", "facade", "isolering",
-    "VVS", "el-arbejde", "tømrerarbejde", "snedkerarbejde",
-  ];
-  const found = danishServiceWords.filter(w => new RegExp(w, "i").test(text));
-  if (found.length === 0 && branch) found.push(branch);
-  return found.slice(0, 5);
-}
-
-async function fetchWebsiteInfo(url: string, branch: string) {
+// Also fetch raw HTML for email/phone extraction and Facebook link detection
+async function fetchRawHtml(url: string): Promise<string | null> {
   try {
     const res = await fetch(url.startsWith("http") ? url : `https://${url}`, {
-      signal: AbortSignal.timeout(8000), headers: HEADERS,
+      headers: HEADERS,
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
-    const html = await res.text();
-
-    const description =
-      extractMeta(html, "description") ||
-      extractMeta(html, "og:description") ||
-      extractText(html, /<p[^>]*>([^<]{40,300})<\/p>/i) ||
-      "";
-
-    return {
-      description,
-      headings: extractHeadings(html),
-      services: detectServices(html, branch),
-      phone: html.match(/(?:tlf|telefon|ring)[^0-9]*(\+?45[\s.]?\d{2}[\s.]\d{2}[\s.]\d{2}[\s.]\d{2}|\d{8})/i)?.[1]?.trim() ?? null,
-      email: extractEmail(html),
-    };
+    return await res.text();
   } catch {
     return null;
   }
 }
 
-async function fetchFacebookInfo(fbUrl: string) {
-  try {
-    const res = await fetch(fbUrl, {
-      signal: AbortSignal.timeout(8000), headers: HEADERS,
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const description =
-      extractMeta(html, "description") ||
-      extractMeta(html, "og:description") ||
-      "";
-    const category = extractMeta(html, "og:type") || "";
-    if (!description) return null;
-    return { url: fbUrl, description, category };
-  } catch {
-    return null;
-  }
+function parseWebsiteContent(markdown: string, branch: string) {
+  const lines = markdown.split("\n").map(l => l.trim()).filter(Boolean);
+
+  // Description: first substantial non-heading paragraph
+  const description = lines.find(l =>
+    !l.startsWith("#") && !l.startsWith("*") && !l.startsWith("-") &&
+    !l.startsWith("|") && !l.startsWith("!") && !l.startsWith("[") &&
+    l.length > 60
+  ) ?? "";
+
+  // Headings: lines starting with # (strip the # prefix)
+  const headings = lines
+    .filter(l => /^#{1,3}\s/.test(l))
+    .map(l => l.replace(/^#+\s*/, "").trim())
+    .filter(l => l.length > 2 && l.length < 80)
+    .slice(0, 6);
+
+  // Services: bullet/list lines that look like service descriptions
+  const danishServiceWords = [
+    "renovering", "installation", "reparation", "montage", "service", "vedligehold",
+    "konsultation", "rådgivning", "projektering", "design", "klipning", "farvning",
+    "behandling", "massage", "rengøring", "maling", "tapetsering", "gulv", "tag",
+    "facade", "isolering", "VVS", "el-arbejde", "tømrerarbejde", "snedkerarbejde",
+    "hjemmeside", "webdesign", "SEO", "markedsføring",
+  ];
+  const fullText = markdown.replace(/[#*\-|!]/g, " ");
+  const foundServices = danishServiceWords.filter(w => new RegExp(w, "i").test(fullText));
+  if (foundServices.length === 0 && branch) foundServices.push(branch);
+
+  const phone = extractPhone(markdown);
+  const email = extractEmail(markdown);
+
+  return { description: description.slice(0, 300), headings, services: foundServices.slice(0, 5), phone, email };
 }
 
-async function findFacebookViaWebsite(websiteHtml: string): Promise<string | null> {
-  const m = websiteHtml.match(/facebook\.com\/([A-Za-z0-9._%-]{3,50})(?:["'\/?])/);
+function findFacebookInHtml(html: string): string | null {
+  const m = html.match(/facebook\.com\/([A-Za-z0-9._%-]{3,50})(?:["'\/?])/);
   if (!m) return null;
   const slug = m[1];
   if (["sharer", "share", "plugins", "tr", "dialog", "photo"].includes(slug)) return null;
   return `https://www.facebook.com/${slug}`;
+}
+
+async function fetchFacebookMeta(fbUrl: string): Promise<{ url: string; description: string; category: string } | null> {
+  try {
+    const res = await fetch(fbUrl, { signal: AbortSignal.timeout(8000), headers: HEADERS });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const descMatch =
+      html.match(/<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']{10,300})["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']{10,300})["'][^>]+(?:name|property)=["'](?:description|og:description)["']/i);
+    const description = descMatch?.[1]?.trim() ?? "";
+    if (!description || html.includes("This page isn't available")) return null;
+    return { url: fbUrl, description, category: "" };
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(
@@ -145,37 +154,44 @@ export async function POST(
     summary: "",
   };
 
-  let websiteHtml = "";
+  let rawHtml = "";
 
-  // 1. Fetch website
   if (lead.website) {
-    const url = lead.website.startsWith("http") ? lead.website : `https://${lead.website}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers: HEADERS });
-      if (res.ok) {
-        websiteHtml = await res.text();
-        const siteEmail = extractEmail(websiteHtml);
-        result.website = {
-          description:
-            extractMeta(websiteHtml, "description") ||
-            extractMeta(websiteHtml, "og:description") ||
-            extractText(websiteHtml, /<p[^>]*>([^<]{40,300})<\/p>/i) ||
-            "",
-          headings: extractHeadings(websiteHtml),
-          services: detectServices(websiteHtml, lead.branch),
-          phone: websiteHtml.match(/(?:tlf|telefon|ring)[^0-9]*(\+?45[\s.]?\d{2}[\s.]\d{2}[\s.]\d{2}[\s.]\d{2}|\d{8})/i)?.[1]?.trim() ?? null,
-          email: siteEmail,
-        };
-        if (siteEmail) result.email = siteEmail;
-      }
-    } catch { /* site unreachable */ }
+    // Fetch both Jina (clean content) and raw HTML (emails, FB links) in parallel
+    const [markdown, html] = await Promise.all([
+      fetchViaJina(lead.website),
+      fetchRawHtml(lead.website),
+    ]);
+
+    rawHtml = html ?? "";
+
+    if (markdown) {
+      const parsed = parseWebsiteContent(markdown, lead.branch);
+      // Prefer email from raw HTML (more reliable for mailto: links)
+      const emailFromHtml = rawHtml ? extractEmail(rawHtml) : null;
+      const emailFromMarkdown = parsed.email;
+      const bestEmail = emailFromHtml ?? emailFromMarkdown;
+
+      result.website = {
+        description: parsed.description,
+        headings: parsed.headings,
+        services: parsed.services,
+        phone: parsed.phone,
+        email: bestEmail,
+      };
+      if (bestEmail) result.email = bestEmail;
+    } else if (rawHtml) {
+      // Jina failed — fall back to basic raw HTML extraction
+      const email = extractEmail(rawHtml);
+      const phone = extractPhone(rawHtml);
+      result.website = { description: "", headings: [], services: [lead.branch].filter(Boolean), phone, email };
+      if (email) result.email = email;
+    }
   }
 
-  // 2. Find Facebook — from website source first, then direct search
-  let fbUrl: string | null = null;
-  if (websiteHtml) fbUrl = await findFacebookViaWebsite(websiteHtml);
+  // Find Facebook: prefer link found in website HTML, then guess from name
+  let fbUrl: string | null = rawHtml ? findFacebookInHtml(rawHtml) : null;
 
-  // Try common Facebook URL patterns if not found via website
   if (!fbUrl) {
     const slugCandidates = [
       lead.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, ""),
@@ -183,15 +199,15 @@ export async function POST(
     ];
     for (const slug of slugCandidates) {
       if (slug.length < 3) continue;
-      const candidate = `https://www.facebook.com/${slug}`;
       try {
-        const res = await fetch(candidate, { signal: AbortSignal.timeout(5000), headers: HEADERS });
-        // Facebook returns 200 even for non-existent pages; check if it has og:title
+        const res = await fetch(`https://www.facebook.com/${slug}`, {
+          signal: AbortSignal.timeout(5000), headers: HEADERS,
+        });
         if (res.ok) {
           const html = await res.text();
-          const title = extractMeta(html, "og:title");
+          const title = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ?? "";
           if (title && !html.includes("This page isn't available") && !html.includes("siden er ikke tilgængelig")) {
-            fbUrl = candidate;
+            fbUrl = `https://www.facebook.com/${slug}`;
             break;
           }
         }
@@ -199,28 +215,26 @@ export async function POST(
     }
   }
 
-  if (fbUrl) {
-    result.facebook = await fetchFacebookInfo(fbUrl);
-  }
+  if (fbUrl) result.facebook = await fetchFacebookMeta(fbUrl);
 
-  // 3. Build Danish summary
+  // Build Danish summary from real content
   const parts: string[] = [];
   if (result.website?.description) parts.push(result.website.description);
   if (result.website?.services?.length) parts.push(`Ydelser: ${result.website.services.join(", ")}.`);
-  if (result.facebook?.description) parts.push(`Facebook: ${result.facebook.description}`);
+  if (result.facebook?.description) parts.push(`Facebook: ${result.facebook.description.slice(0, 200)}`);
   if (!lead.website && !result.facebook) {
     parts.push("Ingen hjemmeside eller Facebook fundet automatisk. Brug søgelinket til at tjekke manuelt.");
   }
   result.summary = parts.join(" ").slice(0, 600);
 
-  // 4. Save to Sheets column M (enrichedInfo) + N (email)
+  // Save to sheet
   try {
     const rowIndex = parseInt(lead.id) - 2;
     await saveEnrichedInfo(rowIndex, JSON.stringify(result));
     if (result.email && !lead.email) {
       await saveLeadEmail(rowIndex, result.email);
     }
-  } catch { /* don't fail the request if save fails */ }
+  } catch { /* don't fail if save fails */ }
 
   return NextResponse.json(result);
 }

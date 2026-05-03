@@ -1,5 +1,5 @@
-const ACTOR_ID = "compass~crawler-google-places";
-const BASE = "https://api.apify.com/v2";
+// Google Places API (New) — replaces Apify for lead scraping
+const PLACES_BASE = "https://places.googleapis.com/v1/places:searchText";
 
 export interface ApifyPlace {
   title: string;
@@ -35,52 +35,97 @@ export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {
   return branches.flatMap((b) => cities.map((c) => `${b} ${c}`));
 }
 
-export async function runScraper(queries = buildQueries()): Promise<ApifyPlace[]> {
-  const token = process.env.APIFY_TOKEN;
-  if (!token) throw new Error("APIFY_TOKEN not set");
+function extractCity(formattedAddress: string): string | null {
+  // Danish addresses: "Vestergade 12, 7400 Herning, Danmark"
+  const parts = formattedAddress.split(",");
+  for (const part of parts) {
+    const m = part.trim().match(/^\d{4}\s+(.+)$/);
+    if (m) return m[1].trim();
+  }
+  if (parts.length >= 2) {
+    const candidate = parts[parts.length - 2].trim().replace(/^\d{4}\s*/, "");
+    if (candidate) return candidate;
+  }
+  return null;
+}
 
-  // Start run
-  const runRes = await fetch(`${BASE}/acts/${ACTOR_ID}/runs?token=${token}`, {
+async function searchPlaces(query: string, apiKey: string): Promise<ApifyPlace[]> {
+  const res = await fetch(PLACES_BASE, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": [
+        "places.displayName",
+        "places.formattedAddress",
+        "places.nationalPhoneNumber",
+        "places.websiteUri",
+        "places.primaryTypeDisplayName",
+        "places.rating",
+        "places.userRatingCount",
+      ].join(","),
+    },
     body: JSON.stringify({
-      searchStringsArray: queries,
-      language: "da",
-      maxCrawledPlacesPerSearch: 15,
-      includeReviews: false,
-      includeImages: false,
+      textQuery: query,
+      languageCode: "da",
+      maxResultCount: 20,
+      regionCode: "DK",
     }),
   });
-  if (!runRes.ok) throw new Error(`Apify start failed: ${runRes.status}`);
-  const { data: run } = await runRes.json();
-  const runId: string = run.id;
 
-  // Poll until done (max 5 min)
-  const deadline = Date.now() + 5 * 60_000;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 8000));
-    const statusRes = await fetch(`${BASE}/actor-runs/${runId}?token=${token}`);
-    const { data: statusData } = await statusRes.json();
-    if (statusData.status === "SUCCEEDED") break;
-    if (statusData.status === "FAILED" || statusData.status === "ABORTED") {
-      throw new Error(`Apify run ${statusData.status}`);
+  if (!res.ok) throw new Error(`Google Places fejlede (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  const places = (data.places ?? []) as Record<string, unknown>[];
+
+  return places.map((p): ApifyPlace => {
+    const displayName = p.displayName as { text?: string } | undefined;
+    const primaryType = p.primaryTypeDisplayName as { text?: string } | undefined;
+    const address = (p.formattedAddress as string) ?? "";
+    return {
+      title: displayName?.text ?? "",
+      address,
+      phone: (p.nationalPhoneNumber as string | null) ?? null,
+      website: (p.websiteUri as string | null) ?? null,
+      email: null,
+      totalScore: (p.rating as number | null) ?? null,
+      reviewsCount: (p.userRatingCount as number | null) ?? null,
+      categoryName: primaryType?.text ?? null,
+      city: extractCity(address),
+    };
+  });
+}
+
+export async function runScraper(queries = buildQueries()): Promise<ApifyPlace[]> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY not set");
+
+  const allResults: ApifyPlace[] = [];
+  const seen = new Set<string>();
+
+  for (const query of queries) {
+    try {
+      const places = await searchPlaces(query, apiKey);
+      for (const p of places) {
+        if (!p.title) continue;
+        const key = p.title.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          allResults.push(p);
+        }
+      }
+    } catch (err) {
+      console.error(`Query "${query}" failed:`, err);
     }
+    // Stay well within rate limits
+    await new Promise((r) => setTimeout(r, 120));
   }
 
-  // Fetch results
-  const datasetRes = await fetch(
-    `${BASE}/actor-runs/${runId}/dataset/items?token=${token}&format=json&clean=true`
-  );
-  if (!datasetRes.ok) throw new Error("Failed to fetch dataset");
-  const items = await datasetRes.json();
-
-  return items as ApifyPlace[];
+  return allResults;
 }
 
 export function scoreLead(place: ApifyPlace): number {
   let score = 0;
 
-  // Rating × reviews signal (max ~35 pts)
   const rating = place.totalScore ?? 0;
   const reviews = place.reviewsCount ?? 0;
   if (rating > 0 && reviews > 0) {
@@ -88,14 +133,7 @@ export function scoreLead(place: ApifyPlace): number {
     score += Math.round(normalized * 35);
   }
 
-  // Website status
-  if (!place.website) {
-    score += 30; // no website — ideal lead
-  } else {
-    score += 0; // has website — still worth calling
-  }
-
-  // Has a claimed Google profile (has reviews)
+  if (!place.website) score += 30;
   if (reviews > 0) score += 10;
 
   return Math.min(score, 100);
