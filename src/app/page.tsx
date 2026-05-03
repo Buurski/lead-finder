@@ -4,7 +4,7 @@ import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
 
-export const revalidate = 0;
+export const revalidate = 60;
 
 export default async function LeadsPage() {
   let leads: Awaited<ReturnType<typeof getLeads>> = [];

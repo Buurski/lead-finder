@@ -78,6 +78,8 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   const [filterCity, setFilterCity] = useState("all");
   const [filterWebsite, setFilterWebsite] = useState<"all" | "has" | "none">("all");
   const [filterWebRating, setFilterWebRating] = useState<"all" | "none" | "dead" | "old" | "mediocre" | "modern">("all");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const branches = useMemo(() => {
     const set = new Set(leads.map(l => l.branch).filter(Boolean));
@@ -180,6 +182,11 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
 
   const activeFilters = [filterStatus !== "all", filterTier !== "all", filterBranch !== "all", filterCity !== "all", filterWebsite !== "all", filterWebRating !== "all"].filter(Boolean).length;
 
+  // Reset to first page whenever filters or emailFilter change
+  useEffect(() => { setPage(0); }, [filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
+
+  const paginated = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
+
   const selectStyle = {
     background: "var(--bg)",
     border: "1px solid var(--border)",
@@ -265,7 +272,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
         )}
 
         <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-dim)" }}>
-          {filtered.length} / {leads.length}
+          {filtered.length} / {leads.length} lead{leads.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -291,7 +298,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
               </tr>
             </thead>
             <tbody>
-              {filtered.map((lead, idx) => {
+              {paginated.map((lead, idx) => {
                 const s = STATUS[lead.status];
                 const ws = webBadge(lead);
                 const active = selected?.id === lead.id;
@@ -330,6 +337,42 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
               })}
             </tbody>
           </table>
+          {filtered.length > PAGE_SIZE && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", borderTop: "1px solid var(--border)",
+              fontSize: 12, color: "var(--text-muted)",
+            }}>
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                style={{
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  padding: "4px 12px", fontSize: 12, cursor: page === 0 ? "default" : "pointer",
+                  color: page === 0 ? "var(--text-dim)" : "var(--text)",
+                  opacity: page === 0 ? 0.4 : 1,
+                }}
+              >
+                ← Forrige
+              </button>
+              <span>
+                Side {page + 1} / {Math.ceil(filtered.length / PAGE_SIZE)} ({filtered.length} leads)
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / PAGE_SIZE) - 1, p + 1))}
+                disabled={(page + 1) * PAGE_SIZE >= filtered.length}
+                style={{
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  padding: "4px 12px", fontSize: 12,
+                  cursor: (page + 1) * PAGE_SIZE >= filtered.length ? "default" : "pointer",
+                  color: (page + 1) * PAGE_SIZE >= filtered.length ? "var(--text-dim)" : "var(--text)",
+                  opacity: (page + 1) * PAGE_SIZE >= filtered.length ? 0.4 : 1,
+                }}
+              >
+                Næste →
+              </button>
+            </div>
+          )}
           {filtered.length === 0 && (
             <div style={{ padding: "80px 0", textAlign: "center", color: "var(--text-dim)" }}>
               {leads.length === 0
