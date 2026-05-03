@@ -15,9 +15,47 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
   advokat: "professional", revisor: "professional",
   fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
-  restaurant: "food", café: "food", fotograf: "professional",
+  restaurant: "food", café: "food",
   frisørsalon: "beauty",
 };
+
+// Branches that don't make sense to pitch websites to
+const SKIP_BRANCHES = ["fotograf", "pasfoto", "kunsthåndværk"];
+
+export function shouldSkipBranch(branch: string): boolean {
+  const normalized = branch.toLowerCase().trim();
+  return SKIP_BRANCHES.some((s) => normalized.includes(s));
+}
+
+// Human-readable plural branch names for use in email copy
+const BRANCH_DISPLAY: Record<string, string> = {
+  tømrer: "tømrerfirmaer",
+  maler: "malerfirmaer",
+  elektriker: "elektrikerfirmaer",
+  "vvs-installatør": "VVS-firmaer",
+  blikkenslager: "blikkenslagerfirmaer",
+  tagdækker: "tagdækkerfirmaer",
+  murermester: "murerfirmaer",
+  rengøringsvirksomhed: "rengøringsvirksomheder",
+  vinduespudser: "vinduespoleringsvirksomheder",
+  anlægsgartner: "anlægsgartnere",
+  advokat: "advokatfirmaer",
+  revisor: "revisionsfirmaer",
+  fysioterapeut: "fysioterapiklinikker",
+  tandlæge: "tandlægeklinikker",
+  optiker: "optikerforretninger",
+  restaurant: "restauranter",
+  café: "caféer",
+  frisørsalon: "frisørsaloner",
+};
+
+function getBranchDisplay(branch: string): string {
+  const normalized = branch.toLowerCase().trim();
+  for (const [key, display] of Object.entries(BRANCH_DISPLAY)) {
+    if (normalized.includes(key)) return display;
+  }
+  return `${branch}-firmaer`;
+}
 
 function getBranchGroup(branch: string): string {
   const normalized = branch.toLowerCase().trim();
@@ -36,6 +74,7 @@ interface EmailTemplate {
 interface TemplateVars {
   name: string;
   branch: string;
+  branchDisplay: string; // human-readable plural, e.g. "tømrerfirmaer"
   city: string;
   trackingPixelUrl: string;
   websiteStatus: string;      // "none" | "dead" | "old" | "ok"
@@ -69,10 +108,10 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch}-firmaer i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong>-firmaer i området.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i området.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
 <p>Svar gerne på mailen, eller ring/skriv til mig på <strong>+45 23 24 24 82</strong> — det er helt uforpligtende.</p>
@@ -81,10 +120,10 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
     },
     followup: (v) => ({
       subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branch}-firmaer i området.\n\nDen er stadig klar — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branchDisplay} i området.\n\nDen er stadig klar — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
       html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Følger lige op på min mail fra forrige uge om demo-hjemmesiden til <strong>${v.branch}</strong>-firmaer i området.</p>
+<p>Følger lige op på min mail fra forrige uge om demo-hjemmesiden til <strong>${v.branchDisplay}</strong> i området.</p>
 <p>Den er stadig klar — svar på mailen eller ring/skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
 <p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
     }),
@@ -121,10 +160,10 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne på mailen, eller kontakt mig på +45 23 24 24 82 — I forpligter jer ikke til noget.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne på mailen, eller kontakt mig på +45 23 24 24 82 — I forpligter jer ikke til noget.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}-området.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i ${v.city}-området.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.</p>
 <p>Svar gerne på mailen, eller kontakt mig på <strong>+45 23 24 24 82</strong> — I forpligter jer ikke til noget.</p>
@@ -147,10 +186,10 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
       const ws = websiteLine(v);
       return {
         subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branch} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her, eller tag fat i mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her, eller tag fat i mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branch}</strong> i ${v.city}.</p>
+<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i ${v.city}.</p>
 <p>${ws}</p>
 <p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
 <p>Skriv gerne her, eller tag fat i mig på <strong>+45 23 24 24 82</strong> — helt uforpligtende!</p>
@@ -212,12 +251,13 @@ export function buildTrackedClickUrl(leadId: string, destination: string): strin
 export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
-  vars: Omit<TemplateVars, "trackingPixelUrl"> & { leadId: string }
+  vars: Omit<TemplateVars, "trackingPixelUrl" | "branchDisplay"> & { leadId: string }
 ): EmailTemplate {
   const group = getBranchGroup(branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const trackingPixelUrl = buildTrackingPixelUrl(vars.leadId);
-  return template({ ...vars, trackingPixelUrl });
+  const branchDisplay = getBranchDisplay(branch);
+  return template({ ...vars, trackingPixelUrl, branchDisplay });
 }
 
 export async function sendLeadEmail(
