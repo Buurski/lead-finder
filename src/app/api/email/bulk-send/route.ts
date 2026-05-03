@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail, shouldSkipBranch } from "@/lib/email";
+import { sendLeadEmail } from "@/lib/email";
 
 export const maxDuration = 300;
 
@@ -20,8 +20,7 @@ export async function GET() {
       !l.emailSentAt &&
       (getTier(l.score) === "A" || getTier(l.score) === "B") &&
       l.status !== "skip" &&
-      l.status !== "client" &&
-      !shouldSkipBranch(l.branch)
+      l.status !== "client"
   ).length;
   return NextResponse.json({ count });
 }
@@ -37,8 +36,7 @@ export async function POST() {
       !lead.emailSentAt &&
       (getTier(lead.score) === "A" || getTier(lead.score) === "B") &&
       lead.status !== "skip" &&
-      lead.status !== "client" &&
-      !shouldSkipBranch(lead.branch)
+      lead.status !== "client"
     );
 
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];

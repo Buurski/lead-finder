@@ -19,14 +19,6 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   frisørsalon: "beauty",
 };
 
-// Branches that don't make sense to pitch websites to
-const SKIP_BRANCHES = ["fotograf", "pasfoto", "kunsthåndværk"];
-
-export function shouldSkipBranch(branch: string): boolean {
-  const normalized = branch.toLowerCase().trim();
-  return SKIP_BRANCHES.some((s) => normalized.includes(s));
-}
-
 // Human-readable plural branch names for use in email copy
 const BRANCH_DISPLAY: Record<string, string> = {
   tømrer: "tømrerfirmaer",
@@ -46,15 +38,19 @@ const BRANCH_DISPLAY: Record<string, string> = {
   optiker: "optikerforretninger",
   restaurant: "restauranter",
   café: "caféer",
+  fotograf: "virksomheder",
   frisørsalon: "frisørsaloner",
 };
+
+// Fallback for unknown branches
+
 
 function getBranchDisplay(branch: string): string {
   const normalized = branch.toLowerCase().trim();
   for (const [key, display] of Object.entries(BRANCH_DISPLAY)) {
     if (normalized.includes(key)) return display;
   }
-  return `${branch}-firmaer`;
+  return "virksomheder";
 }
 
 function getBranchGroup(branch: string): string {
