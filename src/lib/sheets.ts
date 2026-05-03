@@ -244,6 +244,19 @@ export async function saveLeadEmail(rowIndex: number, email: string): Promise<vo
   });
 }
 
+export async function batchSaveEmails(updates: Array<{ rowIndex: number; email: string }>): Promise<void> {
+  if (updates.length === 0) return;
+  const sheets = getSheetsClient();
+  const data = updates.map(({ rowIndex, email }) => ({
+    range: `Leads!N${rowIndex + 2}`,
+    values: [[email]],
+  }));
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
 export async function updateLeadEmailStatus(
   rowIndex: number,
   fields: {

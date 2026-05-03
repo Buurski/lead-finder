@@ -90,7 +90,8 @@ async function analyzeUrl(url: string): Promise<{ tier: WebsiteQualityTier; emai
 export async function POST() {
   try {
     const leads = await getLeads();
-    const withWebsite = leads.filter(l => l.website && l.websiteStatus !== "none");
+    // Only process leads not yet verified — so repeat runs get faster as more get done
+    const withWebsite = leads.filter(l => l.website && l.websiteStatus !== "none" && !l.websiteQualityTier);
 
     const results: { id: string; name: string; tier: WebsiteQualityTier; newScore: number }[] = [];
     const sheetUpdates: { rowIndex: number; qualityTier: WebsiteQualityTier; adjustedScore: number; email?: string }[] = [];

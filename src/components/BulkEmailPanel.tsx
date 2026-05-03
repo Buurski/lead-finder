@@ -1,23 +1,27 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Send, RefreshCw } from "lucide-react";
+import { Send, RefreshCw, Search } from "lucide-react";
 
 export default function BulkEmailPanel() {
   const [bulkCount, setBulkCount] = useState<number | null>(null);
   const [followupCount, setFollowupCount] = useState<number | null>(null);
+  const [findEmailCount, setFindEmailCount] = useState<number | null>(null);
   const [sendingBulk, setSendingBulk] = useState(false);
   const [sendingFollowup, setSendingFollowup] = useState(false);
+  const [findingEmails, setFindingEmails] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   useEffect(() => { fetchCounts(); }, []);
 
   async function fetchCounts() {
-    const [b, f] = await Promise.all([
+    const [b, f, e] = await Promise.all([
       fetch("/api/email/bulk-send").then((r) => r.json()),
       fetch("/api/email/send-followups").then((r) => r.json()),
+      fetch("/api/email/bulk-find-emails").then((r) => r.json()),
     ]);
     setBulkCount(b.count ?? 0);
     setFollowupCount(f.count ?? 0);
+    setFindEmailCount(e.count ?? 0);
   }
 
   async function runBulkSend() {
@@ -42,10 +46,40 @@ export default function BulkEmailPanel() {
     fetchCounts();
   }
 
-  if (bulkCount === 0 && followupCount === 0) return null;
+  async function runFindEmails() {
+    if (!confirm(`Søg efter mails til ${Math.min(findEmailCount ?? 0, 200)} leads (op til 200 ad gangen)?`)) return;
+    setFindingEmails(true);
+    setLastResult(null);
+    const res = await fetch("/api/email/bulk-find-emails", { method: "POST" });
+    const data = await res.json();
+    const remaining = data.remaining > 0 ? ` · ${data.remaining} tilbage, tryk igen` : "";
+    setLastResult(`Fandt ${data.found} mails ud af ${data.scanned} hjemmesider${remaining}`);
+    setFindingEmails(false);
+    fetchCounts();
+  }
+
+  const hasAnything = (bulkCount ?? 0) > 0 || (followupCount ?? 0) > 0 || (findEmailCount ?? 0) > 0;
+  if (!hasAnything) return null;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+
+      {(findEmailCount ?? 0) > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            <strong style={{ color: "var(--text)" }}>{findEmailCount}</strong> leads mangler mail
+          </span>
+          <button
+            onClick={runFindEmails}
+            disabled={findingEmails}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#0891b2", border: "1px solid #67e8f9", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: findingEmails ? "default" : "pointer", opacity: findingEmails ? 0.6 : 1 }}
+          >
+            {findingEmails ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={11} />}
+            {findingEmails ? "Søger..." : "Find mails (200 ad gangen)"}
+          </button>
+        </div>
+      )}
+
       {(bulkCount ?? 0) > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -61,6 +95,7 @@ export default function BulkEmailPanel() {
           </button>
         </div>
       )}
+
       {(followupCount ?? 0) > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -76,9 +111,12 @@ export default function BulkEmailPanel() {
           </button>
         </div>
       )}
+
       {lastResult && (
         <span style={{ fontSize: 12, color: "#15803d", fontWeight: 500 }}>{lastResult}</span>
       )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
