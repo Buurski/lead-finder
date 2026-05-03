@@ -81,7 +81,8 @@ export async function POST() {
         })
       );
       for (const { lead, email } of results) {
-        if (email) emailUpdates.push({ rowIndex: parseInt(lead.id) - 2, email });
+        // Save "none" for sites where no email was found so we don't re-scan them
+        emailUpdates.push({ rowIndex: parseInt(lead.id) - 2, email: email ?? "none" });
       }
     }
 
