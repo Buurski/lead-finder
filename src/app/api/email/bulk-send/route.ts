@@ -10,6 +10,23 @@ function getTier(score: number): "A" | "B" | "C" {
   return "C";
 }
 
+// National Danish chains — emailing a branch employee makes no sense
+const CHAIN_BLOCKLIST = [
+  "profiloptik", "synoptik", "specsavers", "fielmann",
+  "matas", "normal store", "søstrene grene", "flying tiger", "tiger stores",
+  "jysk", "h&m", "zara", "elgiganten", "power electronics",
+  "mcdonalds", "mcdonald's", "burger king", "subway", "7-eleven",
+  "netto", "rema 1000", "lidl", "aldi", "bilka", "føtex", "kvickly",
+  "silvan", "xl-byg", "stark",
+  "shell", "circle k", "q8 energie", "ok benzin",
+  "kvik køkken", "ikea",
+];
+
+function isChain(name: string): boolean {
+  const lower = name.toLowerCase();
+  return CHAIN_BLOCKLIST.some((chain) => lower.includes(chain));
+}
+
 export async function GET() {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const leads = await getLeads();
@@ -20,7 +37,9 @@ export async function GET() {
       !l.emailSentAt &&
       (getTier(l.score) === "A" || getTier(l.score) === "B") &&
       l.status !== "skip" &&
-      l.status !== "client"
+      l.status !== "client" &&
+      l.websiteQualityTier !== "modern" &&
+      !isChain(l.name)
   ).length;
   return NextResponse.json({ count });
 }
@@ -36,7 +55,9 @@ export async function POST() {
       !lead.emailSentAt &&
       (getTier(lead.score) === "A" || getTier(lead.score) === "B") &&
       lead.status !== "skip" &&
-      lead.status !== "client"
+      lead.status !== "client" &&
+      lead.websiteQualityTier !== "modern" &&
+      !isChain(lead.name)
     );
 
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
