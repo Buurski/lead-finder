@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Send, RefreshCw, Search, MailCheck } from "lucide-react";
 
 export default function BulkEmailPanel() {
+  const router = useRouter();
   const [bulkCount, setBulkCount] = useState<number | null>(null);
   const [followupCount, setFollowupCount] = useState<number | null>(null);
   const [findEmailCount, setFindEmailCount] = useState<number | null>(null);
@@ -68,6 +70,7 @@ export default function BulkEmailPanel() {
       setLastResult(`Sync fejlede: ${data.error}`);
     } else {
       setLastResult(`Sync: ${data.synced} nye svar fundet (af ${data.checked} sendte)`);
+      router.refresh();
     }
     setSyncingReplies(false);
   }
