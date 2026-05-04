@@ -72,6 +72,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   const [enriching, setEnriching] = useState(false);
 
   // Filters
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterTier, setFilterTier] = useState<ScoreTier>("all");
   const [filterBranch, setFilterBranch] = useState("all");
@@ -94,7 +95,15 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   const sorted = useMemo(() => [...leads].sort((a, b) => b.score - a.score), [leads]);
 
   const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return sorted.filter(l => {
+      if (q) {
+        const match =
+          l.name.toLowerCase().includes(q) ||
+          l.phone.toLowerCase().includes(q) ||
+          l.email.toLowerCase().includes(q);
+        if (!match) return false;
+      }
       if (filterStatus !== "all" && l.status !== filterStatus) return false;
       if (filterTier !== "all" && tier(l.score).label !== filterTier) return false;
       if (filterBranch !== "all" && l.branch !== filterBranch) return false;
@@ -112,13 +121,12 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
       }
       // Email stats panel filter
       if (emailFilter === "with-email" && !l.email) return false;
-      if (emailFilter === "sent" && !["sent", "opened", "clicked"].includes(l.emailStatus)) return false;
-      if (emailFilter === "opened" && !["opened", "clicked"].includes(l.emailStatus)) return false;
-      if (emailFilter === "clicked" && l.emailStatus !== "clicked") return false;
+      if (emailFilter === "sent" && !["sent", "opened", "clicked", "replied"].includes(l.emailStatus)) return false;
+      if (emailFilter === "replied" && l.emailStatus !== "replied") return false;
       if (emailFilter === "followup" && !l.followupSentAt) return false;
       return true;
     });
-  }, [sorted, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
+  }, [sorted, searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
 
   async function updateStatus(lead: Lead, status: LeadStatus) {
     setUpdating(lead.id);
@@ -183,7 +191,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   const activeFilters = [filterStatus !== "all", filterTier !== "all", filterBranch !== "all", filterCity !== "all", filterWebsite !== "all", filterWebRating !== "all"].filter(Boolean).length;
 
   // Reset to first page whenever filters or emailFilter change
-  useEffect(() => { setPage(0); }, [filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
+  useEffect(() => { setPage(0); }, [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
 
   const paginated = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
 
@@ -201,6 +209,40 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* Search bar */}
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          placeholder="Søg på navn, telefon eller e-mail…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "9px 36px 9px 14px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            fontSize: 13,
+            color: "var(--text)",
+            outline: "none",
+            fontFamily: "var(--font-jakarta), sans-serif",
+            boxSizing: "border-box",
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            style={{
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-dim)", fontSize: 16, lineHeight: 1, padding: 0,
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
 
       {/* Filter bar */}
       <div style={{

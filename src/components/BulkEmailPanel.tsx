@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Send, RefreshCw, Search } from "lucide-react";
+import { Send, RefreshCw, Search, MailCheck } from "lucide-react";
 
 export default function BulkEmailPanel() {
   const [bulkCount, setBulkCount] = useState<number | null>(null);
@@ -9,6 +9,7 @@ export default function BulkEmailPanel() {
   const [sendingBulk, setSendingBulk] = useState(false);
   const [sendingFollowup, setSendingFollowup] = useState(false);
   const [findingEmails, setFindingEmails] = useState(false);
+  const [syncingReplies, setSyncingReplies] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   useEffect(() => { fetchCounts(); }, []);
@@ -58,8 +59,20 @@ export default function BulkEmailPanel() {
     fetchCounts();
   }
 
-  const hasAnything = (bulkCount ?? 0) > 0 || (followupCount ?? 0) > 0 || (findEmailCount ?? 0) > 0;
-  if (!hasAnything) return null;
+  async function runSyncReplies() {
+    setSyncingReplies(true);
+    setLastResult(null);
+    const res = await fetch("/api/email/sync-replies", { method: "POST" });
+    const data = await res.json();
+    if (data.error) {
+      setLastResult(`Sync fejlede: ${data.error}`);
+    } else {
+      setLastResult(`Sync: ${data.synced} nye svar fundet (af ${data.checked} sendte)`);
+    }
+    setSyncingReplies(false);
+  }
+
+  const hasAnything = true;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -111,6 +124,17 @@ export default function BulkEmailPanel() {
           </button>
         </div>
       )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          onClick={runSyncReplies}
+          disabled={syncingReplies}
+          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#15803d", border: "1px solid #86efac", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingReplies ? "default" : "pointer", opacity: syncingReplies ? 0.6 : 1 }}
+        >
+          {syncingReplies ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <MailCheck size={11} />}
+          {syncingReplies ? "Synkroniserer..." : "Sync svar fra Gmail"}
+        </button>
+      </div>
 
       {lastResult && (
         <span style={{ fontSize: 12, color: "#15803d", fontWeight: 500 }}>{lastResult}</span>

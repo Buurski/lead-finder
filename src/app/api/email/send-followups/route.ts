@@ -10,12 +10,14 @@ function isReadyForFollowup(lead: {
   email: string;
   emailSentAt: string;
   emailOpenedAt: string;
+  emailStatus: string;
   followupSentAt: string;
   status: string;
 }): boolean {
   if (!lead.email) return false;
   if (!lead.emailSentAt) return false;
   if (lead.emailOpenedAt) return false;
+  if (lead.emailStatus === "replied") return false;
   if (lead.followupSentAt) return false;
   if (lead.status === "skip" || lead.status === "client") return false;
 
