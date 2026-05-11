@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runScraper, scoreLead, detectWebsiteStatus } from "@/lib/apify";
-import { appendLeads, getLeadNames } from "@/lib/sheets";
+import { appendLeads, getLeadNames, getLeadPhones } from "@/lib/sheets";
 
 export const maxDuration = 300;
 
@@ -8,14 +8,16 @@ export async function POST() {
   try {
     const places = await runScraper();
 
-    // Skip duplicates already in sheet
-    const existing = await getLeadNames();
+    // Skip duplicates already in sheet (by name or phone)
+    const [existing, existingPhones] = await Promise.all([getLeadNames(), getLeadPhones()]);
     const existingSet = new Set(existing.map((n) => n.toLowerCase()));
+    const existingPhoneSet = new Set(existingPhones);
 
     const now = new Date().toISOString();
     const newLeads = places
       .filter((p) => {
         if (!p.title || existingSet.has(p.title.toLowerCase())) return false;
+        if (p.phone && existingPhoneSet.has(p.phone)) return false;
         const branch = (p.categoryName ?? "").toLowerCase();
         if (
           ((branch === "restaurant" || branch === "café") && (p.reviewsCount ?? 0) < 30) ||
