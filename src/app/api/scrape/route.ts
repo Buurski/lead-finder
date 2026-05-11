@@ -49,6 +49,7 @@ export async function POST() {
         emailStatus: "",
         followupSentAt: "",
         reviewsCount: p.reviewsCount ?? 0,
+        callbackDate: "",
       }));
 
     if (newLeads.length > 0) {
