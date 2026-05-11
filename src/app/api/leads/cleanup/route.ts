@@ -1,63 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLeads, deleteLeadRows } from "@/lib/sheets";
-
-// Known Danish/international chains that won't benefit from a custom website.
-// Add more entries here as needed — matching is case-insensitive and partial.
-const CHAIN_KEYWORDS = [
-  "flammen",
-  "louis nielsen",
-  "synoptik",
-  "specsavers",
-  "mcdonald",
-  "burger king",
-  "subway",
-  "kfc",
-  "starbucks",
-  "joe & the juice",
-  "sunset boulevard",
-  "pizza hut",
-  "domino",
-  "fitness world",
-  "sats fitness",
-  "deloitte",
-  "pwc",
-  "kpmg",
-  "ernst & young",
-  "bdo revision",
-  "7-eleven",
-  "matas",
-  "netto",
-  "føtex",
-  "bilka",
-  "jysk",
-  "normal a/s",
-  "søstrene grene",
-  "sportsmaster",
-  "intersport",
-  "elgiganten",
-  "power (elektronik",
-  "harold nyborg",
-  "bauhaus",
-  "silvan",
-  "xl-byg",
-  "stark",
-  "jem & fix",
-  "lidl",
-  "aldi",
-  "rema 1000",
-  "coop",
-  "kvickly",
-  "wagamama",
-  "sticks'n'sushi",
-  "hereford beefstouw",
-  "wingstop",
-  "pizza king",
-];
-
-function isChain(name: string, extra: string[]): boolean {
-  const lower = name.toLowerCase();
-  return [...CHAIN_KEYWORDS, ...extra].some((kw) => lower.includes(kw.toLowerCase()));
-}
+import { isChain } from "@/lib/chains";
 
 // GET — preview which leads would be deleted (dry run)
 export async function GET(req: Request) {
