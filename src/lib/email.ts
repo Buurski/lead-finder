@@ -61,6 +61,9 @@ const BRANCH_DISPLAY: Record<string, string> = {
   frisørsalon: "frisørsaloner",
 };
 
+const UNSUBSCRIBE_TEXT = `\n\n---\nØnsker du ikke at høre fra mig igen? Skriv blot tilbage, så fjerner jeg dig fra listen.`;
+const UNSUBSCRIBE_HTML = `<br><br><hr style="border:none;border-top:1px solid #eee;margin:16px 0;"><p style="color:#999;font-size:12px;">Ønsker du ikke at høre fra mig igen? Skriv blot tilbage, så fjerner jeg dig fra listen.</p>`;
+
 // Fallback for unknown branches
 
 
@@ -94,12 +97,14 @@ interface TemplateVars {
   trackingPixelUrl: string;
   websiteStatus: string;      // "none" | "dead" | "old" | "ok"
   websiteQualityTier: string; // "modern" | "mediocre" | "old" | "dead" | ""
+  daysSince: number;
 }
 
 function buildHtml(body: string, trackingPixelUrl: string): string {
   return `<!DOCTYPE html>
 <html><body style="font-family: Arial, sans-serif; font-size: 15px; color: #222; line-height: 1.6; max-width: 520px;">
 ${body}
+${UNSUBSCRIBE_HTML}
 <br><br>
 <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" />
 </body></html>`;
@@ -152,7 +157,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for en uges tid siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.
 
 Se mine demoer til restauranter:
 → ${DEMO_URLS.food[0]}
@@ -167,7 +172,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for en uges tid siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
 <p>Se mine demoer til restauranter:<br>
 → <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
 → <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
@@ -212,7 +217,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
 
 Se min demo til ${v.branchDisplay}:
 → ${DEMO_URLS.craft}
@@ -226,7 +231,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
 <p>Se min demo til ${v.branchDisplay}:<br>
 → <a href="${DEMO_URLS.craft}">${DEMO_URLS.craft}</a></p>
 <p>Ring eller skriv.</p>
@@ -270,7 +275,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
 
 Se min demo til fotografer:
 → ${DEMO_URLS.photo}
@@ -284,7 +289,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
 <p>Se min demo til fotografer:<br>
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
 <p>Ring eller skriv.</p>
@@ -328,7 +333,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
 
 Se min demo:
 → ${DEMO_URLS.professional}
@@ -342,7 +347,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
 <p>Se min demo:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
 <p>Ring eller skriv.</p>
@@ -378,7 +383,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for en uges tid siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
 
 Ring eller skriv.
 
@@ -389,7 +394,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for en uges tid siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
 <p>Ring eller skriv.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
@@ -420,13 +425,17 @@ export function getEmailTemplate(
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const trackingPixelUrl = buildTrackingPixelUrl(vars.leadId);
   const branchDisplay = getBranchDisplay(branch);
-  return template({ ...vars, trackingPixelUrl, branchDisplay });
+  const result = template({ ...vars, trackingPixelUrl, branchDisplay });
+  return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
 }
 
 export async function sendLeadEmail(
-  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string },
+  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
   type: "cold" | "followup"
 ): Promise<void> {
+  const daysSince = type === "followup" && lead.emailSentAt
+    ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 7;
   const template = getEmailTemplate(lead.branch, type, {
     leadId: lead.id,
     name: lead.name,
@@ -434,6 +443,7 @@ export async function sendLeadEmail(
     city: lead.city,
     websiteStatus: lead.websiteStatus,
     websiteQualityTier: lead.websiteQualityTier,
+    daysSince,
   });
   await transporter.sendMail({
     from: `Lucas Buur <${process.env.GMAIL_USER}>`,
@@ -445,9 +455,12 @@ export async function sendLeadEmail(
 }
 
 export function previewEmailTemplate(
-  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string },
+  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt?: string },
   type: "cold" | "followup"
 ): EmailTemplate {
+  const daysSince = type === "followup" && lead.emailSentAt
+    ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 7;
   return getEmailTemplate(lead.branch, type, {
     leadId: lead.id,
     name: lead.name,
@@ -455,5 +468,6 @@ export function previewEmailTemplate(
     city: lead.city,
     websiteStatus: lead.websiteStatus,
     websiteQualityTier: lead.websiteQualityTier,
+    daysSince,
   });
 }
