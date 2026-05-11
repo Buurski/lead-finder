@@ -12,6 +12,10 @@ function getTier(score: number): "A" | "B" | "C" {
 
 const CHAIN_EXACT = [
   "jysk", "netto", "lidl", "aldi", "zara", "ikea", "matas", "stark", "shell", "subway",
+  "bones", "flammen", "sticks'n'sushi", "cofoco", "sunset boulevard",
+  "joe & the juice", "joe and the juice", "espresso house", "baresso",
+  "pizza hut", "domino's", "papa john's",
+  "kfc", "taco bell", "wendy's",
 ];
 const CHAIN_CONTAINS = [
   "synoptik", "profiloptik", "specsavers", "fielmann",
@@ -22,6 +26,8 @@ const CHAIN_CONTAINS = [
   "circle k", "q8 energie", "ok benzin",
   "kvik køkken", "søstrene grene", "flying tiger", "tiger stores",
   "normal store", "h&m", "louis nielsen",
+  "sticks n sushi", "sunset blvd",
+  "lagkagehuset", "riccos kaffebar", "the union kitchen",
 ];
 
 function isChain(name: string): boolean {

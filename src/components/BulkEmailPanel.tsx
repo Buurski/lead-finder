@@ -9,7 +9,6 @@ export default function BulkEmailPanel() {
   const [followupCount, setFollowupCount] = useState<number | null>(null);
   const [findEmailCount, setFindEmailCount] = useState<number | null>(null);
   const [sendingBulk, setSendingBulk] = useState(false);
-  const [sendingFollowup, setSendingFollowup] = useState(false);
   const [findingEmails, setFindingEmails] = useState(false);
   const [syncingReplies, setSyncingReplies] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
@@ -38,18 +37,7 @@ export default function BulkEmailPanel() {
     fetchCounts();
   }
 
-  async function runFollowups() {
-    if (!confirm(`Send follow-up til ${followupCount} leads?`)) return;
-    setSendingFollowup(true);
-    setLastResult(null);
-    const res = await fetch("/api/email/send-followups", { method: "POST" });
-    const data = await res.json();
-    setLastResult(`Follow-ups sendt: ${data.sent} ✓  Fejlede: ${data.failed}`);
-    setSendingFollowup(false);
-    fetchCounts();
-  }
-
-  async function runFindEmails() {
+async function runFindEmails() {
     if (!confirm(`Søg efter mails til ${Math.min(findEmailCount ?? 0, 200)} leads (op til 200 ad gangen)?`)) return;
     setFindingEmails(true);
     setLastResult(null);
@@ -118,12 +106,11 @@ export default function BulkEmailPanel() {
             <strong style={{ color: "var(--text)" }}>{followupCount}</strong> klar til follow-up
           </span>
           <button
-            onClick={runFollowups}
-            disabled={sendingFollowup}
-            style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#b45309", border: "1px solid #fbbf24", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: sendingFollowup ? 0.6 : 1 }}
+            onClick={() => router.push("/followup-review")}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#b45309", border: "1px solid #fbbf24", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
           >
-            {sendingFollowup ? <RefreshCw size={11} /> : <Send size={11} />}
-            {sendingFollowup ? "Sender..." : "Send follow-ups"}
+            <Send size={11} />
+            Gennemse follow-ups →
           </button>
         </div>
       )}

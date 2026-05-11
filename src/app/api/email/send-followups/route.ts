@@ -26,17 +26,37 @@ function isReadyForFollowup(lead: {
   return daysSince >= FOLLOWUP_DAYS;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
   const leads = await getLeads();
-  const count = leads.filter((l) => isReadyForFollowup(l)).length;
-  return NextResponse.json({ count });
+  const eligible = leads.filter((l) => isReadyForFollowup(l));
+
+  if (searchParams.get("list") === "1") {
+    const now = Date.now();
+    const list = eligible.map((lead) => ({
+      id: lead.id,
+      name: lead.name,
+      email: lead.email,
+      branch: lead.branch,
+      city: lead.city,
+      emailSentAt: lead.emailSentAt,
+      daysSince: Math.floor((now - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24)),
+    }));
+    return NextResponse.json({ count: eligible.length, leads: list });
+  }
+
+  return NextResponse.json({ count: eligible.length });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const leadIds: string[] | undefined = body.leadIds;
+
   const leads = await getLeads();
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
-    .filter(({ lead }) => isReadyForFollowup(lead));
+    .filter(({ lead }) => isReadyForFollowup(lead))
+    .filter(({ lead }) => !leadIds || leadIds.includes(lead.id));
 
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
 
