@@ -11,6 +11,7 @@ export default function BulkEmailPanel() {
   const [sendingBulk, setSendingBulk] = useState(false);
   const [findingEmails, setFindingEmails] = useState(false);
   const [syncingReplies, setSyncingReplies] = useState(false);
+  const [syncingBounces, setSyncingBounces] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   useEffect(() => { fetchCounts(); }, []);
@@ -61,6 +62,21 @@ async function runFindEmails() {
       router.refresh();
     }
     setSyncingReplies(false);
+  }
+
+  async function runSyncBounces() {
+    setSyncingBounces(true);
+    setLastResult(null);
+    const res = await fetch("/api/email/sync-bounces", { method: "POST" });
+    const data = await res.json();
+    if (data.error) {
+      setLastResult(`Bounce-sync fejlede: ${data.error}`);
+    } else {
+      setLastResult(`Bounce-sync: ${data.bounced} ugyldige adresser fundet (af ${data.checked} sendte)`);
+      router.refresh();
+      fetchCounts();
+    }
+    setSyncingBounces(false);
   }
 
   const hasAnything = true;
@@ -123,6 +139,14 @@ async function runFindEmails() {
         >
           {syncingReplies ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <MailCheck size={11} />}
           {syncingReplies ? "Synkroniserer..." : "Sync svar fra Gmail"}
+        </button>
+        <button
+          onClick={runSyncBounces}
+          disabled={syncingBounces}
+          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#7c3aed", border: "1px solid #c4b5fd", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingBounces ? "default" : "pointer", opacity: syncingBounces ? 0.6 : 1 }}
+        >
+          {syncingBounces ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <MailCheck size={11} />}
+          {syncingBounces ? "Checker..." : "Sync fejlede mails"}
         </button>
       </div>
 

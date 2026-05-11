@@ -18,6 +18,7 @@ function isReadyForFollowup(lead: {
   if (!lead.emailSentAt) return false;
   if (lead.emailOpenedAt) return false;
   if (lead.emailStatus === "replied") return false;
+  if (lead.emailStatus === "bounced") return false;
   if (lead.followupSentAt) return false;
   if (lead.status === "skip" || lead.status === "client") return false;
 
