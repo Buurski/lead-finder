@@ -91,7 +91,9 @@ export async function POST() {
   try {
     const leads = await getLeads();
     // Only process leads not yet verified — so repeat runs get faster as more get done
-    const withWebsite = leads.filter(l => l.website && l.websiteStatus !== "none" && !l.websiteQualityTier);
+    const allUnverified = leads.filter(l => l.website && l.websiteStatus !== "none" && !l.websiteQualityTier);
+    const withWebsite = allUnverified.slice(0, 200);
+    const remaining = Math.max(0, allUnverified.length - withWebsite.length);
 
     const results: { id: string; name: string; tier: WebsiteQualityTier; newScore: number }[] = [];
     const sheetUpdates: { rowIndex: number; qualityTier: WebsiteQualityTier; adjustedScore: number; email?: string }[] = [];
@@ -122,7 +124,7 @@ export async function POST() {
     // Single Sheets API call for everything — scores, tiers, and emails
     await batchUpdateLeadVerifications(sheetUpdates);
 
-    return NextResponse.json({ verified: results.length, results });
+    return NextResponse.json({ verified: results.length, remaining, results });
   } catch (err) {
     console.error(err);
     const message = err instanceof Error ? err.message : "Unknown error";
