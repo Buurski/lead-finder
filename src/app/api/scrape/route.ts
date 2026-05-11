@@ -14,7 +14,17 @@ export async function POST() {
 
     const now = new Date().toISOString();
     const newLeads = places
-      .filter((p) => p.title && !existingSet.has(p.title.toLowerCase()))
+      .filter((p) => {
+        if (!p.title || existingSet.has(p.title.toLowerCase())) return false;
+        const branch = (p.categoryName ?? "").toLowerCase();
+        if (
+          (branch === "restaurant" || branch === "café" ||
+           branch === "skønhedsklinik" || branch === "hudklinik" ||
+           branch === "negle & vippeextensions salon") &&
+          (p.reviewsCount ?? 0) < 15
+        ) return false;
+        return true;
+      })
       .map((p) => ({
         name: p.title,
         branch: p.categoryName ?? "",
