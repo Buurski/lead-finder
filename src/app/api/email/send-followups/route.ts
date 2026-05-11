@@ -59,27 +59,39 @@ export async function POST(request: Request) {
     .filter(({ lead }) => isReadyForFollowup(lead))
     .filter(({ lead }) => !leadIds || leadIds.includes(lead.id));
 
-  const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
+  const total = eligible.length;
+  const encoder = new TextEncoder();
 
-  for (const { lead, rowIndex } of eligible) {
-    try {
-      await sendLeadEmail(lead, "followup");
-      await updateLeadEmailStatus(rowIndex, {
-        followupSentAt: new Date().toISOString(),
-      });
-      if (lead.status === "new") {
-        await updateLeadStatus(rowIndex, "called");
+  // Stream progress back so the browser connection stays alive regardless of how many leads.
+  // Each line is a JSON object terminated by \n (newline-delimited JSON).
+  const stream = new ReadableStream({
+    async start(controller) {
+      let sent = 0;
+      let failed = 0;
+
+      for (const { lead, rowIndex } of eligible) {
+        try {
+          await sendLeadEmail(lead, "followup");
+          await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });
+          if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
+          sent++;
+        } catch {
+          failed++;
+        }
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ sent, failed, total, done: false }) + "\n")
+        );
+        await new Promise((r) => setTimeout(r, 150));
       }
-      results.push({ name: lead.name, email: lead.email, ok: true });
-      await new Promise((r) => setTimeout(r, 500));
-    } catch (err) {
-      results.push({ name: lead.name, email: lead.email, ok: false, error: String(err) });
-    }
-  }
 
-  return NextResponse.json({
-    sent: results.filter((r) => r.ok).length,
-    failed: results.filter((r) => !r.ok).length,
-    results,
+      controller.enqueue(
+        encoder.encode(JSON.stringify({ sent, failed, total, done: true }) + "\n")
+      );
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson" },
   });
 }

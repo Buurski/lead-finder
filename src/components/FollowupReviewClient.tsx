@@ -22,6 +22,7 @@ export default function FollowupReviewClient() {
   const [branchFilter, setBranchFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState<{ sent: number; total: number } | null>(null);
   const [skipping, setSkipping] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
@@ -108,15 +109,34 @@ export default function FollowupReviewClient() {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
     setSending(true);
+    setSendProgress({ sent: 0, total: ids.length });
     setResult(null);
+
     const res = await fetch("/api/email/send-followups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leadIds: ids }),
     });
-    const data = await res.json();
-    setResult(`Sendt: ${data.sent} ✓  Fejlede: ${data.failed}`);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let last = { sent: 0, failed: 0, total: ids.length, done: false };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split("\n").filter(Boolean)) {
+        try {
+          last = JSON.parse(line);
+          setSendProgress({ sent: last.sent, total: last.total });
+        } catch { /* incomplete chunk, skip */ }
+      }
+      if (last.done) break;
+    }
+
+    setResult(`Sendt: ${last.sent} ✓  Fejlede: ${last.failed}`);
     setSending(false);
+    setSendProgress(null);
     setTimeout(() => router.push("/"), 1800);
   }
 
@@ -176,7 +196,9 @@ export default function FollowupReviewClient() {
               }}
             >
               {sending ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={13} />}
-              {sending ? "Sender..." : `Send til ${totalSelected} leads`}
+              {sending
+                ? sendProgress ? `Sender ${sendProgress.sent}/${sendProgress.total}...` : "Sender..."
+                : `Send til ${totalSelected} leads`}
             </button>
           </>
         )}
