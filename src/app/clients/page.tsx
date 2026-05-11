@@ -11,6 +11,9 @@ export default async function ClientsPage() {
     // not configured yet
   }
 
+  const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
+  const totalSetup = clients.reduce((sum, c) => sum + (parseFloat(c.setupFee) || 0), 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
@@ -25,6 +28,9 @@ export default async function ClientsPage() {
         </h1>
         <p style={{ color: "var(--text-dim)", fontSize: 13, marginTop: 4 }}>
           {clients.length} bekræftede klienter
+          {clients.length > 0 && (
+            <> · <strong style={{ color: "var(--text)" }}>MRR: {totalMRR.toLocaleString("da-DK")} kr</strong> · Setup: {totalSetup.toLocaleString("da-DK")} kr</>
+          )}
         </p>
       </div>
 
