@@ -36,11 +36,12 @@ Google Places API → /api/scrape → Sheets (Leads tab)
 - `src/lib/sheets.ts` — all Sheets reads/writes. `Lead` and `Client` types live here. Row index = sheet row − 2 throughout the codebase.
 - `src/lib/email.ts` — branch-grouped email templates (Danish copy), tracking pixel/click URL builders, nodemailer transport.
 - `src/lib/apify.ts` — Google Places API scraper + lead scoring logic + `BRANCHES`/`CITIES` constants.
+- `src/lib/chains.ts` — unified chain detection (`isChain(name, extra?)`). Used by bulk-send and cleanup routes.
 - `src/lib/folders.ts` — Google Drive folder creation for clients.
 
 ### Sheet columns
 
-**Leads!A:S** — A–K core fields, L=websiteQualityTier, M=enrichedInfo (JSON), N=email, O=emailSentAt, P=emailOpenedAt, Q=emailClickedAt, R=emailStatus, S=followupSentAt.
+**Leads!A:U** — A–K core fields, L=websiteQualityTier, M=enrichedInfo (JSON), N=email, O=emailSentAt, P=emailOpenedAt, Q=emailClickedAt, R=emailStatus, S=followupSentAt, T=reviewsCount, U=callbackDate.
 
 **Clients!A:I** — separate tab, populated when lead status → "client".
 
@@ -52,7 +53,7 @@ Reply tracking: IMAP scan via `/api/email/sync-replies` (imapflow, Gmail INBOX)
 
 ### Lead scoring
 
-`scoreLead()` in `apify.ts`: rating×log(reviews) normalized to 35pts + 30pts no-website bonus + 10pts any-reviews bonus. `websiteQualityBonus()` in `sheets.ts` adds up to 25pts during verification.
+`scoreLead()` in `apify.ts`: rating×log(reviews) normalized to 40pts + 30pts no-website bonus + 15pts ≥20 reviews bonus. `websiteQualityBonus()` in `sheets.ts` adds up to 25pts during verification. Professional branches (advokat, revisor, fysioterapeut, tandlæge, optiker) require score ≥ 70 for email eligibility.
 
 ## Required environment variables
 
