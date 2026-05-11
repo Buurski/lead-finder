@@ -22,6 +22,8 @@ export const BRANCHES = [
   "advokat", "revisor", "fysioterapeut", "tandlæge", "optiker",
   // Mad & oplevelse
   "restaurant", "café", "fotograf",
+  // Skønhed & velvære
+  "skønhedsklinik", "hudklinik", "negle & vippeextensions salon",
 ];
 
 export const CITIES = [
