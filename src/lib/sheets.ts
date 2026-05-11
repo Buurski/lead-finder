@@ -47,6 +47,7 @@ export interface Lead {
   emailStatus: string;       // kolonne R: "" | "sent" | "opened" | "clicked" | "replied"
   followupSentAt: string;    // kolonne S
   reviewsCount: number;      // kolonne T — review count at scrape time
+  callbackDate: string;      // column U — ISO date "YYYY-MM-DD" or ""
 }
 
 export interface Client {
@@ -61,7 +62,7 @@ export interface Client {
   setupFee: string;
 }
 
-const LEADS_RANGE = "Leads!A2:T";
+const LEADS_RANGE = "Leads!A2:U";
 const CLIENTS_RANGE = "Clients!A2:I";
 
 export async function getLeads(): Promise<Lead[]> {
@@ -93,6 +94,7 @@ export async function getLeads(): Promise<Lead[]> {
     emailStatus:    row[17] ?? "",
     followupSentAt: row[18] ?? "",
     reviewsCount:   Number(row[19]) || 0,
+    callbackDate:   row[20] ?? "",
   }));
 }
 
@@ -219,6 +221,7 @@ export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
     l.email ?? "",
     "", "", "", "", "",       // columns O–S (email tracking — empty at scrape time)
     l.reviewsCount ?? 0,     // column T
+    "",                       // column U — callbackDate (empty at scrape time)
   ]);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
@@ -235,6 +238,15 @@ export async function getLeadNames(): Promise<string[]> {
     range: "Leads!A2:A",
   });
   return (res.data.values ?? []).map((r) => r[0] ?? "");
+}
+
+export async function getLeadPhones(): Promise<string[]> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Leads!C2:C",
+  });
+  return (res.data.values ?? []).map((r) => r[0] ?? "").filter(Boolean);
 }
 
 export async function saveLeadEmail(rowIndex: number, email: string): Promise<void> {
@@ -283,6 +295,17 @@ export async function updateLeadEmailStatus(
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
     requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
+export async function updateCallbackDate(rowIndex: number, date: string): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!U${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[date]] },
   });
 }
 
