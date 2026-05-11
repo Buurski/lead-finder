@@ -26,6 +26,7 @@ function fakeLead(email: string): Lead {
     emailStatus: "",
     followupSentAt: "",
     reviewsCount: 0,
+    callbackDate: "",
   };
 }
 
