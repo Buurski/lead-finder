@@ -136,11 +136,11 @@ export function scoreLead(place: ApifyPlace): number {
   const reviews = place.reviewsCount ?? 0;
   if (rating > 0 && reviews > 0) {
     const normalized = Math.min((rating * Math.log10(reviews + 1)) / (5 * 2), 1);
-    score += Math.round(normalized * 35);
+    score += Math.round(normalized * 40);
   }
 
   if (!place.website) score += 30;
-  if (reviews > 0) score += 10;
+  if (reviews >= 20) score += 15;
 
   return Math.min(score, 100);
 }
