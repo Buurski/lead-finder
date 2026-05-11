@@ -13,15 +13,26 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const DEMO_URLS = {
+  food: [
+    "https://under-klippen.vercel.app/",
+    "https://zaytoon-six.vercel.app/",
+  ],
+  craft: "https://vestfjends.vercel.app/",
+  photo: "https://buurfoto.vercel.app/",
+  professional: "https://midtadvokaterne-dttc.vercel.app/",
+} as const;
+
 const BRANCH_GROUP_MAP: Record<string, string> = {
   tømrer: "craft", maler: "craft", elektriker: "craft",
   "vvs-installatør": "craft", blikkenslager: "craft",
   tagdækker: "craft", murermester: "craft",
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
+  skønhedsklinik: "service", hudklinik: "service", "negle & vippeextensions salon": "service",
   advokat: "professional", revisor: "professional",
   fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
   restaurant: "food", café: "food",
-  frisørsalon: "beauty",
+  fotograf: "photo",
 };
 
 // Human-readable plural branch names for use in email copy
@@ -36,6 +47,9 @@ const BRANCH_DISPLAY: Record<string, string> = {
   rengøringsvirksomhed: "rengøringsvirksomheder",
   vinduespudser: "vinduespoleringsvirksomheder",
   anlægsgartner: "anlægsgartnere",
+  skønhedsklinik: "skønhedsklinikker",
+  hudklinik: "hudklinikker",
+  "negle & vippeextensions salon": "negle & vippeextensions saloner",
   advokat: "advokatfirmaer",
   revisor: "revisionsfirmaer",
   fysioterapeut: "fysioterapiklinikker",
@@ -43,8 +57,7 @@ const BRANCH_DISPLAY: Record<string, string> = {
   optiker: "optikerforretninger",
   restaurant: "restauranter",
   café: "caféer",
-  fotograf: "virksomheder",
-  frisørsalon: "frisørsaloner",
+  fotograf: "fotografer",
 };
 
 // Fallback for unknown branches
