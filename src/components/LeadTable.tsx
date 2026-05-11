@@ -144,6 +144,17 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
     }
   }
 
+  async function updateCallback(lead: Lead, date: string) {
+    await fetch(`/api/leads/${lead.id}/callback`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date }),
+    });
+    const updated = { ...lead, callbackDate: date };
+    setLeads((prev) => prev.map((l) => l.id === lead.id ? updated : l));
+    setSelected(updated);
+  }
+
   async function analyze(lead: Lead) {
     setAnalyzing(true);
     setAnalysis(null);
@@ -194,6 +205,15 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   useEffect(() => { setPage(0); }, [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
 
   const paginated = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  function callbackRowBg(lead: Lead): string {
+    if (!lead.callbackDate) return "transparent";
+    if (lead.callbackDate < todayStr) return "rgba(239,68,68,0.08)";
+    if (lead.callbackDate === todayStr) return "rgba(251,146,60,0.1)";
+    return "transparent";
+  }
 
   const selectStyle = {
     background: "var(--bg)",
@@ -350,13 +370,13 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
                     onClick={() => selectLead(lead)}
                     style={{
                       borderBottom: "1px solid var(--border)",
-                      background: active ? "var(--green-dim)" : "transparent",
+                      background: active ? "var(--green-dim)" : callbackRowBg(lead),
                       cursor: "pointer",
                       transition: "background 0.15s ease",
                       boxShadow: active ? "inset 3px 0 0 var(--green)" : "none",
                     }}
                     onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "var(--bg-3)"; }}
-                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = callbackRowBg(lead); }}
                   >
                     <td style={{ padding: "11px 16px" }}><ScoreCell rank={rank} score={lead.score} /></td>
                     <td style={{ padding: "11px 16px", fontWeight: 500, color: "var(--text)", fontSize: 14 }}>{lead.name}</td>
@@ -765,6 +785,42 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
                   fontFamily: "inherit",
                 }}
               />
+            </div>
+
+            {/* Callback date */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-dim)", display: "block", marginBottom: 6 }}>
+                Ring tilbage
+              </label>
+              <input
+                type="date"
+                value={selected.callbackDate ?? ""}
+                onChange={(e) => updateCallback(selected, e.target.value)}
+                style={{
+                  width: "100%",
+                  background: "var(--bg)",
+                  border: selected.callbackDate && selected.callbackDate < todayStr
+                    ? "1px solid rgba(239,68,68,0.6)"
+                    : selected.callbackDate === todayStr
+                    ? "1px solid rgba(251,146,60,0.6)"
+                    : "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "7px 12px",
+                  fontSize: 13,
+                  color: "var(--text)",
+                  outline: "none",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box" as const,
+                }}
+              />
+              {selected.callbackDate && (
+                <button
+                  onClick={() => updateCallback(selected, "")}
+                  style={{ fontSize: 11, color: "var(--text-dim)", cursor: "pointer", background: "none", border: "none", padding: "4px 0 0", display: "block" }}
+                >
+                  Fjern dato
+                </button>
+              )}
             </div>
 
             {/* Actions */}
