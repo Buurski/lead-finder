@@ -22,7 +22,7 @@ export default function BulkEmailPanel() {
       fetch("/api/email/send-followups").then((r) => r.json()),
       fetch("/api/email/bulk-find-emails").then((r) => r.json()),
     ]);
-    setBulkCount(b.count ?? 0);
+    setBulkCount(b.eligible ?? 0);
     setFollowupCount(f.count ?? 0);
     setFindEmailCount(e.count ?? 0);
   }
