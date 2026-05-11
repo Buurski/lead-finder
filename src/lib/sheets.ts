@@ -46,6 +46,7 @@ export interface Lead {
   emailClickedAt: string;    // kolonne Q
   emailStatus: string;       // kolonne R: "" | "sent" | "opened" | "clicked" | "replied"
   followupSentAt: string;    // kolonne S
+  reviewsCount: number;      // kolonne T — review count at scrape time
 }
 
 export interface Client {
@@ -60,7 +61,7 @@ export interface Client {
   setupFee: string;
 }
 
-const LEADS_RANGE = "Leads!A2:S";
+const LEADS_RANGE = "Leads!A2:T";
 const CLIENTS_RANGE = "Clients!A2:I";
 
 export async function getLeads(): Promise<Lead[]> {
@@ -91,6 +92,7 @@ export async function getLeads(): Promise<Lead[]> {
     emailClickedAt: row[16] ?? "",
     emailStatus:    row[17] ?? "",
     followupSentAt: row[18] ?? "",
+    reviewsCount:   Number(row[19]) || 0,
   }));
 }
 
@@ -215,6 +217,8 @@ export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
     l.websiteQualityTier ?? "",
     l.enrichedInfo ?? "",
     l.email ?? "",
+    "", "", "", "", "",       // columns O–S (email tracking — empty at scrape time)
+    l.reviewsCount ?? 0,     // column T
   ]);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
@@ -279,6 +283,38 @@ export async function updateLeadEmailStatus(
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
     requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
+async function getLeadsSheetId(): Promise<number> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const sheet = res.data.sheets?.find((s) => s.properties?.title === "Leads");
+  if (sheet?.properties?.sheetId == null) throw new Error("Leads sheet tab not found");
+  return sheet.properties.sheetId;
+}
+
+// Delete rows by sheet row number (1-based). Must be called with the actual sheet row numbers
+// (i.e. lead.id values, which equal sheet row number). Deletes in reverse order to avoid index shift.
+export async function deleteLeadRows(sheetRowNumbers: number[]): Promise<void> {
+  if (sheetRowNumbers.length === 0) return;
+  const sheetId = await getLeadsSheetId();
+  const sheets = getSheetsClient();
+  const sorted = [...sheetRowNumbers].sort((a, b) => b - a);
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: sorted.map((row) => ({
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: "ROWS",
+            startIndex: row - 1, // row is 1-based sheet row; startIndex is 0-based
+            endIndex: row,
+          },
+        },
+      })),
+    },
   });
 }
 

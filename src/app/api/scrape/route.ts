@@ -45,6 +45,7 @@ export async function POST() {
         emailClickedAt: "",
         emailStatus: "",
         followupSentAt: "",
+        reviewsCount: p.reviewsCount ?? 0,
       }));
 
     if (newLeads.length > 0) {
