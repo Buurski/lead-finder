@@ -22,6 +22,7 @@ export default function FollowupReviewClient() {
   const [branchFilter, setBranchFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [sending, setSending] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +75,35 @@ export default function FollowupReviewClient() {
     });
   }
 
+  async function skipDenied() {
+    const denied = leads.filter((l) => !selected.has(l.id)).map((l) => l.id);
+    if (denied.length === 0) return;
+    setSkipping(true);
+    setResult(null);
+    const res = await fetch("/api/leads/bulk-skip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadIds: denied }),
+    });
+    const data = await res.json();
+    setResult(`${data.skipped} leads markeret som skip — forsvinder fra listen.`);
+    setSkipping(false);
+    // reload list so skipped leads disappear
+    setLoading(true);
+    fetch("/api/email/send-followups?list=1")
+      .then((r) => r.json())
+      .then((d) => {
+        const fresh = d.leads ?? [];
+        setLeads(fresh);
+        setSelected((prev) => {
+          const next = new Set(prev);
+          fresh.forEach((l: FollowupLead) => { if (!next.has(l.id)) next.add(l.id); });
+          return new Set(fresh.map((l: FollowupLead) => l.id).filter((id: string) => next.has(id)));
+        });
+        setLoading(false);
+      });
+  }
+
   async function send() {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
@@ -112,22 +142,43 @@ export default function FollowupReviewClient() {
         {result ? (
           <span style={{ fontSize: 13, color: "#15803d", fontWeight: 600 }}>{result}</span>
         ) : (
-          <button
-            onClick={send}
-            disabled={sending || totalSelected === 0 || loading}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: totalSelected > 0 ? "#b45309" : "var(--border)",
-              color: totalSelected > 0 ? "#fff" : "var(--text-muted)",
-              border: "none", borderRadius: 6, padding: "7px 14px",
-              fontSize: 13, fontWeight: 600,
-              cursor: totalSelected > 0 && !sending ? "pointer" : "default",
-              opacity: sending ? 0.6 : 1,
-            }}
-          >
-            {sending ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={13} />}
-            {sending ? "Sender..." : `Send til ${totalSelected} leads`}
-          </button>
+          <>
+            {(leads.length - totalSelected) > 0 && (
+              <button
+                onClick={skipDenied}
+                disabled={skipping || loading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: "transparent",
+                  color: "#b91c1c",
+                  border: "1px solid #fca5a5",
+                  borderRadius: 6, padding: "7px 14px",
+                  fontSize: 13, fontWeight: 600,
+                  cursor: skipping ? "default" : "pointer",
+                  opacity: skipping ? 0.6 : 1,
+                }}
+              >
+                {skipping ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> : null}
+                {skipping ? "Gemmer..." : `Gem — skip ${leads.length - totalSelected} afviste`}
+              </button>
+            )}
+            <button
+              onClick={send}
+              disabled={sending || totalSelected === 0 || loading}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: totalSelected > 0 ? "#b45309" : "var(--border)",
+                color: totalSelected > 0 ? "#fff" : "var(--text-muted)",
+                border: "none", borderRadius: 6, padding: "7px 14px",
+                fontSize: 13, fontWeight: 600,
+                cursor: totalSelected > 0 && !sending ? "pointer" : "default",
+                opacity: sending ? 0.6 : 1,
+              }}
+            >
+              {sending ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={13} />}
+              {sending ? "Sender..." : `Send til ${totalSelected} leads`}
+            </button>
+          </>
         )}
       </div>
 
