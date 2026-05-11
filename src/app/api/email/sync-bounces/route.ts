@@ -4,9 +4,6 @@ import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
 
 export const maxDuration = 60;
 
-// Gmail sends bounces from these addresses
-const BOUNCE_SENDERS = ["mailer-daemon@googlemail.com", "postmaster@gmail.com"];
-
 export async function POST() {
   const leads = await getLeads();
 
@@ -47,25 +44,26 @@ export async function POST() {
     await client.connect();
     await client.mailboxOpen("INBOX");
 
-    for await (const msg of client.fetch({ since }, { envelope: true, source: true })) {
-      const from = msg.envelope?.from?.[0]?.address?.toLowerCase().trim() ?? "";
-      const subject = msg.envelope?.subject?.toLowerCase() ?? "";
+    // Search for bounce messages only — avoids downloading all mail
+    const bounceUids: number[] = (await client.search(
+      {
+        since,
+        or: [
+          { from: "mailer-daemon" },
+          { from: "postmaster" },
+        ],
+      },
+      { uid: true }
+    )) || [];
 
-      // Only process bounce notifications
-      const isBounce =
-        BOUNCE_SENDERS.includes(from) ||
-        subject.includes("delivery status notification") ||
-        subject.includes("address not found") ||
-        subject.includes("undeliverable") ||
-        subject.includes("returned mail");
-
-      if (!isBounce) continue;
-
-      // Scan raw source for any of our lead email addresses
-      const source = msg.source?.toString("utf8")?.toLowerCase() ?? "";
-      for (const [email, rowIndex] of emailToRow) {
-        if (source.includes(email)) {
-          bouncedRows.add(rowIndex);
+    if (bounceUids.length > 0) {
+      // Only fetch source for the (few) bounce messages found
+      for await (const msg of client.fetch(bounceUids, { source: true }, { uid: true })) {
+        const source = msg.source?.toString("utf8")?.toLowerCase() ?? "";
+        for (const [email, rowIndex] of emailToRow) {
+          if (source.includes(email)) {
+            bouncedRows.add(rowIndex);
+          }
         }
       }
     }
