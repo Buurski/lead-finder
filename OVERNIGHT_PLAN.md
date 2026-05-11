@@ -395,6 +395,85 @@ capture_screenshot()
 
 ---
 
+## Fallback Rules (Autonomous Recovery)
+
+These rules let you handle common failure modes without stopping to ask the user. Follow them exactly — they define the boundary between "fix it yourself" and "stop and write a note."
+
+### Rule 1 — Verify loop stalls
+If `remaining` doesn't decrease after 3 consecutive verify-all runs, those leads have permanently unreachable sites. Accept the result and move to Phase 4. Do not keep looping.
+
+### Rule 2 — Zero new leads scraped
+Not a failure — all leads may already be in the sheet. Log `"0 new leads — already scraped"`, do not retry, continue to Phase 3.
+
+### Rule 3 — New chains found in spot-check
+If a chain slipped through `isChain()`:
+1. Add to `CHAIN_CONTAINS` in `src/lib/chains.ts`
+2. `npm run build` to verify no errors
+3. Commit: `git commit -m "fix: add [brand] to chain detection"`
+4. Push: `git push origin main` (Vercel auto-redeploys — wait 2 min)
+5. Re-run cleanup: `POST /api/leads/cleanup`
+6. Then continue spot-check
+
+### Rule 4 — Gmail hard fail
+If Gmail returns `535 5.7.8` or connection refused:
+- Wait 30 minutes, retry once
+- If still failing after retry: write `MORNING_NOTE.md` (see template below), stop
+- Do NOT delete leads. Do NOT mark them as sent.
+
+### Rule 5 — Build fails after code edit
+- Run `npm run build`, read the TypeScript error
+- Fix it, recommit
+- Maximum 2 fix attempts per error
+- If still failing after 2 attempts: write `MORNING_NOTE.md`, stop
+
+### Rule 6 — bulk-find-emails finds nothing (2+ runs)
+If POST bulk-find-emails returns `found: 0` for 2 consecutive runs, websites don't expose emails publicly. Stop the loop, move to Phase 7 (send to leads that already have emails).
+
+### Rule 7 — Bulk-send eligible = 0
+Before concluding, investigate:
+```bash
+curl -s "https://lead-finder-three-beta.vercel.app/api/email/bulk-send" | python3 -m json.tool
+```
+- If `eligible: 0` and leads exist: check that verify-all ran (websiteQualityTier set) and emails were found
+- If genuinely 0 eligible after checking: log it and run Phase 8 (sync bounces) anyway
+
+### MORNING_NOTE.md template
+
+If you must stop early due to an unrecoverable error, write this file:
+
+```bash
+cat > c:\Users\Buur\Documents\Workflows\lead-system\MORNING_NOTE.md << 'EOF'
+# Overnight Run — Stopped Early
+
+## Stopped at
+[Phase X — description]
+
+## Error
+[Exact error message]
+
+## What completed
+- [ ] Cleanup
+- [ ] Scrape
+- [ ] Verify-all
+- [ ] Find emails
+- [ ] Spot-check
+- [ ] Bulk-send
+- [ ] Sync bounces
+
+## What to do next
+[One sentence on how to resume]
+EOF
+```
+
+Then commit and push:
+```bash
+git add MORNING_NOTE.md
+git commit -m "docs: overnight run stopped early — see MORNING_NOTE.md"
+git push origin main
+```
+
+---
+
 ## Error Reference
 
 | Error | Cause | Fix |
