@@ -145,14 +145,18 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
   }
 
   async function updateCallback(lead: Lead, date: string) {
-    await fetch(`/api/leads/${lead.id}/callback`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date }),
-    });
-    const updated = { ...lead, callbackDate: date };
-    setLeads((prev) => prev.map((l) => l.id === lead.id ? updated : l));
-    setSelected(updated);
+    try {
+      await fetch(`/api/leads/${lead.id}/callback`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+      const updated = { ...lead, callbackDate: date };
+      setLeads((prev) => prev.map((l) => l.id === lead.id ? updated : l));
+      setSelected(updated);
+    } catch (err) {
+      console.error("Failed to update callback:", err);
+    }
   }
 
   async function analyze(lead: Lead) {
@@ -206,7 +210,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
 
   const paginated = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = new Date().toLocaleDateString("sv-SE"); // sv-SE locale = YYYY-MM-DD in local time
 
   function callbackRowBg(lead: Lead): string {
     if (!lead.callbackDate) return "transparent";
