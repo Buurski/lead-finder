@@ -22,13 +22,19 @@ export const BRANCHES = [
   "advokat", "revisor", "fysioterapeut", "tandlæge", "optiker",
   // Mad & oplevelse
   "restaurant", "café", "fotograf",
-  // Skønhed
-  "frisørsalon",
 ];
 
 export const CITIES = [
-  "Herning", "Ikast", "Silkeborg", "Viborg", "Holstebro",
-  "Ringkøbing", "Struer", "Skive", "Lemvig", "Horsens",
+  // Mid-Jutland (kept minus Ikast)
+  "Herning", "Silkeborg", "Viborg", "Holstebro", "Ringkøbing",
+  "Struer", "Skive", "Lemvig", "Horsens", "Varde",
+  "Videbæk", "Brande", "Give", "Vinderup", "Ulfborg",
+  // North Jutland
+  "Aalborg", "Nørresundby", "Hjørring", "Frederikshavn", "Skagen",
+  "Brønderslev", "Hobro", "Thisted",
+  // South Jutland
+  "Esbjerg", "Kolding", "Aabenraa", "Haderslev", "Tønder",
+  "Vejle", "Fredericia", "Billund",
 ];
 
 export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {
