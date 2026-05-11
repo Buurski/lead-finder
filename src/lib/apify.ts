@@ -21,7 +21,9 @@ export const BRANCHES = [
   // Professionelle
   "advokat", "revisor", "fysioterapeut", "tandlæge", "optiker",
   // Mad & oplevelse
-  "restaurant", "café", "fotograf",
+  "restaurant", "café",
+  // Foto
+  "fotograf",
   // Skønhed & velvære
   "skønhedsklinik", "hudklinik", "negle & vippeextensions salon",
 ];
