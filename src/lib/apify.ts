@@ -39,6 +39,8 @@ export const CITIES = [
   // South Jutland
   "Esbjerg", "Kolding", "Aabenraa", "Haderslev", "Tønder",
   "Vejle", "Fredericia", "Billund",
+  // Fyn
+  "Odense", "Middelfart", "Svendborg", "Nyborg", "Kerteminde",
 ];
 
 export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {
