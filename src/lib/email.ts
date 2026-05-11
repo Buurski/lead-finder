@@ -28,7 +28,7 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   "vvs-installatør": "craft", blikkenslager: "craft",
   tagdækker: "craft", murermester: "craft",
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
-  skønhedsklinik: "service", hudklinik: "service", "negle & vippeextensions salon": "service",
+  skønhedsklinik: "service", hudklinik: "service", "negle & vippeextensions salon": "service", frisørsalon: "service",
   advokat: "professional", revisor: "professional",
   fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
   restaurant: "food", café: "food",
@@ -58,6 +58,7 @@ const BRANCH_DISPLAY: Record<string, string> = {
   restaurant: "restauranter",
   café: "caféer",
   fotograf: "fotografer",
+  frisørsalon: "frisørsaloner",
 };
 
 // Fallback for unknown branches

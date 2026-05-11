@@ -25,7 +25,7 @@ export const BRANCHES = [
   // Foto
   "fotograf",
   // Skønhed & velvære
-  "skønhedsklinik", "hudklinik", "negle & vippeextensions salon",
+  "skønhedsklinik", "hudklinik", "negle & vippeextensions salon", "frisørsalon",
 ];
 
 export const CITIES = [

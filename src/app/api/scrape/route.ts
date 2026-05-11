@@ -18,10 +18,11 @@ export async function POST() {
         if (!p.title || existingSet.has(p.title.toLowerCase())) return false;
         const branch = (p.categoryName ?? "").toLowerCase();
         if (
-          (branch === "restaurant" || branch === "café" ||
-           branch === "skønhedsklinik" || branch === "hudklinik" ||
-           branch === "negle & vippeextensions salon") &&
-          (p.reviewsCount ?? 0) < 15
+          ((branch === "restaurant" || branch === "café" ||
+            branch === "skønhedsklinik" || branch === "hudklinik" ||
+            branch === "negle & vippeextensions salon") &&
+           (p.reviewsCount ?? 0) < 15) ||
+          (branch === "frisørsalon" && (p.reviewsCount ?? 0) < 25)
         ) return false;
         return true;
       })
