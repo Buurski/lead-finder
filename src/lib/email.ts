@@ -117,134 +117,282 @@ function websiteLine(v: TemplateVars): string {
 }
 
 const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) => EmailTemplate>> = {
+  food: {
+    cold: (v) => {
+      const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+${ws}
+
+Jeg har lavet et par demo-hjemmesider til restauranter — se dem her:
+→ ${DEMO_URLS.food[0]}
+→ ${DEMO_URLS.food[1]}
+
+Det er kun demoer, men jeg laver selvfølgelig en fuld version der passer specifikt til ${v.name} — jeres stil, menu, farver og det hele.
+
+Ring eller skriv hvis I vil se hvad det kunne se ud som.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Har I overvejet en ny hjemmeside, ${v.name}?`,
+        text,
+        html: buildHtml(`
+<p>Hej ${v.name},</p>
+<p>${ws}</p>
+<p>Jeg har lavet et par demo-hjemmesider til restauranter — se dem her:<br>
+→ <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
+→ <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
+<p>Det er kun demoer, men jeg laver selvfølgelig en fuld version der passer specifikt til <strong>${v.name}</strong> — jeres stil, menu, farver og det hele.</p>
+<p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for en uges tid siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.
+
+Se mine demoer til restauranter:
+→ ${DEMO_URLS.food[0]}
+→ ${DEMO_URLS.food[1]}
+
+Ring eller skriv hvis I er nysgerrige.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
+<p>Hej igen ${v.name},</p>
+<p>Jeg sendte en mail for en uges tid siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Se mine demoer til restauranter:<br>
+→ <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
+→ <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
+<p>Ring eller skriv hvis I er nysgerrige.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+  },
+
   craft: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+Jeres arbejde taler for sig selv — hjemmesiden burde gøre det samme.
+
+${ws}
+
+Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} som jeres — se den her:
+→ ${DEMO_URLS.craft}
+
+Det er kun en demo, men jeg laver en fuld version der passer specifikt til ${v.name}.
+
+Ring eller skriv hvis du vil høre mere.
+
+Lucas
++45 23 24 24 82`;
       return {
-        subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        subject: `Hjemmeside til ${v.name}?`,
+        text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i området.</p>
+<p>Jeres arbejde taler for sig selv — hjemmesiden burde gøre det samme.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Svar gerne på mailen, eller ring/skriv til mig på <strong>+45 23 24 24 82</strong> — det er helt uforpligtende.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
+<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} som jeres — se den her:<br>
+→ <a href="${DEMO_URLS.craft}">${DEMO_URLS.craft}</a></p>
+<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
+<p>Ring eller skriv hvis du vil høre mere.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
-    followup: (v) => ({
-      subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nFølger lige op på min mail fra forrige uge om demo-hjemmesiden til ${v.branchDisplay} i området.\n\nDen er stadig klar — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-      html: buildHtml(`
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+
+Se min demo til ${v.branchDisplay}:
+→ ${DEMO_URLS.craft}
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Følger lige op på min mail fra forrige uge om demo-hjemmesiden til <strong>${v.branchDisplay}</strong> i området.</p>
-<p>Den er stadig klar — svar på mailen eller ring/skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
-    }),
+<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Se min demo til ${v.branchDisplay}:<br>
+→ <a href="${DEMO_URLS.craft}">${DEMO_URLS.craft}</a></p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
   },
 
-  service: {
+  photo: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+Med det øje du har bag kameraet fortjener du en hjemmeside der viser det frem.
+
+${ws}
+
+Jeg har lavet en demo-hjemmeside til fotografer — se den her:
+→ ${DEMO_URLS.photo}
+
+Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig — dit udtryk, dine billeder, din stil.
+
+Ring eller skriv hvis du er nysgerrig.
+
+Lucas
++45 23 24 24 82`;
       return {
-        subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.\n\nSvar gerne på mailen, eller kontakt mig direkte på +45 23 24 24 82 — det er helt uforpligtende.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        subject: `Din hjemmeside, ${v.name}?`,
+        text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale virksomheder i ${v.city}.</p>
+<p>Med det øje du har bag kameraet fortjener du en hjemmeside der viser det frem.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en gratis demo specielt til ${v.name} — helt uforpligtende.</p>
-<p>Svar gerne på mailen, eller kontakt mig direkte på <strong>+45 23 24 24 82</strong> — det er helt uforpligtende.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
+<p>Jeg har lavet en demo-hjemmeside til fotografer — se den her:<br>
+→ <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
+<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig — dit udtryk, dine billeder, din stil.</p>
+<p>Ring eller skriv hvis du er nysgerrig.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
-    followup: (v) => ({
-      subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nBare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.\n\nGratis og uforpligtende — svar på mailen eller ring/skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-      html: buildHtml(`
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+
+Se min demo til fotografer:
+→ ${DEMO_URLS.photo}
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Din hjemmeside, ${v.name}`,
+        text,
+        html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Bare en hurtig opfølgning — demo-hjemmesiden til ${v.name} venter stadig.</p>
-<p>Gratis og uforpligtende — svar på mailen eller ring/skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
-    }),
+<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Se min demo til fotografer:<br>
+→ <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
   },
 
   professional: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+I ${v.city} kender folk jer. Hjemmesiden burde de også gøre.
+
+${ws}
+
+Jeg har lavet en demo-hjemmeside til virksomheder som jeres — se den her:
+→ ${DEMO_URLS.professional}
+
+Det er kun en demo, men jeg laver en fuld version der passer specifikt til ${v.name}.
+
+Ring eller skriv hvis du vil høre mere.
+
+Lucas
++45 23 24 24 82`;
       return {
-        subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i ${v.city}-området.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.\n\nSvar gerne på mailen, eller kontakt mig på +45 23 24 24 82 — I forpligter jer ikke til noget.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        subject: `Hjemmeside til ${v.name}?`,
+        text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i ${v.city}-området.</p>
+<p>I ${v.city} kender folk jer. Hjemmesiden burde de også gøre.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en gratis demo specielt til jer — I kan se den uden at forpligte jer til noget.</p>
-<p>Svar gerne på mailen, eller kontakt mig på <strong>+45 23 24 24 82</strong> — I forpligter jer ikke til noget.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
+<p>Jeg har lavet en demo-hjemmeside til virksomheder som jeres — se den her:<br>
+→ <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
+<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
+<p>Ring eller skriv hvis du vil høre mere.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
-    followup: (v) => ({
-      subject: `Re: Demo-hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name},\n\nOpfølgning på min mail fra forrige uge om demo-hjemmesiden.\n\nDen er stadig klar — svar på mailen eller giv mig et ring/besked på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-      html: buildHtml(`
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+
+Se min demo:
+→ ${DEMO_URLS.professional}
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Opfølgning på min mail fra forrige uge om demo-hjemmesiden.</p>
-<p>Den er stadig klar — svar på mailen eller giv mig et ring/besked på <strong>+45 23 24 24 82</strong>.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
-    }),
-  },
-
-  food: {
-    cold: (v) => {
-      const ws = websiteLine(v);
-      return {
-        subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale ${v.branchDisplay} i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSkriv gerne her, eller tag fat i mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-        html: buildHtml(`
-<p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til lokale <strong>${v.branchDisplay}</strong> i ${v.city}.</p>
-<p>${ws}</p>
-<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Skriv gerne her, eller tag fat i mig på <strong>+45 23 24 24 82</strong> — helt uforpligtende!</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
+<p>Jeg sendte en mail for en uges tid siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
+<p>Se min demo:<br>
+→ <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
-    followup: (v) => ({
-      subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen!\n\nFølger op på min mail fra sidst om den gratis demo til ${v.name} i ${v.city}.\n\nDen er stadig klar — svar her eller skriv til mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-      html: buildHtml(`
-<p>Hej igen!</p>
-<p>Følger op på min mail fra sidst om den gratis demo til <strong>${v.name}</strong> i ${v.city}.</p>
-<p>Den er stadig klar — svar her eller skriv til mig på <strong>+45 23 24 24 82</strong>.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
-    }),
   },
 
-  beauty: {
+  service: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+${ws}
+
+Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.
+
+Skriv eller ring hvis du vil se hvad jeg kan lave til jer.
+
+Lucas
++45 23 24 24 82`;
       return {
-        subject: `Gratis hjemmeside til ${v.name}?`,
-        text: `Hej ${v.name},\n\nJeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.\n\n${ws}\n\nJeg har lavet en gratis demo specielt til jer — helt uforpligtende.\n\nSvar gerne på mailen, eller ring/skriv til mig på +45 23 24 24 82 — helt uforpligtende!\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
+        subject: `Hjemmeside til ${v.name}?`,
+        text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeg hedder Lucas, er salgselev fra Ikast, og laver i min fritid hjemmesider til frisørsaloner i ${v.city}.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en gratis demo specielt til jer — helt uforpligtende.</p>
-<p>Svar gerne på mailen, eller ring/skriv til mig på <strong>+45 23 24 24 82</strong> — helt uforpligtende!</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
+<p>Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.</p>
+<p>Skriv eller ring hvis du vil se hvad jeg kan lave til jer.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
-    followup: (v) => ({
-      subject: `Re: Gratis hjemmeside til ${v.name}`,
-      text: `Hej igen ${v.name}!\n\nFølger op på min mail om den gratis demo-hjemmeside.\n\nDen venter stadig — svar her eller tag fat i mig på +45 23 24 24 82.\n\nVenlig hilsen\nLucas Buur\nTlf. +45 23 24 24 82`,
-      html: buildHtml(`
-<p>Hej igen ${v.name}!</p>
-<p>Følger op på min mail om den gratis demo-hjemmeside.</p>
-<p>Den venter stadig — svar her eller tag fat i mig på <strong>+45 23 24 24 82</strong>.</p>
-<p>Venlig hilsen<br>Lucas Buur<br>Tlf. +45 23 24 24 82</p>`, v.trackingPixelUrl),
-    }),
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for en uges tid siden om en hjemmeside til jer — tilbuddet gælder stadig.
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
+<p>Hej igen ${v.name},</p>
+<p>Jeg sendte en mail for en uges tid siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
   },
 };
 
