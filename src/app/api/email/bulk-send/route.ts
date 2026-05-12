@@ -5,7 +5,7 @@ import { isChain } from "@/lib/chains";
 
 export const maxDuration = 300;
 
-const PROFESSIONAL_BRANCHES = ["advokat", "revisor", "fysioterapeut", "tandlæge", "optiker"];
+const PROFESSIONAL_BRANCHES = ["advokat", "revisor", "fysioterapi", "tandlæge", "optiker", "kiropraktor", "apotek"];
 
 function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string }): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,8 +48,14 @@ export async function POST() {
     .sort((a, b) => b.lead.score - a.lead.score);
 
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
+  const seenEmails = new Set<string>();
 
   for (const { lead, rowIndex } of eligible) {
+    if (seenEmails.has(lead.email.toLowerCase())) {
+      results.push({ name: lead.name, email: lead.email, ok: false, error: "duplicate email address" });
+      continue;
+    }
+    seenEmails.add(lead.email.toLowerCase());
     try {
       await sendLeadEmail(lead, "cold");
       const now = new Date().toISOString();

@@ -25,19 +25,39 @@ const DEMO_URLS = {
 } as const;
 
 const BRANCH_GROUP_MAP: Record<string, string> = {
+  // Craft/håndværk
   tømrer: "craft", maler: "craft", elektriker: "craft",
-  "vvs-installatør": "craft", blikkenslager: "craft",
-  tagdækker: "craft", murermester: "craft",
+  vvs: "craft", blikkenslager: "craft", tagdækker: "craft", murermester: "craft",
+  // Service
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
-  skønhedsklinik: "beauty", hudklinik: "beauty", "negle & vippeextensions salon": "beauty",
-  frisørsalon: "beauty", skønhedssalon: "beauty", negleklinik: "beauty",
-  kosmetolog: "beauty", barbersalon: "beauty", solcenter: "beauty",
-  hudpleje: "beauty", "body art": "beauty",
+  sundhed: "service", fitness: "service", træningscenter: "service",
+  // Beauty — shorter keys catch all Google Places category variants
+  skønhed: "beauty",        // skønhedsklinik, skønhedssalon, skønhedspleje, etc.
+  frisør: "beauty",         // frisørsalon, frisørforretning, etc.
+  hår: "beauty",            // hårklinik, hår og negle, hårstylist
+  hair: "beauty",           // English: Hair by us, Hair salon
+  negle: "beauty",          // negleklinik, neglepleje
+  nails: "beauty",
+  salon: "beauty",          // Salon No. 1, Salon Heidi — almost always beauty in DK context
+  klip: "beauty",           // Klip&Cool, Klip og farve
+  spa: "beauty",
+  velvære: "beauty",
+  kosmetisk: "beauty",      // Kosmetisk klinik
+  kosmetolog: "beauty",
+  barbershop: "beauty", barbersalon: "beauty", barber: "beauty",
+  solcenter: "beauty", solarium: "beauty",
+  hudpleje: "beauty", hudklinik: "beauty",
+  "body art": "beauty",
+  // Gallery
   galleri: "gallery", kunstgalleri: "gallery", kunsthandel: "gallery",
+  // Professional — shorter keys catch "fysioterapi" as well as "fysioterapeut"
   advokat: "professional", revisor: "professional",
-  fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
-  restaurant: "food", café: "food",
-  fotograf: "photo",
+  fysioterapi: "professional", tandlæge: "professional", optiker: "professional",
+  kiropraktor: "professional", apotek: "professional",
+  // Food
+  restaurant: "food", café: "food", cafe: "food", bistro: "food", sushi: "food",
+  // Photo — shorter "foto" catches fotostudie, fotoatelier, fotografiservice, etc.
+  foto: "photo",
 };
 
 // Human-readable plural branch names for use in email copy
