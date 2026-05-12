@@ -72,3 +72,18 @@ export async function POST() {
     results,
   });
 }
+
+// Mark specific lead IDs as sent (used to recover from partial Sheets quota failures)
+export async function PATCH(req: Request) {
+  const { ids } = await req.json() as { ids: string[] };
+  const now = new Date().toISOString();
+  const updates = await Promise.allSettled(
+    ids.map(async (id) => {
+      const rowIndex = Number(id) - 2;
+      await updateLeadEmailStatus(rowIndex, { emailSentAt: now, emailStatus: "sent" });
+      return id;
+    })
+  );
+  const ok = updates.filter((r) => r.status === "fulfilled").length;
+  return NextResponse.json({ marked: ok, total: ids.length });
+}
