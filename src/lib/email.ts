@@ -27,7 +27,8 @@ const DEMO_URLS = {
 const BRANCH_GROUP_MAP: Record<string, string> = {
   // Craft/håndværk
   tømrer: "craft", maler: "craft", elektriker: "craft",
-  vvs: "craft", blikkenslager: "craft", tagdækker: "craft", murermester: "craft",
+  vvs: "craft", blikkenslager: "craft", tagdæk: "craft", murermester: "craft",
+  mekaniker: "craft", smed: "craft", snedker: "craft",
   // Service
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
   sundhed: "service", fitness: "service", træningscenter: "service",
@@ -42,6 +43,8 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   klip: "beauty",           // Klip&Cool, Klip og farve
   spa: "beauty",
   velvære: "beauty",
+  wellness: "beauty",
+  massage: "beauty",
   kosmetisk: "beauty",      // Kosmetisk klinik
   kosmetolog: "beauty",
   barbershop: "beauty", barbersalon: "beauty", barber: "beauty",
@@ -50,12 +53,16 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   "body art": "beauty",
   // Gallery
   galleri: "gallery", kunstgalleri: "gallery", kunsthandel: "gallery",
-  // Professional — shorter keys catch "fysioterapi" as well as "fysioterapeut"
+  // Professional — shorter keys catch Google Places variants
   advokat: "professional", revisor: "professional",
-  fysioterapi: "professional", tandlæge: "professional", optiker: "professional",
-  kiropraktor: "professional", apotek: "professional",
-  // Food
+  fysioterapi: "professional",  // catches both "fysioterapeut" and "fysioterapi"
+  tand: "professional",         // catches "tandlæge" and "tandklinik"
+  optiker: "professional", kiropraktor: "professional", apotek: "professional",
+  læge: "professional",         // catches "Læge", "Lægeklinik", "Lægehus"
+  psykolog: "professional",
+  // Food — broader catches for Google Places categories
   restaurant: "food", café: "food", cafe: "food", bistro: "food", sushi: "food",
+  kaffebar: "food", pizzeria: "food", burger: "food", smørrebrød: "food",
   // Photo — shorter "foto" catches fotostudie, fotoatelier, fotografiservice, etc.
   foto: "photo",
 };
