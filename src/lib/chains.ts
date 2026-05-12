@@ -1,5 +1,5 @@
 // Trade words that indicate a local business, not the JYSK furniture chain
-const JYSK_TRADE_WORDS = ["tømrer", "el ", "elteknik", "vvs", "byg", "service", "anlæg", "gartner", "rengøring", "kloak", "tagpap", "vinduespudsning", "polering", "hjemmepleje", "maler", "murer"];
+const JYSK_TRADE_WORDS = ["tømrer", "el ", "elteknik", "vvs", "byg", "service", "anlæg", "gartner", "rengøring", "kloak", "tagpap", "vinduespudsning", "polering", "hjemmepleje", "maler", "murer", "bogføring", "revision", "teknik", "auto", "fysio", "care"];
 
 const CHAIN_EXACT = [
   "lidl", "aldi", "zara", "ikea", "matas", "stark", "shell", "subway",
@@ -31,8 +31,8 @@ const CHAIN_CONTAINS = [
   "kvik køkken",
   // Fitness
   "fitness world", "sats fitness",
-  // Department stores / retail chains
-  "salling", "imerco",
+  // Department stores / retail chains (salling handled separately below to avoid surname false-positives)
+  "imerco",
   // Veterinary chains
   "anicura", "evidensia",
   // Professional services chains
@@ -51,6 +51,8 @@ export function isChain(name: string, extra?: string[]): boolean {
   if (/\bjysk\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
   // Netto supermarket: match "netto" as standalone word, NOT when preceded by trade words (e.g. "VVS Netto")
   if (/\bnetto\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
+  // Salling department store: match "salling" only when NOT combined with trade/profession words
+  if (/\bsalling\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w)) && !/v\/|aps|a\/s|i\/s/.test(lower)) return true;
   for (const chain of CHAIN_EXACT) {
     if (new RegExp(`\\b${chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) return true;
   }
