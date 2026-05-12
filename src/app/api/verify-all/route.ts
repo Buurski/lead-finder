@@ -39,13 +39,17 @@ function extractEmailFromHtml(html: string): string | null {
   const bare = html.match(/\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b/);
   if (bare) {
     const addr = bare[1].toLowerCase();
-    if (!/noreply|example|sentry|w3\.org/i.test(addr)) return addr;
+    if (!/noreply|example|sentry|w3\.org|name@domain|user@domain|email@email|your@|test@test/i.test(addr)) return addr;
   }
   return null;
 }
 
 async function analyzeUrl(url: string): Promise<{ tier: WebsiteQualityTier; email: string | null }> {
   const fullUrl = url.startsWith("http") ? url : `https://${url}`;
+  // Social media pages are not real websites — treat as dead (no real web presence)
+  if (/facebook\.com|instagram\.com|linkedin\.com|twitter\.com|tiktok\.com/i.test(fullUrl)) {
+    return { tier: "dead", email: null };
+  }
   try {
     const res = await fetch(fullUrl, {
       signal: AbortSignal.timeout(10000),

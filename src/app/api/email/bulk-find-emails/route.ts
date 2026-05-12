@@ -14,7 +14,7 @@ function extractEmail(text: string): string | null {
   const bare = text.match(/\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b/);
   if (bare) {
     const addr = bare[1].toLowerCase();
-    if (!/noreply|example|sentry|w3\.org|schema|jquery|google|facebook|instagram/i.test(addr)) {
+    if (!/noreply|example|sentry|w3\.org|schema|jquery|google|facebook|instagram|name@domain|user@domain|email@email|your@|test@test/i.test(addr)) {
       return addr;
     }
   }
