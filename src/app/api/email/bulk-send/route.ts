@@ -14,6 +14,7 @@ function isEligible(lead: { score: number; branch: string; email: string; emailS
   if (lead.status === "skip" || lead.status === "client") return false;
   if (lead.websiteQualityTier === "modern") return false;
   if (isChain(lead.name)) return false;
+  if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
   const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
   const minScore = isProfessional ? 70 : 40;
   return lead.score >= minScore;

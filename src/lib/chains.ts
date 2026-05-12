@@ -28,6 +28,8 @@ const CHAIN_CONTAINS = [
   "kvik køkken",
   // Fitness
   "fitness world", "sats fitness",
+  // Veterinary chains
+  "anicura", "evidensia",
   // Professional services chains
   "deloitte", "pwc", "kpmg", "ernst & young", "bdo revision",
 ];
