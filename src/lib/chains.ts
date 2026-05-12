@@ -20,7 +20,7 @@ const CHAIN_CONTAINS = [
   "lagkagehuset", "riccos kaffebar", "the union kitchen",
   "sticks n sushi", "sunset blvd",
   // Grocery / retail
-  "rema 1000", "bilka", "føtex", "kvickly", "coop", "normal store", "normal a/s", "netto",
+  "rema 1000", "bilka", "føtex", "kvickly", "coop", "normal store", "normal a/s",
   "søstrene grene", "flying tiger", "tiger stores", "h&m",
   "sportsmaster", "intersport",
   // DIY / building
@@ -39,8 +39,10 @@ const CHAIN_CONTAINS = [
 
 export function isChain(name: string, extra?: string[]): boolean {
   const lower = name.toLowerCase();
-  // JYSK furniture chain: match "jysk" only when NOT followed by a trade/service word
+  // JYSK furniture chain: match "jysk" only when NOT preceded/followed by a trade/service word
   if (/\bjysk\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
+  // Netto supermarket: match "netto" as standalone word, NOT when preceded by trade words (e.g. "VVS Netto")
+  if (/\bnetto\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
   for (const chain of CHAIN_EXACT) {
     if (new RegExp(`\\b${chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) return true;
   }
