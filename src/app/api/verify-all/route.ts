@@ -95,7 +95,11 @@ export async function POST() {
   try {
     const leads = await getLeads();
     // Only process leads not yet verified — so repeat runs get faster as more get done
-    const allUnverified = leads.filter(l => l.website && l.websiteStatus !== "none" && !l.websiteQualityTier);
+    const isSocialUrl = (url: string) => /facebook\.com|instagram\.com|linkedin\.com|twitter\.com|tiktok\.com/i.test(url);
+    const allUnverified = leads.filter(l =>
+      l.website && l.websiteStatus !== "none" &&
+      (!l.websiteQualityTier || isSocialUrl(l.website))
+    );
     const withWebsite = allUnverified.slice(0, 200);
     const remaining = Math.max(0, allUnverified.length - withWebsite.length);
 
