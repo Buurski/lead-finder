@@ -20,6 +20,7 @@ const DEMO_URLS = {
   ],
   craft: "https://vestfjends.vercel.app/",
   photo: "https://buurfoto.vercel.app/",
+  gallery: "https://buurfoto.vercel.app/",
   professional: "https://midtadvokaterne-dttc.vercel.app/",
 } as const;
 
@@ -28,7 +29,11 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   "vvs-installatør": "craft", blikkenslager: "craft",
   tagdækker: "craft", murermester: "craft",
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
-  skønhedsklinik: "service", hudklinik: "service", "negle & vippeextensions salon": "service", frisørsalon: "service",
+  skønhedsklinik: "beauty", hudklinik: "beauty", "negle & vippeextensions salon": "beauty",
+  frisørsalon: "beauty", skønhedssalon: "beauty", negleklinik: "beauty",
+  kosmetolog: "beauty", barbersalon: "beauty", solcenter: "beauty",
+  hudpleje: "beauty", "body art": "beauty",
+  galleri: "gallery", kunstgalleri: "gallery", kunsthandel: "gallery",
   advokat: "professional", revisor: "professional",
   fysioterapeut: "professional", tandlæge: "professional", optiker: "professional",
   restaurant: "food", café: "food",
@@ -50,6 +55,16 @@ const BRANCH_DISPLAY: Record<string, string> = {
   skønhedsklinik: "skønhedsklinikker",
   hudklinik: "hudklinikker",
   "negle & vippeextensions salon": "negle & vippeextensions saloner",
+  skønhedssalon: "skønhedssaloner",
+  negleklinik: "negleklinikker",
+  kosmetolog: "kosmetologer",
+  barbersalon: "barbersaloner",
+  solcenter: "solcentre",
+  hudpleje: "hudplejeklinikker",
+  "body art": "body art studios",
+  galleri: "gallerier",
+  kunstgalleri: "kunstgallerier",
+  kunsthandel: "kunsthandler",
   advokat: "advokatfirmaer",
   revisor: "revisionsfirmaer",
   fysioterapeut: "fysioterapiklinikker",
@@ -130,7 +145,7 @@ const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) =>
 
 ${ws}
 
-Jeg har lavet et par demo-hjemmesider til restauranter — se dem her:
+Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — se dem her:
 → ${DEMO_URLS.food[0]}
 → ${DEMO_URLS.food[1]}
 
@@ -146,7 +161,7 @@ Lucas
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>${ws}</p>
-<p>Jeg har lavet et par demo-hjemmesider til restauranter — se dem her:<br>
+<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — se dem her:<br>
 → <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
 → <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
 <p>Det er kun demoer, men jeg laver selvfølgelig en fuld version der passer specifikt til <strong>${v.name}</strong> — jeres stil, menu, farver og det hele.</p>
@@ -159,7 +174,7 @@ Lucas
 
 Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.
 
-Se mine demoer til restauranter:
+Se mine demoer til ${v.branchDisplay}:
 → ${DEMO_URLS.food[0]}
 → ${DEMO_URLS.food[1]}
 
@@ -173,7 +188,7 @@ Lucas
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
-<p>Se mine demoer til restauranter:<br>
+<p>Se mine demoer til ${v.branchDisplay}:<br>
 → <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
 → <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
 <p>Ring eller skriv hvis I er nysgerrige.</p>
@@ -350,6 +365,106 @@ Lucas
 <p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
 <p>Se min demo:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+  },
+
+  beauty: {
+    cold: (v) => {
+      const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+${ws}
+
+Mange søger lokale ${v.branchDisplay} online — en professionel hjemmeside er det første de ser.
+
+Ring eller skriv hvis du vil se hvad jeg kan lave til jer.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Hjemmeside til ${v.name}?`,
+        text,
+        html: buildHtml(`
+<p>Hej ${v.name},</p>
+<p>${ws}</p>
+<p>Mange søger lokale ${v.branchDisplay} online — en professionel hjemmeside er det første de ser.</p>
+<p>Ring eller skriv hvis du vil se hvad jeg kan lave til jer.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
+<p>Hej igen ${v.name},</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Ring eller skriv.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+  },
+
+  gallery: {
+    cold: (v) => {
+      const ws = websiteLine(v);
+      const text = `Hej ${v.name},
+
+${ws}
+
+Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:
+→ ${DEMO_URLS.gallery}
+
+Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til ${v.name} og jeres udtryk.
+
+Ring eller skriv hvis I vil se hvad det kunne se ud som.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Hjemmeside til ${v.name}?`,
+        text,
+        html: buildHtml(`
+<p>Hej ${v.name},</p>
+<p>${ws}</p>
+<p>Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:<br>
+→ <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
+<p>Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
+<p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
+<p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
+      };
+    },
+    followup: (v) => {
+      const text = `Hej igen ${v.name},
+
+Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+
+Se min demo:
+→ ${DEMO_URLS.gallery}
+
+Ring eller skriv.
+
+Lucas
++45 23 24 24 82`;
+      return {
+        subject: `Re: Hjemmeside til ${v.name}`,
+        text,
+        html: buildHtml(`
+<p>Hej igen ${v.name},</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Se min demo:<br>
+→ <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Ring eller skriv.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
