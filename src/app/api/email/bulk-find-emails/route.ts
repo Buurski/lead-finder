@@ -82,9 +82,8 @@ async function findEmailForLead(lead: Lead): Promise<string | null> {
 
 function needsEmailSearch(l: Lead): boolean {
   if (!l.name) return false;
-  if (!l.email || l.email === "none") return true;
-  // Re-scan leads that have known placeholder emails
-  if (/name@domain|user@domain|email@email/i.test(l.email)) return true;
+  if (!l.email) return true; // not yet scanned
+  if (/name@domain|user@domain|email@email/i.test(l.email)) return true; // bad placeholder
   return false;
 }
 
