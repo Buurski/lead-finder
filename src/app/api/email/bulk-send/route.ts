@@ -7,28 +7,60 @@ export const maxDuration = 300;
 
 const PROFESSIONAL_BRANCHES = ["advokat", "revisor", "fysioterapi", "tandlæge", "optiker", "kiropraktor", "apotek"];
 
-function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string }): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!lead.email || !emailRegex.test(lead.email)) return false;
+// Same placeholder filter as bulk-find-emails — defense in depth so a bad
+// email saved earlier cannot be sent to.
+const PLACEHOLDER_REGEX = /noreply|no-reply|donotreply|do-not-reply|example\.|@example|sentry|w3\.org|schema|jquery|googletagmanager|googleapis|@google\.com|facebook\.com|instagram\.com|linkedin|twitter|name@domain|user@domain|email@email|your@|youremail|test@test|@test\.dk$|@test\.com$|eksempel|firstname|lastname|sample@|placeholder|john\.doe|jane\.doe|@yourcompany|@yourdomain|@goodresto|@eksempel|@domain\.com$|@email\.com$|wixpress|cloudflare|wordpress\.com|sentry\.io|godaddy|hostnet|simply\.com/i;
+
+const BANNED_DOMAINS = new Set([
+  "example.com", "example.dk", "example.org",
+  "domain.com", "domain.dk", "email.com",
+  "test.com", "test.dk",
+  "yourcompany.com", "yourdomain.com",
+  "eksempel.dk", "eksempel.com",
+  "goodresto.com", "placeholder.com", "sample.com",
+]);
+
+function isCleanEmail(email: string): boolean {
+  if (!email) return false;
+  if (/%[0-9a-fA-F]{2}/.test(email)) return false;
+  try { if (decodeURIComponent(email) !== email) return false; } catch { return false; }
+  if (/\s/.test(email)) return false;
+  if (email.length > 80 || email.length < 5) return false;
+  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) return false;
+  if (PLACEHOLDER_REGEX.test(email)) return false;
+  const at = email.lastIndexOf("@");
+  const domain = email.slice(at + 1).toLowerCase();
+  if (BANNED_DOMAINS.has(domain)) return false;
+  return true;
+}
+
+function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string; emailStatus?: string }): boolean {
+  if (!isCleanEmail(lead.email)) return false;
   if (lead.emailSentAt) return false;
+  if (lead.emailStatus === "bounced") return false;
   if (lead.status === "skip" || lead.status === "client") return false;
   if (lead.websiteQualityTier === "modern") return false;
   if (isChain(lead.name)) return false;
   if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
   if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
   const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
-  const minScore = isProfessional ? 70 : 40;
+  // Tightened: general >= 50 (was 40), professional >= 70
+  const minScore = isProfessional ? 70 : 50;
   return lead.score >= minScore;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const limit = parseInt(url.searchParams.get("limit") || "0", 10);
   const leads = await getLeads();
   const eligible = leads
     .filter(isEligible)
     .sort((a, b) => b.score - a.score);
+  const sliced = limit > 0 ? eligible.slice(0, limit) : eligible;
   return NextResponse.json({
     eligible: eligible.length,
-    leads: eligible.map((l) => ({
+    returning: sliced.length,
+    leads: sliced.map((l) => ({
       id: l.id,
       name: l.name,
       score: l.score,
@@ -40,17 +72,23 @@ export async function GET() {
   });
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const url = new URL(req.url);
+  const delayMs = Math.max(0, Math.min(180000, parseInt(url.searchParams.get("delayMs") || "500", 10)));
+  const limit = Math.max(0, parseInt(url.searchParams.get("limit") || "0", 10));
+  const jitterMs = Math.max(0, Math.min(120000, parseInt(url.searchParams.get("jitterMs") || "0", 10)));
+
   const leads = await getLeads();
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
     .filter(({ lead }) => isEligible(lead))
     .sort((a, b) => b.lead.score - a.lead.score);
+  const targets = limit > 0 ? eligible.slice(0, limit) : eligible;
 
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
   const seenEmails = new Set<string>();
 
-  for (const { lead, rowIndex } of eligible) {
+  for (const { lead, rowIndex } of targets) {
     if (seenEmails.has(lead.email.toLowerCase())) {
       results.push({ name: lead.name, email: lead.email, ok: false, error: "duplicate email address" });
       continue;
@@ -67,7 +105,8 @@ export async function POST() {
         await updateLeadStatus(rowIndex, "called");
       }
       results.push({ name: lead.name, email: lead.email, ok: true });
-      await new Promise((r) => setTimeout(r, 500));
+      const wait = delayMs + (jitterMs > 0 ? Math.floor(Math.random() * jitterMs) : 0);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     } catch (err) {
       results.push({ name: lead.name, email: lead.email, ok: false, error: String(err) });
     }
@@ -76,6 +115,7 @@ export async function POST() {
   return NextResponse.json({
     sent: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
+    remaining: Math.max(0, eligible.length - targets.length),
     results,
   });
 }

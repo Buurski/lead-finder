@@ -341,6 +341,67 @@ export async function deleteLeadRows(sheetRowNumbers: number[]): Promise<void> {
   });
 }
 
+// ===== Dead Leads tab =====
+
+const DEAD_LEADS_RANGE = "Dead Leads!A2:V";
+
+async function ensureDeadLeadsTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === "Dead Leads");
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [
+        { addSheet: { properties: { title: "Dead Leads" } } },
+      ],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Dead Leads!A1:V1",
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[
+        "Name", "Branch", "Phone", "City", "Score", "Source", "Website",
+        "WebsiteStatus", "Status", "Notes", "LastUpdated", "WebsiteQualityTier",
+        "EnrichedInfo", "Email", "EmailSentAt", "EmailOpenedAt", "EmailClickedAt",
+        "EmailStatus", "FollowupSentAt", "ReviewsCount", "CallbackDate", "MovedReason",
+      ]],
+    },
+  });
+}
+
+async function appendToDeadLeads(rows: (string | number)[][]): Promise<void> {
+  if (rows.length === 0) return;
+  await ensureDeadLeadsTab();
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: DEAD_LEADS_RANGE,
+    valueInputOption: "RAW",
+    requestBody: { values: rows },
+  });
+}
+
+export async function moveLeadsToDeadLeads(
+  leads: Lead[],
+  reason: string
+): Promise<{ moved: number }> {
+  if (leads.length === 0) return { moved: 0 };
+  const rows = leads.map((l) => [
+    l.name, l.branch, l.phone, l.city, l.score, l.source, l.website,
+    l.websiteStatus, l.status, l.notes, l.lastUpdated, l.websiteQualityTier,
+    l.enrichedInfo, l.email, l.emailSentAt, l.emailOpenedAt, l.emailClickedAt,
+    l.emailStatus, l.followupSentAt, l.reviewsCount, l.callbackDate, reason,
+  ]);
+  await appendToDeadLeads(rows);
+  const sheetRows = leads.map((l) => parseInt(l.id, 10)).filter((n) => Number.isFinite(n));
+  await deleteLeadRows(sheetRows);
+  return { moved: leads.length };
+}
+
 export async function markBriefFilled(rowIndex: number): Promise<void> {
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
