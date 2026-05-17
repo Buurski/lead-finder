@@ -18,11 +18,30 @@ const DEMO_URLS = {
     "https://under-klippen.vercel.app/",
     "https://zaytoon-six.vercel.app/",
   ],
-  craft: "https://vestfjends.vercel.app/",
+  craft: "https://denlillemaler.vercel.app/",
+  craftUtility: "https://ktvvs.vercel.app/",
   photo: "https://buurfoto.vercel.app/",
   gallery: "https://buurfoto.vercel.app/",
   professional: "https://midtadvokaterne-dttc.vercel.app/",
 } as const;
+
+// vvs/elektriker/blikkenslager/mekaniker/smed get the ktvvs demo.
+// tomrer/snedker/maler/murermester/tagdaekker get the denlillemaler demo.
+const CRAFT_UTILITY_KEYWORDS = ["vvs", "elektriker", "blikkenslager", "mekaniker", "smed"];
+
+function pickCraftDemo(branch: string): string {
+  const b = branch.toLowerCase();
+  if (CRAFT_UTILITY_KEYWORDS.some((k) => b.includes(k))) return DEMO_URLS.craftUtility;
+  return DEMO_URLS.craft;
+}
+
+function pickFoodDemoOrder(name: string, branch: string): { primary: string; secondary: string } {
+  const t = (name + " " + branch).toLowerCase();
+  if (/pizza|pizzeria|italia|sushi|kebab|shawarma|falafel|tapas|libanon|tyrk|grill|mexicansk|wok|asia|thai|indisk|kinesisk/.test(t)) {
+    return { primary: DEMO_URLS.food[1], secondary: DEMO_URLS.food[0] };
+  }
+  return { primary: DEMO_URLS.food[0], secondary: DEMO_URLS.food[1] };
+}
 
 const BRANCH_GROUP_MAP: Record<string, string> = {
   // Craft/håndværk
@@ -154,71 +173,99 @@ ${UNSUBSCRIBE_HTML}
 
 function websiteLine(v: TemplateVars): string {
   if (v.websiteStatus === "none")
-    return "Jeg kan se I ikke har en hjemmeside endnu — det kunne gøre en stor forskel for at tiltrække nye kunder.";
+    return "Jeg kan se I ikke har en hjemmeside endnu — der ligger måske noget potentiale gemt der.";
   if (v.websiteQualityTier === "dead" || v.websiteStatus === "dead")
-    return "Jeg har kigget på jeres hjemmeside, og den ser ud til at have tekniske problemer — det koster jer sikkert kunder uden I ved det.";
+    return "Jeg kiggede forbi jeres hjemmeside — der ser ud til at være nogle tekniske udfordringer på den. Ærgerligt, fordi jeres arbejde sagtens fortjener bedre online.";
   if (v.websiteQualityTier === "old" || v.websiteStatus === "old")
-    return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer fortjener noget der tiltrækker flere kunder — den nuværende er ikke helt med i dag.";
+    return "Jeg kiggede forbi jeres hjemmeside — den fungerer, men den er nok et par år bagud designmæssigt. En frisk version kunne fremhæve jer endnu bedre.";
   if (v.websiteQualityTier === "mediocre")
-    return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer godt kunne have noget der giver et bedre førstehåndsindtryk overfor kunderne.";
-  return "Jeg har kigget på jeres hjemmeside, og synes en virksomhed som jer fortjener noget der virkelig tiltrækker kunder.";
+    return "Jeg kiggede forbi jeres hjemmeside — den fungerer fint, men jeg tænker I fortjener et førstehåndsindtryk online der matcher kvaliteten af jeres arbejde.";
+  return "Jeg kiggede forbi jeres hjemmeside — den fungerer, men der kunne være endnu mere at hente ud af den.";
+}
+
+// Warm opener — compliments the business before any critique
+function complimentLine(group: string, name: string, city: string): string {
+  switch (group) {
+    case "food":
+      return "Jeg er stødt på " + name + " i " + city + " — det ser ud som et sted folk virkelig kommer for stemningen.";
+    case "craft":
+      return name + " ser ud til at have et solidt ry i " + city + " — det er tydeligt I står for kvalitetsarbejde.";
+    case "beauty":
+      return name + " ser ud til at have bygget noget særligt op i " + city + ".";
+    case "professional":
+      return "I " + city + " kender folk " + name + " — det er tydeligt I har en stærk position.";
+    case "gallery":
+      return "Det visuelle udtryk hos " + name + " er stærkt — det fortjener at blive set af flere.";
+    case "photo":
+      return "Med det øje du har bag kameraet er der allerede meget at vise frem.";
+    case "service":
+      return name + " har en solid tilstedeværelse i " + city + ".";
+    default:
+      return name + " ser ud til at have noget godt kørende i " + city + ".";
+  }
 }
 
 const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) => EmailTemplate>> = {
   food: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const compliment = complimentLine("food", v.name, v.city);
+      const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej ${v.name},
+
+${compliment}
 
 ${ws}
 
-Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — se dem her:
-→ ${DEMO_URLS.food[0]}
-→ ${DEMO_URLS.food[1]}
+Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} som I kan kigge på:
+→ ${demos.primary}
+→ ${demos.secondary}
 
-Det er kun demoer, men jeg laver selvfølgelig en fuld version der passer specifikt til ${v.name} — jeres stil, menu, farver og det hele.
+Det er kun demoer — den fulde version til ${v.name} ville selvfølgelig matche jeres stil, menu og farver helt.
 
-Ring eller skriv hvis I vil se hvad det kunne se ud som.
+Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Har I overvejet en ny hjemmeside, ${v.name}?`,
+        subject: `Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
+<p>${compliment}</p>
 <p>${ws}</p>
-<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — se dem her:<br>
-→ <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
-→ <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
-<p>Det er kun demoer, men jeg laver selvfølgelig en fuld version der passer specifikt til <strong>${v.name}</strong> — jeres stil, menu, farver og det hele.</p>
-<p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
+<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} som I kan kigge på:<br>
+→ <a href="${demos.primary}">${demos.primary}</a><br>
+→ <a href="${demos.secondary}">${demos.secondary}</a></p>
+<p>Det er kun demoer — den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, menu og farver helt.</p>
+<p>Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => {
+      const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg skrev for ${v.daysSince} dage siden om en ny hjemmeside til jer. Hørte ikke tilbage — det er helt fint — men ville lige følge op én gang.
 
-Se mine demoer til ${v.branchDisplay}:
-→ ${DEMO_URLS.food[0]}
-→ ${DEMO_URLS.food[1]}
+Demoerne ligger her:
+→ ${demos.primary}
+→ ${demos.secondary}
 
-Ring eller skriv hvis I er nysgerrige.
+Skriv eller ring hvis det stadig er aktuelt.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en ny hjemmeside til jer — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
-<p>Se mine demoer til ${v.branchDisplay}:<br>
-→ <a href="${DEMO_URLS.food[0]}">${DEMO_URLS.food[0]}</a><br>
-→ <a href="${DEMO_URLS.food[1]}">${DEMO_URLS.food[1]}</a></p>
-<p>Ring eller skriv hvis I er nysgerrige.</p>
+<p>Jeg skrev for ${v.daysSince} dage siden om en ny hjemmeside til jer. Hørte ikke tilbage — det er helt fint — men ville lige følge op én gang.</p>
+<p>Demoerne ligger her:<br>
+→ <a href="${demos.primary}">${demos.primary}</a><br>
+→ <a href="${demos.secondary}">${demos.secondary}</a></p>
+<p>Skriv eller ring hvis det stadig er aktuelt.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -227,56 +274,59 @@ Lucas
   craft: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const compliment = complimentLine("craft", v.name, v.city);
+      const demo = pickCraftDemo(v.branch);
       const text = `Hej ${v.name},
 
-Jeres arbejde taler for sig selv — hjemmesiden burde gøre det samme.
+${compliment} Jeres arbejde taler for sig selv — hjemmesiden fortjener at gøre det samme.
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} som jeres — se den her:
-→ ${DEMO_URLS.craft}
+Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} — se den her:
+→ ${demo}
 
-Det er kun en demo, men jeg laver en fuld version der passer specifikt til ${v.name}.
+Den er kun en demo — en fuld version til ${v.name} ville selvfølgelig bære jeres egne projekter, farver og udtryk.
 
-Ring eller skriv hvis du vil høre mere.
+Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Hjemmeside til ${v.name}?`,
+        subject: `Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>Jeres arbejde taler for sig selv — hjemmesiden burde gøre det samme.</p>
+<p>${compliment} Jeres arbejde taler for sig selv — hjemmesiden fortjener at gøre det samme.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} som jeres — se den her:<br>
-→ <a href="${DEMO_URLS.craft}">${DEMO_URLS.craft}</a></p>
-<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
-<p>Ring eller skriv hvis du vil høre mere.</p>
+<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} — se den her:<br>
+→ <a href="${demo}">${demo}</a></p>
+<p>Den er kun en demo — en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
+<p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => {
+      const demo = pickCraftDemo(v.branch);
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Jeg skrev for ${v.daysSince} dage siden om en demo-hjemmeside. Hørte ikke tilbage — fair nok — men ville lige følge op én gang.
 
-Se min demo til ${v.branchDisplay}:
-→ ${DEMO_URLS.craft}
+Demoen ligger her:
+→ ${demo}
 
-Ring eller skriv.
+Skriv eller ring hvis det stadig er aktuelt.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
-<p>Se min demo til ${v.branchDisplay}:<br>
-→ <a href="${DEMO_URLS.craft}">${DEMO_URLS.craft}</a></p>
-<p>Ring eller skriv.</p>
+<p>Jeg skrev for ${v.daysSince} dage siden om en demo-hjemmeside. Hørte ikke tilbage — fair nok — men ville lige følge op én gang.</p>
+<p>Demoen ligger her:<br>
+→ <a href="${demo}">${demo}</a></p>
+<p>Skriv eller ring hvis det stadig er aktuelt.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
