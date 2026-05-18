@@ -29,6 +29,12 @@ export const BRANCHES = [
 ];
 
 export const CITIES = [
+  // East Jutland — Aarhus + omegn (added 2026-05-18)
+  "Aarhus", "Risskov", "Viby J", "Højbjerg", "Brabrand",
+  "Tilst", "Hasselager", "Lystrup", "Skødstrup", "Beder",
+  "Malling", "Solbjerg", "Hinnerup", "Hjortshøj", "Egå",
+  "Skanderborg", "Galten", "Hammel", "Ry", "Odder",
+  "Randers", "Grenaa", "Ebeltoft", "Hadsten",
   // Mid-Jutland (kept minus Ikast)
   "Herning", "Silkeborg", "Viborg", "Holstebro", "Ringkøbing",
   "Struer", "Skive", "Lemvig", "Horsens", "Varde",
@@ -42,6 +48,22 @@ export const CITIES = [
   // Fyn
   "Odense", "Middelfart", "Svendborg", "Nyborg", "Kerteminde",
 ];
+
+// Region presets for /api/scrape?region=... — keeps scrape function under 5 min
+export const REGION_PRESETS: Record<string, string[]> = {
+  aarhus: ["Aarhus", "Risskov", "Viby J", "Højbjerg", "Brabrand", "Tilst", "Hasselager", "Lystrup", "Skødstrup", "Beder", "Malling", "Solbjerg", "Hinnerup", "Hjortshøj", "Egå", "Skanderborg", "Galten", "Hammel", "Ry", "Odder", "Randers", "Grenaa", "Ebeltoft", "Hadsten"],
+  odense: ["Odense", "Middelfart", "Svendborg", "Nyborg", "Kerteminde"],
+  esbjerg: ["Esbjerg", "Kolding", "Aabenraa", "Haderslev", "Tønder", "Vejle", "Fredericia", "Billund"],
+  aalborg: ["Aalborg", "Nørresundby", "Hjørring", "Frederikshavn", "Skagen", "Brønderslev", "Hobro", "Thisted"],
+  midt: ["Herning", "Silkeborg", "Viborg", "Holstebro", "Ringkøbing", "Struer", "Skive", "Lemvig", "Horsens", "Varde", "Videbæk", "Brande", "Give", "Vinderup", "Ulfborg"],
+};
+
+export const BRANCH_PRESETS: Record<string, string[]> = {
+  craft: ["tømrer", "maler", "elektriker", "VVS-installatør", "blikkenslager", "tagdækker", "murermester"],
+  food: ["restaurant", "café"],
+  beauty: ["skønhedsklinik", "hudklinik", "negle & vippeextensions salon", "frisørsalon"],
+  professional: ["advokat", "revisor", "fysioterapeut", "tandlæge", "optiker"],
+};
 
 export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {
   return branches.flatMap((b) => cities.map((c) => `${b} ${c}`));
