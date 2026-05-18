@@ -6,8 +6,11 @@ import type { Lead } from "@/lib/sheets";
 export const maxDuration = 300;
 
 const HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; LeadBot/1.0)" };
-const CONCURRENCY = 5;
-const MAX_PER_RUN = 200;
+// CONCURRENCY 10 + MAX 100 — finishes well under 5min Vercel timeout
+const CONCURRENCY = 10;
+const MAX_PER_RUN = 100;
+// Stop processing if we get within 30s of Vercel timeout
+const FUNCTION_BUDGET_MS = 270000;
 
 // Aggressive placeholder/spam filter
 const PLACEHOLDER_REGEX = /noreply|no-reply|donotreply|do-not-reply|example\.|@example|sentry|w3\.org|schema|jquery|googletagmanager|googleapis|@google\.com|facebook\.com|instagram\.com|linkedin|twitter|name@domain|user@domain|email@email|your@|youremail|test@test|@test\.dk$|@test\.com$|eksempel|firstname|lastname|sample@|placeholder|john\.doe|jane\.doe|@yourcompany|@yourdomain|@goodresto|@eksempel|@domain\.com$|@email\.com$|wixpress|cloudflare|wordpress\.com|sentry\.io|godaddy|hostnet|simply\.com/i;
@@ -195,12 +198,15 @@ export async function GET() {
 
 export async function POST() {
   try {
+    const startedAt = Date.now();
     const leads = await getLeads();
     const targets = leads.filter(needsEmailSearch).slice(0, MAX_PER_RUN);
 
     const emailUpdates: { rowIndex: number; email: string }[] = [];
 
     for (let i = 0; i < targets.length; i += CONCURRENCY) {
+      // Bail out before Vercel kills the function so we can persist what we have
+      if (Date.now() - startedAt > FUNCTION_BUDGET_MS) break;
       const batch = targets.slice(i, i + CONCURRENCY);
       const results = await Promise.all(
         batch.map(async (lead) => {
