@@ -246,13 +246,15 @@ Lucas
       const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej igen ${v.name},
 
-Jeg skrev for ${v.daysSince} dage siden om en ny hjemmeside til jer. Hørte ikke tilbage — det er helt fint — men ville lige følge op én gang.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til ${v.name} — stemningen, jeres menu, farverne.
 
-Demoerne ligger her:
+Demoerne til inspiration ligger her:
 → ${demos.primary}
 → ${demos.secondary}
 
-Skriv eller ring hvis det stadig er aktuelt.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Skriv bare "ja" eller "send mockup" tilbage.
+
+Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.
 
 Lucas
 +45 23 24 24 82`;
@@ -261,11 +263,12 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg skrev for ${v.daysSince} dage siden om en ny hjemmeside til jer. Hørte ikke tilbage — det er helt fint — men ville lige følge op én gang.</p>
-<p>Demoerne ligger her:<br>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til <strong>${v.name}</strong> — stemningen, jeres menu, farverne.</p>
+<p>Demoerne til inspiration ligger her:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<p>Skriv eller ring hvis det stadig er aktuelt.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Skriv bare "ja" eller "send mockup" tilbage.</p>
+<p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -309,12 +312,14 @@ Lucas
       const demo = pickCraftDemo(v.branch);
       const text = `Hej igen ${v.name},
 
-Jeg skrev for ${v.daysSince} dage siden om en demo-hjemmeside. Hørte ikke tilbage — fair nok — men ville lige følge op én gang.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter — det er der mange håndværkere der har god gavn af.
 
 Demoen ligger her:
 → ${demo}
 
-Skriv eller ring hvis det stadig er aktuelt.
+Hvis I er nysgerrige, kan jeg lave en hurtig skitse til ${v.name} med 2-3 af jeres egne projekter — helt uforpligtende. Skriv bare "ja" eller "send skitse" tilbage.
+
+Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.
 
 Lucas
 +45 23 24 24 82`;
@@ -323,10 +328,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg skrev for ${v.daysSince} dage siden om en demo-hjemmeside. Hørte ikke tilbage — fair nok — men ville lige følge op én gang.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter — det er der mange håndværkere der har god gavn af.</p>
 <p>Demoen ligger her:<br>
 → <a href="${demo}">${demo}</a></p>
-<p>Skriv eller ring hvis det stadig er aktuelt.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter — helt uforpligtende. Skriv bare "ja" eller "send skitse" tilbage.</p>
+<p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -367,24 +373,27 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem — det er det jeg gerne vil hjælpe med.
 
-Se min demo til fotografer:
+Min demo til fotografer:
 → ${DEMO_URLS.photo}
 
-Ring eller skriv.
+Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder — helt uforpligtende. Skriv bare "ja" eller "send mockup" tilbage.
+
+Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Din hjemmeside, ${v.name}`,
+        subject: `Re: Lille idé til din hjemmeside, ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
-<p>Se min demo til fotografer:<br>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem — det er det jeg gerne vil hjælpe med.</p>
+<p>Min demo til fotografer:<br>
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
-<p>Ring eller skriv.</p>
+<p>Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder — helt uforpligtende. Skriv bare "ja" eller "send mockup" tilbage.</p>
+<p>Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -425,24 +434,27 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser — og det første indtryk vejer tungt.
 
-Se min demo:
+Demoen:
 → ${DEMO_URLS.professional}
 
-Ring eller skriv.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset ${v.name} — helt uforpligtende. Skriv bare "ja" tilbage.
+
+Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden — hørte ikke tilbage, men tilbuddet gælder stadig.</p>
-<p>Se min demo:<br>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser — og det første indtryk vejer tungt.</p>
+<p>Demoen:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
-<p>Ring eller skriv.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong> — helt uforpligtende. Skriv bare "ja" tilbage.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -475,19 +487,22 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden om en hjemmeside til jer. Tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings.
 
-Ring eller skriv.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer — helt uforpligtende. Skriv bare "ja" tilbage.
+
+Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
-<p>Ring eller skriv.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden om en hjemmeside til jer. Tænker stadig at noget visuelt der virkelig fremhæver <strong>${v.name}</strong> kunne gøre en forskel for jeres bookings.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer — helt uforpligtende. Skriv bare "ja" tilbage.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
