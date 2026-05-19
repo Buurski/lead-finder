@@ -29,8 +29,8 @@ const DEMO_URLS = {
 // tomrer/snedker/maler/murermester/tagdaekker get the denlillemaler demo.
 const CRAFT_UTILITY_KEYWORDS = ["vvs", "elektriker", "blikkenslager", "mekaniker", "smed"];
 
-function pickCraftDemo(branch: string): string {
-  const b = branch.toLowerCase();
+function pickCraftDemo(branchOrName: string): string {
+  const b = branchOrName.toLowerCase();
   if (CRAFT_UTILITY_KEYWORDS.some((k) => b.includes(k))) return DEMO_URLS.craftUtility;
   return DEMO_URLS.craft;
 }
@@ -74,7 +74,7 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   galleri: "gallery", kunstgalleri: "gallery", kunsthandel: "gallery",
   // Professional — shorter keys catch Google Places variants
   advokat: "professional", revisor: "professional",
-  fysioterapi: "professional",  // catches both "fysioterapeut" and "fysioterapi"
+  fysioterap: "professional",   // catches both "fysioterapeut" og "fysioterapi"
   tand: "professional",         // catches "tandlæge" and "tandklinik"
   optiker: "professional", kiropraktor: "professional", apotek: "professional",
   læge: "professional",         // catches "Læge", "Lægeklinik", "Lægehus"
@@ -142,6 +142,47 @@ function getBranchGroup(branch: string): string {
     if (normalized.includes(key)) return group;
   }
   return "craft";
+}
+
+// Name-keyword overrides — checked FIRST because Google Places branch fields are
+// often wrong (e.g. "Pasfoto Holstebro" is classified as "Tjenester", "Münchow Foto"
+// as "Elektronikbutik"). When the lead name strongly implies a category, trust
+// the name over the branch field. Only fall back to getBranchGroup() if the name
+// doesn't disambiguate.
+const NAME_OVERRIDES: Array<[RegExp, string]> = [
+  // Photographers — strongest signal in the name (very few false positives)
+  [/foto|photo|fotograf/i, "photo"],
+  // Professional services
+  [/advokat/i, "professional"],
+  [/fysioterap|fysioklinik|fysklinik|fysio-fat|fysio\.dk/i, "professional"],
+  [/kiropraktor/i, "professional"],
+  [/manuel terapi|zoneterapi/i, "professional"],
+  [/tandlæge|tandklinik|tandlægeklinik/i, "professional"],
+  [/optiker/i, "professional"],
+  [/psykolog/i, "professional"],
+  [/lægeklinik|lægehus|læge center/i, "professional"],
+  // Craft / håndværk
+  [/\bvvs\b|blikkenslager/i, "craft"],
+  [/\bmaler\b|malerfirma/i, "craft"],
+  [/tømrer|snedker\b|murer/i, "craft"],
+  [/elinstallat|elektrik/i, "craft"],
+  // Food
+  [/restaurant|caf[eé]\b|kaffebar|pizzeria|bistro|sushi|smørrebrød|spise|catering/i, "food"],
+  // Gallery
+  [/\bgalleri\b|kunstgalleri/i, "gallery"],
+  // Beauty (name-based — branch-based usually handles this fine)
+  [/frisørsalon|barbershop|barbersalon|negleklinik|hudpleje\b/i, "beauty"],
+];
+
+// Picks the template group using NAME first, then BRANCH as fallback.
+// This fixes cases where Google Places assigns a generic branch like
+// "Tjenester" or "Elektronikbutik" that doesn't match the actual business type.
+function pickGroup(name: string, branch: string): string {
+  const n = (name || "").toLowerCase();
+  for (const [pattern, group] of NAME_OVERRIDES) {
+    if (pattern.test(n)) return group;
+  }
+  return getBranchGroup(branch);
 }
 
 interface EmailTemplate {
@@ -278,7 +319,8 @@ Lucas
     cold: (v) => {
       const ws = websiteLine(v);
       const compliment = complimentLine("craft", v.name, v.city);
-      const demo = pickCraftDemo(v.branch);
+      // For pickCraftDemo: check BOTH name and branch for vvs/elektriker keywords
+      const demo = pickCraftDemo(v.name + " " + v.branch);
       const text = `Hej ${v.name},
 
 ${compliment} Jeres arbejde taler for sig selv — hjemmesiden fortjener at gøre det samme.
@@ -309,7 +351,7 @@ Lucas
       };
     },
     followup: (v) => {
-      const demo = pickCraftDemo(v.branch);
+      const demo = pickCraftDemo(v.name + " " + v.branch);
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter — det er der mange håndværkere der har god gavn af.
@@ -628,7 +670,9 @@ export function getEmailTemplate(
   type: "cold" | "followup",
   vars: Omit<TemplateVars, "trackingPixelUrl" | "branchDisplay"> & { leadId: string }
 ): EmailTemplate {
-  const group = getBranchGroup(branch);
+  // Name-first routing: if the lead name clearly implies a category, use that.
+  // Only fall back to branch-based routing when name doesn't disambiguate.
+  const group = pickGroup(vars.name, branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const trackingPixelUrl = buildTrackingPixelUrl(vars.leadId);
   const branchDisplay = getBranchDisplay(branch);
