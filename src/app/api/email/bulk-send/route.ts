@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
+import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
 import { isChain } from "@/lib/chains";
 
@@ -34,13 +34,15 @@ function isCleanEmail(email: string): boolean {
   return true;
 }
 
-function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string; emailStatus?: string }): boolean {
+function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string; emailStatus?: string; skipReason?: string }): boolean {
   if (!isCleanEmail(lead.email)) return false;
   if (lead.emailSentAt) return false;
   if (lead.emailStatus === "bounced") return false;
   if (lead.status === "skip" || lead.status === "client") return false;
   if (lead.websiteQualityTier === "modern") return false;
   if (isChain(lead.name)) return false;
+  // Phase 2: respect the review-queue skip flag on manual sends too.
+  if (lead.skipReason) return false;
   if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
   if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
   const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
@@ -73,6 +75,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Phase 2 kill switch — if Lucas pressed "Stop alt i dag" the PauseSchedule
+  // tab will have a future timestamp. Bail out before touching Gmail.
+  const pause = await getPauseStatus();
+  if (pause.paused) {
+    return NextResponse.json({ paused: true, pausedUntil: pause.until, sent: 0, failed: 0 });
+  }
+
   const url = new URL(req.url);
   const delayMs = Math.max(0, Math.min(180000, parseInt(url.searchParams.get("delayMs") || "500", 10)));
   const limit = Math.max(0, parseInt(url.searchParams.get("limit") || "0", 10));

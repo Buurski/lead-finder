@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
+import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
 
 export const maxDuration = 300;
@@ -13,6 +13,7 @@ function isReadyForFollowup(lead: {
   emailStatus: string;
   followupSentAt: string;
   status: string;
+  skipReason?: string;
 }): boolean {
   if (!lead.email) return false;
   if (!lead.emailSentAt) return false;
@@ -21,6 +22,8 @@ function isReadyForFollowup(lead: {
   if (lead.emailStatus === "bounced") return false;
   if (lead.followupSentAt) return false;
   if (lead.status === "skip" || lead.status === "client") return false;
+  // Phase 2: review-queue skip flag also blocks follow-ups.
+  if (lead.skipReason) return false;
 
   const sentDate = new Date(lead.emailSentAt);
   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -50,6 +53,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Phase 2 kill switch — paused state blocks all follow-up sends too.
+  const pause = await getPauseStatus();
+  if (pause.paused) {
+    return NextResponse.json({ paused: true, pausedUntil: pause.until, sent: 0, failed: 0, total: 0, done: true });
+  }
+
   const body = await request.json().catch(() => ({}));
   const leadIds: string[] | undefined = body.leadIds;
 
