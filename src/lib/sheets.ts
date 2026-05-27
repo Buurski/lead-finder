@@ -25,6 +25,18 @@ function getSheetsClient() {
 export type LeadStatus = "new" | "called" | "interested" | "client" | "skip";
 export type WebsiteQualityTier = "modern" | "mediocre" | "old" | "dead" | "";
 
+// Reasons used by the morning-review queue to flag a lead so today's cold-mail
+// or follow-up gets skipped. Kept as a string union so the values can be
+// written straight to the sheet without an extra mapping.
+export type SkipReason =
+  | ""
+  | "cloudflare_false_positive"
+  | "chain"
+  | "bad_fit"
+  | "wrong_template"
+  | "already_contacted_elsewhere"
+  | "other";
+
 export interface Lead {
   id: string;
   name: string;
@@ -48,6 +60,7 @@ export interface Lead {
   followupSentAt: string;    // kolonne S
   reviewsCount: number;      // kolonne T — review count at scrape time
   callbackDate: string;      // column U — ISO date "YYYY-MM-DD" or ""
+  skipReason: SkipReason;    // kolonne V — set by morning-review skip UI
 }
 
 export interface Client {
@@ -62,7 +75,10 @@ export interface Client {
   setupFee: string;
 }
 
-const LEADS_RANGE = "Leads!A2:U";
+// Bumped from A2:U to A2:V to include the new skipReason column. Existing
+// rows that haven't been touched will just return undefined → "" via the ??
+// fallback below, so this is backwards-compatible.
+const LEADS_RANGE = "Leads!A2:V";
 const CLIENTS_RANGE = "Clients!A2:I";
 
 export async function getLeads(): Promise<Lead[]> {
@@ -95,6 +111,7 @@ export async function getLeads(): Promise<Lead[]> {
     followupSentAt: row[18] ?? "",
     reviewsCount:   Number(row[19]) || 0,
     callbackDate:   row[20] ?? "",
+    skipReason:     (row[21] as SkipReason) ?? "",
   }));
 }
 
@@ -222,6 +239,7 @@ export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
     "", "", "", "", "",       // columns O–S (email tracking — empty at scrape time)
     l.reviewsCount ?? 0,     // column T
     "",                       // column U — callbackDate (empty at scrape time)
+    "",                       // column V — skipReason (empty at scrape time)
   ]);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
@@ -306,6 +324,45 @@ export async function updateCallbackDate(rowIndex: number, date: string): Promis
     range: `Leads!U${row}`,
     valueInputOption: "RAW",
     requestBody: { values: [[date]] },
+  });
+}
+
+// Writes to the new column V on the Leads sheet. Used by the morning-review
+// UI when Lucas marks a lead as "skip today". The scheduled-send cron checks
+// this column (combined with the date it was set) to drop the lead from
+// today's send queue.
+export async function updateLeadSkipReason(
+  rowIndex: number,
+  reason: SkipReason
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!V${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[reason]] },
+  });
+}
+
+// Updates websiteStatus (col H) + websiteQualityTier (col L) in one call.
+// Used by pre-cleanup to flip false-positive "dead" leads back to alive.
+export async function updateLeadWebsiteStatus(
+  rowIndex: number,
+  websiteStatus: Lead["websiteStatus"],
+  qualityTier: WebsiteQualityTier
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [
+        { range: `Leads!H${row}`, values: [[websiteStatus]] },
+        { range: `Leads!L${row}`, values: [[qualityTier]] },
+      ],
+    },
   });
 }
 
@@ -410,5 +467,181 @@ export async function markBriefFilled(rowIndex: number): Promise<void> {
     range: `Clients!D${row}`,
     valueInputOption: "RAW",
     requestBody: { values: [["Yes"]] },
+  });
+}
+
+// ============================================================
+// ===== Phase 2: review-pipeline tabs ========================
+// ============================================================
+//
+// Three new tabs, all auto-created on first access via the same pattern as
+// ensureDeadLeadsTab():
+//
+//   • TreatAsAlive  — manually-curated "this site IS alive, don't claim it's
+//                     broken" list. Populated automatically when Lucas skips a
+//                     lead in the review queue with reason `cloudflare_false_positive`.
+//
+//   • PauseSchedule — single-row kill switch. If pausedUntil > now, all
+//                     cron + manual send routes return early without sending.
+//
+//   • SkipReasons   — audit log of every skip decision. One row per skip
+//                     so we can spot patterns (e.g. "lots of cloudflare
+//                     skips on rema-domains → add to TreatAsAlive permanently").
+
+// ----- TreatAsAlive --------------------------------------------------------
+
+const TREAT_AS_ALIVE_TAB = "TreatAsAlive";
+
+async function ensureTreatAsAliveTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === TREAT_AS_ALIVE_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: TREAT_AS_ALIVE_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A1:C1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [["Domain", "Reason", "AddedAt"]] },
+  });
+}
+
+export async function getTreatAsAliveDomains(): Promise<string[]> {
+  await ensureTreatAsAliveTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A2:A`,
+  });
+  return (res.data.values ?? [])
+    .map((r) => (r[0] ?? "").toString().trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function addTreatAsAliveDomain(domain: string, reason: string): Promise<void> {
+  const clean = (domain ?? "").trim().toLowerCase();
+  if (!clean) return;
+  await ensureTreatAsAliveTab();
+  // De-dupe — don't append if the domain is already on the list.
+  const existing = await getTreatAsAliveDomains();
+  if (existing.includes(clean)) return;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A:C`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[clean, reason ?? "", new Date().toISOString()]],
+    },
+  });
+}
+
+// ----- PauseSchedule -------------------------------------------------------
+
+const PAUSE_TAB = "PauseSchedule";
+
+async function ensurePauseScheduleTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === PAUSE_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: PAUSE_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A1:B2`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [
+        ["PausedUntil", "SetAt"],
+        ["", ""],
+      ],
+    },
+  });
+}
+
+export interface PauseStatus {
+  paused: boolean;
+  until: string | null;
+}
+
+export async function getPauseStatus(): Promise<PauseStatus> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A2:B2`,
+  });
+  const until = (res.data.values?.[0]?.[0] ?? "").toString().trim();
+  if (!until) return { paused: false, until: null };
+  const parsed = Date.parse(until);
+  if (Number.isNaN(parsed)) return { paused: false, until };
+  return { paused: parsed > Date.now(), until };
+}
+
+export async function setPauseUntil(isoDate: string): Promise<void> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A2:B2`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[isoDate, new Date().toISOString()]] },
+  });
+}
+
+// ----- SkipReasons ---------------------------------------------------------
+
+const SKIP_REASONS_TAB = "SkipReasons";
+
+async function ensureSkipReasonsTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === SKIP_REASONS_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: SKIP_REASONS_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SKIP_REASONS_TAB}!A1:D1`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[ "Timestamp", "LeadId", "Reason", "Notes" ]],
+    },
+  });
+}
+
+export async function logSkipReason(
+  leadId: string,
+  reason: SkipReason | string,
+  notes?: string
+): Promise<void> {
+  await ensureSkipReasonsTab();
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SKIP_REASONS_TAB}!A:D`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[
+        new Date().toISOString(),
+        leadId,
+        reason,
+        notes ?? "",
+      ]],
+    },
   });
 }
