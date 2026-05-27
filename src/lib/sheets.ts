@@ -60,7 +60,7 @@ export interface Lead {
   followupSentAt: string;    // kolonne S
   reviewsCount: number;      // kolonne T — review count at scrape time
   callbackDate: string;      // column U — ISO date "YYYY-MM-DD" or ""
-  skipReason: SkipReason;    // kolonne V — set by morning-review skip UI
+  skipReason?: SkipReason;    // kolonne V — set by morning-review skip UI
 }
 
 export interface Client {

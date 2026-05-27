@@ -20,7 +20,7 @@ export interface ReviewEntry {
   willClaimBroken: boolean;
   treatedAsAlive: boolean;
   daysSinceSent: number;
-  skipReason: SkipReason;
+  skipReason?: SkipReason;
 }
 
 interface Props {
