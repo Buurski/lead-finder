@@ -82,6 +82,11 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   // Food — broader catches for Google Places categories
   restaurant: "food", café: "food", cafe: "food", bistro: "food", sushi: "food",
   kaffebar: "food", pizzeria: "food", burger: "food", smørrebrød: "food",
+  // Additional food branches seen in Google Places
+  gastropub: "food", gourmet: "food", brasseri: "food", brasserie: "food",
+  pizza: "food", grill: "food", spisested: "food", spisehus: "food",
+  bar: "food", vinbar: "food", catering: "food", selskabslokale: "food",
+  asiat: "food", takeaway: "food",
   // Photo — shorter "foto" catches fotostudie, fotoatelier, fotografiservice, etc.
   foto: "photo",
 };
@@ -167,7 +172,7 @@ const NAME_OVERRIDES: Array<[RegExp, string]> = [
   [/tømrer|snedker\b|murer/i, "craft"],
   [/elinstallat|elektrik/i, "craft"],
   // Food
-  [/restaurant|caf[eé]\b|kaffebar|pizzeria|bistro|sushi|smørrebrød|spise|catering/i, "food"],
+  [/restaurant|ristorante|trattoria|osteria|caf[eé]\b|kaffebar|pizzeria|pizza\b|bistro|sushi|smørrebrød|spise|catering|gastropub|gourmet|brasseri|brasserie|kro\b|kroen|gastrobar|burger\b|grill\b|cocktail|wine bar|vinbar|tapas|bagel|kantine/i, "food"],
   // Gallery
   [/\bgalleri\b|kunstgalleri/i, "gallery"],
   // Beauty (name-based — branch-based usually handles this fine)

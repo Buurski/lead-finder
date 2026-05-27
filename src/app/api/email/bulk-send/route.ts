@@ -97,7 +97,22 @@ export async function POST(req: Request) {
   const results: { name: string; email: string; ok: boolean; error?: string }[] = [];
   const seenEmails = new Set<string>();
 
+  let processed = 0;
   for (const { lead, rowIndex } of targets) {
+    // Re-check pause every 5 iterations so mid-run halt stops us.
+    if (processed > 0 && processed % 5 === 0) {
+      const recheck = await getPauseStatus();
+      if (recheck.paused) {
+        return NextResponse.json({
+          paused: true,
+          pausedUntil: recheck.until,
+          haltedMidRun: true,
+          sent: results.filter(r=>r.ok).length, failed: results.filter(r=>!r.ok).length,
+          results,
+        });
+      }
+    }
+    processed++;
     if (seenEmails.has(lead.email.toLowerCase())) {
       results.push({ name: lead.name, email: lead.email, ok: false, error: "duplicate email address" });
       continue;

@@ -77,6 +77,27 @@ export async function GET() {
       }
       seenEmails.add(emailKey);
 
+      // 4. Re-check pause every 5 iterations so a mid-run halt actually stops us.
+      //    The Vercel function won't re-enter the top handler — so without this,
+      //    once we start sending we can't be stopped until the loop drains.
+      if (i > 0 && i % 5 === 0) {
+        const recheck = await getPauseStatus();
+        if (recheck.paused) {
+          return NextResponse.json({
+            paused: true,
+            pausedUntil: recheck.until,
+            haltedMidRun: true,
+            sentCold,
+            sentFollowups,
+            failed,
+            skippedByReview,
+            summary: queue.summary,
+            failures: failures.slice(0, 20),
+            skipped: skipped.slice(0, 30),
+          });
+        }
+      }
+
       try {
         await sendLeadEmail(lead, kind);
         const now = new Date().toISOString();

@@ -78,7 +78,22 @@ export async function POST(request: Request) {
       let sent = 0;
       let failed = 0;
 
-      for (const { lead, rowIndex } of eligible) {
+      let processed = 0;
+  for (const { lead, rowIndex } of eligible) {
+    if (processed > 0 && processed % 5 === 0) {
+      const recheck = await getPauseStatus();
+      if (recheck.paused) {
+        return NextResponse.json({
+          paused: true,
+          pausedUntil: recheck.until,
+          haltedMidRun: true,
+          sent,
+          failed,
+          remaining: eligible.length - processed,
+        });
+      }
+    }
+    processed++;
         try {
           await sendLeadEmail(lead, "followup");
           await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });
