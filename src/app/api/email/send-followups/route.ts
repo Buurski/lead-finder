@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
+import { isChain, isPublicSector } from "@/lib/chains";
 
 export const maxDuration = 300;
 
 const FOLLOWUP_DAYS = 5;
 
 function isReadyForFollowup(lead: {
+  name: string;
   email: string;
   emailSentAt: string;
   emailOpenedAt: string;
@@ -24,6 +26,10 @@ function isReadyForFollowup(lead: {
   if (lead.status === "skip" || lead.status === "client") return false;
   // Phase 2: review-queue skip flag also blocks follow-ups.
   if (lead.skipReason) return false;
+  // Consistency with queue.ts: never follow up a chain or public-sector lead
+  // that slipped through before these guards existed.
+  if (isChain(lead.name)) return false;
+  if (isPublicSector(lead.name)) return false;
 
   const sentDate = new Date(lead.emailSentAt);
   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);

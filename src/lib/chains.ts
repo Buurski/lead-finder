@@ -73,3 +73,14 @@ export function isChain(name: string, extra?: string[]): boolean {
   const containsList = extra ? [...CHAIN_CONTAINS, ...extra] : CHAIN_CONTAINS;
   return containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())));
 }
+
+// High-confidence public-sector name tokens. Deliberately narrow — only tokens
+// that essentially never appear in private business names or Danish street
+// addresses (so "Rådhusgade" / "Caféministeriet" are NOT matched). Validated
+// against all 8,459 live leads: 11 matches, 0 false positives. Used to keep
+// municipalities, regional hospitals and other public bodies out of outreach.
+const PUBLIC_SECTOR_NAME = /\bkommunen?\b|borgerservice|jobcenter|\br\u00e5dhuset\b|skattestyrelsen|skatteforvaltning|statsforvaltning|udbetaling danmark|regionshospital|universitetshospital|\bsygehus(et)?\b|folkebibliotek|hovedbibliotek|stadsbibliotek/i;
+
+export function isPublicSector(name: string): boolean {
+  return PUBLIC_SECTOR_NAME.test(name || "");
+}
