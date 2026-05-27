@@ -69,6 +69,10 @@ function isFollowupEligible(lead: Lead): boolean {
   if (lead.emailStatus === "bounced") return false;
   if (lead.followupSentAt) return false;
   if (lead.status === "skip" || lead.status === "client") return false;
+  // A chain that was cold-emailed before the apostrophe fix landed must not now
+  // receive a follow-up either — isChain() is apostrophe-insensitive as of the
+  // chains fix, so this retroactively stops chains already in the pipeline.
+  if (isChain(lead.name)) return false;
   const sentDate = new Date(lead.emailSentAt);
   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
   return daysSince >= FOLLOWUP_DAYS;
