@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/cron/pre-cleanup",    "schedule": "30 6 * * *" },
+    { "path": "/api/cron/morning-review", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/scheduled-send", "schedule": "0 10 * * *" }
+  ]
+}
