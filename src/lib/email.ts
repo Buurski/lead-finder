@@ -23,6 +23,11 @@ const DEMO_URLS = {
   photo: "https://buurfoto.vercel.app/",
   gallery: "https://buurfoto.vercel.app/",
   professional: "https://midtadvokaterne-dttc.vercel.app/",
+  // Beauty — Lucas confirmed (2026-05-28) these are the two demos he routes
+  // to. Per his note: "vælg tilfældigt mellem streetcut + salon-artec for at
+  // undgå monoton routing." Randomised order in pickBeautyDemoOrder().
+  beautySalon: "https://salon-artec.vercel.app/Salon%20Artec.html",
+  beautyBarber: "https://streetcut.vercel.app/",
 } as const;
 
 // vvs/elektriker/blikkenslager/mekaniker/smed get the ktvvs demo.
@@ -33,6 +38,13 @@ function pickCraftDemo(branchOrName: string): string {
   const b = branchOrName.toLowerCase();
   if (CRAFT_UTILITY_KEYWORDS.some((k) => b.includes(k))) return DEMO_URLS.craftUtility;
   return DEMO_URLS.craft;
+}
+
+function pickBeautyDemoOrder(): { primary: string; secondary: string } {
+  // Randomised so a batch of beauty leads doesn't all see the same primary.
+  return Math.random() < 0.5
+    ? { primary: DEMO_URLS.beautySalon, secondary: DEMO_URLS.beautyBarber }
+    : { primary: DEMO_URLS.beautyBarber, secondary: DEMO_URLS.beautySalon };
 }
 
 function pickFoodDemoOrder(name: string, branch: string): { primary: string; secondary: string } {
@@ -522,33 +534,46 @@ Lucas
   beauty: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const demos = pickBeautyDemoOrder();
       const text = `Hej ${v.name},
 
 ${ws}
 
-Mange søger lokale ${v.branchDisplay} online — en professionel hjemmeside er det første de ser.
+Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — så I kan se hvad jeg mener:
+→ ${demos.primary}
+→ ${demos.secondary}
 
-Ring eller skriv hvis du vil se hvad jeg kan lave til jer.
+Det er kun demoer — den fulde version til ${v.name} ville selvfølgelig matche jeres egne behandlinger og udtryk.
+
+Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Hjemmeside til ${v.name}?`,
+        subject: `Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>${ws}</p>
-<p>Mange søger lokale ${v.branchDisplay} online — en professionel hjemmeside er det første de ser.</p>
-<p>Ring eller skriv hvis du vil se hvad jeg kan lave til jer.</p>
+<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — så I kan se hvad jeg mener:<br>
+→ <a href="${demos.primary}">${demos.primary}</a><br>
+→ <a href="${demos.secondary}">${demos.secondary}</a></p>
+<p>Det er kun demoer — den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres egne behandlinger og udtryk.</p>
+<p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => {
+      const demos = pickBeautyDemoOrder();
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden om en hjemmeside til jer. Tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings.
 
-Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer — helt uforpligtende. Skriv bare "ja" tilbage.
+Skulle der mangle inspiration, er her et par eksempler jeg har lavet til andre i branchen:
+→ ${demos.primary}
+→ ${demos.secondary}
+
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder — helt uforpligtende. Skriv bare "ja" tilbage.
 
 Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
@@ -559,8 +584,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden om en hjemmeside til jer. Tænker stadig at noget visuelt der virkelig fremhæver <strong>${v.name}</strong> kunne gøre en forskel for jeres bookings.</p>
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer — helt uforpligtende. Skriv bare "ja" tilbage.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tænker stadig at noget visuelt der virkelig fremhæver <strong>${v.name}</strong> kunne gøre en forskel for jeres bookings.</p>
+<p>Skulle der mangle inspiration, er her et par eksempler jeg har lavet til andre i branchen:<br>
+→ <a href="${demos.primary}">${demos.primary}</a><br>
+→ <a href="${demos.secondary}">${demos.secondary}</a></p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder — helt uforpligtende. Skriv bare "ja" tilbage.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
@@ -658,9 +686,17 @@ Lucas
       };
     },
     followup: (v) => {
+      // Service is the neutral fallback group (rengøring, anlægsgartner,
+      // vinduespudser etc.) — pickCraftDemo handles the utility split
+      // (VVS/elektriker → ktvvs) and otherwise lands on denlillemaler, which
+      // reads as a clean local-business site that suits the segment.
+      const demo = pickCraftDemo(v.branch + " " + v.name);
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tilbuddet om en hurtig, uforpligtende skitse står stadig — den vil tage udgangspunkt i jeres egne ydelser og lokalområde.
+
+Skulle der mangle inspiration, er her et eksempel jeg lavede til en anden lokal virksomhed for nylig:
+→ ${demo}
 
 Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for, så lader jeg jer være.
 
@@ -672,6 +708,8 @@ Lucas
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tilbuddet om en hurtig, uforpligtende skitse står stadig — den vil tage udgangspunkt i jeres egne ydelser og lokalområde.</p>
+<p>Skulle der mangle inspiration, er her et eksempel jeg lavede til en anden lokal virksomhed for nylig:<br>
+→ <a href="${demo}">${demo}</a></p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for, så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
