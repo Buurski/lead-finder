@@ -570,53 +570,60 @@ Lucas
   gallery: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const compliment = complimentLine("gallery", v.name, v.city);
       const text = `Hej ${v.name},
+
+${compliment}
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:
+Jeg har lavet en demo-hjemmeside til visuelle brands — kig forbi:
 → ${DEMO_URLS.gallery}
 
-Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til ${v.name} og jeres udtryk.
+Det er en demo til en fotograf, men jeg laver selvfølgelig en fuld version der passer specifikt til ${v.name} — jeres egne værker, farver og udtryk.
 
-Ring eller skriv hvis I vil se hvad det kunne se ud som.
+Hvis du er nysgerrig, kan jeg lave en hurtig skitse med et par af jeres egne billeder, helt uforpligtende.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Hjemmeside til ${v.name}?`,
+        subject: `Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
+<p>${compliment}</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:<br>
+<p>Jeg har lavet en demo-hjemmeside til visuelle brands — kig forbi:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
-<p>Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
-<p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
+<p>Det er en demo til en fotograf, men jeg laver selvfølgelig en fuld version der passer specifikt til <strong>${v.name}</strong> — jeres egne værker, farver og udtryk.</p>
+<p>Hvis du er nysgerrig, kan jeg lave en hurtig skitse med et par af jeres egne billeder, helt uforpligtende.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. En hjemmeside der løfter det visuelle udtryk hører til den slags værker — det er det jeg gerne vil hjælpe med.
 
-Se min demo:
+Demoen:
 → ${DEMO_URLS.gallery}
 
-Ring eller skriv.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup med et par af jeres egne billeder, helt uforpligtende.
+
+Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
-<p>Se min demo:<br>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. En hjemmeside der løfter det visuelle udtryk hører til den slags værker — det er det jeg gerne vil hjælpe med.</p>
+<p>Demoen:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
-<p>Ring eller skriv.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med et par af jeres egne billeder, helt uforpligtende.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
@@ -625,43 +632,47 @@ Lucas
   service: {
     cold: (v) => {
       const ws = websiteLine(v);
+      const compliment = complimentLine("service", v.name, v.city);
       const text = `Hej ${v.name},
+
+${compliment}
 
 ${ws}
 
-Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.
+Mange i ${v.city} søger lokale ${v.branchDisplay} online — den første hjemmeside de lander på er ofte det der afgør, hvem de ringer til.
 
-Skriv eller ring hvis du vil se hvad jeg kan lave til jer.
+Hvis du er nysgerrig, kan jeg lave en hurtig skitse til ${v.name}, helt uforpligtende.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Hjemmeside til ${v.name}?`,
+        subject: `Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
+<p>${compliment}</p>
 <p>${ws}</p>
-<p>Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.</p>
-<p>Skriv eller ring hvis du vil se hvad jeg kan lave til jer.</p>
+<p>Mange i ${v.city} søger lokale ${v.branchDisplay} online — den første hjemmeside de lander på er ofte det der afgør, hvem de ringer til.</p>
+<p>Hvis du er nysgerrig, kan jeg lave en hurtig skitse til <strong>${v.name}</strong>, helt uforpligtende.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tilbuddet om en hurtig, uforpligtende skitse står stadig — den vil tage udgangspunkt i jeres egne ydelser og lokalområde.
 
-Ring eller skriv.
+Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for, så lader jeg jer være.
 
 Lucas
 +45 23 24 24 82`;
       return {
-        subject: `Re: Hjemmeside til ${v.name}`,
+        subject: `Re: Lille idé til ${v.name}`,
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
-<p>Ring eller skriv.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Tilbuddet om en hurtig, uforpligtende skitse står stadig — den vil tage udgangspunkt i jeres egne ydelser og lokalområde.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for, så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`, v.trackingPixelUrl),
       };
     },
