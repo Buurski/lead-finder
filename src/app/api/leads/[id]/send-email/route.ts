@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { getLeads, getPauseStatus, enqueueSend } from "@/lib/sheets";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
 
 export async function POST(
   req: NextRequest,
@@ -18,8 +18,10 @@ export async function POST(
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(lead.email)) return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
 
-    // Respect the global halt/pause kill switch — even a manual single-send must
-    // not fire while sends are halted, unless the caller explicitly overrides.
+    // Respect the global halt/pause kill switch — even a manual single-send
+    // must not fire while sends are halted, unless the caller explicitly
+    // overrides. (Override does not bypass the SendQueue — it just lets
+    // enqueue happen; send.mjs still checks master pause before dispatching.)
     if (!override) {
       const pause = await getPauseStatus("manual");
       if (pause.paused) {
@@ -30,20 +32,21 @@ export async function POST(
       }
     }
 
-    await sendLeadEmail(lead, type as "cold" | "followup");
-
-    const now = new Date().toISOString();
-    const isFollowup = type === "followup";
-    await updateLeadEmailStatus(rowIndex, {
-      ...(isFollowup ? { followupSentAt: now } : { emailSentAt: now }),
-      emailStatus: isFollowup ? lead.emailStatus || "sent" : "sent",
+    // Enqueue to SendQueue — send.mjs handles the actual Gmail dispatch with
+    // 4-14 min spacing. Manual single-send is treated as kind="manual" so it
+    // respects the manual-pause flag and is auditable separately from cold/
+    // followup batches.
+    const tpl = buildLeadEmail(lead, type as "cold" | "followup");
+    const queueId = await enqueueSend({
+      leadId: lead.id,
+      toEmail: lead.email,
+      kind: "manual",
+      subject: tpl.subject,
+      body: tpl.text,
+      htmlBody: tpl.html,
     });
 
-    if (lead.status === "new") {
-      await updateLeadStatus(rowIndex, "called");
-    }
-
-    return NextResponse.json({ ok: true, sentAt: now });
+    return NextResponse.json({ ok: true, enqueued: true, queueId });
   } catch (err) {
     if (err instanceof NoMatchingTemplateError) {
       return NextResponse.json(

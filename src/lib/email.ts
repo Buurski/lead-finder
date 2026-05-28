@@ -710,10 +710,16 @@ export function getEmailTemplate(
   return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
 }
 
-export async function sendLeadEmail(
-  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
+/**
+ * Pure render: returns the resolved template for a lead WITHOUT calling Gmail.
+ * Use this on the Vercel side to enqueue items into SendQueue. Throws
+ * NoMatchingTemplateError if pickGroup returns null — same signal callers
+ * already handle via skipReason="wrong_template".
+ */
+export function buildLeadEmail(
+  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
   type: "cold" | "followup"
-): Promise<void> {
+): { subject: string; text: string; html: string } {
   const daysSince = type === "followup" && lead.emailSentAt
     ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
     : 7;
@@ -729,6 +735,14 @@ export async function sendLeadEmail(
   if (!template) {
     throw new NoMatchingTemplateError(lead.name, lead.branch);
   }
+  return { subject: template.subject, text: template.text, html: template.html };
+}
+
+export async function sendLeadEmail(
+  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
+  type: "cold" | "followup"
+): Promise<void> {
+  const template = buildLeadEmail(lead, type);
   await transporter.sendMail({
     from: `Lucas Buur <${process.env.GMAIL_USER}>`,
     to: lead.email,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus, updateLeadSkipReason, logSkipReason } from "@/lib/sheets";
-import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { getLeads, getPauseStatus, updateLeadSkipReason, logSkipReason, enqueueSend, updateLeadEmailStatus } from "@/lib/sheets";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
 import { isEligibleForCold } from "@/lib/eligibility";
 
 export const maxDuration = 300;
@@ -75,24 +75,23 @@ export async function POST(req: Request) {
     }
     seenEmails.add(lead.email.toLowerCase());
     try {
-      await sendLeadEmail(lead, "cold");
-      const now = new Date().toISOString();
-      await updateLeadEmailStatus(rowIndex, {
-        emailSentAt: now,
-        emailStatus: "sent",
+      // Spacing-guarantee: every Vercel send-path enqueues to SendQueue
+      // instead of calling Gmail directly. send.mjs is the sole Gmail caller
+      // and enforces the 4-14 min triangular spacing.
+      const tpl = buildLeadEmail(lead, "cold");
+      const id = await enqueueSend({
+        leadId: lead.id,
+        toEmail: lead.email,
+        kind: "cold",
+        subject: tpl.subject,
+        body: tpl.text,
+        htmlBody: tpl.html,
       });
-      if (lead.status === "new") {
-        await updateLeadStatus(rowIndex, "called");
-      }
-      results.push({ name: lead.name, email: lead.email, ok: true });
+      results.push({ name: lead.name, email: lead.email, ok: true, error: `enqueued:${id}` });
       const wait = delayMs + (jitterMs > 0 ? Math.floor(Math.random() * jitterMs) : 0);
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     } catch (err) {
       if (err instanceof NoMatchingTemplateError) {
-        // Don't silently fall back to a generic template — skip the lead and
-        // record the reason. The audit log + skipReason column let Lucas see
-        // exactly which leads were dropped so the branch keywords can be
-        // extended.
         try {
           await updateLeadSkipReason(rowIndex, "wrong_template");
           await logSkipReason(lead.id, "wrong_template", `no matching template for branch="${lead.branch}" name="${lead.name}"`);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus, updateLeadSkipReason, logSkipReason } from "@/lib/sheets";
-import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { getLeads, getPauseStatus, updateLeadSkipReason, logSkipReason, enqueueSend } from "@/lib/sheets";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
 import { isEligibleForFollowup } from "@/lib/eligibility";
 
 export const maxDuration = 300;
@@ -71,9 +71,16 @@ export async function POST(request: Request) {
     }
     processed++;
         try {
-          await sendLeadEmail(lead, "followup");
-          await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });
-          if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
+          // Enqueue instead of calling Gmail — send.mjs polls and dispatches.
+          const tpl = buildLeadEmail(lead, "followup");
+          await enqueueSend({
+            leadId: lead.id,
+            toEmail: lead.email,
+            kind: "followup",
+            subject: tpl.subject,
+            body: tpl.text,
+            htmlBody: tpl.html,
+          });
           sent++;
         } catch (err) {
           if (err instanceof NoMatchingTemplateError) {
