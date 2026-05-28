@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendLeadEmail } from "@/lib/email";
+import { getPauseStatus } from "@/lib/sheets";
 import type { Lead } from "@/lib/sheets";
 
 // Fake lead for test sends
@@ -31,7 +32,14 @@ function fakeLead(email: string): Lead {
 }
 
 export async function POST(req: Request) {
-  const { emails, type }: { emails: string[]; type: "cold" | "followup" } = await req.json();
+  const { emails, type, override = false }: { emails: string[]; type: "cold" | "followup"; override?: boolean } = await req.json();
+
+  if (!override) {
+    const pause = await getPauseStatus();
+    if (pause.paused) {
+      return NextResponse.json({ error: "Sends are halted (pause active). Pass override:true to force a test send.", pausedUntil: pause.until }, { status: 423 });
+    }
+  }
 
   const results: { email: string; ok: boolean; error?: string }[] = [];
 

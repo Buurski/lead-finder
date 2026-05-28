@@ -11,7 +11,7 @@
 
 import type { Lead } from "@/lib/sheets";
 import { getLeads, getTreatAsAliveDomains } from "@/lib/sheets";
-import { isChain } from "@/lib/chains";
+import { isChain, isPublicSector } from "@/lib/chains";
 import { isInTreatAsAliveList } from "@/lib/website-verify";
 
 // Match bulk-send / send-followups behaviour as closely as possible — these
@@ -54,6 +54,7 @@ function isColdEligible(lead: Lead): boolean {
   if (lead.status === "skip" || lead.status === "client") return false;
   if (lead.websiteQualityTier === "modern") return false;
   if (isChain(lead.name)) return false;
+  if (isPublicSector(lead.name)) return false;
   if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
   if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
   const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
@@ -69,6 +70,11 @@ function isFollowupEligible(lead: Lead): boolean {
   if (lead.emailStatus === "bounced") return false;
   if (lead.followupSentAt) return false;
   if (lead.status === "skip" || lead.status === "client") return false;
+  // A chain that was cold-emailed before the apostrophe fix landed must not now
+  // receive a follow-up either — isChain() is apostrophe-insensitive as of the
+  // chains fix, so this retroactively stops chains already in the pipeline.
+  if (isChain(lead.name)) return false;
+  if (isPublicSector(lead.name)) return false;
   const sentDate = new Date(lead.emailSentAt);
   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
   return daysSince >= FOLLOWUP_DAYS;

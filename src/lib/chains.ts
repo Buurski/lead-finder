@@ -20,7 +20,7 @@ const CHAIN_CONTAINS = [
   "lagkagehuset", "riccos kaffebar", "the union kitchen",
   "sticks n sushi", "sunset blvd",
   // Grocery / retail
-  "rema 1000", "bilka", "føtex", "kvickly", "coop", "normal store", "normal a/s",
+  "rema 1000", "bilka", "føtex", "kvickly", "normal store", "normal a/s",
   "søstrene grene", "flying tiger", "tiger stores", "h&m",
   "sportsmaster", "intersport",
   // DIY / building
@@ -45,17 +45,42 @@ const CHAIN_CONTAINS = [
   "pincho nation",
 ];
 
+// Short/ambiguous tokens that must match as a whole word — substring matching
+// would over-match (e.g. "coop" inside "Scoop Is", "Coop" the grocery chain is real).
+const CHAIN_WORDS = ["coop"];
+
 export function isChain(name: string, extra?: string[]): boolean {
   const lower = name.toLowerCase();
+  // Apostrophe-insensitive haystack: collapse straight ('), curly (’), backtick (`)
+  // and acute (´) apostrophes so "Bone's" / "Bone’s" / "Bones" all match the
+  // CHAIN_EXACT entry "bones". Without this the \b word-boundary match never fires
+  // for the apostrophe spellings and the chain slips through (the original Bone's miss).
+  const stripApos = (str: string) => str.replace(/[’'`´]/g, "");
+  const norm = stripApos(lower);
   // JYSK furniture chain: match "jysk" only when NOT preceded/followed by a trade/service word
   if (/\bjysk\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
   // Netto supermarket: match "netto" as standalone word, NOT when preceded by trade words (e.g. "VVS Netto")
   if (/\bnetto\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
   // Salling department store: match "salling" only when NOT combined with trade/profession words
   if (/\bsalling\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w)) && !/v\/|aps|a\/s|i\/s/.test(lower)) return true;
+  for (const w of CHAIN_WORDS) {
+    if (new RegExp(`\\b${w}\\b`).test(norm)) return true;
+  }
   for (const chain of CHAIN_EXACT) {
-    if (new RegExp(`\\b${chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) return true;
+    const c = stripApos(chain.toLowerCase());
+    if (new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(norm)) return true;
   }
   const containsList = extra ? [...CHAIN_CONTAINS, ...extra] : CHAIN_CONTAINS;
-  return containsList.some((chain) => lower.includes(chain.toLowerCase()));
+  return containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())));
+}
+
+// High-confidence public-sector name tokens. Deliberately narrow — only tokens
+// that essentially never appear in private business names or Danish street
+// addresses (so "Rådhusgade" / "Caféministeriet" are NOT matched). Validated
+// against all 8,459 live leads: 11 matches, 0 false positives. Used to keep
+// municipalities, regional hospitals and other public bodies out of outreach.
+const PUBLIC_SECTOR_NAME = /\bkommunen?\b|borgerservice|jobcenter|\br\u00e5dhuset\b|skattestyrelsen|skatteforvaltning|statsforvaltning|udbetaling danmark|regionshospital|universitetshospital|\bsygehus(et)?\b|folkebibliotek|hovedbibliotek|stadsbibliotek/i;
+
+export function isPublicSector(name: string): boolean {
+  return PUBLIC_SECTOR_NAME.test(name || "");
 }

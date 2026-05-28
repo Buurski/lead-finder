@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
-import { isChain } from "@/lib/chains";
+import { isChain, isPublicSector } from "@/lib/chains";
 
 export const maxDuration = 300;
 

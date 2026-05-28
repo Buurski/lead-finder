@@ -583,8 +583,13 @@ export async function getPauseStatus(): Promise<PauseStatus> {
   });
   const until = (res.data.values?.[0]?.[0] ?? "").toString().trim();
   if (!until) return { paused: false, until: null };
+  // Explicit indefinite-halt sentinels — stay paused until cleared.
+  if (/^(indefinite|paused|forever|true|stop|halt)$/i.test(until)) return { paused: true, until };
   const parsed = Date.parse(until);
-  if (Number.isNaN(parsed)) return { paused: false, until };
+  // Fail CLOSED: a non-empty but unparseable PausedUntil means someone tried to
+  // set a pause and it got mangled. For a safety kill switch the safe default is
+  // "still paused", never "resume sending".
+  if (Number.isNaN(parsed)) return { paused: true, until };
   return { paused: parsed > Date.now(), until };
 }
 
