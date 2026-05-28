@@ -724,6 +724,191 @@ export async function getPauseSnapshot(): Promise<PauseSnapshot> {
   };
 }
 
+// ----- SendQueue -----------------------------------------------------------
+//
+// Single message-broker tab for outbound mail. Every Vercel send-route
+// writes here and never touches Gmail directly. The local send.mjs polls
+// this tab, claims pending rows, and sends them with its 4-14 min
+// triangular-jitter spacing. This is the only Gmail caller in the system,
+// which means the spacing guarantee is enforced in exactly one place.
+//
+// Schema (A1:L1 header / appended rows):
+//   A  id            uuid v4, unique
+//   B  enqueuedAt    ISO timestamp of write
+//   C  leadId        Leads-sheet row id, "test" for synthetic
+//   D  toEmail       recipient address
+//   E  kind          "cold" | "followup" | "manual"
+//   F  subject       full subject line
+//   G  body          plain-text body (already personalised + tracking-pixel free)
+//   H  htmlBody      full HTML body (includes tracking pixel)
+//   I  status        "pending" | "claimed" | "sent" | "skipped" | "expired"
+//   J  claimedAt     ISO when send.mjs took ownership
+//   K  sentAt        ISO when Gmail accepted
+//   L  skipReason    reason string if status=skipped
+
+const SEND_QUEUE_TAB = "SendQueue";
+
+const SEND_QUEUE_HEADERS = [
+  "id", "enqueuedAt", "leadId", "toEmail", "kind",
+  "subject", "body", "htmlBody",
+  "status", "claimedAt", "sentAt", "skipReason",
+];
+
+export type SendQueueKind = "cold" | "followup" | "manual";
+export type SendQueueStatus = "pending" | "claimed" | "sent" | "skipped" | "expired";
+
+export interface SendQueueItem {
+  id: string;
+  enqueuedAt: string;
+  leadId: string;
+  toEmail: string;
+  kind: SendQueueKind;
+  subject: string;
+  body: string;
+  htmlBody: string;
+  status: SendQueueStatus;
+  claimedAt: string;
+  sentAt: string;
+  skipReason: string;
+  /** Row index in the sheet (0-based starting after header) — needed for in-place updates. */
+  rowIndex: number;
+}
+
+async function ensureSendQueueTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === SEND_QUEUE_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: SEND_QUEUE_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A1:L1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [SEND_QUEUE_HEADERS] },
+  });
+}
+
+function uuidv4(): string {
+  // Built-in if available (Node 19+ and modern browsers), else fallback.
+  if (typeof crypto !== "undefined" && typeof (crypto as { randomUUID?: () => string }).randomUUID === "function") {
+    return (crypto as { randomUUID: () => string }).randomUUID();
+  }
+  // Fallback — RFC4122 v4-like; good enough for queue ids.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export interface EnqueueSendInput {
+  leadId: string;            // Leads row id ("test" for synthetic)
+  toEmail: string;
+  kind: SendQueueKind;
+  subject: string;
+  body: string;
+  htmlBody: string;
+}
+
+/**
+ * Append a pending item to SendQueue. Returns the generated id.
+ *
+ * This is the only path by which Vercel-side code "sends" mail —
+ * actual Gmail dispatch happens later, in send.mjs, with the
+ * triangular 4-14 min spacing. The function never blocks for Gmail.
+ */
+export async function enqueueSend(item: EnqueueSendInput): Promise<string> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A:L`,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [[
+        id, now, item.leadId, item.toEmail, item.kind,
+        item.subject, item.body, item.htmlBody,
+        "pending", "", "", "",
+      ]],
+    },
+  });
+  return id;
+}
+
+/**
+ * Fetch all rows currently in the SendQueue tab (including completed ones —
+ * filter on .status as needed). Each row carries its sheet rowIndex so the
+ * caller can issue in-place status updates.
+ */
+export async function getSendQueueRows(): Promise<SendQueueItem[]> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A2:L`,
+  });
+  const rows = (res.data.values ?? []) as string[][];
+  return rows.map((row, i) => ({
+    id:         row[0] ?? "",
+    enqueuedAt: row[1] ?? "",
+    leadId:     row[2] ?? "",
+    toEmail:    row[3] ?? "",
+    kind:       (row[4] ?? "cold") as SendQueueKind,
+    subject:    row[5] ?? "",
+    body:       row[6] ?? "",
+    htmlBody:   row[7] ?? "",
+    status:     (row[8] ?? "pending") as SendQueueStatus,
+    claimedAt:  row[9] ?? "",
+    sentAt:     row[10] ?? "",
+    skipReason: row[11] ?? "",
+    rowIndex:   i,
+  }));
+}
+
+/**
+ * Convenience helper for send.mjs: just the rows still waiting.
+ */
+export async function getPendingSendQueue(): Promise<SendQueueItem[]> {
+  const all = await getSendQueueRows();
+  return all.filter((r) => r.status === "pending");
+}
+
+interface SendQueueUpdate {
+  status: SendQueueStatus;
+  claimedAt?: string;
+  sentAt?: string;
+  skipReason?: string;
+}
+
+/**
+ * Update a SendQueue row's status (and timestamps / reason). Uses the
+ * sheet-row offset from getSendQueueRows. Pass only the fields you want to
+ * change.
+ */
+export async function markSendQueueItem(rowIndex: number, update: SendQueueUpdate): Promise<void> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2; // skip header
+  const data: { range: string; values: string[][] }[] = [
+    { range: `${SEND_QUEUE_TAB}!I${row}`, values: [[update.status]] },
+  ];
+  if (update.claimedAt !== undefined) data.push({ range: `${SEND_QUEUE_TAB}!J${row}`, values: [[update.claimedAt]] });
+  if (update.sentAt !== undefined)    data.push({ range: `${SEND_QUEUE_TAB}!K${row}`, values: [[update.sentAt]] });
+  if (update.skipReason !== undefined) data.push({ range: `${SEND_QUEUE_TAB}!L${row}`, values: [[update.skipReason]] });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
 // ----- SkipReasons ---------------------------------------------------------
 
 const SKIP_REASONS_TAB = "SkipReasons";

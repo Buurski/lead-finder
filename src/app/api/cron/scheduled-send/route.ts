@@ -2,27 +2,21 @@ import { NextResponse } from "next/server";
 import { computeTodaysQueue } from "@/lib/queue";
 import {
   getPauseStatus,
-  updateLeadEmailStatus,
-  updateLeadStatus,
+  enqueueSend,
 } from "@/lib/sheets";
-import { sendLeadEmail } from "@/lib/email";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
 
 export const maxDuration = 300;
 
-// 10:00 UTC daily — actually sends the queue prepared by morning-review.
+// 10:00 UTC daily — enqueues today's planned queue into the SendQueue tab.
+// The actual Gmail dispatch happens in send.mjs (local), which polls
+// SendQueue and sends with 4-14 min triangular spacing. This route does
+// NOT call Gmail itself.
+//
 // Skips any lead that:
-//   • is in a paused state (kill switch)
+//   • is in a paused state (kill switch — master OR specific scope)
 //   • has skipReason set (Lucas pressed skip in the review UI)
 //   • is on the TreatAsAlive list AND the mail would claim broken website
-//
-// Sleeps 8-15s between sends to avoid Gmail flagging us for blasting.
-
-const MIN_DELAY_MS = 8000;
-const MAX_DELAY_MS = 15000;
-
-function jitteredDelay(): number {
-  return MIN_DELAY_MS + Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
-}
 
 export async function GET() {
   try {
@@ -119,32 +113,26 @@ export async function GET() {
       }
 
       try {
-        await sendLeadEmail(lead, kind);
-        const now = new Date().toISOString();
-        if (kind === "cold") {
-          await updateLeadEmailStatus(rowIndex, { emailSentAt: now, emailStatus: "sent" });
-          if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
-          sentCold++;
-        } else {
-          await updateLeadEmailStatus(rowIndex, { followupSentAt: now });
-          if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
-          sentFollowups++;
-        }
+        const tpl = buildLeadEmail(lead, kind);
+        await enqueueSend({
+          leadId: lead.id,
+          toEmail: lead.email,
+          kind,
+          subject: tpl.subject,
+          body: tpl.text,
+          htmlBody: tpl.html,
+        });
+        if (kind === "cold") sentCold++; else sentFollowups++;
       } catch (err) {
         failed++;
         failures.push({
           id: lead.id,
           name: lead.name,
-          error: err instanceof Error ? err.message : String(err),
+          error: err instanceof Error ? err.message : (err instanceof NoMatchingTemplateError ? err.message : String(err)),
         });
       }
-
-      // Pace ourselves — Gmail will throttle / spam-flag us if we blast 75
-      // identical-template mails in 30 seconds. Skip the wait after the last
-      // entry to free the Vercel function early.
-      if (i < queue.entries.length - 1) {
-        await new Promise((r) => setTimeout(r, jitteredDelay()));
-      }
+      // No inter-iteration sleep — enqueue is a fast Sheets append, not
+      // Gmail. send.mjs enforces the actual sending pace.
     }
 
     return NextResponse.json({
