@@ -76,6 +76,10 @@ export default function ReviewQueueClient({
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [haltBusy, setHaltBusy] = useState(false);
   const [haltedAt, setHaltedAt] = useState<string | null>(pausedUntil);
+  const [currentlyPaused, setCurrentlyPaused] = useState(paused);
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumeAcknowledged, setResumeAcknowledged] = useState(false);
+  const [resumeError, setResumeError] = useState<string>("");
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [otherReasonOpen, setOtherReasonOpen] = useState<Record<string, boolean>>({});
   const [errorById, setErrorById] = useState<Record<string, string>>({});
@@ -145,10 +149,34 @@ export default function ReviewQueueClient({
       if (!res.ok) throw new Error("halt failed");
       const data = await res.json();
       setHaltedAt(data.until ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+      setCurrentlyPaused(true);
     } catch (err) {
       alert("Halt fejlede — prøv igen. " + (err instanceof Error ? err.message : ""));
     } finally {
       setHaltBusy(false);
+    }
+  }
+
+  async function handleResume() {
+    if (!resumeAcknowledged) return;
+    if (!confirm("Sikker? Dette genoptager cold-mails, follow-ups og 10:00-cron med det samme.")) return;
+    setResumeBusy(true);
+    setResumeError("");
+    try {
+      const res = await fetch("/api/review/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "JEG_VED_HVAD_JEG_GOER" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `resume failed: ${res.status}`);
+      setHaltedAt(null);
+      setCurrentlyPaused(false);
+      setResumeAcknowledged(false);
+    } catch (err) {
+      setResumeError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setResumeBusy(false);
     }
   }
 
@@ -178,10 +206,35 @@ export default function ReviewQueueClient({
             Alle udsendelser pauset indtil {new Date(haltedAt).toLocaleString("da-DK")}.
           </p>
         )}
-        {paused && !haltedAt && (
+        {currentlyPaused && !haltedAt && (
           <p className="mt-2 text-xs text-amber-200">
             Systemet er allerede pauset (indtil {pausedUntil ? new Date(pausedUntil).toLocaleString("da-DK") : "?"}).
           </p>
+        )}
+        {currentlyPaused && (
+          <div className="mt-3 rounded-md border border-red-500/50 bg-red-950/40 p-3">
+            <label className="flex items-start gap-2 text-xs text-red-100 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={resumeAcknowledged}
+                onChange={(e) => setResumeAcknowledged(e.target.checked)}
+                className="mt-0.5 accent-red-500"
+              />
+              <span>
+                Jeg forstår at dette starter cold-mail + follow-ups + cron-jobs igen.
+              </span>
+            </label>
+            <button
+              onClick={handleResume}
+              disabled={!resumeAcknowledged || resumeBusy}
+              className="mt-2 w-full rounded-md bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:opacity-60 text-white text-sm font-semibold px-3 py-2"
+            >
+              {resumeBusy ? "Genoptager…" : "Genoptag alle automatiserede mails"}
+            </button>
+            {resumeError && (
+              <p className="mt-2 text-xs text-red-300">Fejl: {resumeError}</p>
+            )}
+          </div>
         )}
         {(overflow.cold > 0 || overflow.followups > 0) && (
           <p className="mt-2 text-xs text-slate-400">

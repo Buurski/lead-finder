@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail } from "@/lib/email";
+import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
 
 export async function POST(
   req: NextRequest,
@@ -45,6 +45,12 @@ export async function POST(
 
     return NextResponse.json({ ok: true, sentAt: now });
   } catch (err) {
+    if (err instanceof NoMatchingTemplateError) {
+      return NextResponse.json(
+        { error: "no matching template — extend BRANCH_GROUP_MAP or NAME_OVERRIDES in src/lib/email.ts", branch: err.branch, leadName: err.leadName },
+        { status: 422 }
+      );
+    }
     console.error("send-email error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

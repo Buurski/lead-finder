@@ -13,5 +13,11 @@ export async function GET(
   const lead = leads[rowIndex];
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const template = previewEmailTemplate(lead, type);
+  if (!template) {
+    return NextResponse.json(
+      { error: "no matching template", branch: lead.branch, name: lead.name },
+      { status: 422 }
+    );
+  }
   return NextResponse.json(template);
 }
