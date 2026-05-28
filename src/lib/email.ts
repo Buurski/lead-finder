@@ -141,12 +141,17 @@ function getBranchDisplay(branch: string): string {
   return "virksomheder";
 }
 
-function getBranchGroup(branch: string): string {
+// Returns the matched template group, or null when no keyword in BRANCH_GROUP_MAP
+// matches the branch string. Callers MUST handle null — silent fallback to "craft"
+// was the root cause of every "wrong-template send" Lucas had to apologise for
+// (e.g. a misclassified advokat receiving håndværker copy + craft demo URL).
+function getBranchGroup(branch: string): string | null {
   const normalized = branch.toLowerCase().trim();
+  if (!normalized) return null;
   for (const [key, group] of Object.entries(BRANCH_GROUP_MAP)) {
     if (normalized.includes(key)) return group;
   }
-  return "craft";
+  return null;
 }
 
 // Name-keyword overrides — checked FIRST because Google Places branch fields are
@@ -180,14 +185,21 @@ const NAME_OVERRIDES: Array<[RegExp, string]> = [
 ];
 
 // Picks the template group using NAME first, then BRANCH as fallback.
-// This fixes cases where Google Places assigns a generic branch like
-// "Tjenester" or "Elektronikbutik" that doesn't match the actual business type.
-function pickGroup(name: string, branch: string): string {
+// Returns null when neither the name nor the branch matches any keyword — the
+// caller MUST treat null as "skip this lead", not "use a default template".
+export function pickGroup(name: string, branch: string): string | null {
   const n = (name || "").toLowerCase();
   for (const [pattern, group] of NAME_OVERRIDES) {
     if (pattern.test(n)) return group;
   }
   return getBranchGroup(branch);
+}
+
+export class NoMatchingTemplateError extends Error {
+  readonly name = "NoMatchingTemplateError";
+  constructor(readonly leadName: string, readonly branch: string) {
+    super(`No matching email template for name="${leadName}" branch="${branch}"`);
+  }
 }
 
 interface EmailTemplate {
@@ -674,11 +686,13 @@ export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
   vars: Omit<TemplateVars, "trackingPixelUrl" | "branchDisplay"> & { leadId: string }
-): EmailTemplate {
+): EmailTemplate | null {
   // Name-first routing: if the lead name clearly implies a category, use that.
   // Only fall back to branch-based routing when name doesn't disambiguate.
   const group = pickGroup(vars.name, branch);
-  const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
+  if (!group) return null;
+  const template = TEMPLATES[group]?.[type];
+  if (!template) return null;
   const trackingPixelUrl = buildTrackingPixelUrl(vars.leadId);
   const branchDisplay = getBranchDisplay(branch);
   const result = template({ ...vars, trackingPixelUrl, branchDisplay });
@@ -701,6 +715,9 @@ export async function sendLeadEmail(
     websiteQualityTier: lead.websiteQualityTier,
     daysSince,
   });
+  if (!template) {
+    throw new NoMatchingTemplateError(lead.name, lead.branch);
+  }
   await transporter.sendMail({
     from: `Lucas Buur <${process.env.GMAIL_USER}>`,
     to: lead.email,
@@ -713,7 +730,7 @@ export async function sendLeadEmail(
 export function previewEmailTemplate(
   lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt?: string },
   type: "cold" | "followup"
-): EmailTemplate {
+): EmailTemplate | null {
   const daysSince = type === "followup" && lead.emailSentAt
     ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
     : 7;

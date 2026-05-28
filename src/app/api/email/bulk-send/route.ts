@@ -1,62 +1,16 @@
 import { NextResponse } from "next/server";
-import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail } from "@/lib/email";
-import { isChain, isPublicSector } from "@/lib/chains";
+import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus, updateLeadSkipReason, logSkipReason } from "@/lib/sheets";
+import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { isEligibleForCold } from "@/lib/eligibility";
 
 export const maxDuration = 300;
-
-const PROFESSIONAL_BRANCHES = ["advokat", "revisor", "fysioterapi", "tandlæge", "optiker", "kiropraktor", "apotek"];
-
-// Same placeholder filter as bulk-find-emails — defense in depth so a bad
-// email saved earlier cannot be sent to.
-const PLACEHOLDER_REGEX = /noreply|no-reply|donotreply|do-not-reply|example\.|@example|sentry|w3\.org|schema|jquery|googletagmanager|googleapis|@google\.com|facebook\.com|instagram\.com|linkedin|twitter|name@domain|user@domain|email@email|your@|youremail|test@test|@test\.dk$|@test\.com$|eksempel|firstname|lastname|sample@|placeholder|john\.doe|jane\.doe|@yourcompany|@yourdomain|@goodresto|@eksempel|@domain\.com$|@email\.com$|wixpress|cloudflare|wordpress\.com|sentry\.io|godaddy|hostnet|simply\.com/i;
-
-const BANNED_DOMAINS = new Set([
-  "example.com", "example.dk", "example.org",
-  "domain.com", "domain.dk", "email.com",
-  "test.com", "test.dk",
-  "yourcompany.com", "yourdomain.com",
-  "eksempel.dk", "eksempel.com",
-  "goodresto.com", "placeholder.com", "sample.com",
-]);
-
-function isCleanEmail(email: string): boolean {
-  if (!email) return false;
-  if (/%[0-9a-fA-F]{2}/.test(email)) return false;
-  try { if (decodeURIComponent(email) !== email) return false; } catch { return false; }
-  if (/\s/.test(email)) return false;
-  if (email.length > 80 || email.length < 5) return false;
-  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) return false;
-  if (PLACEHOLDER_REGEX.test(email)) return false;
-  const at = email.lastIndexOf("@");
-  const domain = email.slice(at + 1).toLowerCase();
-  if (BANNED_DOMAINS.has(domain)) return false;
-  return true;
-}
-
-function isEligible(lead: { score: number; branch: string; email: string; emailSentAt: string; status: string; websiteQualityTier: string; name: string; emailStatus?: string; skipReason?: string }): boolean {
-  if (!isCleanEmail(lead.email)) return false;
-  if (lead.emailSentAt) return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-  if (lead.websiteQualityTier === "modern") return false;
-  if (isChain(lead.name)) return false;
-  // Phase 2: respect the review-queue skip flag on manual sends too.
-  if (lead.skipReason) return false;
-  if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
-  if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
-  const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
-  // Tightened: general >= 50 (was 40), professional >= 70
-  const minScore = isProfessional ? 70 : 50;
-  return lead.score >= minScore;
-}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = parseInt(url.searchParams.get("limit") || "0", 10);
   const leads = await getLeads();
   const eligible = leads
-    .filter(isEligible)
+    .filter(isEligibleForCold)
     .sort((a, b) => b.score - a.score);
   const sliced = limit > 0 ? eligible.slice(0, limit) : eligible;
   return NextResponse.json({
@@ -90,7 +44,7 @@ export async function POST(req: Request) {
   const leads = await getLeads();
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
-    .filter(({ lead }) => isEligible(lead))
+    .filter(({ lead }) => isEligibleForCold(lead))
     .sort((a, b) => b.lead.score - a.lead.score);
   const targets = limit > 0 ? eligible.slice(0, limit) : eligible;
 
@@ -132,6 +86,18 @@ export async function POST(req: Request) {
       const wait = delayMs + (jitterMs > 0 ? Math.floor(Math.random() * jitterMs) : 0);
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     } catch (err) {
+      if (err instanceof NoMatchingTemplateError) {
+        // Don't silently fall back to a generic template — skip the lead and
+        // record the reason. The audit log + skipReason column let Lucas see
+        // exactly which leads were dropped so the branch keywords can be
+        // extended.
+        try {
+          await updateLeadSkipReason(rowIndex, "wrong_template");
+          await logSkipReason(lead.id, "wrong_template", `no matching template for branch="${lead.branch}" name="${lead.name}"`);
+        } catch {}
+        results.push({ name: lead.name, email: lead.email, ok: false, error: "skipped: no matching template" });
+        continue;
+      }
       results.push({ name: lead.name, email: lead.email, ok: false, error: String(err) });
     }
   }

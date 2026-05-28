@@ -11,74 +11,11 @@
 
 import type { Lead } from "@/lib/sheets";
 import { getLeads, getTreatAsAliveDomains } from "@/lib/sheets";
-import { isChain, isPublicSector } from "@/lib/chains";
+import { isChain } from "@/lib/chains";
 import { isInTreatAsAliveList } from "@/lib/website-verify";
+import { isEligibleForCold, isEligibleForFollowup } from "@/lib/eligibility";
 
-// Match bulk-send / send-followups behaviour as closely as possible — these
-// thresholds are intentionally duplicated rather than imported because the
-// existing routes don't export them, and changing those is out of scope.
-
-const PROFESSIONAL_BRANCHES = ["advokat", "revisor", "fysioterapi", "tandlæge", "optiker", "kiropraktor", "apotek"];
-const FOLLOWUP_DAYS = 5;
 const DAILY_CAP = 75;
-
-const PLACEHOLDER_REGEX = /noreply|no-reply|donotreply|do-not-reply|example\.|@example|sentry|w3\.org|schema|jquery|googletagmanager|googleapis|@google\.com|facebook\.com|instagram\.com|linkedin|twitter|name@domain|user@domain|email@email|your@|youremail|test@test|@test\.dk$|@test\.com$|eksempel|firstname|lastname|sample@|placeholder|john\.doe|jane\.doe|@yourcompany|@yourdomain|@goodresto|@eksempel|@domain\.com$|@email\.com$|wixpress|cloudflare|wordpress\.com|sentry\.io|godaddy|hostnet|simply\.com/i;
-
-const BANNED_DOMAINS = new Set([
-  "example.com", "example.dk", "example.org",
-  "domain.com", "domain.dk", "email.com",
-  "test.com", "test.dk",
-  "yourcompany.com", "yourdomain.com",
-  "eksempel.dk", "eksempel.com",
-  "goodresto.com", "placeholder.com", "sample.com",
-]);
-
-function isCleanEmail(email: string): boolean {
-  if (!email) return false;
-  if (/%[0-9a-fA-F]{2}/.test(email)) return false;
-  try { if (decodeURIComponent(email) !== email) return false; } catch { return false; }
-  if (/\s/.test(email)) return false;
-  if (email.length > 80 || email.length < 5) return false;
-  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) return false;
-  if (PLACEHOLDER_REGEX.test(email)) return false;
-  const at = email.lastIndexOf("@");
-  const domain = email.slice(at + 1).toLowerCase();
-  if (BANNED_DOMAINS.has(domain)) return false;
-  return true;
-}
-
-function isColdEligible(lead: Lead): boolean {
-  if (!isCleanEmail(lead.email)) return false;
-  if (lead.emailSentAt) return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-  if (lead.websiteQualityTier === "modern") return false;
-  if (isChain(lead.name)) return false;
-  if (isPublicSector(lead.name)) return false;
-  if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
-  if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
-  const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
-  const minScore = isProfessional ? 70 : 50;
-  return lead.score >= minScore;
-}
-
-function isFollowupEligible(lead: Lead): boolean {
-  if (!lead.email) return false;
-  if (!lead.emailSentAt) return false;
-  if (lead.emailOpenedAt) return false;
-  if (lead.emailStatus === "replied") return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.followupSentAt) return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-  // A chain that was cold-emailed before the apostrophe fix landed must not now
-  // receive a follow-up either — isChain() is apostrophe-insensitive as of the
-  // chains fix, so this retroactively stops chains already in the pipeline.
-  if (isChain(lead.name)) return false;
-  if (isPublicSector(lead.name)) return false;
-  const sentDate = new Date(lead.emailSentAt);
-  const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
-  return daysSince >= FOLLOWUP_DAYS;
-}
 
 export type QueueKind = "cold" | "followup";
 export type Concern = "chain" | "broken-website" | "standard";
@@ -144,12 +81,12 @@ export async function computeTodaysQueue(opts?: { cap?: number }): Promise<Today
 
   const cold = leads
     .map((lead, rowIndex) => ({ lead, rowIndex }))
-    .filter(({ lead }) => isColdEligible(lead))
+    .filter(({ lead }) => isEligibleForCold(lead))
     .sort((a, b) => b.lead.score - a.lead.score);
 
   const followups = leads
     .map((lead, rowIndex) => ({ lead, rowIndex }))
-    .filter(({ lead }) => isFollowupEligible(lead))
+    .filter(({ lead }) => isEligibleForFollowup(lead))
     .sort((a, b) => new Date(a.lead.emailSentAt).getTime() - new Date(b.lead.emailSentAt).getTime());
 
   // Cold first, then followups, up to the daily cap.

@@ -1,45 +1,14 @@
 import { NextResponse } from "next/server";
-import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail } from "@/lib/email";
-import { isChain, isPublicSector } from "@/lib/chains";
+import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus, updateLeadSkipReason, logSkipReason } from "@/lib/sheets";
+import { sendLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { isEligibleForFollowup } from "@/lib/eligibility";
 
 export const maxDuration = 300;
-
-const FOLLOWUP_DAYS = 5;
-
-function isReadyForFollowup(lead: {
-  name: string;
-  email: string;
-  emailSentAt: string;
-  emailOpenedAt: string;
-  emailStatus: string;
-  followupSentAt: string;
-  status: string;
-  skipReason?: string;
-}): boolean {
-  if (!lead.email) return false;
-  if (!lead.emailSentAt) return false;
-  if (lead.emailOpenedAt) return false;
-  if (lead.emailStatus === "replied") return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.followupSentAt) return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-  // Phase 2: review-queue skip flag also blocks follow-ups.
-  if (lead.skipReason) return false;
-  // Consistency with queue.ts: never follow up a chain or public-sector lead
-  // that slipped through before these guards existed.
-  if (isChain(lead.name)) return false;
-  if (isPublicSector(lead.name)) return false;
-
-  const sentDate = new Date(lead.emailSentAt);
-  const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
-  return daysSince >= FOLLOWUP_DAYS;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const leads = await getLeads();
-  const eligible = leads.filter((l) => isReadyForFollowup(l));
+  const eligible = leads.filter((l) => isEligibleForFollowup(l));
 
   if (searchParams.get("list") === "1") {
     const now = Date.now();
@@ -71,7 +40,7 @@ export async function POST(request: Request) {
   const leads = await getLeads();
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
-    .filter(({ lead }) => isReadyForFollowup(lead))
+    .filter(({ lead }) => isEligibleForFollowup(lead))
     .filter(({ lead }) => !leadIds || leadIds.includes(lead.id));
 
   const total = eligible.length;
@@ -105,7 +74,13 @@ export async function POST(request: Request) {
           await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });
           if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
           sent++;
-        } catch {
+        } catch (err) {
+          if (err instanceof NoMatchingTemplateError) {
+            try {
+              await updateLeadSkipReason(rowIndex, "wrong_template");
+              await logSkipReason(lead.id, "wrong_template", `no matching followup template for branch="${lead.branch}" name="${lead.name}"`);
+            } catch {}
+          }
           failed++;
         }
         controller.enqueue(
