@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { SkipReason, PauseSnapshot } from "@/lib/sheets";
 import type { Concern, QueueKind, QueueSummary } from "@/lib/queue";
+
+const REFRESH_MS = 30_000;
 
 // ---------- types ----------
 
@@ -95,16 +97,67 @@ export default function ReviewQueueClient({
   const [subjectById, setSubjectById] = useState<Record<string, string>>({});
   const [bodyById, setBodyById] = useState<Record<string, string>>({});
   const [approveErrorById, setApproveErrorById] = useState<Record<string, string>>({});
+  // Live-refresh state — server initial state, mutated by polling.
+  const [liveEntries, setLiveEntries] = useState<ReviewEntry[]>(entries);
+  const [liveSummary, setLiveSummary] = useState<QueueSummary>(summary);
+  const [liveOverflow, setLiveOverflow] = useState<{ cold: number; followups: number }>(overflow);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string>(new Date().toISOString());
+  const refreshTick = useRef(0);
+
+  async function refreshFromServer() {
+    const tick = ++refreshTick.current;
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/review/queue", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      // Out-of-order guard — if a newer fetch started while we were waiting,
+      // drop this one's result.
+      if (tick !== refreshTick.current) return;
+      if (Array.isArray(data.entries)) setLiveEntries(data.entries);
+      if (data.summary) setLiveSummary(data.summary);
+      if (data.overflow) setLiveOverflow(data.overflow);
+      if (data.pauseSnapshot) {
+        setSnapshot(data.pauseSnapshot);
+        setCurrentlyPaused(!!data.pauseSnapshot.master?.paused);
+      }
+      if (data.fetchedAt) setLastFetchedAt(data.fetchedAt);
+    } catch {
+      // Silent — next tick will retry.
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    const id = setInterval(refreshFromServer, REFRESH_MS);
+    const onVis = () => { if (document.visibilityState === "visible") refreshFromServer(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [otherReasonOpen, setOtherReasonOpen] = useState<Record<string, boolean>>({});
   const [errorById, setErrorById] = useState<Record<string, string>>({});
 
   const sections = useMemo(() => {
-    const chains = entries.filter((e) => e.concern === "chain");
-    const broken = entries.filter((e) => e.concern === "broken-website");
-    const standard = entries.filter((e) => e.concern === "standard");
+    const chains = liveEntries.filter((e) => e.concern === "chain");
+    const broken = liveEntries.filter((e) => e.concern === "broken-website");
+    const standard = liveEntries.filter((e) => e.concern === "standard");
     return { chains, broken, standard };
-  }, [entries]);
+  }, [liveEntries]);
+
+  function formatAgo(iso: string): string {
+    const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    if (sec < 10) return "lige nu";
+    if (sec < 60) return `${sec}s siden`;
+    const min = Math.round(sec / 60);
+    return `${min} min siden`;
+  }
 
   async function handleSkip(entry: ReviewEntry, reason: SkipReason) {
     if (!reason) return;
@@ -283,7 +336,7 @@ export default function ReviewQueueClient({
     }
   }
 
-  const remainingCount = entries.length - skippedIds.size;
+  const remainingCount = liveEntries.length - skippedIds.size - approvedIds.size;
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -293,7 +346,10 @@ export default function ReviewQueueClient({
           <div>
             <h1 className="text-base font-semibold leading-tight">🌅 Morning review</h1>
             <p className="text-xs text-slate-300 mt-0.5">
-              {remainingCount} / {summary.cap} planlagt i dag · {summary.cold} cold · {summary.followups} follow-up
+              {remainingCount} / {liveSummary.cap} planlagt i dag · {liveSummary.cold} cold · {liveSummary.followups} follow-up
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {refreshing ? "opdaterer…" : `opdateret ${formatAgo(lastFetchedAt)}`}
             </p>
           </div>
           <button
@@ -339,9 +395,9 @@ export default function ReviewQueueClient({
             )}
           </div>
         )}
-        {(overflow.cold > 0 || overflow.followups > 0) && (
+        {(liveOverflow.cold > 0 || liveOverflow.followups > 0) && (
           <p className="mt-2 text-xs text-slate-400">
-            Ikke i dag pga. cap: {overflow.cold} cold + {overflow.followups} follow-ups (ryger med i morgen).
+            Ikke i dag pga. cap: {liveOverflow.cold} cold + {liveOverflow.followups} follow-ups (ryger med i morgen).
           </p>
         )}
         {/* Granular toggles — small chips below the master halt button.
@@ -383,13 +439,13 @@ export default function ReviewQueueClient({
 
       {/* ----- summary chips ----- */}
       <div className="px-4 py-3 flex flex-wrap gap-2 text-xs">
-        <Chip count={summary.chains} label="kæder" color="bg-red-100 text-red-800" />
-        <Chip count={summary.brokenClaim} label="broken-claim" color="bg-amber-100 text-amber-900" />
-        <Chip count={summary.standard} label="standard" color="bg-emerald-100 text-emerald-900" />
+        <Chip count={liveSummary.chains} label="kæder" color="bg-red-100 text-red-800" />
+        <Chip count={liveSummary.brokenClaim} label="broken-claim" color="bg-amber-100 text-amber-900" />
+        <Chip count={liveSummary.standard} label="standard" color="bg-emerald-100 text-emerald-900" />
       </div>
 
       {/* ----- sections ----- */}
-      {entries.length === 0 && (
+      {liveEntries.length === 0 && (
         <p className="px-4 py-10 text-center text-slate-500">
           Ingen leads klar til afsendelse i dag.
         </p>
