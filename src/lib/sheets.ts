@@ -542,66 +542,186 @@ export async function addTreatAsAliveDomain(domain: string, reason: string): Pro
 }
 
 // ----- PauseSchedule -------------------------------------------------------
+//
+// Granular pause schema. Master kill (A2) keeps its existing meaning — fail
+// CLOSED on unparseable. Specific-scope cells fail OPEN by default so a
+// keyboard slip in column C/D/E cannot freeze the whole system; they DO
+// still honour the indefinite-halt sentinels.
+//
+//   A1 PausedUntil          A2 = master kill timestamp / sentinel / empty
+//   B1 SetAt                B2 = master SetAt
+//   C1 PausedCold           C2 = cold timestamp / sentinel / empty
+//   D1 PausedFollowup       D2
+//   E1 PausedManual         E2
+//   F1 ColdSetAt            F2
+//   G1 FollowupSetAt        G2
+//   H1 ManualSetAt          H2
 
 const PAUSE_TAB = "PauseSchedule";
+
+export type PauseScope = "all" | "cold" | "followup" | "manual";
+
+const SCOPE_CELL: Record<PauseScope, { until: string; setAt: string }> = {
+  all:      { until: "A2", setAt: "B2" },
+  cold:     { until: "C2", setAt: "F2" },
+  followup: { until: "D2", setAt: "G2" },
+  manual:   { until: "E2", setAt: "H2" },
+};
+
+const PAUSE_HEADERS = [
+  "PausedUntil", "SetAt", "PausedCold", "PausedFollowup", "PausedManual",
+  "ColdSetAt", "FollowupSetAt", "ManualSetAt",
+];
 
 async function ensurePauseScheduleTab(): Promise<void> {
   const sheets = getSheetsClient();
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const exists = meta.data.sheets?.some((s) => s.properties?.title === PAUSE_TAB);
-  if (exists) return;
-  await sheets.spreadsheets.batchUpdate({
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: PAUSE_TAB } } }],
+      },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${PAUSE_TAB}!A1:H2`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [PAUSE_HEADERS, ["", "", "", "", "", "", "", ""]],
+      },
+    });
+    return;
+  }
+  // Idempotent header upgrade — extend an older A1:B2 schema to A1:H2 without
+  // touching the master (A2) value or any specific cell that's already set.
+  const headerRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    requestBody: {
-      requests: [{ addSheet: { properties: { title: PAUSE_TAB } } }],
-    },
+    range: `${PAUSE_TAB}!A1:H1`,
   });
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${PAUSE_TAB}!A1:B2`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [
-        ["PausedUntil", "SetAt"],
-        ["", ""],
-      ],
-    },
-  });
+  const current = (headerRes.data.values?.[0] ?? []) as string[];
+  if (current.length < PAUSE_HEADERS.length) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${PAUSE_TAB}!A1:H1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [PAUSE_HEADERS] },
+    });
+  }
 }
 
 export interface PauseStatus {
   paused: boolean;
   until: string | null;
+  scope: PauseScope;
+  /** True if the master kill (A2) is what's paused us. */
+  masterActive: boolean;
+  /** True if the specific-scope cell is what's paused us. */
+  scopeActive: boolean;
 }
 
-export async function getPauseStatus(): Promise<PauseStatus> {
+const SENTINEL_RE = /^(indefinite|paused|forever|true|stop|halt)$/i;
+
+function classifyCell(value: string, failClosed: boolean): { paused: boolean; raw: string | null } {
+  const raw = (value ?? "").toString().trim();
+  if (!raw) return { paused: false, raw: null };
+  if (SENTINEL_RE.test(raw)) return { paused: true, raw };
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) return { paused: failClosed, raw };
+  return { paused: parsed > Date.now(), raw };
+}
+
+/**
+ * Returns the pause status for a given send-scope. Master kill (A2) is
+ * always honoured — if it's set, every scope reports paused. Otherwise the
+ * scope-specific cell decides.
+ *
+ * scope === "all" returns the master cell's status verbatim (used by the
+ * cron-jobs and any caller that wants to know "is anything paused").
+ */
+export async function getPauseStatus(scope: PauseScope = "all"): Promise<PauseStatus> {
   await ensurePauseScheduleTab();
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${PAUSE_TAB}!A2:B2`,
+    range: `${PAUSE_TAB}!A2:H2`,
   });
-  const until = (res.data.values?.[0]?.[0] ?? "").toString().trim();
-  if (!until) return { paused: false, until: null };
-  // Explicit indefinite-halt sentinels — stay paused until cleared.
-  if (/^(indefinite|paused|forever|true|stop|halt)$/i.test(until)) return { paused: true, until };
-  const parsed = Date.parse(until);
-  // Fail CLOSED: a non-empty but unparseable PausedUntil means someone tried to
-  // set a pause and it got mangled. For a safety kill switch the safe default is
-  // "still paused", never "resume sending".
-  if (Number.isNaN(parsed)) return { paused: true, until };
-  return { paused: parsed > Date.now(), until };
+  const row = (res.data.values?.[0] ?? []) as string[];
+  const master = classifyCell(row[0] ?? "", true);  // A2 — fail CLOSED
+  if (scope === "all") {
+    return {
+      paused: master.paused,
+      until: master.raw,
+      scope: "all",
+      masterActive: master.paused,
+      scopeActive: false,
+    };
+  }
+  const colIndex = scope === "cold" ? 2 : scope === "followup" ? 3 : 4;
+  const specific = classifyCell(row[colIndex] ?? "", false);  // fail OPEN
+  if (master.paused) {
+    return { paused: true, until: master.raw, scope, masterActive: true, scopeActive: specific.paused };
+  }
+  return {
+    paused: specific.paused,
+    until: specific.raw,
+    scope,
+    masterActive: false,
+    scopeActive: specific.paused,
+  };
 }
 
-export async function setPauseUntil(isoDate: string): Promise<void> {
+/**
+ * Writes the PausedUntil cell for the given scope. Pass empty string to
+ * clear. Master (scope="all") writes A2+B2; the others write their own
+ * column pair. Master is never touched by a non-"all" scope write.
+ */
+export async function setPauseUntil(scope: PauseScope, isoDate: string): Promise<void> {
   await ensurePauseScheduleTab();
   const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.update({
+  const cells = SCOPE_CELL[scope];
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${PAUSE_TAB}!A2:B2`,
-    valueInputOption: "RAW",
-    requestBody: { values: [[isoDate, new Date().toISOString()]] },
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [
+        { range: `${PAUSE_TAB}!${cells.until}`, values: [[isoDate]] },
+        { range: `${PAUSE_TAB}!${cells.setAt}`, values: [[isoDate ? new Date().toISOString() : ""]] },
+      ],
+    },
   });
+}
+
+/**
+ * Read-only snapshot of all four cells in one go. Useful for the review UI
+ * which renders all toggles at once.
+ */
+export interface PauseSnapshot {
+  master:   { paused: boolean; until: string | null };
+  cold:     { paused: boolean; until: string | null };
+  followup: { paused: boolean; until: string | null };
+  manual:   { paused: boolean; until: string | null };
+}
+
+export async function getPauseSnapshot(): Promise<PauseSnapshot> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A2:H2`,
+  });
+  const row = (res.data.values?.[0] ?? []) as string[];
+  const master = classifyCell(row[0] ?? "", true);
+  const cold = classifyCell(row[2] ?? "", false);
+  const followup = classifyCell(row[3] ?? "", false);
+  const manual = classifyCell(row[4] ?? "", false);
+  return {
+    master:   { paused: master.paused,   until: master.raw },
+    cold:     { paused: cold.paused,     until: cold.raw },
+    followup: { paused: followup.paused, until: followup.raw },
+    manual:   { paused: manual.paused,   until: manual.raw },
+  };
 }
 
 // ----- SkipReasons ---------------------------------------------------------

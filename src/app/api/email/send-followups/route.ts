@@ -28,8 +28,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // Phase 2 kill switch — paused state blocks all follow-up sends too.
-  const pause = await getPauseStatus();
+  // Phase 2 kill switch — granular: follow-ups respect both master kill and
+  // the followup-specific scope.
+  const pause = await getPauseStatus("followup");
   if (pause.paused) {
     return NextResponse.json({ paused: true, pausedUntil: pause.until, sent: 0, failed: 0, total: 0, done: true });
   }
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       let processed = 0;
   for (const { lead, rowIndex } of eligible) {
     if (processed > 0 && processed % 5 === 0) {
-      const recheck = await getPauseStatus();
+      const recheck = await getPauseStatus("followup");
       if (recheck.paused) {
         return NextResponse.json({
           paused: true,

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const { emails, type, override = false }: { emails: string[]; type: "cold" | "followup"; override?: boolean } = await req.json();
 
   if (!override) {
-    const pause = await getPauseStatus();
+    const pause = await getPauseStatus("manual");
     if (pause.paused) {
       return NextResponse.json({ error: "Sends are halted (pause active). Pass override:true to force a test send.", pausedUntil: pause.until }, { status: 423 });
     }

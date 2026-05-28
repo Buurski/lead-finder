@@ -21,7 +21,7 @@ export async function POST(
     // Respect the global halt/pause kill switch — even a manual single-send must
     // not fire while sends are halted, unless the caller explicitly overrides.
     if (!override) {
-      const pause = await getPauseStatus();
+      const pause = await getPauseStatus("manual");
       if (pause.paused) {
         return NextResponse.json(
           { error: "Sends are halted (pause active). Pass { override: true } to force this one.", pausedUntil: pause.until },

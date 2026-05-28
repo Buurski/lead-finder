@@ -1,5 +1,5 @@
 import { computeTodaysQueue } from "@/lib/queue";
-import { getPauseStatus } from "@/lib/sheets";
+import { getPauseStatus, getPauseSnapshot } from "@/lib/sheets";
 import ReviewQueueClient from "@/components/ReviewQueueClient";
 import type { Metadata, Viewport } from "next";
 
@@ -29,9 +29,10 @@ export const viewport: Viewport = {
 };
 
 export default async function ReviewPage() {
-  const [queue, pause] = await Promise.all([
+  const [queue, pause, pauseSnapshot] = await Promise.all([
     computeTodaysQueue(),
-    getPauseStatus(),
+    getPauseStatus("all"),
+    getPauseSnapshot(),
   ]);
 
   // Serialize the queue entries to a plain shape — the client component
@@ -60,6 +61,7 @@ export default async function ReviewPage() {
       overflow={queue.overflow}
       paused={pause.paused}
       pausedUntil={pause.until}
+      pauseSnapshot={pauseSnapshot}
     />
   );
 }
