@@ -26,17 +26,22 @@ function jitteredDelay(): number {
 
 export async function GET() {
   try {
-    const pause = await getPauseStatus();
-    if (pause.paused) {
+    // Master kill — if A2 is set, do nothing at all.
+    const masterPause = await getPauseStatus("all");
+    if (masterPause.paused) {
       return NextResponse.json({
         paused: true,
-        pausedUntil: pause.until,
+        pausedUntil: masterPause.until,
         sentCold: 0,
         sentFollowups: 0,
         failed: 0,
         skippedByReview: 0,
       });
     }
+    // Granular: read the cold + followup specific cells once up-front so the
+    // loop doesn't hit Sheets on every iteration.
+    const coldPause = await getPauseStatus("cold");
+    const followupPause = await getPauseStatus("followup");
 
     const queue = await computeTodaysQueue();
 
@@ -56,6 +61,21 @@ export async function GET() {
       if (lead.skipReason) {
         skippedByReview++;
         skipped.push({ id: lead.id, name: lead.name, reason: `skipReason=${lead.skipReason}` });
+        continue;
+      }
+
+      // 1b. Granular pause — cold and followup can be paused independently
+      //     of the master kill. The scope-specific cells already fold in the
+      //     master state, but we already filtered master above so these read
+      //     only the specific cell.
+      if (kind === "cold" && coldPause.paused) {
+        skippedByReview++;
+        skipped.push({ id: lead.id, name: lead.name, reason: "cold-pause active" });
+        continue;
+      }
+      if (kind === "followup" && followupPause.paused) {
+        skippedByReview++;
+        skipped.push({ id: lead.id, name: lead.name, reason: "followup-pause active" });
         continue;
       }
 
@@ -81,7 +101,7 @@ export async function GET() {
       //    The Vercel function won't re-enter the top handler — so without this,
       //    once we start sending we can't be stopped until the loop drains.
       if (i > 0 && i % 5 === 0) {
-        const recheck = await getPauseStatus();
+        const recheck = await getPauseStatus("all");
         if (recheck.paused) {
           return NextResponse.json({
             paused: true,

@@ -21,7 +21,7 @@ function getAppUrl(): string {
 
 export async function GET() {
   try {
-    const pause = await getPauseStatus();
+    const pause = await getPauseStatus("all");
     if (pause.paused) {
       return NextResponse.json({
         skipped: "paused",

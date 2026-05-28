@@ -23,13 +23,13 @@ export default async function HaltPage() {
   let error: string | null = null;
 
   try {
-    const existing = await getPauseStatus();
+    const existing = await getPauseStatus("all");
     if (existing.paused) {
       alreadyPaused = true;
       until = existing.until;
     } else {
       until = new Date(Date.now() + PAUSE_HOURS * 60 * 60 * 1000).toISOString();
-      await setPauseUntil(until);
+      await setPauseUntil("all", until);
     }
   } catch (err) {
     error = err instanceof Error ? err.message : "Ukendt fejl";

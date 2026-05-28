@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { SkipReason } from "@/lib/sheets";
+import type { SkipReason, PauseSnapshot } from "@/lib/sheets";
 import type { Concern, QueueKind, QueueSummary } from "@/lib/queue";
 
 // ---------- types ----------
@@ -29,7 +29,10 @@ interface Props {
   overflow: { cold: number; followups: number };
   paused: boolean;
   pausedUntil: string | null;
+  pauseSnapshot: PauseSnapshot;
 }
+
+type Scope = "cold" | "followup" | "manual";
 
 // ---------- skip reason options ----------
 
@@ -69,6 +72,7 @@ export default function ReviewQueueClient({
   overflow,
   paused,
   pausedUntil,
+  pauseSnapshot,
 }: Props) {
   const [skippedIds, setSkippedIds] = useState<Set<string>>(
     () => new Set(entries.filter((e) => e.skipReason).map((e) => e.id))
@@ -80,6 +84,10 @@ export default function ReviewQueueClient({
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeAcknowledged, setResumeAcknowledged] = useState(false);
   const [resumeError, setResumeError] = useState<string>("");
+  // Granular pause state — initial from server, mutated by toggle clicks.
+  const [snapshot, setSnapshot] = useState<PauseSnapshot>(pauseSnapshot);
+  const [scopeBusy, setScopeBusy] = useState<Record<Scope, boolean>>({ cold: false, followup: false, manual: false });
+  const [scopeError, setScopeError] = useState<Record<Scope, string>>({ cold: "", followup: "", manual: "" });
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [otherReasonOpen, setOtherReasonOpen] = useState<Record<string, boolean>>({});
   const [errorById, setErrorById] = useState<Record<string, string>>({});
@@ -157,6 +165,41 @@ export default function ReviewQueueClient({
     }
   }
 
+  async function handleScopeToggle(scope: Scope) {
+    const isPaused = snapshot[scope].paused;
+    setScopeBusy((s) => ({ ...s, [scope]: true }));
+    setScopeError((s) => ({ ...s, [scope]: "" }));
+    try {
+      if (isPaused) {
+        // Resume only this scope. Requires the same confirm token as master
+        // resume — a missed click on a small toggle is not allowed to silently
+        // re-enable sending.
+        if (!confirm(`Genoptag ${scope}-mails?`)) { setScopeBusy((s) => ({ ...s, [scope]: false })); return; }
+        const res = await fetch("/api/review/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: "JEG_VED_HVAD_JEG_GOER", scope }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || `resume failed: ${res.status}`);
+        if (data.snapshot) setSnapshot(data.snapshot);
+      } else {
+        const res = await fetch("/api/review/pause", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope, hours: 24 }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || `pause failed: ${res.status}`);
+        if (data.snapshot) setSnapshot(data.snapshot);
+      }
+    } catch (err) {
+      setScopeError((s) => ({ ...s, [scope]: err instanceof Error ? err.message : String(err) }));
+    } finally {
+      setScopeBusy((s) => ({ ...s, [scope]: false }));
+    }
+  }
+
   async function handleResume() {
     if (!resumeAcknowledged) return;
     if (!confirm("Sikker? Dette genoptager cold-mails, follow-ups og 10:00-cron med det samme.")) return;
@@ -166,13 +209,14 @@ export default function ReviewQueueClient({
       const res = await fetch("/api/review/resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm: "JEG_VED_HVAD_JEG_GOER" }),
+        body: JSON.stringify({ confirm: "JEG_VED_HVAD_JEG_GOER", scope: "all" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `resume failed: ${res.status}`);
       setHaltedAt(null);
       setCurrentlyPaused(false);
       setResumeAcknowledged(false);
+      if (data.snapshot) setSnapshot(data.snapshot);
     } catch (err) {
       setResumeError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -241,6 +285,41 @@ export default function ReviewQueueClient({
             Ikke i dag pga. cap: {overflow.cold} cold + {overflow.followups} follow-ups (ryger med i morgen).
           </p>
         )}
+        {/* Granular toggles — small chips below the master halt button.
+            Each chip toggles its scope's pause cell. Master halt overrides
+            everything; the chip displays an "(master)" hint in that case. */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["cold", "followup", "manual"] as Scope[]).map((scope) => {
+            const scopePaused = snapshot[scope].paused;
+            const masterPaused = snapshot.master.paused;
+            const effectivelyPaused = scopePaused || masterPaused;
+            const busy = scopeBusy[scope];
+            const err = scopeError[scope];
+            const label = scope === "cold" ? "Cold-mails" : scope === "followup" ? "Follow-ups" : "Manuel / test";
+            return (
+              <button
+                key={scope}
+                onClick={() => handleScopeToggle(scope)}
+                disabled={busy}
+                title={err || (masterPaused && !scopePaused ? "(holdt af master halt)" : "")}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                  effectivelyPaused
+                    ? "border-red-500/60 bg-red-950/40 text-red-100"
+                    : "border-emerald-500/60 bg-emerald-950/30 text-emerald-100"
+                }`}
+              >
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    effectivelyPaused ? "bg-red-400" : "bg-emerald-400"
+                  }`}
+                />
+                {label} · {effectivelyPaused ? "pauset" : "aktiv"}
+                {masterPaused && !scopePaused && <span className="text-[10px] text-amber-300">(master)</span>}
+                {busy && <span className="text-[10px] opacity-70">…</span>}
+              </button>
+            );
+          })}
+        </div>
       </header>
 
       {/* ----- summary chips ----- */}

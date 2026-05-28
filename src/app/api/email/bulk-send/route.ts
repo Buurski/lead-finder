@@ -30,8 +30,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   // Phase 2 kill switch — if Lucas pressed "Stop alt i dag" the PauseSchedule
-  // tab will have a future timestamp. Bail out before touching Gmail.
-  const pause = await getPauseStatus();
+  // tab will have a future timestamp. Bail out before touching Gmail. Granular:
+  // bulk-send is cold-mail only, so check the cold scope (which also folds in
+  // the master kill).
+  const pause = await getPauseStatus("cold");
   if (pause.paused) {
     return NextResponse.json({ paused: true, pausedUntil: pause.until, sent: 0, failed: 0 });
   }
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
   for (const { lead, rowIndex } of targets) {
     // Re-check pause every 5 iterations so mid-run halt stops us.
     if (processed > 0 && processed % 5 === 0) {
-      const recheck = await getPauseStatus();
+      const recheck = await getPauseStatus("cold");
       if (recheck.paused) {
         return NextResponse.json({
           paused: true,
