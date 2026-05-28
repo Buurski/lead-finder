@@ -88,6 +88,13 @@ export default function ReviewQueueClient({
   const [snapshot, setSnapshot] = useState<PauseSnapshot>(pauseSnapshot);
   const [scopeBusy, setScopeBusy] = useState<Record<Scope, boolean>>({ cold: false, followup: false, manual: false });
   const [scopeError, setScopeError] = useState<Record<Scope, string>>({ cold: "", followup: "", manual: "" });
+  // Approve / edit state
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [approveBusy, setApproveBusy] = useState<Set<string>>(new Set());
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
+  const [subjectById, setSubjectById] = useState<Record<string, string>>({});
+  const [bodyById, setBodyById] = useState<Record<string, string>>({});
+  const [approveErrorById, setApproveErrorById] = useState<Record<string, string>>({});
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [otherReasonOpen, setOtherReasonOpen] = useState<Record<string, boolean>>({});
   const [errorById, setErrorById] = useState<Record<string, string>>({});
@@ -163,6 +170,58 @@ export default function ReviewQueueClient({
     } finally {
       setHaltBusy(false);
     }
+  }
+
+  async function handleApprove(entry: ReviewEntry) {
+    setApproveBusy((s) => new Set(s).add(entry.id));
+    setApproveErrorById((s) => ({ ...s, [entry.id]: "" }));
+    try {
+      const subjectOverride = subjectById[entry.id];
+      const bodyOverride = bodyById[entry.id];
+      const res = await fetch("/api/review/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: entry.id,
+          kind: entry.kind,
+          ...(subjectOverride ? { subjectOverride } : {}),
+          ...(bodyOverride ? { bodyOverride } : {}),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `approve failed: ${res.status}`);
+      setApprovedIds((s) => new Set(s).add(entry.id));
+      setEditingIds((s) => { const n = new Set(s); n.delete(entry.id); return n; });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setApproveErrorById((s) => ({ ...s, [entry.id]: msg }));
+    } finally {
+      setApproveBusy((s) => { const n = new Set(s); n.delete(entry.id); return n; });
+    }
+  }
+
+  async function handleOpenEditor(entry: ReviewEntry) {
+    setEditingIds((s) => new Set(s).add(entry.id));
+    // Seed the subject + body from the lead's preview if not already edited.
+    if (subjectById[entry.id] === undefined || bodyById[entry.id] === undefined) {
+      try {
+        const res = await fetch(`/api/leads/${entry.id}/email-preview?type=${entry.kind}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSubjectById((s) => ({ ...s, [entry.id]: s[entry.id] ?? data.subject ?? "" }));
+          setBodyById((s) => ({ ...s, [entry.id]: s[entry.id] ?? data.text ?? "" }));
+        } else if (res.status === 422) {
+          // No matching template — Lucas can still write a custom body, no seed.
+          setSubjectById((s) => ({ ...s, [entry.id]: s[entry.id] ?? "" }));
+          setBodyById((s) => ({ ...s, [entry.id]: s[entry.id] ?? "" }));
+          setApproveErrorById((s) => ({ ...s, [entry.id]: "no matching template — skriv subject+body manuelt" }));
+        }
+      } catch {}
+    }
+  }
+
+  function handleCloseEditor(entryId: string) {
+    setEditingIds((s) => { const n = new Set(s); n.delete(entryId); return n; });
   }
 
   async function handleScopeToggle(scope: Scope) {
@@ -347,12 +406,23 @@ export default function ReviewQueueClient({
             key={entry.id}
             entry={entry}
             skipped={skippedIds.has(entry.id)}
+            approved={approvedIds.has(entry.id)}
             busy={busyIds.has(entry.id)}
+            approveBusy={approveBusy.has(entry.id)}
+            editing={editingIds.has(entry.id)}
+            subject={subjectById[entry.id]}
+            bodyText={bodyById[entry.id]}
             error={errorById[entry.id]}
+            approveError={approveErrorById[entry.id]}
             note={notesById[entry.id] ?? ""}
             otherOpen={!!otherReasonOpen[entry.id]}
             onNoteChange={(v) => setNotesById((s) => ({ ...s, [entry.id]: v }))}
+            onSubjectChange={(v) => setSubjectById((s) => ({ ...s, [entry.id]: v }))}
+            onBodyChange={(v) => setBodyById((s) => ({ ...s, [entry.id]: v }))}
             onSkip={(reason) => handleSkip(entry, reason)}
+            onApprove={() => handleApprove(entry)}
+            onEdit={() => handleOpenEditor(entry)}
+            onCloseEditor={() => handleCloseEditor(entry.id)}
           />
         )}
       </Section>
@@ -368,12 +438,23 @@ export default function ReviewQueueClient({
             key={entry.id}
             entry={entry}
             skipped={skippedIds.has(entry.id)}
+            approved={approvedIds.has(entry.id)}
             busy={busyIds.has(entry.id)}
+            approveBusy={approveBusy.has(entry.id)}
+            editing={editingIds.has(entry.id)}
+            subject={subjectById[entry.id]}
+            bodyText={bodyById[entry.id]}
             error={errorById[entry.id]}
+            approveError={approveErrorById[entry.id]}
             note={notesById[entry.id] ?? ""}
             otherOpen={!!otherReasonOpen[entry.id]}
             onNoteChange={(v) => setNotesById((s) => ({ ...s, [entry.id]: v }))}
+            onSubjectChange={(v) => setSubjectById((s) => ({ ...s, [entry.id]: v }))}
+            onBodyChange={(v) => setBodyById((s) => ({ ...s, [entry.id]: v }))}
             onSkip={(reason) => handleSkip(entry, reason)}
+            onApprove={() => handleApprove(entry)}
+            onEdit={() => handleOpenEditor(entry)}
+            onCloseEditor={() => handleCloseEditor(entry.id)}
           />
         )}
       </Section>
@@ -389,12 +470,23 @@ export default function ReviewQueueClient({
             key={entry.id}
             entry={entry}
             skipped={skippedIds.has(entry.id)}
+            approved={approvedIds.has(entry.id)}
             busy={busyIds.has(entry.id)}
+            approveBusy={approveBusy.has(entry.id)}
+            editing={editingIds.has(entry.id)}
+            subject={subjectById[entry.id]}
+            bodyText={bodyById[entry.id]}
             error={errorById[entry.id]}
+            approveError={approveErrorById[entry.id]}
             note={notesById[entry.id] ?? ""}
             otherOpen={!!otherReasonOpen[entry.id]}
             onNoteChange={(v) => setNotesById((s) => ({ ...s, [entry.id]: v }))}
+            onSubjectChange={(v) => setSubjectById((s) => ({ ...s, [entry.id]: v }))}
+            onBodyChange={(v) => setBodyById((s) => ({ ...s, [entry.id]: v }))}
             onSkip={(reason) => handleSkip(entry, reason)}
+            onApprove={() => handleApprove(entry)}
+            onEdit={() => handleOpenEditor(entry)}
+            onCloseEditor={() => handleCloseEditor(entry.id)}
           />
         )}
       </Section>
@@ -446,30 +538,53 @@ function Section({
 function Row({
   entry,
   skipped,
+  approved,
   busy,
+  approveBusy,
+  editing,
+  subject,
+  bodyText,
   error,
+  approveError,
   note,
   otherOpen,
   onNoteChange,
+  onSubjectChange,
+  onBodyChange,
   onSkip,
+  onApprove,
+  onEdit,
+  onCloseEditor,
 }: {
   entry: ReviewEntry;
   skipped: boolean;
+  approved: boolean;
   busy: boolean;
+  approveBusy: boolean;
+  editing: boolean;
+  subject?: string;
+  bodyText?: string;
   error?: string;
+  approveError?: string;
   note: string;
   otherOpen: boolean;
   onNoteChange: (v: string) => void;
+  onSubjectChange: (v: string) => void;
+  onBodyChange: (v: string) => void;
   onSkip: (reason: SkipReason) => void;
+  onApprove: () => void;
+  onEdit: () => void;
+  onCloseEditor: () => void;
 }) {
   const [selected, setSelected] = useState<SkipReason>("");
   const link = fullUrl(entry.website);
   const display = rootDomain(entry.website) || "(intet website)";
+  const inactive = skipped || approved;
 
   return (
     <article
       className={`rounded-md bg-white shadow-sm p-3 transition-opacity duration-300 ${
-        skipped ? "opacity-40 pointer-events-none" : ""
+        inactive ? "opacity-40 pointer-events-none" : ""
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -534,6 +649,32 @@ function Row({
         )}
       </div>
 
+      {editing && (
+        <div className="mt-3 space-y-2 border-t pt-3">
+          <label className="block text-xs font-medium text-slate-700">Subject</label>
+          <input
+            type="text"
+            value={subject ?? ""}
+            onChange={(e) => onSubjectChange(e.target.value)}
+            className="w-full rounded-md border border-slate-300 text-sm py-1.5 px-2 font-mono"
+          />
+          <label className="block text-xs font-medium text-slate-700">Body</label>
+          <textarea
+            value={bodyText ?? ""}
+            onChange={(e) => onBodyChange(e.target.value)}
+            rows={10}
+            className="w-full rounded-md border border-slate-300 text-sm py-2 px-2 font-mono"
+          />
+          <button
+            type="button"
+            onClick={onCloseEditor}
+            className="text-xs text-slate-500 underline"
+          >
+            Luk editor (overrides bevares)
+          </button>
+        </div>
+      )}
+
       <div className="mt-2 flex items-center gap-2">
         <select
           value={selected}
@@ -543,8 +684,8 @@ function Row({
             if (v && v !== "other") onSkip(v);
             else if (v === "other") onSkip("other"); // opens notes field
           }}
-          disabled={busy || skipped}
-          className="flex-1 rounded-md border border-slate-300 bg-white text-sm py-1.5 px-2"
+          disabled={busy || skipped || approved}
+          className="rounded-md border border-slate-300 bg-white text-sm py-1.5 px-2 flex-1 min-w-0"
         >
           <option value="">Skip…</option>
           {REASON_OPTIONS.map((o) => (
@@ -553,6 +694,22 @@ function Row({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={skipped || approved}
+          className="rounded-md border border-slate-300 bg-white text-xs font-medium py-1.5 px-3 text-slate-700 disabled:opacity-50"
+        >
+          {editing ? "Editor åben" : "Edit"}
+        </button>
+        <button
+          type="button"
+          onClick={onApprove}
+          disabled={approveBusy || skipped || approved}
+          className="rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white text-sm font-semibold py-1.5 px-3"
+        >
+          {approved ? "✓ Sendt" : approveBusy ? "Sender…" : "Send nu"}
+        </button>
         {busy && <span className="text-xs text-slate-400">…</span>}
       </div>
 
@@ -577,6 +734,7 @@ function Row({
       )}
 
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {approveError && <p className="mt-1 text-xs text-red-600">{approveError}</p>}
     </article>
   );
 }
