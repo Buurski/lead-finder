@@ -12,7 +12,7 @@ export default async function BriefPage({ params }: { params: Promise<{ id: stri
 
   // Parse enrichedInfo — prefer deep research (type: "deep"), fall back to simple
   let deepResearch: DeepResearch | undefined;
-  let autoFill: Partial<{
+  const autoFill: Partial<{
     clientName: string; branch: string; city: string;
     customers: string; tone: string; colorVibe: string;
     services: string; differentiator: string; hasLogo: string;

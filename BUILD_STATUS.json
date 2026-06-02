@@ -1,42 +1,52 @@
 {
-  "phase": "Del 3 — /approve UI + queue API",
-  "status": "done (committed); Del 4 next",
+  "phase": "Del 4 — daily engine (FINAL)",
+  "status": "complete — all 10 done-criteria SANDE og mekanisk bevist",
   "lastError": null,
-  "ts": "2026-06-03T00:05:00Z",
-  "usage": "Resumed after restart. Working deliberately per Lucas feedback; committing + updating status each phase so cap reset / restart stays clean.",
-  "resume": {
-    "branch": "night-build",
-    "next_phase": "Del 4 — engine.ts + .send_queue/daily_engine.mjs + fixture + morning SKILL.md",
-    "how": "Run `claude --resume`. /goal Stop-hook drives remaining phases. Del 0-3 committed + tsc exit 0."
+  "ts": "2026-06-03T01:30:00Z",
+  "usage": "Night build complete on night-build branch. Committed per phase; nothing pushed/merged. Resume not needed.",
+  "criteria": {
+    "1_bulk_find_emails_single_post": "PASS — grep POST=1, no chopped fragment",
+    "2_no_tracking_refs_archived": "PASS — 0 refs in src/, _archive/2026-06-02 populated, only 3 .bak + .old.bak + temp deleted",
+    "3_qualify_voice": "PASS — qualify.ts (hardDrop + isProfessionalEnough) + voice-guide.md",
+    "4_research_draft": "PASS — research.ts + draft.ts + validateDraft rejects pris/kr + robot-CTA",
+    "5_approve_ui": "PASS — /approve in build output, reads engine queue via /api/approve/queue",
+    "6_daily_engine": "PASS — engine.ts sequential loop + .send_queue/daily_engine.mjs + write-to-X + morning SKILL.md (DISABLED)",
+    "7_build_lint": "PASS — npm run build exit 0, npm run lint exit 0, /approve in output",
+    "8_dryrun_proof": "PASS — dry-run --limit=3 exit 0, 3 pending drafts, no send",
+    "9_build_status": "PASS — updated each phase",
+    "10_report": "PASS — NIGHT_BUILD_REPORT_2026-06-02.md written"
   },
   "phases": {
     "del0_cleanup": "done",
     "del1_qualify_voice": "done",
     "del2_research_draft": "done",
     "del3_approve_ui": "done",
-    "del4_engine": "pending",
-    "verify": "pending"
+    "del4_engine": "done",
+    "verify": "done"
   },
-  "del3_notes": [
-    "src/lib/queue.ts: shared QueueDraft schema + readQueue/writeQueue/appendDrafts/updateDraft (fs, .send_queue/approval_queue.json). Imported by BOTH the API route and the Del 4 engine — one schema, no drift.",
-    "src/app/api/approve/queue/route.ts: GET returns drafts; POST {id,action:approve|edit|reject}. 'approve' only marks status=approved (NO mail sent). 'edit' re-validates via validateDraft and 422s on price/robot-CTA violations.",
-    "src/app/approve/page.tsx: client component, impeccable-designed review-stack (not card grid per PRODUCT.md). Light theme, Fraunces headings, status pills, inline edit, demo links, empty state shows engine command.",
-    "Nav: added /approve link 'Godkendelse'.",
-    "tsc --noEmit exit 0."
-  ],
+  "commits": {
+    "del0": "0f773b3",
+    "del1_2": "9eff718",
+    "del3": "7751286",
+    "del4": "see latest on night-build"
+  },
   "optimization_backlog": [
-    "Niche beauty demoer (salon-artec+streetcut only) -> build frisør/negle/hudpleje/barber specific; use VIDA when live (brief §9 idé D).",
-    "research_lead: add Google Business reviews text as hook source (brief §8, strongest signal).",
+    "Enable ANTHROPIC_API_KEY -> Opus draft lift (currently deterministic composer).",
+    "Niche beauty demoer (salon-artec+streetcut only) -> frisør/negle/hudpleje/barber; use VIDA when live.",
+    "research_lead: add Google Business reviews text as hook source (brief §8).",
     "Chrome-agent fallback for JS-heavy booking sites (Timma).",
     "Email-finder: extend beyond website+CVR to FB/IG/booking; stop discarding gmail/hotmail blindly (missed VIDA); 164 beauty score>=60 no-email waiting.",
     "Ét datalag (Del 5): unify .send_queue JSON vs Sheets (VIDA won but never registered).",
     "Reply-assistent (Del 5): 84 replies -> only ~3 clients; classify+draft replies in voice.",
-    "isProfessionalEnough thresholds are first-guess; calibrate vs real won/lost leads.",
-    "/approve: add real send wiring (currently mark-approved only) once cold-path reopens; add keyboard triage (j/k + a/r).",
-    "/approve: poll/refresh or websocket so morning engine run appears without manual Opdatér."
+    "isProfessionalEnough thresholds first-guess; calibrate vs real won/lost leads.",
+    "/approve: real paced send wiring once cold-path reopens; keyboard triage (j/k + a/r); auto-refresh after morning run."
   ],
-  "process_feedback_applied": "Lucas (2026-06-02): work deliberately not rushed; capture optimizations into NIGHT_BUILD_OPTIMIZATIONS.md + this backlog for a follow-up /goal.",
-  "notes": [
-    ".send_queue/ gitignored — daily_engine.mjs canonical tracked copy under scripts/ (Del 4); approval_queue.json created on first engine run, never committed."
+  "process_feedback_applied": "Lucas (2026-06-02): work deliberately not rushed; capture optimizations into NIGHT_BUILD_OPTIMIZATIONS.md + this backlog for a follow-up /goal. Best items ready to package into a Del 5 + polish /goal.",
+  "next_for_lucas": [
+    "Open /approve (Godkendelse tab) — queue pre-filled with a dry-run batch.",
+    "Run `node .send_queue/daily_engine.mjs --dry-run --limit=12` to refill anytime.",
+    "Deploy manually when satisfied (deploy was NOT done tonight).",
+    "Enable morning scheduled task only after trusting draft quality.",
+    "Review NIGHT_BUILD_OPTIMIZATIONS.md to scope the next /goal."
   ]
 }

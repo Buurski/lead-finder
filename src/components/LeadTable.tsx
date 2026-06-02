@@ -195,18 +195,27 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
     }
   }
 
-  // Auto-enrich when a lead is marked Interesseret for the first time
+  // Auto-enrich when a lead is marked Interesseret for the first time.
+  // Defer to the next tick so the setState inside enrich() is not called
+  // synchronously within the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
     if (selected?.status === "interested" && !selected.enrichedInfo && !enriching && !enriched) {
-      enrich(selected);
+      const t = setTimeout(() => enrich(selected), 0);
+      return () => clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id, selected?.status]);
 
   const activeFilters = [filterStatus !== "all", filterTier !== "all", filterBranch !== "all", filterCity !== "all", filterWebsite !== "all", filterWebRating !== "all"].filter(Boolean).length;
 
-  // Reset to first page whenever filters or emailFilter change
-  useEffect(() => { setPage(0); }, [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter]);
+  // Reset to first page whenever filters change — done during render (React's
+  // recommended pattern for derived resets) instead of in an effect.
+  const filterSig = [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter].join("|");
+  const [prevFilterSig, setPrevFilterSig] = useState(filterSig);
+  if (prevFilterSig !== filterSig) {
+    setPrevFilterSig(filterSig);
+    setPage(0);
+  }
 
   const paginated = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
 
@@ -364,7 +373,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
               </tr>
             </thead>
             <tbody>
-              {paginated.map((lead, idx) => {
+              {paginated.map((lead) => {
                 const s = STATUS[lead.status];
                 const ws = webBadge(lead);
                 const active = selected?.id === lead.id;

@@ -79,8 +79,6 @@ async function runFindEmails() {
     setSyncingBounces(false);
   }
 
-  const hasAnything = true;
-
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
 

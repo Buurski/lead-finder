@@ -41,23 +41,46 @@ export default function ApprovePage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("pending");
 
+  const fetchQueue = useCallback(async (): Promise<QueueDraft[]> => {
+    const res = await fetch("/api/approve/queue", { cache: "no-store" });
+    const data = await res.json();
+    return Array.isArray(data.drafts) ? (data.drafts as QueueDraft[]) : [];
+  }, []);
+
+  // Manual refresh (button handler — setState here is fine, not an effect body).
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/approve/queue", { cache: "no-store" });
-      const data = await res.json();
-      setDrafts(Array.isArray(data.drafts) ? data.drafts : []);
+      setDrafts(await fetchQueue());
       setError(null);
     } catch {
       setError("Kunne ikke hente køen.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchQueue]);
 
+  // Initial load — all setState happens after await, so it is not a synchronous
+  // setState inside the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const drafts = await fetchQueue();
+        if (!cancelled) {
+          setDrafts(drafts);
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError("Kunne ikke hente køen.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchQueue]);
 
   const patchLocal = useCallback((d: QueueDraft) => {
     setDrafts((prev) => prev.map((x) => (x.id === d.id ? d : x)));
