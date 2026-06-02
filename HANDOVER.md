@@ -1,133 +1,127 @@
-# Handover — Lead System Session 2026-05-12
+# HANDOVER — 2026-05-13 overnight session
 
 ## Metadata
 
 | Field | Value |
-|---|---|
-| Date | 2026-05-12 |
-| Agent model | claude-sonnet-4-6 |
-| Branch | main |
-| Last commit | `a488de5` fix: add callbackDate to scrape route newLeads mapping |
-| Commits pushed | ✅ All commits on origin/main |
-| Build status | ✅ Clean — all 26 routes compile, TypeScript passes |
-| Vercel | https://lead-finder-three-beta.vercel.app/ |
-| Uncommitted changes | None |
+|-------|-------|
+| Date | 2026-05-13 |
+| Session type | Overnight bulk send (multi-batch) |
+| Status | Gmail daily limit hit again — 70 eligible leads remain |
 
----
+## Session goal
 
-## Current Branch & Review Minimums
+Fix email template routing, audit last night's 64 sends, send cold emails to all eligible leads, sync replies.
 
-| Branch | Min reviews | Email group | Score threshold |
-|--------|-------------|-------------|----------------|
-| tømrer, maler, elektriker, VVS, blikkenslager, tagdækker, murermester | none | craft | ≥ 40 |
-| rengøringsvirksomhed, vinduespudser, anlægsgartner | none | service | ≥ 40 |
-| advokat, revisor, fysioterapeut, tandlæge, optiker | none | **professional** | **≥ 70** |
-| restaurant, café | **30** | food | ≥ 40 |
-| fotograf | none | photo | ≥ 40 |
-| skønhedsklinik, hudklinik, negle & vippeextensions salon | 15 | service | ≥ 40 |
-| frisørsalon | **25** | service | ≥ 40 |
+## What was completed
 
----
+### Email template fixes (email.ts)
 
-## Session 2026-05-12 — What Changed (13 improvements)
+Root cause: `BRANCH_GROUP_MAP` keys were too long — `branch.includes(key)` requires key shorter than actual Google Places category string. Fixed with shorter keys.
 
-### Bug Fixes
+**Changes:**
+- Gallery group added: galleri, kunstgalleri, kunsthandel → `buurfoto.vercel.app` with photographer disclaimer
+- Beauty → NO demo. Copy: "Mange søger lokale X online". Removed vestfjends/restaurant demo.
+- Broader keyword matching: foto, frisør, hår, hair, salon, klip, fysioterapi, tand, læge, kaffebar, pizzeria, burger, bistro, smørrebrød
+- Food template: hardcoded "restauranter" → `v.branchDisplay` (cafés get "caféer")
 
-1. **Followup daysSince** — All 5 followup templates hardcoded "for en uges tid siden". Now compute actual days from `lead.emailSentAt`: `Math.round((Date.now() - new Date(emailSentAt).getTime()) / 86400000)`. Added `daysSince: number` to TemplateVars. Fallback = 7 for cold emails.
+### PROFESSIONAL_BRANCHES (bulk-send route)
 
-2. **Unified chain detection** — Created `src/lib/chains.ts` with `isChain(name, extra?)`. Merges CHAIN_EXACT (25 brands, word-boundary regex), CHAIN_CONTAINS (49 brands, substring). Both `bulk-send` and `cleanup` routes import from here — removed duplicate inline lists.
+Updated keys: "fysioterapi" (shorter), added kiropraktor, apotek.
 
-3. **Bulk-send sorted by score DESC** — `eligible.sort((a, b) => b.lead.score - a.lead.score)` before sending. Tier A leads get emails before Gmail quota runs out.
+### Overnight send — 3 batches total
 
-4. **Phone dedup in scrape** — Calls `getLeadPhones()` (Leads!C2:C) in parallel with `getLeadNames()`. If new lead phone matches existing phone → skip. Prevents duplicate leads via phone number.
+| Batch | Time | Sent | Notes |
+|-------|------|------|-------|
+| 1 | ~3:04 AM | 64 | Previous session — hit daily limit |
+| 2 | ~21:25 | 60 | Limit reset. 7 Sheets quota failures → PATCH'd |
+| 3 | ~22:24 | 48 | Limit hit again mid-batch. 6 Sheets quota failures → PATCH'd |
+| **Total** | | **172** | |
 
-### Targeting
+### Sheets quota failures (PATCH'd after each batch)
+Emails were sent but Sheets write failed. All 13 PATCH'd successfully as sent.
 
-5. **Professional branches require score ≥ 70** — advokat, revisor, fysioterapeut, tandlæge, optiker now need score ≥ 70 (was 40). High-trust professions only accept high-quality prospects.
+### Reply sync results
+- Batch 2 post-sync: 3 new replies (669 total checked)
+- Batch 3 post-sync: 0 new replies
 
-6. **Fyn cities added** — `CITIES` now has 33 cities. Added: Odense, Middelfart, Svendborg, Nyborg, Kerteminde.
+### Inbox replies (from previous session audit)
+- **KT VVS ApS**: "Du er velkommen til at ringe til mig" → HOT lead, call them!
+- Galleri Bo, Velodrom Kaffebar, Four Hands, Café Unika → declined
+- Line Bjørn, KongChristian X → getting sites elsewhere
 
-### Email
+### Attractive leads list
+Sent to buur.aigro@gmail.com — 12 Facebook/Messenger leads + 13 phone leads, score 75+, uncontacted.
 
-7. **Unsubscribe footer on all 10 templates** — Text: `\n\n---\nØnsker du ikke at høre fra mig igen? Skriv blot tilbage, så fjerner jeg dig fra listen.` HTML: styled `<hr>` + `<p style="color:#999;font-size:12px;">`. Added via `buildHtml()` (HTML) and `getEmailTemplate()` append (text).
+## What's pending
 
-### Callback Date Feature (column U)
+### TONIGHT (retry when Gmail resets — ~3:25 AM rolling window)
+```
+curl -X POST "https://lead-finder-three-beta.vercel.app/api/email/bulk-send" --max-time 320
+```
+Then sync:
+```
+curl -X POST "https://lead-finder-three-beta.vercel.app/api/email/sync-replies"
+```
 
-8. **`callbackDate` field on Lead** — Column U. ISO date string "YYYY-MM-DD" or "". `LEADS_RANGE` updated to `Leads!A2:U`.
+70 eligible leads remain. Expected ~100 send capacity per reset.
 
-9. **`updateCallbackDate(rowIndex, date)`** — new function in `sheets.ts`. Updates `Leads!U{row}`.
+### If Sheets quota hits again
+PATCH the affected lead IDs:
+```
+curl -X PATCH "https://lead-finder-three-beta.vercel.app/api/email/bulk-send" \
+  -H "Content-Type: application/json" \
+  -d '{"ids":["<id1>","<id2>",...]}'
+```
+IDs come from GET /api/email/bulk-send — cross-reference emails from POST results that got Sheets quota error.
 
-10. **`PATCH /api/leads/[id]/callback`** — new route. Body: `{ date: string }`. Returns `{ ok: true }`.
+### Followup emails (next day)
+Leads with cold email 7+ days ago: POST `/api/email/send-followups`
 
-11. **LeadTable callbackDate UI** — Date picker in side panel (after Notes, before Actions). Row highlights: red `rgba(239,68,68,0.08)` if overdue, orange `rgba(251,146,60,0.1)` if today. Uses `toLocaleDateString("sv-SE")` for timezone-correct Danish date comparison. "Fjern dato" clear button.
+## File map (changed this session)
 
-### CRM Improvements
+| File | What changed |
+|------|-------------|
+| `src/lib/email.ts` | Gallery group, beauty→no demo, broad keyword matching, food branchDisplay fix |
+| `src/app/api/email/bulk-send/route.ts` | PROFESSIONAL_BRANCHES shorter keys + kiropraktor/apotek |
 
-12. **Bulk-send GET richer response** — `{ eligible: number, leads: [{id,name,score,branch,city,email,websiteQualityTier}] }` sorted by score DESC. BulkEmailPanel reads `b.eligible` (was `b.count`). Enables preview of who will receive emails.
+## Key invariants
 
-13. **Clients page revenue totals** — `totalMRR = sum(parseFloat(monthlyFee) || 0)`. `totalSetup = sum(parseFloat(setupFee) || 0)`. Shows "X bekræftede klienter · MRR: Y kr · Setup: Z kr" in subtitle.
+- Row index = sheet row − 2 everywhere
+- `emailSentAt` = dedup guard — once set, lead won't re-send
+- `seenEmails` Set deduplicates within a single POST run
+- `websiteQualityTier === "modern"` → excluded
+- Professional branches: score ≥ 70 (uses PROFESSIONAL_BRANCHES in bulk-send)
+- Gmail daily limit: ~100 emails. Rolling 24h from first send of that batch.
+- PATCH /api/email/bulk-send recovers from partial Sheets quota failures
 
----
+## Demo URLs per branch group
 
-## Pending / Known Issues
+| Group | Demo URL |
+|-------|---------|
+| food | under-klippen.vercel.app + zaytoon-six.vercel.app |
+| craft | vestfjends.vercel.app |
+| beauty | NO demo — copy: "Mange søger lokale X online" |
+| gallery | buurfoto.vercel.app (with "demo for photographer" disclaimer) |
+| photo | buurfoto.vercel.app |
+| professional | midtadvokaterne-dttc.vercel.app |
+| service | no demo — copy focuses on local search visibility |
 
-1. **service group has no demo site** — frisørsalon, skønhedsklinik etc. get generic pitch. Conversion limited until a beauty/service demo site is built.
-2. **"called" status is misleading** — bulk-send sets status → "called" when email sent. Implies phone call. Not a bug, just confusing UX.
-3. **`apify.ts` still named apify** — uses Google Places API (not Apify). Historical name, don't change.
+## Branch group keyword matching
 
----
+Substring match (`branch.includes(key)`). Keys must be shorter than Google Places category names.
 
-## Critical File Map
+- **craft**: tømrer, maler, elektriker, vvs, blikkenslager, tagdæk, murermester, mekaniker, smed, snedker
+- **service**: rengøringsvirksomhed, vinduespudser, anlægsgartner, sundhed, fitness, træningscenter
+- **beauty**: skønhed, frisør, hår, hair, negle, nails, salon, klip, spa, velvære, wellness, massage, kosmetisk, kosmetolog, barbershop, barbersalon, barber, solcenter, solarium, hudpleje, hudklinik, body art
+- **gallery**: galleri, kunstgalleri, kunsthandel
+- **professional**: advokat, revisor, fysioterapi, tand, optiker, kiropraktor, apotek, læge, psykolog
+- **food**: restaurant, café, cafe, bistro, sushi, kaffebar, pizzeria, burger, smørrebrød
+- **photo**: foto
+- **default (fallback)**: craft
 
-| File | What it does |
-|------|--------------|
-| `src/lib/apify.ts` | BRANCHES, CITIES (33), scoreLead(), buildQueries(). Google Places API client. |
-| `src/lib/chains.ts` | CHAIN_EXACT (25, word-boundary), CHAIN_CONTAINS (49, substring). `isChain(name, extra?)`. |
-| `src/lib/email.ts` | DEMO_URLS, BRANCH_GROUP_MAP, BRANCH_DISPLAY, TEMPLATES (10), sendLeadEmail(), previewEmailTemplate(). |
-| `src/lib/sheets.ts` | Lead type (col A–U), Client type, all Sheets reads/writes, websiteQualityBonus(), deleteLeadRows(). |
-| `src/app/api/scrape/route.ts` | POST — scrapes, filters (review minimums + phone dedup), saves to sheet. |
-| `src/app/api/verify-all/route.ts` | POST — analyzes websites, scores quality, extracts emails from HTML. |
-| `src/app/api/leads/cleanup/route.ts` | GET/POST — chain lead cleanup. Uses `isChain` from chains.ts. |
-| `src/app/api/email/bulk-send/route.ts` | GET `{eligible, leads[]}` / POST send cold emails sorted by score. |
-| `src/app/api/email/send-followups/route.ts` | GET list / POST stream (NDJSON, 150ms delay). |
-| `src/app/api/leads/[id]/callback/route.ts` | PATCH — saves callbackDate to col U. |
-| `src/components/LeadTable.tsx` | Table + side panel. callbackDate UI, row highlights. |
-| `src/components/BulkEmailPanel.tsx` | Email action bar. Reads `b.eligible` from bulk-send GET. |
-| `src/app/clients/page.tsx` | Client list + MRR/setup revenue totals. |
+## Active Vercel URL
+https://lead-finder-three-beta.vercel.app/
 
----
-
-## Key Invariants
-
-- `lead.id` = sheet row (1-based). `rowIndex` = `id - 2`.
-- `LEADS_RANGE = "Leads!A2:U"` — 21 columns. T=reviewsCount, U=callbackDate.
-- `getBranchGroup()` uses partial lowercase matching — key order in BRANCH_GROUP_MAP matters.
-- Professional branches need score ≥ 70 for email eligibility (others: ≥ 40).
-- Always run verify-all before bulk-send. `websiteQualityTier=""` until verified.
-- `apify.ts` is the Google Places API client — do NOT add actual Apify SDK imports.
-- `websiteQualityBonus()` caps base score contribution. Max achievable score after verify-all = 80.
-- `deleteLeadRows()` deletes in descending row order to prevent index shift.
-- `isChain()` regex-escapes CHAIN_EXACT entries — special chars like `&`, `'` are safe.
-
----
-
-## Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Unsubscribe via `buildHtml()` + `getEmailTemplate()` | 2 changes handle all 10 templates instead of 10 separate edits |
-| Professional branches require ≥ 70 | High-trust professions are harder to sell cold. Fewer but better prospects |
-| Sort eligible by score before send | Gmail quota ~100/day. Sort ensures Tier A leads always get emails first |
-| callbackDate uses `sv-SE` locale for today | `toISOString()` is UTC. Danish users are UTC+1/UTC+2. sv-SE = YYYY-MM-DD in local time |
-| Phone dedup in scrape | Businesses rebrand/rename but keep same phone. Name dedup alone misses renames |
-| chains.ts with word-boundary CHAIN_EXACT | "jysk" as substring would catch "fejlrisiko". Word boundary is safe |
-| callbackDate as plain ISO string in sheet | No date type in Sheets. String comparison `<` and `===` works for YYYY-MM-DD |
-
----
-
-## Failed / Rejected Approaches
-
-- **Re-scoring existing 2400 leads**: Not possible — reviewsCount was never stored pre-first-session.
-- **Deleting all 2400 leads and starting fresh**: User rejected — keep leads with active statuses.
-- **500ms delay removal without streaming**: Would fail at 500+ leads. Streaming solved root cause.
-- **`\\\\b` regex escaping in chains.ts**: Code quality reviewer false positive — `\\b` in template literal correctly produces `\b` word boundary in RegExp constructor.
+## KT VVS ApS — HOT lead
+Replied: "Du er velkommen til at ringe til mig"
+Mark in sheet as "interesseret" or "called" when you call them.

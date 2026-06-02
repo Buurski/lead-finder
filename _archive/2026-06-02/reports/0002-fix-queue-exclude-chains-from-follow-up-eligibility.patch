@@ -1,0 +1,30 @@
+From 7963f637b275133ad2d7794b2e55dd62596ba9dd Mon Sep 17 00:00:00 2001
+From: Cowork Night Agent <cowork-night@local>
+Date: Wed, 27 May 2026 21:07:08 +0000
+Subject: [PATCH 2/5] fix(queue): exclude chains from follow-up eligibility
+
+isFollowupEligible() never called isChain(), so a chain that received a cold
+mail before the apostrophe fix could still get a follow-up. Add the same
+apostrophe-insensitive isChain() guard used for cold eligibility.
+---
+ src/lib/queue.ts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/lib/queue.ts b/src/lib/queue.ts
+index d02a7ad..0925d7c 100644
+--- a/src/lib/queue.ts
++++ b/src/lib/queue.ts
+@@ -69,6 +69,10 @@ function isFollowupEligible(lead: Lead): boolean {
+   if (lead.emailStatus === "bounced") return false;
+   if (lead.followupSentAt) return false;
+   if (lead.status === "skip" || lead.status === "client") return false;
++  // A chain that was cold-emailed before the apostrophe fix landed must not now
++  // receive a follow-up either — isChain() is apostrophe-insensitive as of the
++  // chains fix, so this retroactively stops chains already in the pipeline.
++  if (isChain(lead.name)) return false;
+   const sentDate = new Date(lead.emailSentAt);
+   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
+   return daysSince >= FOLLOWUP_DAYS;
+-- 
+2.34.1
+

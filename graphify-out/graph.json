@@ -1,0 +1,4819 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "email_send_pipeline",
+        "label": "Email Send Pipeline: Email Lib + Send Route + Tracking Columns",
+        "nodes": [
+          "plan_email_lib",
+          "plan_send_email_route",
+          "plan_email_tracking_columns"
+        ],
+        "relation": "implement",
+        "confidence": "INFERRED",
+        "confidence_score": 0.9,
+        "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+      },
+      {
+        "id": "ui_email_flow",
+        "label": "UI Email Flow: EmailPanel + PreviewModal + LeadTable Wiring",
+        "nodes": [
+          "plan_email_panel",
+          "plan_email_preview_modal",
+          "plan_lead_table_wiring"
+        ],
+        "relation": "implement",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+      },
+      {
+        "id": "bulk_followup_flow",
+        "label": "Bulk + Follow-up Flow: BulkEmailPanel + BulkSendRoute + FollowupRoute",
+        "nodes": [
+          "plan_bulk_email_panel",
+          "plan_bulk_send_route",
+          "plan_followup_route"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "eslint.config.mjs",
+      "file_type": "code",
+      "source_file": "eslint.config.mjs",
+      "source_location": "L1",
+      "id": "eslint_config_mjs",
+      "community": 17,
+      "norm_label": "eslint.config.mjs"
+    },
+    {
+      "label": "next-env.d.ts",
+      "file_type": "code",
+      "source_file": "next-env.d.ts",
+      "source_location": "L1",
+      "id": "next_env_d_ts",
+      "community": 18,
+      "norm_label": "next-env.d.ts"
+    },
+    {
+      "label": "next.config.ts",
+      "file_type": "code",
+      "source_file": "next.config.ts",
+      "source_location": "L1",
+      "id": "next_config_ts",
+      "community": 19,
+      "norm_label": "next.config.ts"
+    },
+    {
+      "label": "postcss.config.mjs",
+      "file_type": "code",
+      "source_file": "postcss.config.mjs",
+      "source_location": "L1",
+      "id": "postcss_config_mjs",
+      "community": 20,
+      "norm_label": "postcss.config.mjs"
+    },
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "src/app/layout.tsx",
+      "source_location": "L1",
+      "id": "src_app_layout_tsx",
+      "community": 21,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "src/app/page.tsx",
+      "source_location": "L1",
+      "id": "src_app_page_tsx",
+      "community": 0,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/clients/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_clients_route_ts",
+      "community": 1,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/clients/route.ts",
+      "source_location": "L4",
+      "id": "clients_route_get",
+      "community": 1,
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_clients_id_brief_route_ts",
+      "community": 1,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L7",
+      "id": "brief_route_post",
+      "community": 1,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_bulk_find_emails_route_ts",
+      "community": 1,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "extractEmail()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L11",
+      "id": "bulk_find_emails_route_extractemail",
+      "community": 1,
+      "norm_label": "extractemail()"
+    },
+    {
+      "label": "findEmailOnWebsite()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L24",
+      "id": "bulk_find_emails_route_findemailonwebsite",
+      "community": 1,
+      "norm_label": "findemailonwebsite()"
+    },
+    {
+      "label": "findEmailViaCVR()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L53",
+      "id": "bulk_find_emails_route_findemailviacvr",
+      "community": 1,
+      "norm_label": "findemailviacvr()"
+    },
+    {
+      "label": "findEmailForLead()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L68",
+      "id": "bulk_find_emails_route_findemailforlead",
+      "community": 1,
+      "norm_label": "findemailforlead()"
+    },
+    {
+      "label": "needsEmailSearch()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L83",
+      "id": "bulk_find_emails_route_needsemailsearch",
+      "community": 1,
+      "norm_label": "needsemailsearch()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L87",
+      "id": "bulk_find_emails_route_get",
+      "community": 1,
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L97",
+      "id": "bulk_find_emails_route_post",
+      "community": 1,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_bulk_send_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "getTier()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L7",
+      "id": "bulk_send_route_gettier",
+      "community": 0,
+      "norm_label": "gettier()"
+    },
+    {
+      "label": "isChain()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L27",
+      "id": "bulk_send_route_ischain",
+      "community": 0,
+      "norm_label": "ischain()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L35",
+      "id": "bulk_send_route_get",
+      "community": 0,
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L52",
+      "id": "bulk_send_route_post",
+      "community": 0,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_send_followups_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "isReadyForFollowup()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L9",
+      "id": "send_followups_route_isreadyforfollowup",
+      "community": 0,
+      "norm_label": "isreadyforfollowup()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L27",
+      "id": "send_followups_route_get",
+      "community": 0,
+      "norm_label": "get()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L33",
+      "id": "send_followups_route_post",
+      "community": 0,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_test_send_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "fakeLead()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L6",
+      "id": "test_send_route_fakelead",
+      "community": 0,
+      "norm_label": "fakelead()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L31",
+      "id": "test_send_route_post",
+      "community": 0,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_track_click_leadid_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/email/track/open/[leadId]/route.ts",
+      "source_location": "L9",
+      "id": "leadid_route_get",
+      "community": 0,
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/email/track/open/[leadId]/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_email_track_open_leadid_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/route.ts",
+      "source_location": "L4",
+      "id": "leads_route_get",
+      "community": 0,
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_analyze_route_ts",
+      "community": 10,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "detectCms()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L33",
+      "id": "analyze_route_detectcms",
+      "community": 10,
+      "norm_label": "detectcms()"
+    },
+    {
+      "label": "extractCopyrightYear()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L47",
+      "id": "analyze_route_extractcopyrightyear",
+      "community": 10,
+      "norm_label": "extractcopyrightyear()"
+    },
+    {
+      "label": "extractJQueryVersion()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L59",
+      "id": "analyze_route_extractjqueryversion",
+      "community": 10,
+      "norm_label": "extractjqueryversion()"
+    },
+    {
+      "label": "analyzeWebsite()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L64",
+      "id": "analyze_route_analyzewebsite",
+      "community": 10,
+      "norm_label": "analyzewebsite()"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L159",
+      "id": "analyze_route_get",
+      "community": 10,
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_deep_research_route_ts",
+      "community": 6,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "waitForRun()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L39",
+      "id": "deep_research_route_waitforrun",
+      "community": 6,
+      "norm_label": "waitforrun()"
+    },
+    {
+      "label": "crawlWebsite()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L51",
+      "id": "deep_research_route_crawlwebsite",
+      "community": 6,
+      "norm_label": "crawlwebsite()"
+    },
+    {
+      "label": "googleMapsLookup()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L78",
+      "id": "deep_research_route_googlemapslookup",
+      "community": 6,
+      "norm_label": "googlemapslookup()"
+    },
+    {
+      "label": "extractMeta()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L103",
+      "id": "deep_research_route_extractmeta",
+      "community": 6,
+      "norm_label": "extractmeta()"
+    },
+    {
+      "label": "fetchFacebookDescription()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L109",
+      "id": "deep_research_route_fetchfacebookdescription",
+      "community": 6,
+      "norm_label": "fetchfacebookdescription()"
+    },
+    {
+      "label": "inferAutoFill()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L121",
+      "id": "deep_research_route_inferautofill",
+      "community": 6,
+      "norm_label": "inferautofill()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L287",
+      "id": "deep_research_route_post",
+      "community": 6,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_email_preview_route_ts",
+      "community": 3,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L5",
+      "id": "email_preview_route_get",
+      "community": 3,
+      "norm_label": "get()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_enrich_route_ts",
+      "community": 7,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "extractEmail()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L25",
+      "id": "enrich_route_extractemail",
+      "community": 7,
+      "norm_label": "extractemail()"
+    },
+    {
+      "label": "extractPhone()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L38",
+      "id": "enrich_route_extractphone",
+      "community": 7,
+      "norm_label": "extractphone()"
+    },
+    {
+      "label": "fetchViaJina()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L45",
+      "id": "enrich_route_fetchviajina",
+      "community": 7,
+      "norm_label": "fetchviajina()"
+    },
+    {
+      "label": "fetchRawHtml()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L61",
+      "id": "enrich_route_fetchrawhtml",
+      "community": 7,
+      "norm_label": "fetchrawhtml()"
+    },
+    {
+      "label": "parseWebsiteContent()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L74",
+      "id": "enrich_route_parsewebsitecontent",
+      "community": 7,
+      "norm_label": "parsewebsitecontent()"
+    },
+    {
+      "label": "findFacebookInHtml()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L109",
+      "id": "enrich_route_findfacebookinhtml",
+      "community": 7,
+      "norm_label": "findfacebookinhtml()"
+    },
+    {
+      "label": "fetchFacebookMeta()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L117",
+      "id": "enrich_route_fetchfacebookmeta",
+      "community": 7,
+      "norm_label": "fetchfacebookmeta()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L133",
+      "id": "enrich_route_post",
+      "community": 7,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_send_email_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L5",
+      "id": "send_email_route_post",
+      "community": 0,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_leads_id_status_route_ts",
+      "community": 0,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "PATCH()",
+      "file_type": "code",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L4",
+      "id": "status_route_patch",
+      "community": 0,
+      "norm_label": "patch()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_scrape_route_ts",
+      "community": 4,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L7",
+      "id": "scrape_route_post",
+      "community": 4,
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L1",
+      "id": "src_app_api_verify_all_route_ts",
+      "community": 8,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "detectCms()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L8",
+      "id": "verify_all_route_detectcms",
+      "community": 8,
+      "norm_label": "detectcms()"
+    },
+    {
+      "label": "extractCopyrightYear()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L19",
+      "id": "verify_all_route_extractcopyrightyear",
+      "community": 8,
+      "norm_label": "extractcopyrightyear()"
+    },
+    {
+      "label": "extractJQueryVersion()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L31",
+      "id": "verify_all_route_extractjqueryversion",
+      "community": 8,
+      "norm_label": "extractjqueryversion()"
+    },
+    {
+      "label": "extractEmailFromHtml()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L36",
+      "id": "verify_all_route_extractemailfromhtml",
+      "community": 8,
+      "norm_label": "extractemailfromhtml()"
+    },
+    {
+      "label": "analyzeUrl()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L47",
+      "id": "verify_all_route_analyzeurl",
+      "community": 8,
+      "norm_label": "analyzeurl()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L90",
+      "id": "verify_all_route_post",
+      "community": 8,
+      "norm_label": "post()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "src/app/clients/page.tsx",
+      "source_location": "L1",
+      "id": "src_app_clients_page_tsx",
+      "community": 1,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "src/app/clients/[id]/brief/page.tsx",
+      "source_location": "L1",
+      "id": "src_app_clients_id_brief_page_tsx",
+      "community": 1,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "BriefForm.tsx",
+      "file_type": "code",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L1",
+      "id": "src_components_briefform_tsx",
+      "community": 11,
+      "norm_label": "briefform.tsx"
+    },
+    {
+      "label": "set()",
+      "file_type": "code",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L62",
+      "id": "components_briefform_set",
+      "community": 11,
+      "norm_label": "set()"
+    },
+    {
+      "label": "runDeepResearch()",
+      "file_type": "code",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L68",
+      "id": "components_briefform_rundeepresearch",
+      "community": 11,
+      "norm_label": "rundeepresearch()"
+    },
+    {
+      "label": "submit()",
+      "file_type": "code",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L98",
+      "id": "components_briefform_submit",
+      "community": 11,
+      "norm_label": "submit()"
+    },
+    {
+      "label": "copy()",
+      "file_type": "code",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L128",
+      "id": "components_briefform_copy",
+      "community": 11,
+      "norm_label": "copy()"
+    },
+    {
+      "label": "BulkEmailPanel.tsx",
+      "file_type": "code",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L1",
+      "id": "src_components_bulkemailpanel_tsx",
+      "community": 12,
+      "norm_label": "bulkemailpanel.tsx"
+    },
+    {
+      "label": "fetchCounts()",
+      "file_type": "code",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L16",
+      "id": "components_bulkemailpanel_fetchcounts",
+      "community": 12,
+      "norm_label": "fetchcounts()"
+    },
+    {
+      "label": "runBulkSend()",
+      "file_type": "code",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L27",
+      "id": "components_bulkemailpanel_runbulksend",
+      "community": 12,
+      "norm_label": "runbulksend()"
+    },
+    {
+      "label": "runFollowups()",
+      "file_type": "code",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L38",
+      "id": "components_bulkemailpanel_runfollowups",
+      "community": 12,
+      "norm_label": "runfollowups()"
+    },
+    {
+      "label": "runFindEmails()",
+      "file_type": "code",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L49",
+      "id": "components_bulkemailpanel_runfindemails",
+      "community": 12,
+      "norm_label": "runfindemails()"
+    },
+    {
+      "label": "ClientCard.tsx",
+      "file_type": "code",
+      "source_file": "src/components/ClientCard.tsx",
+      "source_location": "L1",
+      "id": "src_components_clientcard_tsx",
+      "community": 22,
+      "norm_label": "clientcard.tsx"
+    },
+    {
+      "label": "EmailDashboardClient.tsx",
+      "file_type": "code",
+      "source_file": "src/components/EmailDashboardClient.tsx",
+      "source_location": "L1",
+      "id": "src_components_emaildashboardclient_tsx",
+      "community": 13,
+      "norm_label": "emaildashboardclient.tsx"
+    },
+    {
+      "label": "EmailDashboardClient()",
+      "file_type": "code",
+      "source_file": "src/components/EmailDashboardClient.tsx",
+      "source_location": "L7",
+      "id": "components_emaildashboardclient_emaildashboardclient",
+      "community": 13,
+      "norm_label": "emaildashboardclient()"
+    },
+    {
+      "label": "EmailPanel.tsx",
+      "file_type": "code",
+      "source_file": "src/components/EmailPanel.tsx",
+      "source_location": "L1",
+      "id": "src_components_emailpanel_tsx",
+      "community": 14,
+      "norm_label": "emailpanel.tsx"
+    },
+    {
+      "label": "send()",
+      "file_type": "code",
+      "source_file": "src/components/EmailPanel.tsx",
+      "source_location": "L26",
+      "id": "components_emailpanel_send",
+      "community": 14,
+      "norm_label": "send()"
+    },
+    {
+      "label": "EmailPreviewModal.tsx",
+      "file_type": "code",
+      "source_file": "src/components/EmailPreviewModal.tsx",
+      "source_location": "L1",
+      "id": "src_components_emailpreviewmodal_tsx",
+      "community": 23,
+      "norm_label": "emailpreviewmodal.tsx"
+    },
+    {
+      "label": "EmailStatsPanel.tsx",
+      "file_type": "code",
+      "source_file": "src/components/EmailStatsPanel.tsx",
+      "source_location": "L1",
+      "id": "src_components_emailstatspanel_tsx",
+      "community": 24,
+      "norm_label": "emailstatspanel.tsx"
+    },
+    {
+      "label": "LeadTable.tsx",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L1",
+      "id": "src_components_leadtable_tsx",
+      "community": 9,
+      "norm_label": "leadtable.tsx"
+    },
+    {
+      "label": "webBadge()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L33",
+      "id": "components_leadtable_webbadge",
+      "community": 9,
+      "norm_label": "webbadge()"
+    },
+    {
+      "label": "tier()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L39",
+      "id": "components_leadtable_tier",
+      "community": 9,
+      "norm_label": "tier()"
+    },
+    {
+      "label": "updateStatus()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L123",
+      "id": "components_leadtable_updatestatus",
+      "community": 9,
+      "norm_label": "updatestatus()"
+    },
+    {
+      "label": "analyze()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L139",
+      "id": "components_leadtable_analyze",
+      "community": 9,
+      "norm_label": "analyze()"
+    },
+    {
+      "label": "enrich()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L151",
+      "id": "components_leadtable_enrich",
+      "community": 9,
+      "norm_label": "enrich()"
+    },
+    {
+      "label": "selectLead()",
+      "file_type": "code",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L163",
+      "id": "components_leadtable_selectlead",
+      "community": 9,
+      "norm_label": "selectlead()"
+    },
+    {
+      "label": "Nav.tsx",
+      "file_type": "code",
+      "source_file": "src/components/Nav.tsx",
+      "source_location": "L1",
+      "id": "src_components_nav_tsx",
+      "community": 25,
+      "norm_label": "nav.tsx"
+    },
+    {
+      "label": "ScrapeButton.tsx",
+      "file_type": "code",
+      "source_file": "src/components/ScrapeButton.tsx",
+      "source_location": "L1",
+      "id": "src_components_scrapebutton_tsx",
+      "community": 15,
+      "norm_label": "scrapebutton.tsx"
+    },
+    {
+      "label": "ScrapeButton()",
+      "file_type": "code",
+      "source_file": "src/components/ScrapeButton.tsx",
+      "source_location": "L4",
+      "id": "components_scrapebutton_scrapebutton",
+      "community": 15,
+      "norm_label": "scrapebutton()"
+    },
+    {
+      "label": "VerifyAllButton.tsx",
+      "file_type": "code",
+      "source_file": "src/components/VerifyAllButton.tsx",
+      "source_location": "L1",
+      "id": "src_components_verifyallbutton_tsx",
+      "community": 16,
+      "norm_label": "verifyallbutton.tsx"
+    },
+    {
+      "label": "VerifyAllButton()",
+      "file_type": "code",
+      "source_file": "src/components/VerifyAllButton.tsx",
+      "source_location": "L5",
+      "id": "components_verifyallbutton_verifyallbutton",
+      "community": 16,
+      "norm_label": "verifyallbutton()"
+    },
+    {
+      "label": "apify.ts",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L1",
+      "id": "src_lib_apify_ts",
+      "community": 4,
+      "norm_label": "apify.ts"
+    },
+    {
+      "label": "buildQueries()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L34",
+      "id": "lib_apify_buildqueries",
+      "community": 4,
+      "norm_label": "buildqueries()"
+    },
+    {
+      "label": "extractCity()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L38",
+      "id": "lib_apify_extractcity",
+      "community": 4,
+      "norm_label": "extractcity()"
+    },
+    {
+      "label": "searchPlaces()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L52",
+      "id": "lib_apify_searchplaces",
+      "community": 4,
+      "norm_label": "searchplaces()"
+    },
+    {
+      "label": "runScraper()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L98",
+      "id": "lib_apify_runscraper",
+      "community": 4,
+      "norm_label": "runscraper()"
+    },
+    {
+      "label": "scoreLead()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L126",
+      "id": "lib_apify_scorelead",
+      "community": 4,
+      "norm_label": "scorelead()"
+    },
+    {
+      "label": "detectWebsiteStatus()",
+      "file_type": "code",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L142",
+      "id": "lib_apify_detectwebsitestatus",
+      "community": 4,
+      "norm_label": "detectwebsitestatus()"
+    },
+    {
+      "label": "email.ts",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L1",
+      "id": "src_lib_email_ts",
+      "community": 3,
+      "norm_label": "email.ts"
+    },
+    {
+      "label": "getBranchDisplay()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L48",
+      "id": "lib_email_getbranchdisplay",
+      "community": 3,
+      "norm_label": "getbranchdisplay()"
+    },
+    {
+      "label": "getBranchGroup()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L56",
+      "id": "lib_email_getbranchgroup",
+      "community": 3,
+      "norm_label": "getbranchgroup()"
+    },
+    {
+      "label": "buildHtml()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L80",
+      "id": "lib_email_buildhtml",
+      "community": 3,
+      "norm_label": "buildhtml()"
+    },
+    {
+      "label": "websiteLine()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L89",
+      "id": "lib_email_websiteline",
+      "community": 3,
+      "norm_label": "websiteline()"
+    },
+    {
+      "label": "getAppUrl()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L233",
+      "id": "lib_email_getappurl",
+      "community": 3,
+      "norm_label": "getappurl()"
+    },
+    {
+      "label": "buildTrackingPixelUrl()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L239",
+      "id": "lib_email_buildtrackingpixelurl",
+      "community": 3,
+      "norm_label": "buildtrackingpixelurl()"
+    },
+    {
+      "label": "buildTrackedClickUrl()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L243",
+      "id": "lib_email_buildtrackedclickurl",
+      "community": 3,
+      "norm_label": "buildtrackedclickurl()"
+    },
+    {
+      "label": "getEmailTemplate()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L247",
+      "id": "lib_email_getemailtemplate",
+      "community": 3,
+      "norm_label": "getemailtemplate()"
+    },
+    {
+      "label": "sendLeadEmail()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L259",
+      "id": "lib_email_sendleademail",
+      "community": 0,
+      "norm_label": "sendleademail()"
+    },
+    {
+      "label": "previewEmailTemplate()",
+      "file_type": "code",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L280",
+      "id": "lib_email_previewemailtemplate",
+      "community": 3,
+      "norm_label": "previewemailtemplate()"
+    },
+    {
+      "label": "folders.ts",
+      "file_type": "code",
+      "source_file": "src/lib/folders.ts",
+      "source_location": "L1",
+      "id": "src_lib_folders_ts",
+      "community": 1,
+      "norm_label": "folders.ts"
+    },
+    {
+      "label": "buildClaudeMd()",
+      "file_type": "code",
+      "source_file": "src/lib/folders.ts",
+      "source_location": "L16",
+      "id": "lib_folders_buildclaudemd",
+      "community": 1,
+      "norm_label": "buildclaudemd()"
+    },
+    {
+      "label": "sheets.ts",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L1",
+      "id": "src_lib_sheets_ts",
+      "community": 1,
+      "norm_label": "sheets.ts"
+    },
+    {
+      "label": "getAuth()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L5",
+      "id": "lib_sheets_getauth",
+      "community": 1,
+      "norm_label": "getauth()"
+    },
+    {
+      "label": "getSheetsClient()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L21",
+      "id": "lib_sheets_getsheetsclient",
+      "community": 1,
+      "norm_label": "getsheetsclient()"
+    },
+    {
+      "label": "getLeads()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L66",
+      "id": "lib_sheets_getleads",
+      "community": 0,
+      "norm_label": "getleads()"
+    },
+    {
+      "label": "updateLeadStatus()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L97",
+      "id": "lib_sheets_updateleadstatus",
+      "community": 0,
+      "norm_label": "updateleadstatus()"
+    },
+    {
+      "label": "getClients()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L114",
+      "id": "lib_sheets_getclients",
+      "community": 1,
+      "norm_label": "getclients()"
+    },
+    {
+      "label": "addClient()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L134",
+      "id": "lib_sheets_addclient",
+      "community": 0,
+      "norm_label": "addclient()"
+    },
+    {
+      "label": "updateClientFolder()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L146",
+      "id": "lib_sheets_updateclientfolder",
+      "community": 1,
+      "norm_label": "updateclientfolder()"
+    },
+    {
+      "label": "websiteQualityBonus()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L161",
+      "id": "lib_sheets_websitequalitybonus",
+      "community": 8,
+      "norm_label": "websitequalitybonus()"
+    },
+    {
+      "label": "saveEnrichedInfo()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L170",
+      "id": "lib_sheets_saveenrichedinfo",
+      "community": 1,
+      "norm_label": "saveenrichedinfo()"
+    },
+    {
+      "label": "batchUpdateLeadVerifications()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L181",
+      "id": "lib_sheets_batchupdateleadverifications",
+      "community": 8,
+      "norm_label": "batchupdateleadverifications()"
+    },
+    {
+      "label": "appendLeads()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L201",
+      "id": "lib_sheets_appendleads",
+      "community": 4,
+      "norm_label": "appendleads()"
+    },
+    {
+      "label": "getLeadNames()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L227",
+      "id": "lib_sheets_getleadnames",
+      "community": 4,
+      "norm_label": "getleadnames()"
+    },
+    {
+      "label": "saveLeadEmail()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L236",
+      "id": "lib_sheets_saveleademail",
+      "community": 6,
+      "norm_label": "saveleademail()"
+    },
+    {
+      "label": "batchSaveEmails()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L247",
+      "id": "lib_sheets_batchsaveemails",
+      "community": 1,
+      "norm_label": "batchsaveemails()"
+    },
+    {
+      "label": "updateLeadEmailStatus()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L260",
+      "id": "lib_sheets_updateleademailstatus",
+      "community": 0,
+      "norm_label": "updateleademailstatus()"
+    },
+    {
+      "label": "markBriefFilled()",
+      "file_type": "code",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L285",
+      "id": "lib_sheets_markbrieffilled",
+      "community": 1,
+      "norm_label": "markbrieffilled()"
+    },
+    {
+      "label": "Next.js Agent Rules (Breaking Changes Warning)",
+      "file_type": "rationale",
+      "source_file": "AGENTS.md",
+      "source_location": "line 1-5",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_nextjs_agent_rules",
+      "community": 5,
+      "norm_label": "next.js agent rules (breaking changes warning)"
+    },
+    {
+      "label": "Dev Server Rule (No npm run dev while Claude Code active)",
+      "file_type": "rationale",
+      "source_file": "AGENTS.md",
+      "source_location": "line 7-9",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "agents_dev_server_rule",
+      "community": 26,
+      "norm_label": "dev server rule (no npm run dev while claude code active)"
+    },
+    {
+      "label": "Lead System \u2014 Personal CRM + Pipeline Tool",
+      "file_type": "document",
+      "source_file": "PRODUCT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": "Lucas",
+      "contributor": null,
+      "id": "product_lead_system",
+      "community": 5,
+      "norm_label": "lead system \u2014 personal crm + pipeline tool"
+    },
+    {
+      "label": "Lucas \u2014 Solo Freelance Web Designer (Danish Market)",
+      "file_type": "rationale",
+      "source_file": "PRODUCT.md",
+      "source_location": "line 3",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "product_lucas_user",
+      "community": 5,
+      "norm_label": "lucas \u2014 solo freelance web designer (danish market)"
+    },
+    {
+      "label": "Apify Lead Scraping Integration",
+      "file_type": "rationale",
+      "source_file": "PRODUCT.md",
+      "source_location": "line 7",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "product_apify_integration",
+      "community": 5,
+      "norm_label": "apify lead scraping integration"
+    },
+    {
+      "label": "Sales Funnel (new \u2192 called \u2192 interested \u2192 client)",
+      "file_type": "rationale",
+      "source_file": "PRODUCT.md",
+      "source_location": "line 7",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "product_sales_funnel",
+      "community": 5,
+      "norm_label": "sales funnel (new \u2192 called \u2192 interested \u2192 client)"
+    },
+    {
+      "label": "Google Sheets as Backend Data Store",
+      "file_type": "rationale",
+      "source_file": "PRODUCT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "product_google_sheets_backend",
+      "community": 5,
+      "norm_label": "google sheets as backend data store"
+    },
+    {
+      "label": "Brand Tone \u2014 Efficient, Clean, Personal (Well-Designed Notebook)",
+      "file_type": "rationale",
+      "source_file": "PRODUCT.md",
+      "source_location": "line 12-13",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "product_brand_tone",
+      "community": 5,
+      "norm_label": "brand tone \u2014 efficient, clean, personal (well-designed notebook)"
+    },
+    {
+      "label": "Lead Expansion + Email Automation \u2014 Implementation Plan",
+      "file_type": "document",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": "2026-04-29",
+      "author": "Lucas",
+      "contributor": null,
+      "id": "plan_email_automation",
+      "community": 2,
+      "norm_label": "lead expansion + email automation \u2014 implementation plan"
+    },
+    {
+      "label": "Apify Query Expansion (BRANCHES + CITIES, Midtjylland)",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_apify_expansion",
+      "community": 5,
+      "norm_label": "apify query expansion (branches + cities, midtjylland)"
+    },
+    {
+      "label": "Email Tracking Columns O\u2013S in Google Sheets",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 2",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_email_tracking_columns",
+      "community": 2,
+      "norm_label": "email tracking columns o\u2013s in google sheets"
+    },
+    {
+      "label": "Nodemailer via Gmail SMTP (buur.aigro@gmail.com)",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 3",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_nodemailer_gmail",
+      "community": 2,
+      "norm_label": "nodemailer via gmail smtp (buur.aigro@gmail.com)"
+    },
+    {
+      "label": "src/lib/email.ts \u2014 Branch Templates + Nodemailer + Tracking URLs",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 4",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_email_lib",
+      "community": 2,
+      "norm_label": "src/lib/email.ts \u2014 branch templates + nodemailer + tracking urls"
+    },
+    {
+      "label": "API Route: /api/leads/[id]/send-email",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 5",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_send_email_route",
+      "community": 2,
+      "norm_label": "api route: /api/leads/[id]/send-email"
+    },
+    {
+      "label": "Email Tracking Endpoints (open pixel + click redirect)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 6",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_tracking_endpoints",
+      "community": 2,
+      "norm_label": "email tracking endpoints (open pixel + click redirect)"
+    },
+    {
+      "label": "API Route: /api/email/bulk-send (Tier A/B leads)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 7",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_bulk_send_route",
+      "community": 2,
+      "norm_label": "api route: /api/email/bulk-send (tier a/b leads)"
+    },
+    {
+      "label": "API Route: /api/email/send-followups (5-day no-open filter)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 8",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_followup_route",
+      "community": 2,
+      "norm_label": "api route: /api/email/send-followups (5-day no-open filter)"
+    },
+    {
+      "label": "EmailPanel Component (per-lead email section in side panel)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 9",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_email_panel",
+      "community": 2,
+      "norm_label": "emailpanel component (per-lead email section in side panel)"
+    },
+    {
+      "label": "EmailPreviewModal Component",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 10",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_email_preview_modal",
+      "community": 2,
+      "norm_label": "emailpreviewmodal component"
+    },
+    {
+      "label": "BulkEmailPanel Component (dashboard bulk send + follow-up)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_bulk_email_panel",
+      "community": 2,
+      "norm_label": "bulkemailpanel component (dashboard bulk send + follow-up)"
+    },
+    {
+      "label": "LeadTable + page.tsx Wiring (EmailPanel + BulkEmailPanel)",
+      "file_type": "code",
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 12",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "plan_lead_table_wiring",
+      "community": 2,
+      "norm_label": "leadtable + page.tsx wiring (emailpanel + bulkemailpanel)"
+    },
+    {
+      "label": "Design Spec: Lead Expansion + Email Automation",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": "2026-04-29",
+      "author": null,
+      "contributor": null,
+      "id": "spec_email_automation",
+      "community": 2,
+      "norm_label": "design spec: lead expansion + email automation"
+    },
+    {
+      "label": "Branch Groups with Tone (H\u00e5ndv\u00e6rk, Service, Professionelle, Mad, Sk\u00f8nhed)",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Del 3",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "spec_branch_groups",
+      "community": 2,
+      "norm_label": "branch groups with tone (handv\u00e6rk, service, professionelle, mad, sk\u00f8nhed)"
+    },
+    {
+      "label": "Email Dataflow (Scrape \u2192 Tier Filter \u2192 Send \u2192 Track \u2192 Follow-up)",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Dataflow",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "spec_email_dataflow",
+      "community": 2,
+      "norm_label": "email dataflow (scrape \u2192 tier filter \u2192 send \u2192 track \u2192 follow-up)"
+    },
+    {
+      "label": "Tier A/B Filter (score \u226570 = A, \u226540 = B) for Bulk Send",
+      "file_type": "rationale",
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "spec_tier_ab_filter",
+      "community": 2,
+      "norm_label": "tier a/b filter (score \u226570 = a, \u226540 = b) for bulk send"
+    },
+    {
+      "label": "Lead Pipeline Dashboard \u2014 Full View",
+      "file_type": "image",
+      "source_file": "dashboard-full.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "dashboard_full_screenshot",
+      "community": 5,
+      "norm_label": "lead pipeline dashboard \u2014 full view"
+    },
+    {
+      "label": "Email Preview Modal (Kold mail preview UI with Send button)",
+      "file_type": "image",
+      "source_file": "preview-click.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "preview_click_screenshot",
+      "community": 2,
+      "norm_label": "email preview modal (kold mail preview ui with send button)"
+    },
+    {
+      "label": "Next.js Project (create-next-app bootstrapped, Geist font, Vercel deploy)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "readme_nextjs_project",
+      "community": 5,
+      "norm_label": "next.js project (create-next-app bootstrapped, geist font, vercel deploy)"
+    }
+  ],
+  "links": [
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_app_page_tsx",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_clients_route_ts",
+      "target": "lib_sheets_getclients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/route.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_app_api_clients_route_ts",
+      "target": "clients_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/clients/route.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "clients_route_get",
+      "target": "lib_sheets_getclients"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_app_api_clients_id_brief_route_ts",
+      "target": "lib_sheets_updateclientfolder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_app_api_clients_id_brief_route_ts",
+      "target": "lib_sheets_markbrieffilled",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_clients_id_brief_route_ts",
+      "target": "lib_folders_buildclaudemd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_app_api_clients_id_brief_route_ts",
+      "target": "brief_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "brief_route_post",
+      "target": "lib_folders_buildclaudemd"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "brief_route_post",
+      "target": "lib_sheets_updateclientfolder"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/clients/[id]/brief/route.ts",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "brief_route_post",
+      "target": "lib_sheets_markbrieffilled"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "lib_sheets_batchsaveemails",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_extractemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_findemailonwebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_findemailviacvr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_findemailforlead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_needsemailsearch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L87",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L97",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_find_emails_route_ts",
+      "target": "bulk_find_emails_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_findemailonwebsite",
+      "target": "bulk_find_emails_route_extractemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_findemailforlead",
+      "target": "bulk_find_emails_route_findemailonwebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_findemailforlead",
+      "target": "bulk_find_emails_route_findemailviacvr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-find-emails/route.ts",
+      "source_location": "L118",
+      "weight": 1.0,
+      "source": "bulk_find_emails_route_post",
+      "target": "lib_sheets_batchsaveemails"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "lib_sheets_updateleadstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "lib_email_sendleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "bulk_send_route_gettier",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "bulk_send_route_ischain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "bulk_send_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "src_app_api_email_bulk_send_route_ts",
+      "target": "bulk_send_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "bulk_send_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "bulk_send_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "bulk_send_route_post",
+      "target": "lib_email_sendleademail"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "bulk_send_route_post",
+      "target": "lib_sheets_updateleademailstatus"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/bulk-send/route.ts",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "bulk_send_route_post",
+      "target": "lib_sheets_updateleadstatus"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "lib_sheets_updateleadstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "lib_email_sendleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "send_followups_route_isreadyforfollowup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "send_followups_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_app_api_email_send_followups_route_ts",
+      "target": "send_followups_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "send_followups_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "send_followups_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "send_followups_route_post",
+      "target": "lib_email_sendleademail"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "send_followups_route_post",
+      "target": "lib_sheets_updateleademailstatus"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/send-followups/route.ts",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "send_followups_route_post",
+      "target": "lib_sheets_updateleadstatus"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_test_send_route_ts",
+      "target": "lib_email_sendleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_app_api_email_test_send_route_ts",
+      "target": "test_send_route_fakelead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "src_app_api_email_test_send_route_ts",
+      "target": "test_send_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "test_send_route_post",
+      "target": "test_send_route_fakelead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/test-send/route.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "test_send_route_post",
+      "target": "lib_email_sendleademail"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_click_leadid_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_click_leadid_route_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_click_leadid_route_ts",
+      "target": "leadid_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/open/[leadId]/route.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_open_leadid_route_ts",
+      "target": "leadid_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "leadid_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/email/track/click/[leadId]/route.ts",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "leadid_route_get",
+      "target": "lib_sheets_updateleademailstatus"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/open/[leadId]/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_open_leadid_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/email/track/open/[leadId]/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_email_track_open_leadid_route_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/route.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_app_api_leads_route_ts",
+      "target": "leads_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/route.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "leads_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "analyze_route_detectcms",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "analyze_route_extractcopyrightyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "analyze_route_extractjqueryversion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "analyze_route_analyzewebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L159",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_analyze_route_ts",
+      "target": "analyze_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "analyze_route_analyzewebsite",
+      "target": "analyze_route_detectcms",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "analyze_route_analyzewebsite",
+      "target": "analyze_route_extractcopyrightyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "analyze_route_analyzewebsite",
+      "target": "analyze_route_extractjqueryversion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L194",
+      "weight": 1.0,
+      "source": "analyze_route_get",
+      "target": "analyze_route_analyzewebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/analyze/route.ts",
+      "source_location": "L167",
+      "weight": 1.0,
+      "source": "analyze_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "lib_sheets_saveenrichedinfo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "lib_sheets_saveleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_waitforrun",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_crawlwebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L78",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_googlemapslookup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_extractmeta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L109",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_fetchfacebookdescription",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L121",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_inferautofill",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L287",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_deep_research_route_ts",
+      "target": "deep_research_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "deep_research_route_crawlwebsite",
+      "target": "deep_research_route_waitforrun",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "deep_research_route_googlemapslookup",
+      "target": "deep_research_route_waitforrun",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L325",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "deep_research_route_crawlwebsite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L326",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "deep_research_route_googlemapslookup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "deep_research_route_fetchfacebookdescription",
+      "target": "deep_research_route_extractmeta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L342",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "deep_research_route_fetchfacebookdescription",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L371",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "deep_research_route_inferautofill",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L297",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L387",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "lib_sheets_saveenrichedinfo"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/deep-research/route.ts",
+      "source_location": "L389",
+      "weight": 1.0,
+      "source": "deep_research_route_post",
+      "target": "lib_sheets_saveleademail"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_email_preview_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_email_preview_route_ts",
+      "target": "lib_email_previewemailtemplate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_email_preview_route_ts",
+      "target": "email_preview_route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "email_preview_route_get",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/email-preview/route.ts",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "email_preview_route_get",
+      "target": "lib_email_previewemailtemplate"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "lib_sheets_saveenrichedinfo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "lib_sheets_saveleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_extractemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_extractphone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_fetchviajina",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_fetchrawhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_parsewebsitecontent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L109",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_findfacebookinhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_fetchfacebookmeta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L133",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_enrich_route_ts",
+      "target": "enrich_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L104",
+      "weight": 1.0,
+      "source": "enrich_route_parsewebsitecontent",
+      "target": "enrich_route_extractemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L171",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_extractemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "enrich_route_parsewebsitecontent",
+      "target": "enrich_route_extractphone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L186",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_extractphone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L162",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_fetchviajina",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L163",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_fetchrawhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L169",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_parsewebsitecontent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_findfacebookinhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L218",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "enrich_route_fetchfacebookmeta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L233",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "lib_sheets_saveenrichedinfo"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/enrich/route.ts",
+      "source_location": "L235",
+      "weight": 1.0,
+      "source": "enrich_route_post",
+      "target": "lib_sheets_saveleademail"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_send_email_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_send_email_route_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_send_email_route_ts",
+      "target": "lib_sheets_updateleadstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_send_email_route_ts",
+      "target": "lib_email_sendleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_send_email_route_ts",
+      "target": "send_email_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "send_email_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "send_email_route_post",
+      "target": "lib_email_sendleademail"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "send_email_route_post",
+      "target": "lib_sheets_updateleademailstatus"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/send-email/route.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "send_email_route_post",
+      "target": "lib_sheets_updateleadstatus"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_status_route_ts",
+      "target": "lib_sheets_updateleadstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_status_route_ts",
+      "target": "lib_sheets_addclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_status_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_app_api_leads_id_status_route_ts",
+      "target": "status_route_patch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "status_route_patch",
+      "target": "lib_sheets_updateleadstatus"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "status_route_patch",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/leads/[id]/status/route.ts",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "status_route_patch",
+      "target": "lib_sheets_addclient"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "lib_apify_runscraper",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "lib_apify_scorelead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "lib_apify_detectwebsitestatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "lib_sheets_appendleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "lib_sheets_getleadnames",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_app_api_scrape_route_ts",
+      "target": "scrape_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "scrape_route_post",
+      "target": "lib_apify_runscraper"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "scrape_route_post",
+      "target": "lib_sheets_getleadnames"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/scrape/route.ts",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "scrape_route_post",
+      "target": "lib_sheets_appendleads"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "lib_sheets_batchupdateleadverifications",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "lib_sheets_websitequalitybonus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_detectcms",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_extractcopyrightyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_extractjqueryversion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_extractemailfromhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_analyzeurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "src_app_api_verify_all_route_ts",
+      "target": "verify_all_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "verify_all_route_analyzeurl",
+      "target": "verify_all_route_detectcms",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "verify_all_route_analyzeurl",
+      "target": "verify_all_route_extractcopyrightyear",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "verify_all_route_analyzeurl",
+      "target": "verify_all_route_extractjqueryversion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "verify_all_route_analyzeurl",
+      "target": "verify_all_route_extractemailfromhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "verify_all_route_post",
+      "target": "lib_sheets_getleads"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/app/api/verify-all/route.ts",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "verify_all_route_post",
+      "target": "lib_sheets_batchupdateleadverifications"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/clients/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_app_clients_page_tsx",
+      "target": "lib_sheets_getclients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/clients/[id]/brief/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_clients_id_brief_page_tsx",
+      "target": "lib_sheets_getclients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/clients/[id]/brief/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_app_clients_id_brief_page_tsx",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "src_components_briefform_tsx",
+      "target": "components_briefform_set",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "src_components_briefform_tsx",
+      "target": "components_briefform_rundeepresearch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "src_components_briefform_tsx",
+      "target": "components_briefform_submit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BriefForm.tsx",
+      "source_location": "L128",
+      "weight": 1.0,
+      "source": "src_components_briefform_tsx",
+      "target": "components_briefform_copy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_components_bulkemailpanel_tsx",
+      "target": "components_bulkemailpanel_fetchcounts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_components_bulkemailpanel_tsx",
+      "target": "components_bulkemailpanel_runbulksend",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_components_bulkemailpanel_tsx",
+      "target": "components_bulkemailpanel_runfollowups",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "src_components_bulkemailpanel_tsx",
+      "target": "components_bulkemailpanel_runfindemails",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "components_bulkemailpanel_runbulksend",
+      "target": "components_bulkemailpanel_fetchcounts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "components_bulkemailpanel_runfollowups",
+      "target": "components_bulkemailpanel_fetchcounts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/BulkEmailPanel.tsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "components_bulkemailpanel_runfindemails",
+      "target": "components_bulkemailpanel_fetchcounts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/EmailDashboardClient.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_components_emaildashboardclient_tsx",
+      "target": "components_emaildashboardclient_emaildashboardclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/EmailPanel.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_components_emailpanel_tsx",
+      "target": "components_emailpanel_send",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_webbadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_tier",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_updatestatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L139",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_analyze",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_enrich",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/LeadTable.tsx",
+      "source_location": "L163",
+      "weight": 1.0,
+      "source": "src_components_leadtable_tsx",
+      "target": "components_leadtable_selectlead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/ScrapeButton.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_components_scrapebutton_tsx",
+      "target": "components_scrapebutton_scrapebutton",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/VerifyAllButton.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_components_verifyallbutton_tsx",
+      "target": "components_verifyallbutton_verifyallbutton",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_buildqueries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_extractcity",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_searchplaces",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_runscraper",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_scorelead",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "src_lib_apify_ts",
+      "target": "lib_apify_detectwebsitestatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/apify.ts",
+      "source_location": "L107",
+      "weight": 1.0,
+      "source": "lib_apify_runscraper",
+      "target": "lib_apify_searchplaces",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_getbranchdisplay",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_getbranchgroup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_buildhtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_websiteline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L233",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_getappurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L239",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_buildtrackingpixelurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L243",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_buildtrackedclickurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L247",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_getemailtemplate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L259",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_sendleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L280",
+      "weight": 1.0,
+      "source": "src_lib_email_ts",
+      "target": "lib_email_previewemailtemplate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L255",
+      "weight": 1.0,
+      "source": "lib_email_getemailtemplate",
+      "target": "lib_email_getbranchdisplay",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L252",
+      "weight": 1.0,
+      "source": "lib_email_getemailtemplate",
+      "target": "lib_email_getbranchgroup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L240",
+      "weight": 1.0,
+      "source": "lib_email_buildtrackingpixelurl",
+      "target": "lib_email_getappurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L244",
+      "weight": 1.0,
+      "source": "lib_email_buildtrackedclickurl",
+      "target": "lib_email_getappurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L254",
+      "weight": 1.0,
+      "source": "lib_email_getemailtemplate",
+      "target": "lib_email_buildtrackingpixelurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L263",
+      "weight": 1.0,
+      "source": "lib_email_sendleademail",
+      "target": "lib_email_getemailtemplate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/email.ts",
+      "source_location": "L284",
+      "weight": 1.0,
+      "source": "lib_email_previewemailtemplate",
+      "target": "lib_email_getemailtemplate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/folders.ts",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_lib_folders_ts",
+      "target": "lib_folders_buildclaudemd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_getauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_getleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L97",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_updateleadstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_getclients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L134",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_addclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L146",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_updateclientfolder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L161",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_websitequalitybonus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L170",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_saveenrichedinfo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L181",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_batchupdateleadverifications",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L201",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_appendleads",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L227",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_getleadnames",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L236",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_saveleademail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L247",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_batchsaveemails",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L260",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_updateleademailstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L285",
+      "weight": 1.0,
+      "source": "src_lib_sheets_ts",
+      "target": "lib_sheets_markbrieffilled",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "lib_sheets_getsheetsclient",
+      "target": "lib_sheets_getauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "lib_sheets_getleads",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "lib_sheets_updateleadstatus",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L115",
+      "weight": 1.0,
+      "source": "lib_sheets_getclients",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "lib_sheets_addclient",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L150",
+      "weight": 1.0,
+      "source": "lib_sheets_updateclientfolder",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L171",
+      "weight": 1.0,
+      "source": "lib_sheets_saveenrichedinfo",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L185",
+      "weight": 1.0,
+      "source": "lib_sheets_batchupdateleadverifications",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L202",
+      "weight": 1.0,
+      "source": "lib_sheets_appendleads",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L228",
+      "weight": 1.0,
+      "source": "lib_sheets_getleadnames",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L237",
+      "weight": 1.0,
+      "source": "lib_sheets_saveleademail",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L249",
+      "weight": 1.0,
+      "source": "lib_sheets_batchsaveemails",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L270",
+      "weight": 1.0,
+      "source": "lib_sheets_updateleademailstatus",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/lib/sheets.ts",
+      "source_location": "L286",
+      "weight": 1.0,
+      "source": "lib_sheets_markbrieffilled",
+      "target": "lib_sheets_getsheetsclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "AGENTS.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "agents_nextjs_agent_rules",
+      "target": "readme_nextjs_project"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PRODUCT.md",
+      "source_location": "line 7",
+      "weight": 1.0,
+      "source": "product_lead_system",
+      "target": "product_apify_integration"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PRODUCT.md",
+      "source_location": "line 7",
+      "weight": 1.0,
+      "source": "product_lead_system",
+      "target": "product_sales_funnel"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "PRODUCT.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "product_lead_system",
+      "target": "product_google_sheets_backend"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PRODUCT.md",
+      "source_location": "line 3",
+      "weight": 1.0,
+      "source": "product_lead_system",
+      "target": "product_lucas_user"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PRODUCT.md",
+      "source_location": "line 12-13",
+      "weight": 1.0,
+      "source": "product_brand_tone",
+      "target": "product_lead_system"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "dashboard-full.png",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "dashboard_full_screenshot",
+      "target": "product_lead_system"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_nextjs_project",
+      "target": "product_lead_system"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "plan_apify_expansion",
+      "target": "product_apify_integration"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "plan_email_tracking_columns",
+      "target": "product_google_sheets_backend"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "spec_email_automation",
+      "target": "plan_email_automation"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 1",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_apify_expansion"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 2",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_email_tracking_columns"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 3",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_nodemailer_gmail"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 4",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_email_lib"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 5",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_send_email_route"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 6",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_tracking_endpoints"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 7",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_bulk_send_route"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 8",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_followup_route"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 9",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_email_panel"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 10",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_email_preview_modal"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 11",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_bulk_email_panel"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 12",
+      "weight": 1.0,
+      "source": "plan_email_automation",
+      "target": "plan_lead_table_wiring"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 5",
+      "weight": 1.0,
+      "source": "plan_send_email_route",
+      "target": "plan_email_tracking_columns"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 6",
+      "weight": 1.0,
+      "source": "plan_tracking_endpoints",
+      "target": "plan_email_tracking_columns"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 8",
+      "weight": 1.0,
+      "source": "plan_followup_route",
+      "target": "plan_email_tracking_columns"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Del 2",
+      "weight": 1.0,
+      "source": "spec_email_automation",
+      "target": "plan_email_tracking_columns"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 4",
+      "weight": 1.0,
+      "source": "plan_email_lib",
+      "target": "plan_nodemailer_gmail"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Del 2",
+      "weight": 1.0,
+      "source": "spec_email_automation",
+      "target": "plan_nodemailer_gmail"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "spec_branch_groups",
+      "target": "plan_email_lib"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 4",
+      "weight": 1.0,
+      "source": "plan_email_lib",
+      "target": "plan_tracking_endpoints"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 5",
+      "weight": 1.0,
+      "source": "plan_send_email_route",
+      "target": "plan_email_lib"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 7",
+      "weight": 1.0,
+      "source": "plan_bulk_send_route",
+      "target": "plan_email_lib"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 8",
+      "weight": 1.0,
+      "source": "plan_followup_route",
+      "target": "plan_email_lib"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 9",
+      "weight": 1.0,
+      "source": "plan_email_panel",
+      "target": "plan_send_email_route"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 10",
+      "weight": 1.0,
+      "source": "plan_email_preview_modal",
+      "target": "plan_send_email_route"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "spec_email_dataflow",
+      "target": "plan_tracking_endpoints"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 7",
+      "weight": 1.0,
+      "source": "plan_bulk_send_route",
+      "target": "spec_tier_ab_filter"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 11",
+      "weight": 1.0,
+      "source": "plan_bulk_email_panel",
+      "target": "plan_bulk_send_route"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "plan_bulk_send_route",
+      "target": "plan_followup_route"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 11",
+      "weight": 1.0,
+      "source": "plan_bulk_email_panel",
+      "target": "plan_followup_route"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "spec_email_dataflow",
+      "target": "plan_followup_route"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 9",
+      "weight": 1.0,
+      "source": "plan_email_panel",
+      "target": "plan_email_preview_modal"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 12",
+      "weight": 1.0,
+      "source": "plan_lead_table_wiring",
+      "target": "plan_email_panel"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "plan_bulk_email_panel",
+      "target": "plan_email_panel"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "preview-click.png",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "preview_click_screenshot",
+      "target": "plan_email_preview_modal"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md",
+      "source_location": "Task 12",
+      "weight": 1.0,
+      "source": "plan_lead_table_wiring",
+      "target": "plan_bulk_email_panel"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Dataflow",
+      "weight": 1.0,
+      "source": "spec_email_dataflow",
+      "target": "spec_email_automation"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Del 3",
+      "weight": 1.0,
+      "source": "spec_email_automation",
+      "target": "spec_branch_groups"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/specs/2026-04-29-leads-email-automation-design.md",
+      "source_location": "Del 2",
+      "weight": 1.0,
+      "source": "spec_email_automation",
+      "target": "spec_tier_ab_filter"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "email_send_pipeline",
+      "label": "Email Send Pipeline: Email Lib + Send Route + Tracking Columns",
+      "nodes": [
+        "plan_email_lib",
+        "plan_send_email_route",
+        "plan_email_tracking_columns"
+      ],
+      "relation": "implement",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+    },
+    {
+      "id": "ui_email_flow",
+      "label": "UI Email Flow: EmailPanel + PreviewModal + LeadTable Wiring",
+      "nodes": [
+        "plan_email_panel",
+        "plan_email_preview_modal",
+        "plan_lead_table_wiring"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+    },
+    {
+      "id": "bulk_followup_flow",
+      "label": "Bulk + Follow-up Flow: BulkEmailPanel + BulkSendRoute + FollowupRoute",
+      "nodes": [
+        "plan_bulk_email_panel",
+        "plan_bulk_send_route",
+        "plan_followup_route"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/superpowers/plans/2026-04-29-leads-email-automation.md"
+    }
+  ],
+  "built_at_commit": "11280549189a7c0c8223d8725883e35f970811a5"
+}

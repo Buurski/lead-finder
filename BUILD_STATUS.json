@@ -1,0 +1,22 @@
+{
+  "phase": "Del 0 — cleanup",
+  "status": "done",
+  "lastError": null,
+  "ts": "2026-06-02T22:30:00Z",
+  "usage": "Lucas cloud usage ~67% when Del 0 finished; cap resets ~2h. Max plan. Commit + status updated each phase so any cutoff is clean and `claude --resume`-able.",
+  "phases": {
+    "del0_cleanup": "done",
+    "del1_qualify_voice": "pending",
+    "del2_research_draft": "pending",
+    "del3_approve_ui": "pending",
+    "del4_engine": "pending",
+    "verify": "pending"
+  },
+  "notes": [
+    "bulk-find-emails: single POST, fragment removed, Chrome UA.",
+    "tracking removed from email.ts (0 refs in src/); track routes archived to _archive/2026-06-02/track-routes.",
+    "3 route files (bulk-send, send-followups, sync-replies) were uncommitted corruption from a prior session; restored clean from HEAD.",
+    "tsc --noEmit exit 0 after Del 0.",
+    ".send_queue/ is gitignored (secrets/state) — daily_engine.mjs canonical tracked copy will live under scripts/."
+  ]
+}

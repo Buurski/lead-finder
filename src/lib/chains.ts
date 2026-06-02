@@ -3,7 +3,7 @@ const JYSK_TRADE_WORDS = ["tømrer", "el ", "elteknik", "vvs", "byg", "service",
 
 const CHAIN_EXACT = [
   "lidl", "aldi", "zara", "ikea", "matas", "stark", "shell", "subway",
-  "bones", "flammen", "sticks'n'sushi", "cofoco", "sunset boulevard",
+  "bone's", "bones", "flammen", "sticks'n'sushi", "cofoco", "sunset boulevard",
   "joe & the juice", "joe and the juice", "espresso house", "baresso",
   "pizza hut", "domino's", "papa john's",
   "kfc", "taco bell", "wendy's",

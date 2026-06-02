@@ -1,0 +1,74 @@
+From 81ddb95c8ee21da3334ec75f59423cb499bb6e4c Mon Sep 17 00:00:00 2001
+From: Cowork Night Agent <cowork-night@local>
+Date: Wed, 27 May 2026 21:05:45 +0000
+Subject: [PATCH 1/5] fix(chains): apostrophe-insensitive matching (Bone's
+ miss) + coop word-boundary
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+isChain() matched CHAIN_EXACT entries with \b word boundaries, so "Bone's"
+and "Bone’s" (straight + curly apostrophe) never matched the "bones" entry —
+the chain slipped through and would receive a cold email. This is the exact
+miss the overhaul was triggered by; verified still live on origin/main.
+
+Fix: normalize all apostrophe variants to an apostrophe-free haystack before
+matching EXACT and CONTAINS lists. Also move "coop" to a whole-word match so
+"Scoop Is" is no longer flagged as the Coop grocery chain.
+
+Verified with a 33-case battery (Bone's/Bone’s/Bones, McDonald's, Domino's,
+Salling, Netto, VVS Netto, Scoop, Coop, Espresso House, etc.) — 33/33 pass.
+---
+ src/lib/chains.ts | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/src/lib/chains.ts b/src/lib/chains.ts
+index 014287b..b0ef916 100644
+--- a/src/lib/chains.ts
++++ b/src/lib/chains.ts
+@@ -20,7 +20,7 @@ const CHAIN_CONTAINS = [
+   "lagkagehuset", "riccos kaffebar", "the union kitchen",
+   "sticks n sushi", "sunset blvd",
+   // Grocery / retail
+-  "rema 1000", "bilka", "føtex", "kvickly", "coop", "normal store", "normal a/s",
++  "rema 1000", "bilka", "føtex", "kvickly", "normal store", "normal a/s",
+   "søstrene grene", "flying tiger", "tiger stores", "h&m",
+   "sportsmaster", "intersport",
+   // DIY / building
+@@ -45,17 +45,31 @@ const CHAIN_CONTAINS = [
+   "pincho nation",
+ ];
+ 
++// Short/ambiguous tokens that must match as a whole word — substring matching
++// would over-match (e.g. "coop" inside "Scoop Is", "Coop" the grocery chain is real).
++const CHAIN_WORDS = ["coop"];
++
+ export function isChain(name: string, extra?: string[]): boolean {
+   const lower = name.toLowerCase();
++  // Apostrophe-insensitive haystack: collapse straight ('), curly (’), backtick (`)
++  // and acute (´) apostrophes so "Bone's" / "Bone’s" / "Bones" all match the
++  // CHAIN_EXACT entry "bones". Without this the \b word-boundary match never fires
++  // for the apostrophe spellings and the chain slips through (the original Bone's miss).
++  const stripApos = (str: string) => str.replace(/[’'`´]/g, "");
++  const norm = stripApos(lower);
+   // JYSK furniture chain: match "jysk" only when NOT preceded/followed by a trade/service word
+   if (/\bjysk\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
+   // Netto supermarket: match "netto" as standalone word, NOT when preceded by trade words (e.g. "VVS Netto")
+   if (/\bnetto\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w))) return true;
+   // Salling department store: match "salling" only when NOT combined with trade/profession words
+   if (/\bsalling\b/.test(lower) && !JYSK_TRADE_WORDS.some(w => lower.includes(w)) && !/v\/|aps|a\/s|i\/s/.test(lower)) return true;
++  for (const w of CHAIN_WORDS) {
++    if (new RegExp(`\\b${w}\\b`).test(norm)) return true;
++  }
+   for (const chain of CHAIN_EXACT) {
+-    if (new RegExp(`\\b${chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) return true;
++    const c = stripApos(chain.toLowerCase());
++    if (new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(norm)) return true;
+   }
+   const containsList = extra ? [...CHAIN_CONTAINS, ...extra] : CHAIN_CONTAINS;
+-  return containsList.some((chain) => lower.includes(chain.toLowerCase()));
++  return containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())));
+ }
+-- 
+2.34.1
+

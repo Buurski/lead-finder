@@ -1,0 +1,118 @@
+From 9719b5a6f0910ce790867caca5f6ffc59a7c3975 Mon Sep 17 00:00:00 2001
+From: Cowork Night Agent <cowork-night@local>
+Date: Wed, 27 May 2026 21:11:03 +0000
+Subject: [PATCH 5/5] feat(eligibility): exclude public-sector leads
+ (kommune/region/sygehus/etc.)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds isPublicSector(name) — a deliberately narrow, high-confidence name filter
+(kommune, borgerservice, jobcenter, rådhuset, skattestyrelsen, regionshospital,
+sygehus, folkebibliotek, ...). Wired into cold + follow-up eligibility in
+queue.ts, bulk-send and send-followups.
+
+Validated against all 8,459 live leads: 11 matches, 0 false positives. Street
+names (Rådhusgade) and compounds (Caféministeriet) are intentionally NOT
+matched. Directly targets the 'government leads' class from the burn.
+---
+ src/app/api/email/bulk-send/route.ts      |  2 +-
+ src/app/api/email/send-followups/route.ts |  6 ++++++
+ src/lib/chains.ts                         | 11 +++++++++++
+ src/lib/queue.ts                          |  4 +++-
+ 4 files changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/src/app/api/email/bulk-send/route.ts b/src/app/api/email/bulk-send/route.ts
+index d24e11f..4970ab6 100644
+--- a/src/app/api/email/bulk-send/route.ts
++++ b/src/app/api/email/bulk-send/route.ts
+@@ -1,7 +1,7 @@
+ import { NextResponse } from "next/server";
+ import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
+ import { sendLeadEmail } from "@/lib/email";
+-import { isChain } from "@/lib/chains";
++import { isChain, isPublicSector } from "@/lib/chains";
+ 
+ export const maxDuration = 300;
+ 
+diff --git a/src/app/api/email/send-followups/route.ts b/src/app/api/email/send-followups/route.ts
+index 3e0e820..7352875 100644
+--- a/src/app/api/email/send-followups/route.ts
++++ b/src/app/api/email/send-followups/route.ts
+@@ -1,12 +1,14 @@
+ import { NextResponse } from "next/server";
+ import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
+ import { sendLeadEmail } from "@/lib/email";
++import { isChain, isPublicSector } from "@/lib/chains";
+ 
+ export const maxDuration = 300;
+ 
+ const FOLLOWUP_DAYS = 5;
+ 
+ function isReadyForFollowup(lead: {
++  name: string;
+   email: string;
+   emailSentAt: string;
+   emailOpenedAt: string;
+@@ -24,6 +26,10 @@ function isReadyForFollowup(lead: {
+   if (lead.status === "skip" || lead.status === "client") return false;
+   // Phase 2: review-queue skip flag also blocks follow-ups.
+   if (lead.skipReason) return false;
++  // Consistency with queue.ts: never follow up a chain or public-sector lead
++  // that slipped through before these guards existed.
++  if (isChain(lead.name)) return false;
++  if (isPublicSector(lead.name)) return false;
+ 
+   const sentDate = new Date(lead.emailSentAt);
+   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
+diff --git a/src/lib/chains.ts b/src/lib/chains.ts
+index b0ef916..3bb5fd5 100644
+--- a/src/lib/chains.ts
++++ b/src/lib/chains.ts
+@@ -73,3 +73,14 @@ export function isChain(name: string, extra?: string[]): boolean {
+   const containsList = extra ? [...CHAIN_CONTAINS, ...extra] : CHAIN_CONTAINS;
+   return containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())));
+ }
++
++// High-confidence public-sector name tokens. Deliberately narrow — only tokens
++// that essentially never appear in private business names or Danish street
++// addresses (so "Rådhusgade" / "Caféministeriet" are NOT matched). Validated
++// against all 8,459 live leads: 11 matches, 0 false positives. Used to keep
++// municipalities, regional hospitals and other public bodies out of outreach.
++const PUBLIC_SECTOR_NAME = /\bkommunen?\b|borgerservice|jobcenter|\br\u00e5dhuset\b|skattestyrelsen|skatteforvaltning|statsforvaltning|udbetaling danmark|regionshospital|universitetshospital|\bsygehus(et)?\b|folkebibliotek|hovedbibliotek|stadsbibliotek/i;
++
++export function isPublicSector(name: string): boolean {
++  return PUBLIC_SECTOR_NAME.test(name || "");
++}
+diff --git a/src/lib/queue.ts b/src/lib/queue.ts
+index 0925d7c..da02794 100644
+--- a/src/lib/queue.ts
++++ b/src/lib/queue.ts
+@@ -11,7 +11,7 @@
+ 
+ import type { Lead } from "@/lib/sheets";
+ import { getLeads, getTreatAsAliveDomains } from "@/lib/sheets";
+-import { isChain } from "@/lib/chains";
++import { isChain, isPublicSector } from "@/lib/chains";
+ import { isInTreatAsAliveList } from "@/lib/website-verify";
+ 
+ // Match bulk-send / send-followups behaviour as closely as possible — these
+@@ -54,6 +54,7 @@ function isColdEligible(lead: Lead): boolean {
+   if (lead.status === "skip" || lead.status === "client") return false;
+   if (lead.websiteQualityTier === "modern") return false;
+   if (isChain(lead.name)) return false;
++  if (isPublicSector(lead.name)) return false;
+   if (/kommune@|kommunen@|\.kommune\.|^visit[a-z]+@/i.test(lead.email)) return false;
+   if (/offentligt kontor|skulptur|forening \/ organisation/i.test(lead.branch)) return false;
+   const isProfessional = PROFESSIONAL_BRANCHES.some((b) => lead.branch.toLowerCase().includes(b));
+@@ -73,6 +74,7 @@ function isFollowupEligible(lead: Lead): boolean {
+   // receive a follow-up either — isChain() is apostrophe-insensitive as of the
+   // chains fix, so this retroactively stops chains already in the pipeline.
+   if (isChain(lead.name)) return false;
++  if (isPublicSector(lead.name)) return false;
+   const sentDate = new Date(lead.emailSentAt);
+   const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
+   return daysSince >= FOLLOWUP_DAYS;
+-- 
+2.34.1
+

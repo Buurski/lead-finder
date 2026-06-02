@@ -1,0 +1,11 @@
+[    3164ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at rX (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:47213)
+    at https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:144190
+    at sh (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:147755)
+    at sd (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:139005)
+    at https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:133830
+    at se (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:133931)
+    at s$ (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:160495)
+    at MessagePort.O (https://lead-finder-three-beta.vercel.app/_next/static/chunks/124lp33i~iu0l.js?dpl=dpl_5tbDU8wYDrAf2uoX5Q5vq7N8oSyZ:1:8660)
+[    3658ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://lead-finder-three-beta.vercel.app/icon-192.png:0
+[    3658ms] [WARNING] Error while trying to use the following icon from the Manifest: https://lead-finder-three-beta.vercel.app/icon-192.png (Download error or resource isn't a valid image) @ https://lead-finder-three-beta.vercel.app/review:0

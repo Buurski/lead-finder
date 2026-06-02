@@ -4,6 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Lucas's communication preferences (updated 2026-05-28)
+
+**Primary inbox: `buur.aigro@gmail.com`.** This is where Lucas checks email and where the daily lead-system artifacts land (morning lead-batch digest, morning messenger digest, etc.). Send all routine system output here.
+
+**Dispatch** remains the channel for ad-hoc chat / questions / status pings that don't warrant an email.
+
+**Previous policy (2026-05-26) reserving buur.aigro for "TRULY URGENT only" is superseded** — Lucas confirmed 2026-05-28 that the daily messenger digest and other recurring system mails should go to buur.aigro. The `shadowporo123@gmail.com` address is Claude account/identity only, not a working inbox.
+
+**Still avoid:** spamming buur.aigro with mid-task progress chatter. Send the artifact (digest, completed deliverable, real blocker) — not running commentary. Use Dispatch for that.
+
 ## Commands
 
 ```bash

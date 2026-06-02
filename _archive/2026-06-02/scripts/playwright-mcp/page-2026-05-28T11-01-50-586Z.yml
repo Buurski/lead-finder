@@ -1,0 +1,2103 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: ls/
+      - generic [ref=e5]:
+        - link "Leads" [ref=e6] [cursor=pointer]:
+          - /url: /
+        - link "Review" [ref=e7] [cursor=pointer]:
+          - /url: /review
+          - text: Review
+        - link "Klienter" [ref=e9] [cursor=pointer]:
+          - /url: /clients
+      - generic [ref=e12]: live
+  - main [ref=e13]:
+    - main [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - heading "🌅 Morning review" [level=1] [ref=e18]
+            - paragraph [ref=e19]: 72 / 75 planlagt i dag · 0 cold · 72 follow-up
+            - paragraph [ref=e20]: opdateret lige nu
+          - button "🛑 Pauset" [disabled] [ref=e21]
+        - paragraph [ref=e22]: Alle udsendelser pauset indtil 1.7.2026, 02.00.00.
+        - generic [ref=e23]:
+          - generic [ref=e24] [cursor=pointer]:
+            - checkbox "Jeg forstår at dette starter cold-mail + follow-ups + cron-jobs igen." [ref=e25]
+            - generic [ref=e26]: Jeg forstår at dette starter cold-mail + follow-ups + cron-jobs igen.
+          - button "Genoptag alle automatiserede mails" [disabled] [ref=e27]
+        - generic [ref=e28]:
+          - button "Cold-mails · pauset (master)" [ref=e29]:
+            - text: Cold-mails · pauset
+            - generic [ref=e31]: (master)
+          - button "Follow-ups · pauset" [ref=e32]: Follow-ups · pauset
+          - button "Manuel / test · pauset (master)" [ref=e34]:
+            - text: Manuel / test · pauset
+            - generic [ref=e36]: (master)
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - strong [ref=e39]: "0"
+          - text: kæder
+        - generic [ref=e40]:
+          - strong [ref=e41]: "1"
+          - text: broken-claim
+        - generic [ref=e42]:
+          - strong [ref=e43]: "71"
+          - text: standard
+      - generic [ref=e44]:
+        - heading "🚨 Mulige kæder · 0" [level=2] [ref=e45]
+        - paragraph [ref=e46]: Ingen kæder i dagens kø.
+      - generic [ref=e47]:
+        - heading "⚠️ Broken-website claims · 1" [level=2] [ref=e48]
+        - article [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - paragraph [ref=e53]:
+                - text: Erik Sørensen El-Installatør
+                - generic [ref=e54]: · score 37 · follow-up dag 11
+              - paragraph [ref=e55]: Elektriker · Haderslev
+              - paragraph [ref=e56]: 📧 mail@es-el.dk
+              - paragraph [ref=e57]:
+                - text: 🌐
+                - link "krak.dk" [ref=e58] [cursor=pointer]:
+                  - /url: https://www.krak.dk/krak/67225024/firma
+              - generic [ref=e59]:
+                - generic [ref=e60]: "claim: broken website"
+                - generic [ref=e61]: followup
+                - generic [ref=e62]: "tier: dead"
+            - link "Screenshot af krak.dk" [ref=e63] [cursor=pointer]:
+              - /url: https://www.krak.dk/krak/67225024/firma
+              - img "Screenshot af krak.dk" [ref=e64]
+          - generic [ref=e65]:
+            - combobox [ref=e66]:
+              - option "Skip…" [selected]
+              - option "Cloudflare/WAF false positive (site er fin)"
+              - option "Kæde — bør ikke kontaktes"
+              - option "Bad fit (forkert branche / for stor)"
+              - option "Forkert mail-template ville blive valgt"
+              - option "Allerede kontaktet via anden kanal"
+              - option "Andet (skriv hvorfor)"
+            - button "Edit" [ref=e67]
+            - button "Send nu" [ref=e68]
+      - generic [ref=e69]:
+        - heading "✅ Standard · 71" [level=2] [ref=e70]
+        - generic [ref=e71]:
+          - article [ref=e72]:
+            - generic [ref=e73]:
+              - generic [ref=e74]:
+                - paragraph [ref=e75]:
+                  - text: Salon Sofie
+                  - generic [ref=e76]: · score 44 · follow-up dag 13
+                - paragraph [ref=e77]: Frisør · Give
+                - paragraph [ref=e78]: 📧 mail@salonsofie.dk
+                - paragraph [ref=e79]:
+                  - text: 🌐
+                  - link "salonsofie.dk" [ref=e80] [cursor=pointer]:
+                    - /url: http://www.salonsofie.dk/
+                - generic [ref=e81]:
+                  - generic [ref=e82]: followup
+                  - generic [ref=e83]: "tier: old"
+              - link "Screenshot af salonsofie.dk" [ref=e84] [cursor=pointer]:
+                - /url: http://www.salonsofie.dk/
+                - img "Screenshot af salonsofie.dk" [ref=e85]
+            - generic [ref=e86]:
+              - combobox [ref=e87]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e88]
+              - button "Send nu" [ref=e89]
+          - article [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]:
+                - paragraph [ref=e93]:
+                  - text: Tømrer og Snedker Brian Jeppesen
+                  - generic [ref=e94]: · score 43 · follow-up dag 13
+                - paragraph [ref=e95]: Producent · Ringkøbing
+                - paragraph [ref=e96]: 📧 info@brianjeppesen.dk
+                - paragraph [ref=e97]:
+                  - text: 🌐
+                  - link "brianjeppesen.dk" [ref=e98] [cursor=pointer]:
+                    - /url: http://brianjeppesen.dk/
+                - generic [ref=e99]:
+                  - generic [ref=e100]: followup
+                  - generic [ref=e101]: "tier: mediocre"
+              - link "Screenshot af brianjeppesen.dk" [ref=e102] [cursor=pointer]:
+                - /url: http://brianjeppesen.dk/
+                - img "Screenshot af brianjeppesen.dk" [ref=e103]
+            - generic [ref=e104]:
+              - combobox [ref=e105]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e106]
+              - button "Send nu" [ref=e107]
+          - article [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]:
+                  - text: Tømrer & Snedkerfirmaet Jonas Frandsen
+                  - generic [ref=e112]: · score 43 · follow-up dag 13
+                - paragraph [ref=e113]: Producent · Brande
+                - paragraph [ref=e114]: 📧 jonas@frandsen.dk
+                - paragraph [ref=e115]:
+                  - text: 🌐
+                  - link "jonasfrandsen.dk" [ref=e116] [cursor=pointer]:
+                    - /url: https://jonasfrandsen.dk/
+                - generic [ref=e117]:
+                  - generic [ref=e118]: followup
+                  - generic [ref=e119]: "tier: old"
+              - link "Screenshot af jonasfrandsen.dk" [ref=e120] [cursor=pointer]:
+                - /url: https://jonasfrandsen.dk/
+                - img "Screenshot af jonasfrandsen.dk" [ref=e121]
+            - generic [ref=e122]:
+              - combobox [ref=e123]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e124]
+              - button "Send nu" [ref=e125]
+          - article [ref=e126]:
+            - generic [ref=e127]:
+              - generic [ref=e128]:
+                - paragraph [ref=e129]:
+                  - text: Bellissima
+                  - generic [ref=e130]: · score 43 · follow-up dag 13
+                - paragraph [ref=e131]: Kosmetolog · Horsens
+                - paragraph [ref=e132]: 📧 info@bellissima-horsens.dk
+                - paragraph [ref=e133]:
+                  - text: 🌐
+                  - link "bellissima-horsens.dk" [ref=e134] [cursor=pointer]:
+                    - /url: http://bellissima-horsens.dk/
+                - generic [ref=e135]:
+                  - generic [ref=e136]: followup
+                  - generic [ref=e137]: "tier: old"
+              - link "Screenshot af bellissima-horsens.dk" [ref=e138] [cursor=pointer]:
+                - /url: http://bellissima-horsens.dk/
+                - img "Screenshot af bellissima-horsens.dk" [ref=e139]
+            - generic [ref=e140]:
+              - combobox [ref=e141]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e142]
+              - button "Send nu" [ref=e143]
+          - article [ref=e144]:
+            - generic [ref=e145]:
+              - generic [ref=e146]:
+                - paragraph [ref=e147]:
+                  - text: Fie List v/Fie List Lauridsen
+                  - generic [ref=e148]: · score 42 · follow-up dag 13
+                - paragraph [ref=e149]: Kosmetolog · Esbjerg
+                - paragraph [ref=e150]: 📧 info@fielist.dk
+                - paragraph [ref=e151]:
+                  - text: 🌐
+                  - link "fielist.dk" [ref=e152] [cursor=pointer]:
+                    - /url: http://www.fielist.dk/kontakt.html
+                - generic [ref=e153]:
+                  - generic [ref=e154]: followup
+                  - generic [ref=e155]: "tier: old"
+              - link "Screenshot af fielist.dk" [ref=e156] [cursor=pointer]:
+                - /url: http://www.fielist.dk/kontakt.html
+                - img "Screenshot af fielist.dk" [ref=e157]
+            - generic [ref=e158]:
+              - combobox [ref=e159]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e160]
+              - button "Send nu" [ref=e161]
+          - article [ref=e162]:
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - paragraph [ref=e165]:
+                  - text: Skals Installationsforretning A/S
+                  - generic [ref=e166]: · score 41 · follow-up dag 13
+                - paragraph [ref=e167]: Elektriker · Skals
+                - paragraph [ref=e168]: 📧 sj@skals-el.dk
+                - paragraph [ref=e169]:
+                  - text: 🌐
+                  - link "skals-el.dk" [ref=e170] [cursor=pointer]:
+                    - /url: http://www.skals-el.dk/
+                - generic [ref=e171]:
+                  - generic [ref=e172]: followup
+                  - generic [ref=e173]: "tier: mediocre"
+              - link "Screenshot af skals-el.dk" [ref=e174] [cursor=pointer]:
+                - /url: http://www.skals-el.dk/
+                - img "Screenshot af skals-el.dk" [ref=e175]
+            - generic [ref=e176]:
+              - combobox [ref=e177]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e178]
+              - button "Send nu" [ref=e179]
+          - article [ref=e180]:
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - paragraph [ref=e183]:
+                  - text: Lysmesteren Skive
+                  - generic [ref=e184]: · score 41 · follow-up dag 13
+                - paragraph [ref=e185]: Byggemarked · Skive
+                - paragraph [ref=e186]: 📧 lysmesteren@lysmesteren.dk
+                - paragraph [ref=e187]:
+                  - text: 🌐
+                  - link "lysmesteren.dk" [ref=e188] [cursor=pointer]:
+                    - /url: http://www.lysmesteren.dk/
+                - generic [ref=e189]:
+                  - generic [ref=e190]: followup
+                  - generic [ref=e191]: "tier: mediocre"
+              - link "Screenshot af lysmesteren.dk" [ref=e192] [cursor=pointer]:
+                - /url: http://www.lysmesteren.dk/
+                - img "Screenshot af lysmesteren.dk" [ref=e193]
+            - generic [ref=e194]:
+              - combobox [ref=e195]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e196]
+              - button "Send nu" [ref=e197]
+          - article [ref=e198]:
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - paragraph [ref=e201]:
+                  - text: Salon TT - Frisør i Skive
+                  - generic [ref=e202]: · score 41 · follow-up dag 13
+                - paragraph [ref=e203]: Frisør · Skive
+                - paragraph [ref=e204]: 📧 salonttskive@gmail.com
+                - paragraph [ref=e205]:
+                  - text: 🌐
+                  - link "salon-tt.planway.com" [ref=e206] [cursor=pointer]:
+                    - /url: http://salon-tt.planway.com/
+                - generic [ref=e207]:
+                  - generic [ref=e208]: followup
+                  - generic [ref=e209]: "tier: mediocre"
+              - link "Screenshot af salon-tt.planway.com" [ref=e210] [cursor=pointer]:
+                - /url: http://salon-tt.planway.com/
+                - img "Screenshot af salon-tt.planway.com" [ref=e211]
+            - generic [ref=e212]:
+              - combobox [ref=e213]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e214]
+              - button "Send nu" [ref=e215]
+          - article [ref=e216]:
+            - generic [ref=e217]:
+              - generic [ref=e218]:
+                - paragraph [ref=e219]:
+                  - text: Haderslev El-Teknik ApS
+                  - generic [ref=e220]: · score 41 · follow-up dag 13
+                - paragraph [ref=e221]: Elektriker · Haderslev
+                - paragraph [ref=e222]: 📧 mail@el-teknik.dk
+                - paragraph [ref=e223]:
+                  - text: 🌐
+                  - link "el-teknik.dk" [ref=e224] [cursor=pointer]:
+                    - /url: http://www.el-teknik.dk/
+                - generic [ref=e225]:
+                  - generic [ref=e226]: followup
+                  - generic [ref=e227]: "tier: old"
+              - link "Screenshot af el-teknik.dk" [ref=e228] [cursor=pointer]:
+                - /url: http://www.el-teknik.dk/
+                - img "Screenshot af el-teknik.dk" [ref=e229]
+            - generic [ref=e230]:
+              - combobox [ref=e231]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e232]
+              - button "Send nu" [ref=e233]
+          - article [ref=e234]:
+            - generic [ref=e235]:
+              - generic [ref=e236]:
+                - paragraph [ref=e237]:
+                  - text: Entreprenørfirmaet Maabjerg Maskinstation A/S
+                  - generic [ref=e238]: · score 40 · follow-up dag 13
+                - paragraph [ref=e239]: Blikkenslager · Holstebro
+                - paragraph [ref=e240]: 📧 info@maabjerg.dk
+                - paragraph [ref=e241]:
+                  - text: 🌐
+                  - link "maabjerg.dk" [ref=e242] [cursor=pointer]:
+                    - /url: http://www.maabjerg.dk/
+                - generic [ref=e243]:
+                  - generic [ref=e244]: followup
+                  - generic [ref=e245]: "tier: mediocre"
+              - link "Screenshot af maabjerg.dk" [ref=e246] [cursor=pointer]:
+                - /url: http://www.maabjerg.dk/
+                - img "Screenshot af maabjerg.dk" [ref=e247]
+            - generic [ref=e248]:
+              - combobox [ref=e249]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e250]
+              - button "Send nu" [ref=e251]
+          - article [ref=e252]:
+            - generic [ref=e253]:
+              - generic [ref=e254]:
+                - paragraph [ref=e255]:
+                  - text: Gordons Tagpap ApS
+                  - generic [ref=e256]: · score 40 · follow-up dag 13
+                - paragraph [ref=e257]: Tagdækning · Silkeborg
+                - paragraph [ref=e258]: 📧 kontakt@gordonstagpap.dk
+                - paragraph [ref=e259]:
+                  - text: 🌐
+                  - link "gordonstagpap.dk" [ref=e260] [cursor=pointer]:
+                    - /url: https://gordonstagpap.dk/
+                - generic [ref=e261]:
+                  - generic [ref=e262]: followup
+                  - generic [ref=e263]: "tier: mediocre"
+              - link "Screenshot af gordonstagpap.dk" [ref=e264] [cursor=pointer]:
+                - /url: https://gordonstagpap.dk/
+                - img "Screenshot af gordonstagpap.dk" [ref=e265]
+            - generic [ref=e266]:
+              - combobox [ref=e267]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e268]
+              - button "Send nu" [ref=e269]
+          - article [ref=e270]:
+            - generic [ref=e271]:
+              - generic [ref=e272]:
+                - paragraph [ref=e273]:
+                  - text: Pedersens - café med mere
+                  - generic [ref=e274]: · score 40 · follow-up dag 13
+                - paragraph [ref=e275]: Restaurant · Horsens
+                - paragraph [ref=e276]: 📧 vibekeege@gmail.com
+                - paragraph [ref=e277]:
+                  - text: 🌐
+                  - link "pedersenscafe.dk" [ref=e278] [cursor=pointer]:
+                    - /url: https://pedersenscafe.dk/
+                - generic [ref=e279]:
+                  - generic [ref=e280]: followup
+                  - generic [ref=e281]: "tier: mediocre"
+              - link "Screenshot af pedersenscafe.dk" [ref=e282] [cursor=pointer]:
+                - /url: https://pedersenscafe.dk/
+                - img "Screenshot af pedersenscafe.dk" [ref=e283]
+            - generic [ref=e284]:
+              - combobox [ref=e285]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e286]
+              - button "Send nu" [ref=e287]
+          - article [ref=e288]:
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - paragraph [ref=e291]:
+                  - text: Woodys Silkeborg – Østre Søbad
+                  - generic [ref=e292]: · score 40 · follow-up dag 13
+                - paragraph [ref=e293]: Café · Silkeborg
+                - paragraph [ref=e294]: 📧 hej@woodysandfriends.dk
+                - paragraph [ref=e295]:
+                  - text: 🌐
+                  - link "woodysandfriends.dk" [ref=e296] [cursor=pointer]:
+                    - /url: http://woodysandfriends.dk/
+                - generic [ref=e297]:
+                  - generic [ref=e298]: followup
+                  - generic [ref=e299]: "tier: mediocre"
+              - link "Screenshot af woodysandfriends.dk" [ref=e300] [cursor=pointer]:
+                - /url: http://woodysandfriends.dk/
+                - img "Screenshot af woodysandfriends.dk" [ref=e301]
+            - generic [ref=e302]:
+              - combobox [ref=e303]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e304]
+              - button "Send nu" [ref=e305]
+          - article [ref=e306]:
+            - generic [ref=e307]:
+              - generic [ref=e308]:
+                - paragraph [ref=e309]:
+                  - text: Måneskøn
+                  - generic [ref=e310]: · score 40 · follow-up dag 13
+                - paragraph [ref=e311]: Skønhedssalon · Ikast
+                - paragraph [ref=e312]: 📧 maaneskon@hotmail.com
+                - paragraph [ref=e313]:
+                  - text: 🌐
+                  - link "måneskøn.dk" [ref=e314] [cursor=pointer]:
+                    - /url: http://måneskøn.dk/
+                - generic [ref=e315]:
+                  - generic [ref=e316]: followup
+                  - generic [ref=e317]: "tier: mediocre"
+              - link "Screenshot af måneskøn.dk" [ref=e318] [cursor=pointer]:
+                - /url: http://måneskøn.dk/
+                - img "Screenshot af måneskøn.dk" [ref=e319]
+            - generic [ref=e320]:
+              - combobox [ref=e321]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e322]
+              - button "Send nu" [ref=e323]
+          - article [ref=e324]:
+            - generic [ref=e325]:
+              - generic [ref=e326]:
+                - paragraph [ref=e327]:
+                  - text: Se Packing System A/S
+                  - generic [ref=e328]: · score 40 · follow-up dag 13
+                - paragraph [ref=e329]: Tjenester · Skagen
+                - paragraph [ref=e330]: 📧 se-packing@se-packing.dk
+                - paragraph [ref=e331]:
+                  - text: 🌐
+                  - link "se-packing.dk" [ref=e332] [cursor=pointer]:
+                    - /url: http://www.se-packing.dk/Kontakt.asp
+                - generic [ref=e333]:
+                  - generic [ref=e334]: followup
+                  - generic [ref=e335]: "tier: old"
+              - link "Screenshot af se-packing.dk" [ref=e336] [cursor=pointer]:
+                - /url: http://www.se-packing.dk/Kontakt.asp
+                - img "Screenshot af se-packing.dk" [ref=e337]
+            - generic [ref=e338]:
+              - combobox [ref=e339]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e340]
+              - button "Send nu" [ref=e341]
+          - article [ref=e342]:
+            - generic [ref=e343]:
+              - generic [ref=e344]:
+                - paragraph [ref=e345]:
+                  - text: Tornbys Træfældning & Haveservice v/John Nordqvist
+                  - generic [ref=e346]: · score 40 · follow-up dag 13
+                - paragraph [ref=e347]: Tjenester · Esbjerg
+                - paragraph [ref=e348]: 📧 mail@tornbys.dk
+                - paragraph [ref=e349]:
+                  - text: 🌐
+                  - link "tornbys.dk" [ref=e350] [cursor=pointer]:
+                    - /url: http://tornbys.dk/
+                - generic [ref=e351]:
+                  - generic [ref=e352]: followup
+                  - generic [ref=e353]: "tier: old"
+              - link "Screenshot af tornbys.dk" [ref=e354] [cursor=pointer]:
+                - /url: http://tornbys.dk/
+                - img "Screenshot af tornbys.dk" [ref=e355]
+            - generic [ref=e356]:
+              - combobox [ref=e357]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e358]
+              - button "Send nu" [ref=e359]
+          - article [ref=e360]:
+            - generic [ref=e361]:
+              - generic [ref=e362]:
+                - paragraph [ref=e363]:
+                  - text: Rosenberg Malerfirma A/S
+                  - generic [ref=e364]: · score 42 · follow-up dag 11
+                - paragraph [ref=e365]: Maler · Horsens
+                - paragraph [ref=e366]: 📧 mr@rosenberg-malerfirma.dk
+                - paragraph [ref=e367]:
+                  - text: 🌐
+                  - link "rosenberg-malerfirma.dk" [ref=e368] [cursor=pointer]:
+                    - /url: http://www.rosenberg-malerfirma.dk/
+                - generic [ref=e369]:
+                  - generic [ref=e370]: followup
+                  - generic [ref=e371]: "tier: mediocre"
+              - link "Screenshot af rosenberg-malerfirma.dk" [ref=e372] [cursor=pointer]:
+                - /url: http://www.rosenberg-malerfirma.dk/
+                - img "Screenshot af rosenberg-malerfirma.dk" [ref=e373]
+            - generic [ref=e374]:
+              - combobox [ref=e375]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e376]
+              - button "Send nu" [ref=e377]
+          - article [ref=e378]:
+            - generic [ref=e379]:
+              - generic [ref=e380]:
+                - paragraph [ref=e381]:
+                  - text: Ji-Mi's
+                  - generic [ref=e382]: · score 39 · follow-up dag 11
+                - paragraph [ref=e383]: Restaurant · Horsens
+                - paragraph [ref=e384]: 📧 mad@gourmetia.dk
+                - paragraph [ref=e385]:
+                  - text: 🌐
+                  - link "ji-mis.dk" [ref=e386] [cursor=pointer]:
+                    - /url: http://ji-mis.dk/
+                - generic [ref=e387]:
+                  - generic [ref=e388]: followup
+                  - generic [ref=e389]: "tier: mediocre"
+              - link "Screenshot af ji-mis.dk" [ref=e390] [cursor=pointer]:
+                - /url: http://ji-mis.dk/
+                - img "Screenshot af ji-mis.dk" [ref=e391]
+            - generic [ref=e392]:
+              - combobox [ref=e393]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e394]
+              - button "Send nu" [ref=e395]
+          - article [ref=e396]:
+            - generic [ref=e397]:
+              - generic [ref=e398]:
+                - paragraph [ref=e399]:
+                  - text: Lomborg Installationsforretning
+                  - generic [ref=e400]: · score 38 · follow-up dag 11
+                - paragraph [ref=e401]: Elektriker · Lemvig
+                - paragraph [ref=e402]: 📧 info@lomborgel.dk
+                - paragraph [ref=e403]:
+                  - text: 🌐
+                  - link "lomborgel.dk" [ref=e404] [cursor=pointer]:
+                    - /url: https://www.lomborgel.dk/
+                - generic [ref=e405]:
+                  - generic [ref=e406]: followup
+                  - generic [ref=e407]: "tier: mediocre"
+              - link "Screenshot af lomborgel.dk" [ref=e408] [cursor=pointer]:
+                - /url: https://www.lomborgel.dk/
+                - img "Screenshot af lomborgel.dk" [ref=e409]
+            - generic [ref=e410]:
+              - combobox [ref=e411]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e412]
+              - button "Send nu" [ref=e413]
+          - article [ref=e414]:
+            - generic [ref=e415]:
+              - generic [ref=e416]:
+                - paragraph [ref=e417]:
+                  - text: Jacobsen VVS Viborg ApS
+                  - generic [ref=e418]: · score 38 · follow-up dag 11
+                - paragraph [ref=e419]: VVS-installatør · Viborg
+                - paragraph [ref=e420]: 📧 jacobsen.vvs@mail.dk
+                - paragraph [ref=e421]:
+                  - text: 🌐
+                  - link "jacobsenvvs.dk" [ref=e422] [cursor=pointer]:
+                    - /url: https://jacobsenvvs.dk/
+                - generic [ref=e423]:
+                  - generic [ref=e424]: followup
+                  - generic [ref=e425]: "tier: mediocre"
+              - link "Screenshot af jacobsenvvs.dk" [ref=e426] [cursor=pointer]:
+                - /url: https://jacobsenvvs.dk/
+                - img "Screenshot af jacobsenvvs.dk" [ref=e427]
+            - generic [ref=e428]:
+              - combobox [ref=e429]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e430]
+              - button "Send nu" [ref=e431]
+          - article [ref=e432]:
+            - generic [ref=e433]:
+              - generic [ref=e434]:
+                - paragraph [ref=e435]:
+                  - text: Torben Nielsen vvs ApS
+                  - generic [ref=e436]: · score 38 · follow-up dag 11
+                - paragraph [ref=e437]: VVS-installatør · Lemvig
+                - paragraph [ref=e438]: 📧 mail@torbennielsenvvs.dk
+                - paragraph [ref=e439]:
+                  - text: 🌐
+                  - link "torbennielsenvvs.dk" [ref=e440] [cursor=pointer]:
+                    - /url: http://www.torbennielsenvvs.dk/
+                - generic [ref=e441]:
+                  - generic [ref=e442]: followup
+                  - generic [ref=e443]: "tier: mediocre"
+              - link "Screenshot af torbennielsenvvs.dk" [ref=e444] [cursor=pointer]:
+                - /url: http://www.torbennielsenvvs.dk/
+                - img "Screenshot af torbennielsenvvs.dk" [ref=e445]
+            - generic [ref=e446]:
+              - combobox [ref=e447]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e448]
+              - button "Send nu" [ref=e449]
+          - article [ref=e450]:
+            - generic [ref=e451]:
+              - generic [ref=e452]:
+                - paragraph [ref=e453]:
+                  - text: Bjarup Blik
+                  - generic [ref=e454]: · score 38 · follow-up dag 11
+                - paragraph [ref=e455]: Blikkenslager · Voel
+                - paragraph [ref=e456]: 📧 mail@bjarup-blik.dk
+                - paragraph [ref=e457]:
+                  - text: 🌐
+                  - link "bjarup-blik.dk" [ref=e458] [cursor=pointer]:
+                    - /url: http://www.bjarup-blik.dk/
+                - generic [ref=e459]:
+                  - generic [ref=e460]: followup
+                  - generic [ref=e461]: "tier: mediocre"
+              - link "Screenshot af bjarup-blik.dk" [ref=e462] [cursor=pointer]:
+                - /url: http://www.bjarup-blik.dk/
+                - img "Screenshot af bjarup-blik.dk" [ref=e463]
+            - generic [ref=e464]:
+              - combobox [ref=e465]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e466]
+              - button "Send nu" [ref=e467]
+          - article [ref=e468]:
+            - generic [ref=e469]:
+              - generic [ref=e470]:
+                - paragraph [ref=e471]:
+                  - text: Malerfirmaet Jan Thomsen ApS
+                  - generic [ref=e472]: · score 38 · follow-up dag 11
+                - paragraph [ref=e473]: Maler · Løgstrup
+                - paragraph [ref=e474]: 📧 info@janthomsen.dk
+                - paragraph [ref=e475]:
+                  - text: 🌐
+                  - link "janthomsen.dk" [ref=e476] [cursor=pointer]:
+                    - /url: https://www.janthomsen.dk/
+                - generic [ref=e477]:
+                  - generic [ref=e478]: followup
+                  - generic [ref=e479]: "tier: old"
+              - link "Screenshot af janthomsen.dk" [ref=e480] [cursor=pointer]:
+                - /url: https://www.janthomsen.dk/
+                - img "Screenshot af janthomsen.dk" [ref=e481]
+            - generic [ref=e482]:
+              - combobox [ref=e483]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e484]
+              - button "Send nu" [ref=e485]
+          - article [ref=e486]:
+            - generic [ref=e487]:
+              - generic [ref=e488]:
+                - paragraph [ref=e489]:
+                  - text: Malerfirmaet Kjærhus ApS
+                  - generic [ref=e490]: · score 38 · follow-up dag 11
+                - paragraph [ref=e491]: Maler · Horsens
+                - paragraph [ref=e492]: 📧 kontakt@kj-hus.dk
+                - paragraph [ref=e493]:
+                  - text: 🌐
+                  - link "kj-hus.dk" [ref=e494] [cursor=pointer]:
+                    - /url: http://www.kj-hus.dk/
+                - generic [ref=e495]:
+                  - generic [ref=e496]: followup
+                  - generic [ref=e497]: "tier: mediocre"
+              - link "Screenshot af kj-hus.dk" [ref=e498] [cursor=pointer]:
+                - /url: http://www.kj-hus.dk/
+                - img "Screenshot af kj-hus.dk" [ref=e499]
+            - generic [ref=e500]:
+              - combobox [ref=e501]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e502]
+              - button "Send nu" [ref=e503]
+          - article [ref=e504]:
+            - generic [ref=e505]:
+              - generic [ref=e506]:
+                - paragraph [ref=e507]:
+                  - text: Funder El-Vvs Service A/S
+                  - generic [ref=e508]: · score 38 · follow-up dag 11
+                - paragraph [ref=e509]: Elektriker · Silkeborg
+                - paragraph [ref=e510]: 📧 post@funder-el.dk
+                - paragraph [ref=e511]:
+                  - text: 🌐
+                  - link "funder-el.dk" [ref=e512] [cursor=pointer]:
+                    - /url: https://www.funder-el.dk/
+                - generic [ref=e513]:
+                  - generic [ref=e514]: followup
+                  - generic [ref=e515]: "tier: mediocre"
+              - link "Screenshot af funder-el.dk" [ref=e516] [cursor=pointer]:
+                - /url: https://www.funder-el.dk/
+                - img "Screenshot af funder-el.dk" [ref=e517]
+            - generic [ref=e518]:
+              - combobox [ref=e519]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e520]
+              - button "Send nu" [ref=e521]
+          - article [ref=e522]:
+            - generic [ref=e523]:
+              - generic [ref=e524]:
+                - paragraph [ref=e525]:
+                  - text: Thomsen VVS
+                  - generic [ref=e526]: · score 37 · follow-up dag 11
+                - paragraph [ref=e527]: VVS-installatør · Viborg
+                - paragraph [ref=e528]: 📧 hh@thomsenvvs.dk
+                - paragraph [ref=e529]:
+                  - text: 🌐
+                  - link "thomsenvvs.dk" [ref=e530] [cursor=pointer]:
+                    - /url: https://www.thomsenvvs.dk/
+                - generic [ref=e531]:
+                  - generic [ref=e532]: followup
+                  - generic [ref=e533]: "tier: mediocre"
+              - link "Screenshot af thomsenvvs.dk" [ref=e534] [cursor=pointer]:
+                - /url: https://www.thomsenvvs.dk/
+                - img "Screenshot af thomsenvvs.dk" [ref=e535]
+            - generic [ref=e536]:
+              - combobox [ref=e537]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e538]
+              - button "Send nu" [ref=e539]
+          - article [ref=e540]:
+            - generic [ref=e541]:
+              - generic [ref=e542]:
+                - paragraph [ref=e543]:
+                  - text: Struer Vvs ApS
+                  - generic [ref=e544]: · score 37 · follow-up dag 11
+                - paragraph [ref=e545]: VVS-installatør · Struer
+                - paragraph [ref=e546]: 📧 info@struervvs.dk
+                - paragraph [ref=e547]:
+                  - text: 🌐
+                  - link "struervvs.dk" [ref=e548] [cursor=pointer]:
+                    - /url: http://www.struervvs.dk/
+                - generic [ref=e549]:
+                  - generic [ref=e550]: followup
+                  - generic [ref=e551]: "tier: mediocre"
+              - link "Screenshot af struervvs.dk" [ref=e552] [cursor=pointer]:
+                - /url: http://www.struervvs.dk/
+                - img "Screenshot af struervvs.dk" [ref=e553]
+            - generic [ref=e554]:
+              - combobox [ref=e555]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e556]
+              - button "Send nu" [ref=e557]
+          - article [ref=e558]:
+            - generic [ref=e559]:
+              - generic [ref=e560]:
+                - paragraph [ref=e561]:
+                  - text: Hovedgaard Blikkenslagerforretning ApS
+                  - generic [ref=e562]: · score 37 · follow-up dag 11
+                - paragraph [ref=e563]: Blikkenslager · Horsens
+                - paragraph [ref=e564]: 📧 mail@hovedgaard-blik.dk
+                - paragraph [ref=e565]:
+                  - text: 🌐
+                  - link "hovedgaard-blik.dk" [ref=e566] [cursor=pointer]:
+                    - /url: http://www.hovedgaard-blik.dk/
+                - generic [ref=e567]:
+                  - generic [ref=e568]: followup
+                  - generic [ref=e569]: "tier: mediocre"
+              - link "Screenshot af hovedgaard-blik.dk" [ref=e570] [cursor=pointer]:
+                - /url: http://www.hovedgaard-blik.dk/
+                - img "Screenshot af hovedgaard-blik.dk" [ref=e571]
+            - generic [ref=e572]:
+              - combobox [ref=e573]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e574]
+              - button "Send nu" [ref=e575]
+          - article [ref=e576]:
+            - generic [ref=e577]:
+              - generic [ref=e578]:
+                - paragraph [ref=e579]:
+                  - text: Tømrer- og snedkerfirmaet Jørgen Balle Madsen
+                  - generic [ref=e580]: · score 37 · follow-up dag 11
+                - paragraph [ref=e581]: Tømrer · Viborg
+                - paragraph [ref=e582]: 📧 info@hs-byg.dk
+                - paragraph [ref=e583]:
+                  - text: 🌐
+                  - link "jorgenballemadsen.dk" [ref=e584] [cursor=pointer]:
+                    - /url: http://www.jorgenballemadsen.dk/
+                - generic [ref=e585]:
+                  - generic [ref=e586]: followup
+                  - generic [ref=e587]: "tier: mediocre"
+              - link "Screenshot af jorgenballemadsen.dk" [ref=e588] [cursor=pointer]:
+                - /url: http://www.jorgenballemadsen.dk/
+                - img "Screenshot af jorgenballemadsen.dk" [ref=e589]
+            - generic [ref=e590]:
+              - combobox [ref=e591]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e592]
+              - button "Send nu" [ref=e593]
+          - article [ref=e594]:
+            - generic [ref=e595]:
+              - generic [ref=e596]:
+                - paragraph [ref=e597]:
+                  - text: Tømrer & Snedker Steen Stensgård
+                  - generic [ref=e598]: · score 37 · follow-up dag 11
+                - paragraph [ref=e599]: Tømrer · Lemvig
+                - paragraph [ref=e600]: 📧 post@steen-stensgaard.dk
+                - paragraph [ref=e601]:
+                  - text: 🌐
+                  - link "steen-stensgaard.dk" [ref=e602] [cursor=pointer]:
+                    - /url: http://www.steen-stensgaard.dk/
+                - generic [ref=e603]:
+                  - generic [ref=e604]: followup
+                  - generic [ref=e605]: "tier: mediocre"
+              - link "Screenshot af steen-stensgaard.dk" [ref=e606] [cursor=pointer]:
+                - /url: http://www.steen-stensgaard.dk/
+                - img "Screenshot af steen-stensgaard.dk" [ref=e607]
+            - generic [ref=e608]:
+              - combobox [ref=e609]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e610]
+              - button "Send nu" [ref=e611]
+          - article [ref=e612]:
+            - generic [ref=e613]:
+              - generic [ref=e614]:
+                - paragraph [ref=e615]:
+                  - text: Malerfirmaet Andersen ApS
+                  - generic [ref=e616]: · score 37 · follow-up dag 11
+                - paragraph [ref=e617]: Maler · Holstebro
+                - paragraph [ref=e618]: 📧 info@malerfirmaetandersen.dk
+                - paragraph [ref=e619]:
+                  - text: 🌐
+                  - link "malerfirmaetandersen.dk" [ref=e620] [cursor=pointer]:
+                    - /url: https://www.malerfirmaetandersen.dk/
+                - generic [ref=e621]:
+                  - generic [ref=e622]: followup
+                  - generic [ref=e623]: "tier: mediocre"
+              - link "Screenshot af malerfirmaetandersen.dk" [ref=e624] [cursor=pointer]:
+                - /url: https://www.malerfirmaetandersen.dk/
+                - img "Screenshot af malerfirmaetandersen.dk" [ref=e625]
+            - generic [ref=e626]:
+              - combobox [ref=e627]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e628]
+              - button "Send nu" [ref=e629]
+          - article [ref=e630]:
+            - generic [ref=e631]:
+              - generic [ref=e632]:
+                - paragraph [ref=e633]:
+                  - text: TP El-installation
+                  - generic [ref=e634]: · score 37 · follow-up dag 11
+                - paragraph [ref=e635]: Elektriker · Viborg
+                - paragraph [ref=e636]: 📧 tpel.installation@gmail.com
+                - paragraph [ref=e637]:
+                  - text: 🌐
+                  - link "tpel-installation.dk" [ref=e638] [cursor=pointer]:
+                    - /url: http://www.tpel-installation.dk/
+                - generic [ref=e639]:
+                  - generic [ref=e640]: followup
+                  - generic [ref=e641]: "tier: mediocre"
+              - link "Screenshot af tpel-installation.dk" [ref=e642] [cursor=pointer]:
+                - /url: http://www.tpel-installation.dk/
+                - img "Screenshot af tpel-installation.dk" [ref=e643]
+            - generic [ref=e644]:
+              - combobox [ref=e645]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e646]
+              - button "Send nu" [ref=e647]
+          - article [ref=e648]:
+            - generic [ref=e649]:
+              - generic [ref=e650]:
+                - paragraph [ref=e651]:
+                  - text: Viborg & Omegns Tagdækning A/S
+                  - generic [ref=e652]: · score 36 · follow-up dag 11
+                - paragraph [ref=e653]: Tagdækning · Viborg
+                - paragraph [ref=e654]: 📧 info@voot.dk
+                - paragraph [ref=e655]:
+                  - text: 🌐
+                  - link "voot.dk" [ref=e656] [cursor=pointer]:
+                    - /url: http://www.voot.dk/
+                - generic [ref=e657]:
+                  - generic [ref=e658]: followup
+                  - generic [ref=e659]: "tier: mediocre"
+              - link "Screenshot af voot.dk" [ref=e660] [cursor=pointer]:
+                - /url: http://www.voot.dk/
+                - img "Screenshot af voot.dk" [ref=e661]
+            - generic [ref=e662]:
+              - combobox [ref=e663]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e664]
+              - button "Send nu" [ref=e665]
+          - article [ref=e666]:
+            - generic [ref=e667]:
+              - generic [ref=e668]:
+                - paragraph [ref=e669]:
+                  - text: Byens malermester din maler i Silkeborg
+                  - generic [ref=e670]: · score 35 · follow-up dag 11
+                - paragraph [ref=e671]: Maler · Silkeborg
+                - paragraph [ref=e672]: 📧 email@byensmalermester.dk
+                - paragraph [ref=e673]:
+                  - text: 🌐
+                  - link "byensmalermester.dk" [ref=e674] [cursor=pointer]:
+                    - /url: http://www.byensmalermester.dk/
+                - generic [ref=e675]:
+                  - generic [ref=e676]: followup
+                  - generic [ref=e677]: "tier: mediocre"
+              - link "Screenshot af byensmalermester.dk" [ref=e678] [cursor=pointer]:
+                - /url: http://www.byensmalermester.dk/
+                - img "Screenshot af byensmalermester.dk" [ref=e679]
+            - generic [ref=e680]:
+              - combobox [ref=e681]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e682]
+              - button "Send nu" [ref=e683]
+          - article [ref=e684]:
+            - generic [ref=e685]:
+              - generic [ref=e686]:
+                - paragraph [ref=e687]:
+                  - text: Vemmelund Malerfirma
+                  - generic [ref=e688]: · score 35 · follow-up dag 11
+                - paragraph [ref=e689]: Maler · Silkeborg
+                - paragraph [ref=e690]: 📧 preben@vemmelund.dk
+                - paragraph [ref=e691]:
+                  - text: 🌐
+                  - link "vemmelundmalerfirma.dk" [ref=e692] [cursor=pointer]:
+                    - /url: http://www.vemmelundmalerfirma.dk/
+                - generic [ref=e693]:
+                  - generic [ref=e694]: followup
+                  - generic [ref=e695]: "tier: mediocre"
+              - link "Screenshot af vemmelundmalerfirma.dk" [ref=e696] [cursor=pointer]:
+                - /url: http://www.vemmelundmalerfirma.dk/
+                - img "Screenshot af vemmelundmalerfirma.dk" [ref=e697]
+            - generic [ref=e698]:
+              - combobox [ref=e699]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e700]
+              - button "Send nu" [ref=e701]
+          - article [ref=e702]:
+            - generic [ref=e703]:
+              - generic [ref=e704]:
+                - paragraph [ref=e705]:
+                  - text: Lund El-Teknik
+                  - generic [ref=e706]: · score 35 · follow-up dag 11
+                - paragraph [ref=e707]: Elektriker · Kerteminde
+                - paragraph [ref=e708]: 📧 mail@lundelteknik.dk
+                - paragraph [ref=e709]:
+                  - text: 🌐
+                  - link "lundelteknik.dk" [ref=e710] [cursor=pointer]:
+                    - /url: https://www.lundelteknik.dk/
+                - generic [ref=e711]:
+                  - generic [ref=e712]: followup
+                  - generic [ref=e713]: "tier: old"
+              - link "Screenshot af lundelteknik.dk" [ref=e714] [cursor=pointer]:
+                - /url: https://www.lundelteknik.dk/
+                - img "Screenshot af lundelteknik.dk" [ref=e715]
+            - generic [ref=e716]:
+              - combobox [ref=e717]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e718]
+              - button "Send nu" [ref=e719]
+          - article [ref=e720]:
+            - generic [ref=e721]:
+              - generic [ref=e722]:
+                - paragraph [ref=e723]:
+                  - text: Hos Dodo Restaurant & Vin
+                  - generic [ref=e724]: · score 55 · follow-up dag 9
+                - paragraph [ref=e725]: Restaurant · Ringkøbing
+                - paragraph [ref=e726]: 📧 kontakt@hosdodo.dk
+                - paragraph [ref=e727]:
+                  - text: 🌐
+                  - link "hosdodo.dk" [ref=e728] [cursor=pointer]:
+                    - /url: http://www.hosdodo.dk/
+                - generic [ref=e729]:
+                  - generic [ref=e730]: followup
+                  - generic [ref=e731]: "tier: modern"
+              - link "Screenshot af hosdodo.dk" [ref=e732] [cursor=pointer]:
+                - /url: http://www.hosdodo.dk/
+                - img "Screenshot af hosdodo.dk" [ref=e733]
+            - generic [ref=e734]:
+              - combobox [ref=e735]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e736]
+              - button "Send nu" [ref=e737]
+          - article [ref=e738]:
+            - generic [ref=e739]:
+              - generic [ref=e740]:
+                - paragraph [ref=e741]:
+                  - text: Hotel Dalgas - Brande
+                  - generic [ref=e742]: · score 75 · follow-up dag 9
+                - paragraph [ref=e743]: Hotel · Brande
+                - paragraph [ref=e744]: 📧 dalgas@hoteldalgas.dk
+                - paragraph [ref=e745]:
+                  - text: 🌐
+                  - link "hoteldalgas.dk" [ref=e746] [cursor=pointer]:
+                    - /url: http://www.hoteldalgas.dk/
+                - generic [ref=e747]:
+                  - generic [ref=e748]: followup
+                  - generic [ref=e749]: "tier: old"
+              - link "Screenshot af hoteldalgas.dk" [ref=e750] [cursor=pointer]:
+                - /url: http://www.hoteldalgas.dk/
+                - img "Screenshot af hoteldalgas.dk" [ref=e751]
+            - generic [ref=e752]:
+              - combobox [ref=e753]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e754]
+              - button "Send nu" [ref=e755]
+          - article [ref=e756]:
+            - generic [ref=e757]:
+              - generic [ref=e758]:
+                - paragraph [ref=e759]:
+                  - text: Buffalo American Pizza Give
+                  - generic [ref=e760]: · score 55 · follow-up dag 9
+                - paragraph [ref=e761]: Pizzeria · Give
+                - paragraph [ref=e762]: 📧 info@buffalopizzagive.dk
+                - paragraph [ref=e763]:
+                  - text: 🌐
+                  - link "buffalopizzagive.dk" [ref=e764] [cursor=pointer]:
+                    - /url: http://www.buffalopizzagive.dk/
+                - generic [ref=e765]:
+                  - generic [ref=e766]: followup
+                  - generic [ref=e767]: "tier: modern"
+              - link "Screenshot af buffalopizzagive.dk" [ref=e768] [cursor=pointer]:
+                - /url: http://www.buffalopizzagive.dk/
+                - img "Screenshot af buffalopizzagive.dk" [ref=e769]
+            - generic [ref=e770]:
+              - combobox [ref=e771]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e772]
+              - button "Send nu" [ref=e773]
+          - article [ref=e774]:
+            - generic [ref=e775]:
+              - generic [ref=e776]:
+                - paragraph [ref=e777]:
+                  - text: Yum Yum Hibachi
+                  - generic [ref=e778]: · score 55 · follow-up dag 9
+                - paragraph [ref=e779]: Restaurant · VA 20147
+                - paragraph [ref=e780]: 📧 info@yumyumhibachi.com
+                - paragraph [ref=e781]:
+                  - text: 🌐
+                  - link "yumyumhibachi.com" [ref=e782] [cursor=pointer]:
+                    - /url: http://yumyumhibachi.com/
+                - generic [ref=e783]:
+                  - generic [ref=e784]: followup
+                  - generic [ref=e785]: "tier: modern"
+              - link "Screenshot af yumyumhibachi.com" [ref=e786] [cursor=pointer]:
+                - /url: http://yumyumhibachi.com/
+                - img "Screenshot af yumyumhibachi.com" [ref=e787]
+            - generic [ref=e788]:
+              - combobox [ref=e789]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e790]
+              - button "Send nu" [ref=e791]
+          - article [ref=e792]:
+            - generic [ref=e793]:
+              - generic [ref=e794]:
+                - paragraph [ref=e795]:
+                  - text: Restaurant Det Tredje Sted
+                  - generic [ref=e796]: · score 55 · follow-up dag 9
+                - paragraph [ref=e797]: Restaurant · Aalborg
+                - paragraph [ref=e798]: 📧 job@restaurantdts.dk
+                - paragraph [ref=e799]:
+                  - text: 🌐
+                  - link "restaurantdts.dk" [ref=e800] [cursor=pointer]:
+                    - /url: http://www.restaurantdts.dk/
+                - generic [ref=e801]:
+                  - generic [ref=e802]: followup
+                  - generic [ref=e803]: "tier: modern"
+              - link "Screenshot af restaurantdts.dk" [ref=e804] [cursor=pointer]:
+                - /url: http://www.restaurantdts.dk/
+                - img "Screenshot af restaurantdts.dk" [ref=e805]
+            - generic [ref=e806]:
+              - combobox [ref=e807]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e808]
+              - button "Send nu" [ref=e809]
+          - article [ref=e810]:
+            - generic [ref=e811]:
+              - generic [ref=e812]:
+                - paragraph [ref=e813]:
+                  - text: Mongolian Barbecue
+                  - generic [ref=e814]: · score 55 · follow-up dag 9
+                - paragraph [ref=e815]: Asiatisk restaurant · Hjørring
+                - paragraph [ref=e816]: 📧 mongolian-barbecue@outlook.dk
+                - paragraph [ref=e817]:
+                  - text: 🌐
+                  - link "mongolian-barbecue.dk" [ref=e818] [cursor=pointer]:
+                    - /url: http://www.mongolian-barbecue.dk/
+                - generic [ref=e819]:
+                  - generic [ref=e820]: followup
+                  - generic [ref=e821]: "tier: modern"
+              - link "Screenshot af mongolian-barbecue.dk" [ref=e822] [cursor=pointer]:
+                - /url: http://www.mongolian-barbecue.dk/
+                - img "Screenshot af mongolian-barbecue.dk" [ref=e823]
+            - generic [ref=e824]:
+              - combobox [ref=e825]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e826]
+              - button "Send nu" [ref=e827]
+          - article [ref=e828]:
+            - generic [ref=e829]:
+              - generic [ref=e830]:
+                - paragraph [ref=e831]:
+                  - text: Sgoyi
+                  - generic [ref=e832]: · score 55 · follow-up dag 9
+                - paragraph [ref=e833]: Restaurant · Kolding
+                - paragraph [ref=e834]: 📧 info@sgoyi.dk
+                - paragraph [ref=e835]:
+                  - text: 🌐
+                  - link "sgoyi.dk" [ref=e836] [cursor=pointer]:
+                    - /url: http://www.sgoyi.dk/
+                - generic [ref=e838]: followup
+              - link "Screenshot af sgoyi.dk" [ref=e839] [cursor=pointer]:
+                - /url: http://www.sgoyi.dk/
+                - img "Screenshot af sgoyi.dk" [ref=e840]
+            - generic [ref=e841]:
+              - combobox [ref=e842]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e843]
+              - button "Send nu" [ref=e844]
+          - article [ref=e845]:
+            - generic [ref=e846]:
+              - generic [ref=e847]:
+                - paragraph [ref=e848]:
+                  - text: Hotel Harmonien
+                  - generic [ref=e849]: · score 55 · follow-up dag 9
+                - paragraph [ref=e850]: Hotel · Haderslev
+                - paragraph [ref=e851]: 📧 hotel@harmonien.dk
+                - paragraph [ref=e852]:
+                  - text: 🌐
+                  - link "harmonien.dk" [ref=e853] [cursor=pointer]:
+                    - /url: https://www.harmonien.dk/
+                - generic [ref=e855]: followup
+              - link "Screenshot af harmonien.dk" [ref=e856] [cursor=pointer]:
+                - /url: https://www.harmonien.dk/
+                - img "Screenshot af harmonien.dk" [ref=e857]
+            - generic [ref=e858]:
+              - combobox [ref=e859]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e860]
+              - button "Send nu" [ref=e861]
+          - article [ref=e862]:
+            - generic [ref=e863]:
+              - generic [ref=e864]:
+                - paragraph [ref=e865]:
+                  - text: Café Retro Brøns Kro
+                  - generic [ref=e866]: · score 55 · follow-up dag 9
+                - paragraph [ref=e867]: Restaurant · Skærbæk
+                - paragraph [ref=e868]: 📧 info@caferetrobroenskro.dk
+                - paragraph [ref=e869]:
+                  - text: 🌐
+                  - link "caferetrobroenskro.dk" [ref=e870] [cursor=pointer]:
+                    - /url: http://www.caferetrobroenskro.dk/
+                - generic [ref=e872]: followup
+              - link "Screenshot af caferetrobroenskro.dk" [ref=e873] [cursor=pointer]:
+                - /url: http://www.caferetrobroenskro.dk/
+                - img "Screenshot af caferetrobroenskro.dk" [ref=e874]
+            - generic [ref=e875]:
+              - combobox [ref=e876]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e877]
+              - button "Send nu" [ref=e878]
+          - article [ref=e879]:
+            - generic [ref=e880]:
+              - generic [ref=e881]:
+                - paragraph [ref=e882]:
+                  - text: Amikabab restaurant
+                  - generic [ref=e883]: · score 55 · follow-up dag 9
+                - paragraph [ref=e884]: Persisk restaurant · Vejle
+                - paragraph [ref=e885]: 📧 amikabab171@gmail.com
+                - paragraph [ref=e886]:
+                  - text: 🌐
+                  - link "amikabab.com" [ref=e887] [cursor=pointer]:
+                    - /url: http://amikabab.com/
+                - generic [ref=e889]: followup
+              - link "Screenshot af amikabab.com" [ref=e890] [cursor=pointer]:
+                - /url: http://amikabab.com/
+                - img "Screenshot af amikabab.com" [ref=e891]
+            - generic [ref=e892]:
+              - combobox [ref=e893]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e894]
+              - button "Send nu" [ref=e895]
+          - article [ref=e896]:
+            - generic [ref=e897]:
+              - generic [ref=e898]:
+                - paragraph [ref=e899]:
+                  - text: Eydes
+                  - generic [ref=e900]: · score 55 · follow-up dag 9
+                - paragraph [ref=e901]: Restaurant · Odense
+                - paragraph [ref=e902]: 📧 info@eydes.dk
+                - paragraph [ref=e903]:
+                  - text: 🌐
+                  - link "eydes.dk" [ref=e904] [cursor=pointer]:
+                    - /url: https://www.eydes.dk/
+                - generic [ref=e906]: followup
+              - link "Screenshot af eydes.dk" [ref=e907] [cursor=pointer]:
+                - /url: https://www.eydes.dk/
+                - img "Screenshot af eydes.dk" [ref=e908]
+            - generic [ref=e909]:
+              - combobox [ref=e910]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e911]
+              - button "Send nu" [ref=e912]
+          - article [ref=e913]:
+            - generic [ref=e914]:
+              - generic [ref=e915]:
+                - paragraph [ref=e916]:
+                  - text: Give Golfklub
+                  - generic [ref=e917]: · score 55 · follow-up dag 9
+                - paragraph [ref=e918]: Sportsklub · Give
+                - paragraph [ref=e919]: 📧 info@givegolfklub.dk
+                - paragraph [ref=e920]:
+                  - text: 🌐
+                  - link "givegolfklub.dk" [ref=e921] [cursor=pointer]:
+                    - /url: http://www.givegolfklub.dk/
+                - generic [ref=e923]: followup
+              - link "Screenshot af givegolfklub.dk" [ref=e924] [cursor=pointer]:
+                - /url: http://www.givegolfklub.dk/
+                - img "Screenshot af givegolfklub.dk" [ref=e925]
+            - generic [ref=e926]:
+              - combobox [ref=e927]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e928]
+              - button "Send nu" [ref=e929]
+          - article [ref=e930]:
+            - generic [ref=e931]:
+              - generic [ref=e932]:
+                - paragraph [ref=e933]:
+                  - text: SEJD Café & Boutique
+                  - generic [ref=e934]: · score 55 · follow-up dag 9
+                - paragraph [ref=e935]: Restaurant · Jelling
+                - paragraph [ref=e936]: 📧 hej@cafesejd.dk
+                - paragraph [ref=e937]:
+                  - text: 🌐
+                  - link "cafesejd.dk" [ref=e938] [cursor=pointer]:
+                    - /url: http://www.cafesejd.dk/
+                - generic [ref=e940]: followup
+              - link "Screenshot af cafesejd.dk" [ref=e941] [cursor=pointer]:
+                - /url: http://www.cafesejd.dk/
+                - img "Screenshot af cafesejd.dk" [ref=e942]
+            - generic [ref=e943]:
+              - combobox [ref=e944]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e945]
+              - button "Send nu" [ref=e946]
+          - article [ref=e947]:
+            - generic [ref=e948]:
+              - generic [ref=e949]:
+                - paragraph [ref=e950]:
+                  - text: Chao Chao
+                  - generic [ref=e951]: · score 55 · follow-up dag 9
+                - paragraph [ref=e952]: Frisør · Aalborg
+                - paragraph [ref=e953]: 📧 info@chaochao.dk
+                - paragraph [ref=e954]:
+                  - text: 🌐
+                  - link "chaochao.dk" [ref=e955] [cursor=pointer]:
+                    - /url: http://www.chaochao.dk/
+                - generic [ref=e957]: followup
+              - link "Screenshot af chaochao.dk" [ref=e958] [cursor=pointer]:
+                - /url: http://www.chaochao.dk/
+                - img "Screenshot af chaochao.dk" [ref=e959]
+            - generic [ref=e960]:
+              - combobox [ref=e961]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e962]
+              - button "Send nu" [ref=e963]
+          - article [ref=e964]:
+            - generic [ref=e965]:
+              - generic [ref=e966]:
+                - paragraph [ref=e967]:
+                  - text: MoonLight Beauty Bar ApS.
+                  - generic [ref=e968]: · score 52 · follow-up dag 9
+                - paragraph [ref=e969]: Skønhedssalon · Frederiksberg
+                - paragraph [ref=e970]: 📧 info@mlbb.dk
+                - paragraph [ref=e971]:
+                  - text: 🌐
+                  - link "mlbb.dk" [ref=e972] [cursor=pointer]:
+                    - /url: http://mlbb.dk/
+                - generic [ref=e974]: followup
+              - link "Screenshot af mlbb.dk" [ref=e975] [cursor=pointer]:
+                - /url: http://mlbb.dk/
+                - img "Screenshot af mlbb.dk" [ref=e976]
+            - generic [ref=e977]:
+              - combobox [ref=e978]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e979]
+              - button "Send nu" [ref=e980]
+          - article [ref=e981]:
+            - generic [ref=e982]:
+              - generic [ref=e983]:
+                - paragraph [ref=e984]:
+                  - text: Center for Sundhedsfremme
+                  - generic [ref=e985]: · score 51 · follow-up dag 9
+                - paragraph [ref=e986]: Interessepunkt · Varde
+                - paragraph [ref=e987]: 📧 sundhedsfremme@varde.dk
+                - paragraph [ref=e988]:
+                  - text: 🌐
+                  - link "sundhedsfremme.vardekommune.dk" [ref=e989] [cursor=pointer]:
+                    - /url: http://sundhedsfremme.vardekommune.dk/
+                - generic [ref=e990]:
+                  - generic [ref=e991]: followup
+                  - generic [ref=e992]: "tier: mediocre"
+              - link "Screenshot af sundhedsfremme.vardekommune.dk" [ref=e993] [cursor=pointer]:
+                - /url: http://sundhedsfremme.vardekommune.dk/
+                - img "Screenshot af sundhedsfremme.vardekommune.dk" [ref=e994]
+            - generic [ref=e995]:
+              - combobox [ref=e996]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e997]
+              - button "Send nu" [ref=e998]
+          - article [ref=e999]:
+            - generic [ref=e1000]:
+              - generic [ref=e1001]:
+                - paragraph [ref=e1002]:
+                  - text: Restaurant Niels Juel
+                  - generic [ref=e1003]: · score 58 · follow-up dag 9
+                - paragraph [ref=e1004]: Restaurant · Klitmøller
+                - paragraph [ref=e1005]: 📧 fish@nielsjuel.com
+                - paragraph [ref=e1006]:
+                  - text: 🌐
+                  - link "nielsjuel.com" [ref=e1007] [cursor=pointer]:
+                    - /url: https://nielsjuel.com/
+                - generic [ref=e1008]:
+                  - generic [ref=e1009]: followup
+                  - generic [ref=e1010]: "tier: mediocre"
+              - link "Screenshot af nielsjuel.com" [ref=e1011] [cursor=pointer]:
+                - /url: https://nielsjuel.com/
+                - img "Screenshot af nielsjuel.com" [ref=e1012]
+            - generic [ref=e1013]:
+              - combobox [ref=e1014]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1015]
+              - button "Send nu" [ref=e1016]
+          - article [ref=e1017]:
+            - generic [ref=e1018]:
+              - generic [ref=e1019]:
+                - paragraph [ref=e1020]:
+                  - text: LYNGAA - Dame og Herrefrisør
+                  - generic [ref=e1021]: · score 48 · follow-up dag 6
+                - paragraph [ref=e1022]: Frisør · Odense
+                - paragraph [ref=e1023]: 📧 kontakt@lyngaaodense.dk
+                - paragraph [ref=e1024]:
+                  - text: 🌐
+                  - link "lyngaaodense.dk" [ref=e1025] [cursor=pointer]:
+                    - /url: https://lyngaaodense.dk/
+                - generic [ref=e1027]: followup
+              - link "Screenshot af lyngaaodense.dk" [ref=e1028] [cursor=pointer]:
+                - /url: https://lyngaaodense.dk/
+                - img "Screenshot af lyngaaodense.dk" [ref=e1029]
+            - generic [ref=e1030]:
+              - combobox [ref=e1031]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1032]
+              - button "Send nu" [ref=e1033]
+          - article [ref=e1034]:
+            - generic [ref=e1035]:
+              - generic [ref=e1036]:
+                - paragraph [ref=e1037]:
+                  - text: Søborg og Henriksen
+                  - generic [ref=e1038]: · score 49 · follow-up dag 6
+                - paragraph [ref=e1039]: Frisør · Aalborg
+                - paragraph [ref=e1040]: 📧 soborgoghenriksen@gmail.com
+                - paragraph [ref=e1041]:
+                  - text: 🌐
+                  - link "soborgoghenriksen.dk" [ref=e1042] [cursor=pointer]:
+                    - /url: http://www.soborgoghenriksen.dk/
+                - generic [ref=e1044]: followup
+              - link "Screenshot af soborgoghenriksen.dk" [ref=e1045] [cursor=pointer]:
+                - /url: http://www.soborgoghenriksen.dk/
+                - img "Screenshot af soborgoghenriksen.dk" [ref=e1046]
+            - generic [ref=e1047]:
+              - combobox [ref=e1048]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1049]
+              - button "Send nu" [ref=e1050]
+          - article [ref=e1051]:
+            - generic [ref=e1052]:
+              - generic [ref=e1053]:
+                - paragraph [ref=e1054]:
+                  - text: Frisør Ove Salomonsen
+                  - generic [ref=e1055]: · score 48 · follow-up dag 6
+                - paragraph [ref=e1056]: Frisør · Horsens
+                - paragraph [ref=e1057]: 📧 ove@ovesalomonsen.dk
+                - paragraph [ref=e1058]:
+                  - text: 🌐
+                  - link "ovesalomonsen.dk" [ref=e1059] [cursor=pointer]:
+                    - /url: http://www.ovesalomonsen.dk/
+                - generic [ref=e1061]: followup
+              - link "Screenshot af ovesalomonsen.dk" [ref=e1062] [cursor=pointer]:
+                - /url: http://www.ovesalomonsen.dk/
+                - img "Screenshot af ovesalomonsen.dk" [ref=e1063]
+            - generic [ref=e1064]:
+              - combobox [ref=e1065]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1066]
+              - button "Send nu" [ref=e1067]
+          - article [ref=e1068]:
+            - generic [ref=e1069]:
+              - generic [ref=e1070]:
+                - paragraph [ref=e1071]:
+                  - text: Den Syvende Himmel
+                  - generic [ref=e1072]: · score 45 · follow-up dag 6
+                - paragraph [ref=e1073]: Skønhedssalon · Frederikshavn
+                - paragraph [ref=e1074]: 📧 info@densyvendehimmel.com
+                - paragraph [ref=e1075]:
+                  - text: 🌐
+                  - link "densyvendehimmel.com" [ref=e1076] [cursor=pointer]:
+                    - /url: https://densyvendehimmel.com/
+                - generic [ref=e1078]: followup
+              - link "Screenshot af densyvendehimmel.com" [ref=e1079] [cursor=pointer]:
+                - /url: https://densyvendehimmel.com/
+                - img "Screenshot af densyvendehimmel.com" [ref=e1080]
+            - generic [ref=e1081]:
+              - combobox [ref=e1082]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1083]
+              - button "Send nu" [ref=e1084]
+          - article [ref=e1085]:
+            - generic [ref=e1086]:
+              - generic [ref=e1087]:
+                - paragraph [ref=e1088]:
+                  - text: Beauty by M
+                  - generic [ref=e1089]: · score 44 · follow-up dag 6
+                - paragraph [ref=e1090]: Skønhedssalon · Vipperød
+                - paragraph [ref=e1091]: 📧 beautybymaibritt@gmail.com
+                - paragraph [ref=e1092]:
+                  - text: 🌐
+                  - link "beauty-by-m.dk" [ref=e1093] [cursor=pointer]:
+                    - /url: http://beauty-by-m.dk/
+                - generic [ref=e1095]: followup
+              - link "Screenshot af beauty-by-m.dk" [ref=e1096] [cursor=pointer]:
+                - /url: http://beauty-by-m.dk/
+                - img "Screenshot af beauty-by-m.dk" [ref=e1097]
+            - generic [ref=e1098]:
+              - combobox [ref=e1099]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1100]
+              - button "Send nu" [ref=e1101]
+          - article [ref=e1102]:
+            - generic [ref=e1103]:
+              - generic [ref=e1104]:
+                - paragraph [ref=e1105]:
+                  - text: Ilmira PMU
+                  - generic [ref=e1106]: · score 43 · follow-up dag 6
+                - paragraph [ref=e1107]: Skønhedssalon · Middelfart
+                - paragraph [ref=e1108]: 📧 ilmira.pmu@gmail.com
+                - paragraph [ref=e1109]:
+                  - text: 🌐
+                  - link "ilmira-pmu.dk" [ref=e1110] [cursor=pointer]:
+                    - /url: https://ilmira-pmu.dk/
+                - generic [ref=e1112]: followup
+              - link "Screenshot af ilmira-pmu.dk" [ref=e1113] [cursor=pointer]:
+                - /url: https://ilmira-pmu.dk/
+                - img "Screenshot af ilmira-pmu.dk" [ref=e1114]
+            - generic [ref=e1115]:
+              - combobox [ref=e1116]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1117]
+              - button "Send nu" [ref=e1118]
+          - article [ref=e1119]:
+            - generic [ref=e1120]:
+              - generic [ref=e1121]:
+                - paragraph [ref=e1122]:
+                  - text: Waxed
+                  - generic [ref=e1123]: · score 42 · follow-up dag 6
+                - paragraph [ref=e1124]: Skønhedssalon · Horsens
+                - paragraph [ref=e1125]: 📧 camilla@waxed.dk
+                - paragraph [ref=e1126]:
+                  - text: 🌐
+                  - link "waxed.dk" [ref=e1127] [cursor=pointer]:
+                    - /url: https://waxed.dk/
+                - generic [ref=e1129]: followup
+              - link "Screenshot af waxed.dk" [ref=e1130] [cursor=pointer]:
+                - /url: https://waxed.dk/
+                - img "Screenshot af waxed.dk" [ref=e1131]
+            - generic [ref=e1132]:
+              - combobox [ref=e1133]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1134]
+              - button "Send nu" [ref=e1135]
+          - article [ref=e1136]:
+            - generic [ref=e1137]:
+              - generic [ref=e1138]:
+                - paragraph [ref=e1139]:
+                  - text: By Maise Frisør & Head Spa
+                  - generic [ref=e1140]: · score 42 · follow-up dag 6
+                - paragraph [ref=e1141]: Frisør · Strib
+                - paragraph [ref=e1142]: 📧 bymaise5500@gmail.com
+                - paragraph [ref=e1143]:
+                  - text: 🌐
+                  - link "bymaise.nu" [ref=e1144] [cursor=pointer]:
+                    - /url: http://www.bymaise.nu/
+                - generic [ref=e1146]: followup
+              - link "Screenshot af bymaise.nu" [ref=e1147] [cursor=pointer]:
+                - /url: http://www.bymaise.nu/
+                - img "Screenshot af bymaise.nu" [ref=e1148]
+            - generic [ref=e1149]:
+              - combobox [ref=e1150]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1151]
+              - button "Send nu" [ref=e1152]
+          - article [ref=e1153]:
+            - generic [ref=e1154]:
+              - generic [ref=e1155]:
+                - paragraph [ref=e1156]:
+                  - text: Bodylines - din professionelle behandler
+                  - generic [ref=e1157]: · score 37 · follow-up dag 6
+                - paragraph [ref=e1158]: Skønhedssalon · Fredericia
+                - paragraph [ref=e1159]: 📧 info@bodylines7000.dk
+                - paragraph [ref=e1160]:
+                  - text: 🌐
+                  - link "bodylines.dk" [ref=e1161] [cursor=pointer]:
+                    - /url: http://bodylines.dk/
+                - generic [ref=e1163]: followup
+              - link "Screenshot af bodylines.dk" [ref=e1164] [cursor=pointer]:
+                - /url: http://bodylines.dk/
+                - img "Screenshot af bodylines.dk" [ref=e1165]
+            - generic [ref=e1166]:
+              - combobox [ref=e1167]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1168]
+              - button "Send nu" [ref=e1169]
+          - article [ref=e1170]:
+            - generic [ref=e1171]:
+              - generic [ref=e1172]:
+                - paragraph [ref=e1173]:
+                  - text: Hair By Blomstrøm
+                  - generic [ref=e1174]: · score 49 · follow-up dag 6
+                - paragraph [ref=e1175]: Frisør · Horsens
+                - paragraph [ref=e1176]: 📧 blomstrom14@gmail.com
+                - paragraph [ref=e1177]:
+                  - text: 🌐
+                  - link "hairbyblomstrøm.dk" [ref=e1178] [cursor=pointer]:
+                    - /url: http://www.hairbyblomstrøm.dk/
+                - generic [ref=e1180]: followup
+              - link "Screenshot af hairbyblomstrøm.dk" [ref=e1181] [cursor=pointer]:
+                - /url: http://www.hairbyblomstrøm.dk/
+                - img "Screenshot af hairbyblomstrøm.dk" [ref=e1182]
+            - generic [ref=e1183]:
+              - combobox [ref=e1184]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1185]
+              - button "Send nu" [ref=e1186]
+          - article [ref=e1187]:
+            - generic [ref=e1188]:
+              - generic [ref=e1189]:
+                - paragraph [ref=e1190]:
+                  - text: HOVEDKVARTER
+                  - generic [ref=e1191]: · score 40 · follow-up dag 6
+                - paragraph [ref=e1192]: Frisør · Aabenraa
+                - paragraph [ref=e1193]: 📧 hovedkvarter_2023@hotmail.com
+                - paragraph [ref=e1194]:
+                  - text: 🌐
+                  - link "hovedkvarter2023.dk" [ref=e1195] [cursor=pointer]:
+                    - /url: http://www.hovedkvarter2023.dk/
+                - generic [ref=e1197]: followup
+              - link "Screenshot af hovedkvarter2023.dk" [ref=e1198] [cursor=pointer]:
+                - /url: http://www.hovedkvarter2023.dk/
+                - img "Screenshot af hovedkvarter2023.dk" [ref=e1199]
+            - generic [ref=e1200]:
+              - combobox [ref=e1201]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1202]
+              - button "Send nu" [ref=e1203]
+          - article [ref=e1204]:
+            - generic [ref=e1205]:
+              - generic [ref=e1206]:
+                - paragraph [ref=e1207]:
+                  - text: VEJLEVipper
+                  - generic [ref=e1208]: · score 33 · follow-up dag 6
+                - paragraph [ref=e1209]: Skønhedssalon · Vejle
+                - paragraph [ref=e1210]: 📧 info@vejlebeauty.dk
+                - paragraph [ref=e1211]:
+                  - text: 🌐
+                  - link "vejlevipper.dk" [ref=e1212] [cursor=pointer]:
+                    - /url: http://www.vejlevipper.dk/
+                - generic [ref=e1213]:
+                  - generic [ref=e1214]: followup
+                  - generic [ref=e1215]: "tier: mediocre"
+              - link "Screenshot af vejlevipper.dk" [ref=e1216] [cursor=pointer]:
+                - /url: http://www.vejlevipper.dk/
+                - img "Screenshot af vejlevipper.dk" [ref=e1217]
+            - generic [ref=e1218]:
+              - combobox [ref=e1219]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1220]
+              - button "Send nu" [ref=e1221]
+          - article [ref=e1222]:
+            - generic [ref=e1223]:
+              - generic [ref=e1224]:
+                - paragraph [ref=e1225]:
+                  - text: House of Hair, Esbjerg
+                  - generic [ref=e1226]: · score 33 · follow-up dag 6
+                - paragraph [ref=e1227]: Frisør · Esbjerg
+                - paragraph [ref=e1228]: 📧 lone.langholz@house-of-hair.dk
+                - paragraph [ref=e1229]:
+                  - text: 🌐
+                  - link "house-of-hair.dk" [ref=e1230] [cursor=pointer]:
+                    - /url: https://www.house-of-hair.dk/
+                - generic [ref=e1231]:
+                  - generic [ref=e1232]: followup
+                  - generic [ref=e1233]: "tier: mediocre"
+              - link "Screenshot af house-of-hair.dk" [ref=e1234] [cursor=pointer]:
+                - /url: https://www.house-of-hair.dk/
+                - img "Screenshot af house-of-hair.dk" [ref=e1235]
+            - generic [ref=e1236]:
+              - combobox [ref=e1237]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1238]
+              - button "Send nu" [ref=e1239]
+          - article [ref=e1240]:
+            - generic [ref=e1241]:
+              - generic [ref=e1242]:
+                - paragraph [ref=e1243]:
+                  - text: Chris Schelde
+                  - generic [ref=e1244]: · score 25 · follow-up dag 6
+                - paragraph [ref=e1245]: Frisør · Esbjerg
+                - paragraph [ref=e1246]: 📧 booking@chrisschelde.dk
+                - paragraph [ref=e1247]:
+                  - text: 🌐
+                  - link "chrisschelde.dk" [ref=e1248] [cursor=pointer]:
+                    - /url: https://chrisschelde.dk/
+                - generic [ref=e1250]: followup
+              - link "Screenshot af chrisschelde.dk" [ref=e1251] [cursor=pointer]:
+                - /url: https://chrisschelde.dk/
+                - img "Screenshot af chrisschelde.dk" [ref=e1252]
+            - generic [ref=e1253]:
+              - combobox [ref=e1254]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1255]
+              - button "Send nu" [ref=e1256]
+          - article [ref=e1257]:
+            - generic [ref=e1258]:
+              - generic [ref=e1259]:
+                - paragraph [ref=e1260]:
+                  - text: Klinik Seidelin
+                  - generic [ref=e1261]: · score 32 · follow-up dag 6
+                - paragraph [ref=e1262]: Skønhedssalon · Aalborg
+                - paragraph [ref=e1263]: 📧 klinikseidelin@gmail.com
+                - paragraph [ref=e1264]:
+                  - text: 🌐
+                  - link "klinikseidelin.dk" [ref=e1265] [cursor=pointer]:
+                    - /url: https://klinikseidelin.dk/
+                - generic [ref=e1266]:
+                  - generic [ref=e1267]: followup
+                  - generic [ref=e1268]: "tier: mediocre"
+              - link "Screenshot af klinikseidelin.dk" [ref=e1269] [cursor=pointer]:
+                - /url: https://klinikseidelin.dk/
+                - img "Screenshot af klinikseidelin.dk" [ref=e1270]
+            - generic [ref=e1271]:
+              - combobox [ref=e1272]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1273]
+              - button "Send nu" [ref=e1274]
+          - article [ref=e1275]:
+            - generic [ref=e1276]:
+              - generic [ref=e1277]:
+                - paragraph [ref=e1278]:
+                  - text: PURE BY TINA LORENZEN
+                  - generic [ref=e1279]: · score 31 · follow-up dag 6
+                - paragraph [ref=e1280]: Frisør · Tønder
+                - paragraph [ref=e1281]: 📧 purebytl@gmail.com
+                - paragraph [ref=e1282]:
+                  - text: 🌐
+                  - link "purebytl.dk" [ref=e1283] [cursor=pointer]:
+                    - /url: http://purebytl.dk/
+                - generic [ref=e1284]:
+                  - generic [ref=e1285]: followup
+                  - generic [ref=e1286]: "tier: mediocre"
+              - link "Screenshot af purebytl.dk" [ref=e1287] [cursor=pointer]:
+                - /url: http://purebytl.dk/
+                - img "Screenshot af purebytl.dk" [ref=e1288]
+            - generic [ref=e1289]:
+              - combobox [ref=e1290]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1291]
+              - button "Send nu" [ref=e1292]
+          - article [ref=e1293]:
+            - generic [ref=e1294]:
+              - generic [ref=e1295]:
+                - paragraph [ref=e1296]:
+                  - text: By Kreiler
+                  - generic [ref=e1297]: · score 32 · follow-up dag 6
+                - paragraph [ref=e1298]: Frisør · Hobro
+                - paragraph [ref=e1299]: 📧 jeanette@kreiler.com
+                - paragraph [ref=e1300]:
+                  - text: 🌐
+                  - link "bykreiler.dk" [ref=e1301] [cursor=pointer]:
+                    - /url: http://bykreiler.dk/
+                - generic [ref=e1302]:
+                  - generic [ref=e1303]: followup
+                  - generic [ref=e1304]: "tier: mediocre"
+              - link "Screenshot af bykreiler.dk" [ref=e1305] [cursor=pointer]:
+                - /url: http://bykreiler.dk/
+                - img "Screenshot af bykreiler.dk" [ref=e1306]
+            - generic [ref=e1307]:
+              - combobox [ref=e1308]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1309]
+              - button "Send nu" [ref=e1310]
+          - article [ref=e1311]:
+            - generic [ref=e1312]:
+              - generic [ref=e1313]:
+                - paragraph [ref=e1314]:
+                  - text: A'Mor Beauty Shop
+                  - generic [ref=e1315]: · score 30 · follow-up dag 6
+                - paragraph [ref=e1316]: Skønhedssalon · Herning
+                - paragraph [ref=e1317]: 📧 zeno@a-mor.dk
+                - paragraph [ref=e1318]:
+                  - text: 🌐
+                  - link "a-mor.dk" [ref=e1319] [cursor=pointer]:
+                    - /url: http://a-mor.dk/
+                - generic [ref=e1320]:
+                  - generic [ref=e1321]: followup
+                  - generic [ref=e1322]: "tier: mediocre"
+              - link "Screenshot af a-mor.dk" [ref=e1323] [cursor=pointer]:
+                - /url: http://a-mor.dk/
+                - img "Screenshot af a-mor.dk" [ref=e1324]
+            - generic [ref=e1325]:
+              - combobox [ref=e1326]:
+                - option "Skip…" [selected]
+                - option "Cloudflare/WAF false positive (site er fin)"
+                - option "Kæde — bør ikke kontaktes"
+                - option "Bad fit (forkert branche / for stor)"
+                - option "Forkert mail-template ville blive valgt"
+                - option "Allerede kontaktet via anden kanal"
+                - option "Andet (skriv hvorfor)"
+              - button "Edit" [ref=e1327]
+              - button "Send nu" [ref=e1328]
+      - generic [ref=e1329]: Sender automatisk kl. 10:00 UTC (≈12:00 CEST).
+  - alert [ref=e1330]

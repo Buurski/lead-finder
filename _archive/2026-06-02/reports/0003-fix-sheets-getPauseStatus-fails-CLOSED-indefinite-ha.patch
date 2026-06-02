@@ -1,0 +1,37 @@
+From 90ef8110bef582041aa73c918161818154049957 Mon Sep 17 00:00:00 2001
+From: Cowork Night Agent <cowork-night@local>
+Date: Wed, 27 May 2026 21:07:08 +0000
+Subject: [PATCH 3/5] fix(sheets): getPauseStatus fails CLOSED +
+ indefinite-halt sentinels
+
+Previously a non-empty but unparseable PausedUntil returned paused:false, i.e.
+a mangled kill-switch value would silently resume sending. For a safety halt
+the correct default is to stay paused. Also recognise sentinel values
+(indefinite/paused/forever/true/stop/halt) so an explicit indefinite halt is
+possible without relying on a far-future date.
+---
+ src/lib/sheets.ts | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/sheets.ts b/src/lib/sheets.ts
+index 4333abd..d091a60 100644
+--- a/src/lib/sheets.ts
++++ b/src/lib/sheets.ts
+@@ -583,8 +583,13 @@ export async function getPauseStatus(): Promise<PauseStatus> {
+   });
+   const until = (res.data.values?.[0]?.[0] ?? "").toString().trim();
+   if (!until) return { paused: false, until: null };
++  // Explicit indefinite-halt sentinels — stay paused until cleared.
++  if (/^(indefinite|paused|forever|true|stop|halt)$/i.test(until)) return { paused: true, until };
+   const parsed = Date.parse(until);
+-  if (Number.isNaN(parsed)) return { paused: false, until };
++  // Fail CLOSED: a non-empty but unparseable PausedUntil means someone tried to
++  // set a pause and it got mangled. For a safety kill switch the safe default is
++  // "still paused", never "resume sending".
++  if (Number.isNaN(parsed)) return { paused: true, until };
+   return { paused: parsed > Date.now(), until };
+ }
+ 
+-- 
+2.34.1
+

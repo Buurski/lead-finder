@@ -1,0 +1,274 @@
+{
+  "totalLeads": 8459,
+  "beautyTotal": 1085,
+  "beautyFbOnly": 49,
+  "beautyFbOnlyNoEmail": 49,
+  "beautyFbOnlyNoEmail30reviews": 11,
+  "candidatesBeforeChain": 11,
+  "candidatesAfterChain": 11,
+  "chainsFiltered": [],
+  "branchBreakdown": {
+    "Frisør": 10,
+    "Skønhedssalon": 1
+  },
+  "top12": [
+    {
+      "rowIndex": 7449,
+      "name": "Zin",
+      "branch": "Frisør",
+      "city": "Varde",
+      "website": "https://www.facebook.com/ZIN-Fris%C3%B8r-106059910907189/",
+      "reviewsCount": 314,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7595,
+      "name": "Din frisør Thisted",
+      "branch": "Frisør",
+      "city": "Thisted",
+      "website": "https://www.facebook.com/Din-Fris%C3%B8r-Thisted-673917066272558/",
+      "reviewsCount": 220,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7696,
+      "name": "Frisør Essam Fredericia",
+      "branch": "Frisør",
+      "city": "Fredericia",
+      "website": "https://www.facebook.com/FrisoerEssam/",
+      "reviewsCount": 150,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7603,
+      "name": "Simon's Frisør",
+      "branch": "Frisør",
+      "city": "Thisted",
+      "website": "https://m.facebook.com/SimonsFrisorSalon/",
+      "reviewsCount": 112,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7559,
+      "name": "Frisør og Barbershop Shahin",
+      "branch": "Frisør",
+      "city": "Frederikshavn",
+      "website": "https://www.facebook.com/Fris%C3%B8r-Shahin-1986680801658719/",
+      "reviewsCount": 85,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7395,
+      "name": "TK HAIR STUDIO",
+      "branch": "Frisør",
+      "city": "Billund",
+      "website": "https://www.facebook.com/profile.php?id=100086206730773",
+      "reviewsCount": 57,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7513,
+      "name": "Salon Therese",
+      "branch": "Frisør",
+      "city": "Nørresundby",
+      "website": "https://www.facebook.com/profile.php?id=100057563585153",
+      "reviewsCount": 53,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7651,
+      "name": "Salon By JJ",
+      "branch": "Frisør",
+      "city": "Haderslev",
+      "website": "https://www.facebook.com/Salon-by-JJ-108571750830197/",
+      "reviewsCount": 47,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7453,
+      "name": "Hår Design",
+      "branch": "Frisør",
+      "city": "Varde",
+      "website": "https://m.facebook.com/pages/H%C3%A5r-Design/184755981537645",
+      "reviewsCount": 41,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 7071,
+      "name": "Cindy Negle Aabenraa",
+      "branch": "Skønhedssalon",
+      "city": "Aabenraa",
+      "website": "https://www.facebook.com/profile.php?id=61553349205661",
+      "reviewsCount": 38,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "rowIndex": 6915,
+      "name": "Lokalfrisøren",
+      "branch": "Frisør",
+      "city": "Vinderup",
+      "website": "https://m.facebook.com/Lokalfrisoren/?locale2=da_DK",
+      "reviewsCount": 37,
+      "email": "none",
+      "status": "new",
+      "emailStatus": ""
+    }
+  ],
+  "topFbNoEmailRegardlessOfReviews": [
+    {
+      "name": "Zin",
+      "branch": "Frisør",
+      "city": "Varde",
+      "reviewsCount": 314,
+      "website": "https://www.facebook.com/ZIN-Fris%C3%B8r-106059910907189/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Din frisør Thisted",
+      "branch": "Frisør",
+      "city": "Thisted",
+      "reviewsCount": 220,
+      "website": "https://www.facebook.com/Din-Fris%C3%B8r-Thisted-673917066272558/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Frisør Essam Fredericia",
+      "branch": "Frisør",
+      "city": "Fredericia",
+      "reviewsCount": 150,
+      "website": "https://www.facebook.com/FrisoerEssam/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Simon's Frisør",
+      "branch": "Frisør",
+      "city": "Thisted",
+      "reviewsCount": 112,
+      "website": "https://m.facebook.com/SimonsFrisorSalon/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Frisør og Barbershop Shahin",
+      "branch": "Frisør",
+      "city": "Frederikshavn",
+      "reviewsCount": 85,
+      "website": "https://www.facebook.com/Fris%C3%B8r-Shahin-1986680801658719/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "TK HAIR STUDIO",
+      "branch": "Frisør",
+      "city": "Billund",
+      "reviewsCount": 57,
+      "website": "https://www.facebook.com/profile.php?id=100086206730773",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Salon Therese",
+      "branch": "Frisør",
+      "city": "Nørresundby",
+      "reviewsCount": 53,
+      "website": "https://www.facebook.com/profile.php?id=100057563585153",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Salon By JJ",
+      "branch": "Frisør",
+      "city": "Haderslev",
+      "reviewsCount": 47,
+      "website": "https://www.facebook.com/Salon-by-JJ-108571750830197/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Hår Design",
+      "branch": "Frisør",
+      "city": "Varde",
+      "reviewsCount": 41,
+      "website": "https://m.facebook.com/pages/H%C3%A5r-Design/184755981537645",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Cindy Negle Aabenraa",
+      "branch": "Skønhedssalon",
+      "city": "Aabenraa",
+      "reviewsCount": 38,
+      "website": "https://www.facebook.com/profile.php?id=61553349205661",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Lokalfrisøren",
+      "branch": "Frisør",
+      "city": "Vinderup",
+      "reviewsCount": 37,
+      "website": "https://m.facebook.com/Lokalfrisoren/?locale2=da_DK",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Salon Beltoft",
+      "branch": "Frisør",
+      "city": "Svendborg",
+      "reviewsCount": 29,
+      "website": "https://www.facebook.com/Salon-Beltoft-483564945072255/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Salon Lina",
+      "branch": "Frisør",
+      "city": "Nørresundby",
+      "reviewsCount": 28,
+      "website": "https://www.facebook.com/p/Salon-Lina-N%C3%B8rresundby-100068482753229/?locale=da_DK",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Diamond Nails By Ch",
+      "branch": "Skønhedssalon",
+      "city": "Holstebro",
+      "reviewsCount": 27,
+      "website": "https://www.facebook.com/diamondnailsCH/",
+      "status": "new",
+      "emailStatus": ""
+    },
+    {
+      "name": "Bc Cuts",
+      "branch": "Frisør",
+      "city": "Frederikshavn",
+      "reviewsCount": 26,
+      "website": "https://www.facebook.com/profile.php?id=100091700155386",
+      "status": "new",
+      "emailStatus": ""
+    }
+  ]
+}

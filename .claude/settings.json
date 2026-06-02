@@ -1,0 +1,60 @@
+{
+  "$comment": "Safety floor for lead-system. The DENY list + PreToolUse hook are always-on guardrails (apply to every Claude Code session in this repo, day or night). The ALLOW list just reduces prompts for safe build work. For the unattended overnight run, launch with: claude --permission-mode auto",
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(src/**)",
+      "Edit(*.ts)",
+      "Edit(*.tsx)",
+      "Edit(*.md)",
+      "Edit(*.json)",
+      "Edit(.send_queue/**)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm install*)",
+      "Bash(npm ci)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout -b*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(node*)",
+      "Bash(grep*)",
+      "Bash(rg*)",
+      "Bash(ls*)",
+      "Bash(cat*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push* main*)",
+      "Bash(git push* master*)",
+      "Bash(git reset --hard*)",
+      "Bash(git rebase*)",
+      "Bash(npm run dev)",
+      "Bash(next dev*)",
+      "Bash(vercel*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Edit(.env*)",
+      "Edit(.git/**)",
+      "Edit(.send_queue/.sa.json)",
+      "mcp__gmail__*",
+      "mcp__1487e094-2dde-4d78-9a4a-76d923efbb35__*"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/block-dangerous.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -42,3 +42,10 @@ next-env.d.ts
 .worktrees/
 
 .vercel
+
+# send queue contains app passwords, state, cached batches — never commit
+/.send_queue/
+.send_queue/
+.sa.json
+.tmp_keys/
+*.backup_*.json

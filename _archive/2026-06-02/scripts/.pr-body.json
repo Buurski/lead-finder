@@ -1,0 +1,6 @@
+{
+  "title": "PR-6 feat(templates): demo URLs in beauty/service follow-ups + randomised beauty",
+  "body": "DEL A from the go-live request.\n\n## Closed gaps\n\n1. **Beauty demos re-added (regression)** — `DEMO_URLS.beautySalon` + `DEMO_URLS.beautyBarber` existed in Lucas's local mods but never reached origin/main. `pickBeautyDemoOrder()` returns randomised primary/secondary so batches don't repeat.\n2. **beauty.cold + beauty.followup** — both now render the two URLs in body with humble framing.\n3. **service.followup** — routes through `pickCraftDemo(branch+name)` so VVS/elektriker service-bucket leads land on ktvvs and others on denlillemaler.\n\n## Sample previews (followup, rendered via tsx)\n\n- Frisør / Salon Sofie / Give → `salon-artec` + `streetcut` (randomised order)\n- VVS-installatør / Byens VVS Struer ApS → `ktvvs.vercel.app/`\n- Café / Cafe Kysten / Strandby → `under-klippen` + `zaytoon-six`\n\nAll three include the humble \"et eksempel jeg lavede\" / \"demoerne til inspiration\" framing, opt-out line, and \"send mockup\"/\"ja\" low-friction CTA. No price talk.\n\n## Safety\n\nHalt-flag `2026-07-01T00:00:00.000Z` verified before AND after. tsc clean. next build green. Templates inert until master halt cleared.",
+  "head": "feat/followup-demos",
+  "base": "main"
+}

@@ -1,0 +1,84 @@
+From ea6a55e464cecfb46714abeee4643fdb5cc2b408 Mon Sep 17 00:00:00 2001
+From: Cowork Night Agent <cowork-night@local>
+Date: Wed, 27 May 2026 21:07:08 +0000
+Subject: [PATCH 4/5] fix(email): manual single-send and test-send now respect
+ the pause kill switch
+
+Both routes called sendLeadEmail() with no pause check, so they bypassed the
+global halt. They now return 423 while paused unless { override: true } is
+passed, so an intentional manual send is still possible but accidental/stray
+sends during a halt are blocked.
+---
+ src/app/api/email/test-send/route.ts       | 10 +++++++++-
+ src/app/api/leads/[id]/send-email/route.ts | 16 ++++++++++++++--
+ 2 files changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/src/app/api/email/test-send/route.ts b/src/app/api/email/test-send/route.ts
+index f23b1d7..d203cb3 100644
+--- a/src/app/api/email/test-send/route.ts
++++ b/src/app/api/email/test-send/route.ts
+@@ -1,5 +1,6 @@
+ import { NextResponse } from "next/server";
+ import { sendLeadEmail } from "@/lib/email";
++import { getPauseStatus } from "@/lib/sheets";
+ import type { Lead } from "@/lib/sheets";
+ 
+ // Fake lead for test sends
+@@ -31,7 +32,14 @@ function fakeLead(email: string): Lead {
+ }
+ 
+ export async function POST(req: Request) {
+-  const { emails, type }: { emails: string[]; type: "cold" | "followup" } = await req.json();
++  const { emails, type, override = false }: { emails: string[]; type: "cold" | "followup"; override?: boolean } = await req.json();
++
++  if (!override) {
++    const pause = await getPauseStatus();
++    if (pause.paused) {
++      return NextResponse.json({ error: "Sends are halted (pause active). Pass override:true to force a test send.", pausedUntil: pause.until }, { status: 423 });
++    }
++  }
+ 
+   const results: { email: string; ok: boolean; error?: string }[] = [];
+ 
+diff --git a/src/app/api/leads/[id]/send-email/route.ts b/src/app/api/leads/[id]/send-email/route.ts
+index e57f4e6..0624cea 100644
+--- a/src/app/api/leads/[id]/send-email/route.ts
++++ b/src/app/api/leads/[id]/send-email/route.ts
+@@ -1,5 +1,5 @@
+ import { NextRequest, NextResponse } from "next/server";
+-import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
++import { getLeads, getPauseStatus, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
+ import { sendLeadEmail } from "@/lib/email";
+ 
+ export async function POST(
+@@ -7,7 +7,7 @@ export async function POST(
+   { params }: { params: Promise<{ id: string }> }
+ ) {
+   try {
+-    const { type = "cold" } = await req.json().catch(() => ({}));
++    const { type = "cold", override = false } = await req.json().catch(() => ({}));
+     const leads = await getLeads();
+     const { id } = await params;
+     const rowIndex = parseInt(id) - 2;
+@@ -18,6 +18,18 @@ export async function POST(
+     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+     if (!emailRegex.test(lead.email)) return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+ 
++    // Respect the global halt/pause kill switch — even a manual single-send must
++    // not fire while sends are halted, unless the caller explicitly overrides.
++    if (!override) {
++      const pause = await getPauseStatus();
++      if (pause.paused) {
++        return NextResponse.json(
++          { error: "Sends are halted (pause active). Pass { override: true } to force this one.", pausedUntil: pause.until },
++          { status: 423 }
++        );
++      }
++    }
++
+     await sendLeadEmail(lead, type as "cold" | "followup");
+ 
+     const now = new Date().toISOString();
+-- 
+2.34.1
+

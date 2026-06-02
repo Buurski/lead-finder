@@ -1,0 +1,214 @@
+{
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\eslint.config.mjs": {
+    "mtime": 1777236295.6388748,
+    "hash": "dfa1f5f6a7037bf39dc510f30b180002"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\next-env.d.ts": {
+    "mtime": 1777403945.2809591,
+    "hash": "d0f8375ae1199dc7acd3977fc33b78b8"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\next.config.ts": {
+    "mtime": 1777584137.4714217,
+    "hash": "8dba7c08a6204e9566aa8f11a76137c3"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\postcss.config.mjs": {
+    "mtime": 1777236295.653874,
+    "hash": "239f3ebf717465dc636818a1a619398d"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\layout.tsx": {
+    "mtime": 1777414319.862953,
+    "hash": "d2d4aea721266427c8eec7001c7f4291"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\page.tsx": {
+    "mtime": 1777823483.3695438,
+    "hash": "061e515b3de21543668ab6cbc716e0d8"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\clients\\route.ts": {
+    "mtime": 1777403739.8309686,
+    "hash": "7960c9709c97f8e04d283437582c6ad0"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\clients\\[id]\\brief\\route.ts": {
+    "mtime": 1777822373.6550663,
+    "hash": "0836bd4e881c9b71a7674a98e2d8369c"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\bulk-find-emails\\route.ts": {
+    "mtime": 1777829133.7398667,
+    "hash": "eaab987ceb6d7bc76c9e530889e39bb4"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\bulk-send\\route.ts": {
+    "mtime": 1777832282.2240417,
+    "hash": "d9edd92658d127df8cc98f53f63dc333"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\send-followups\\route.ts": {
+    "mtime": 1777822528.4997156,
+    "hash": "c45d8182c4758ad93f941e4bd125f2c5"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\test-send\\route.ts": {
+    "mtime": 1777652750.2205033,
+    "hash": "48db01ca607644b0d3d06079ad39660b"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\track\\click\\[leadId]\\route.ts": {
+    "mtime": 1777495283.9456482,
+    "hash": "db6aebe980219df365ef6fe76d0c1626"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\email\\track\\open\\[leadId]\\route.ts": {
+    "mtime": 1777495283.9456482,
+    "hash": "222617cfbc57cf88f03caa814d0e7a42"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\route.ts": {
+    "mtime": 1777403728.8999567,
+    "hash": "d2f2ba887eef8dde0ebd043f1e4e07c8"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\analyze\\route.ts": {
+    "mtime": 1777416037.2452197,
+    "hash": "34aa462513f608c70c7b4595100d334d"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\deep-research\\route.ts": {
+    "mtime": 1777822428.8293042,
+    "hash": "ddc25b6eeb15441465f67bb3a836afa6"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\email-preview\\route.ts": {
+    "mtime": 1777495283.946648,
+    "hash": "0bb4192f9919ee73af72d746de21559e"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\enrich\\route.ts": {
+    "mtime": 1777825074.0246208,
+    "hash": "01716469e9fbbdcd60c99d164dcd3862"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\send-email\\route.ts": {
+    "mtime": 1777822536.7187638,
+    "hash": "69f4b090700a00a5e38475c423a12cb6"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\leads\\[id]\\status\\route.ts": {
+    "mtime": 1777403735.4281316,
+    "hash": "709f0e767ac9408931c97c0fdbe38ef1"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\scrape\\route.ts": {
+    "mtime": 1777822418.4229703,
+    "hash": "85aba9836f04099f41c3cf1c25e625fb"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\api\\verify-all\\route.ts": {
+    "mtime": 1777827920.1499958,
+    "hash": "54055bd3ec6a3d265ab8cf027fdc685e"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\clients\\page.tsx": {
+    "mtime": 1777415632.3858514,
+    "hash": "6a742cf2ce0c10c3d052f151cee8f04d"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\app\\clients\\[id]\\brief\\page.tsx": {
+    "mtime": 1777419798.7087846,
+    "hash": "b01ff18e232f5cc169d8476d75be0dd8"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\BriefForm.tsx": {
+    "mtime": 1777822401.5590408,
+    "hash": "b0b0c2a076553f949bff2ee0a90d279c"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\BulkEmailPanel.tsx": {
+    "mtime": 1777827991.3881493,
+    "hash": "89261f41776afee61f647be2152e079f"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\ClientCard.tsx": {
+    "mtime": 1777415623.3785467,
+    "hash": "8013b22169a20faebb1bc2be9f94a909"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\EmailDashboardClient.tsx": {
+    "mtime": 1777652714.3064058,
+    "hash": "0ef55f5eb547a30dc3ad35fe0734a24e"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\EmailPanel.tsx": {
+    "mtime": 1777495283.9486468,
+    "hash": "cab1b4bdc26e0060959ed7a51dee44df"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\EmailPreviewModal.tsx": {
+    "mtime": 1777495283.9496467,
+    "hash": "3bccc7051c657752c79b029e8f26c493"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\EmailStatsPanel.tsx": {
+    "mtime": 1777652675.9866931,
+    "hash": "9f8adb93bbdfecd8a8a9b0e6ff8cf39d"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\LeadTable.tsx": {
+    "mtime": 1777823514.0879025,
+    "hash": "b1ca724ceaa4ca768c7f2cb989f8e467"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\Nav.tsx": {
+    "mtime": 1777414293.660555,
+    "hash": "17e5d07998fa048f68946af92742862d"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\ScrapeButton.tsx": {
+    "mtime": 1777417583.647621,
+    "hash": "b34f44196709660d3dc893115bd17b36"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\components\\VerifyAllButton.tsx": {
+    "mtime": 1777417418.535479,
+    "hash": "2f7df97b1b6d19842c800df91f8008f9"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\lib\\apify.ts": {
+    "mtime": 1777825027.9945972,
+    "hash": "a41f076c3fdf0ded49a5dce699efe332"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\lib\\email.ts": {
+    "mtime": 1777831464.5339825,
+    "hash": "16a5a3e16c6573195d61024435626691"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\lib\\folders.ts": {
+    "mtime": 1777822365.822267,
+    "hash": "3114d969c052c348b5e0df31a105b334"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\src\\lib\\sheets.ts": {
+    "mtime": 1777827937.5785246,
+    "hash": "6e99c954494df4e456ecc4dfca70dd87"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\AGENTS.md": {
+    "mtime": 1777652467.0458982,
+    "hash": "5df3de4a7bf8833c58b4b48a932e5015"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\CLAUDE.md": {
+    "mtime": 1777403682.09805,
+    "hash": "5c27369b226fcf2be8a6cfe52224e767"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\PRODUCT.md": {
+    "mtime": 1777414051.248919,
+    "hash": "8a21bb91fed6beaa47e3ac9a7ad0ec2f"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\README.md": {
+    "mtime": 1777236295.627044,
+    "hash": "f15aaa42d5d299d091b1171097ea56ad"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\docs\\superpowers\\plans\\2026-04-29-leads-email-automation.md": {
+    "mtime": 1777494130.7564766,
+    "hash": "2786300da545459578c0331bb0a49d03"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\docs\\superpowers\\specs\\2026-04-29-leads-email-automation-design.md": {
+    "mtime": 1777493865.6299517,
+    "hash": "2d4389fd90b2fb47ca17e0f0d8f77f10"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\dashboard-full.png": {
+    "mtime": 1777651257.88818,
+    "hash": "0f4023878ff525af440f1b580f1d582a"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\preview-click.png": {
+    "mtime": 1777651511.7258556,
+    "hash": "56912ab5d3b375eaced8e1a654c2d2ca"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\public\\file.svg": {
+    "mtime": 1777236295.657876,
+    "hash": "d09f95206c3fa0bb9bd9fefabfd0ea71"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\public\\globe.svg": {
+    "mtime": 1777236295.6648743,
+    "hash": "2aaafa6a49b6563925fe440891e32717"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\public\\next.svg": {
+    "mtime": 1777236295.67288,
+    "hash": "8e061864f388b47f33a1c3780831193e"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\public\\vercel.svg": {
+    "mtime": 1777236295.6788797,
+    "hash": "c0af2f507b369b085b35ef4bbe3bcf1e"
+  },
+  "C:\\Users\\Buur\\Documents\\Workflows\\lead-system\\public\\window.svg": {
+    "mtime": 1777236295.6848834,
+    "hash": "a2760511c65806022ad20adf74370ff3"
+  }
+}
