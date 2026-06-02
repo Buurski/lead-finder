@@ -1,22 +1,41 @@
 {
-  "phase": "Del 0 — cleanup",
-  "status": "done",
+  "phase": "Del 2 — research + draft",
+  "status": "done (committed); Del 3 next",
   "lastError": null,
-  "ts": "2026-06-02T22:30:00Z",
-  "usage": "Lucas cloud usage ~67% when Del 0 finished; cap resets ~2h. Max plan. Commit + status updated each phase so any cutoff is clean and `claude --resume`-able.",
+  "ts": "2026-06-02T23:10:00Z",
+  "usage": "Lucas restarting computer ~23:10. Cloud usage ~67%+ earlier, cap resets ~2h. Max plan. Everything committed to night-build so `claude --resume` continues cleanly from Del 3.",
+  "resume": {
+    "branch": "night-build",
+    "next_phase": "Del 3 — /approve UI (impeccable) + queue API",
+    "how": "Run `claude --resume`. The /goal Stop-hook is still armed and will drive the remaining phases. Del 0,1,2 are committed and verified (tsc exit 0).",
+    "verified_so_far": [
+      "Del 0: bulk-find-emails single POST + Chrome UA; 0 tracking refs in src/; track routes archived; 3 corrupted routes restored from HEAD; tsc exit 0.",
+      "Del 1: src/lib/qualify.ts (hardDrop + isProfessionalEnough) + src/lib/voice-guide.md. Smoke: 'Frisør Adnan' dropped (personal-name), 'Salon Lounge' passes (brand+reviews).",
+      "Del 2: src/lib/research.ts (research_lead, Chrome-UA+retry+jina, FB/IG Apify token-gated, graceful offline) + src/lib/demos.ts + src/lib/draft.ts (draft_personal_message + validateDraft rejecting pris/kr + robot-CTA). Offline smoke: drafts valid.",
+      "tsconfig: added allowImportingTsExtensions so node type-stripping (.ts imports) AND tsc both work for the engine CLI."
+    ]
+  },
   "phases": {
     "del0_cleanup": "done",
-    "del1_qualify_voice": "pending",
-    "del2_research_draft": "pending",
+    "del1_qualify_voice": "done",
+    "del2_research_draft": "done",
     "del3_approve_ui": "pending",
     "del4_engine": "pending",
     "verify": "pending"
   },
+  "optimization_backlog": [
+    "Niche beauty demoer: salon-artec + streetcut er de eneste beauty-demoer. Byg frisør / negle-vipper / hudpleje / barber-specifikke så beauty får 2 FORSKELLIGE relevante (brief §9 TODO idé D). Når VIDA-siden er live -> brug som beauty-demo + bed om udtalelse (flywheel).",
+    "research_lead Google-reviews: pt. kun web+FB/IG+lead-felter. Tilføj Google Business reviews-tekst (hvad roses de for) som krog-kilde — stærkest signal pr. brief §8.",
+    "Chrome-agent fallback (mcp Claude_in_Chrome) til JS-tunge sider (Timma booking) som fetch+jina ikke fanger.",
+    "Email-finder (bulk-find-emails): udvid ud over website+CVR til FB/IG/booking-sider; stop med at kassere gmail/hotmail blindt (missede VIDA). 164 beauty-leads score>=60 uden email venter.",
+    "Ét datalag: .send_queue JSON-state vs Sheets kan divergere (VIDA blev vundet men aldrig registreret). Flyt kø-state mod Sheets/ét lag i Del 5.",
+    "Reply-assistent: 84 svar, kun ~3 blev kunde. Klassificér + udkast svar i Lucas' stemme -> flere kunder (Del 5).",
+    "isProfessionalEnough tuning: tærskler (reviews>=40/80, score>=55/70) er førstegæt — kalibrér mod rigtige vundne vs tabte leads.",
+    "package.json \"type\":\"module\" ville fjerne node's .ts-reparse-warning, men kan påvirke Next-build — undlod for nu; test separat."
+  ],
+  "process_feedback_applied": "Lucas (2026-06-02): arbejd mere bevidst/langsommere, ikke forhastet. Når jeg finder optimeringspunkter -> skriv dem i denne backlog + NIGHT_BUILD_OPTIMIZATIONS.md, så vi kan optimere siden maksimalt.",
   "notes": [
-    "bulk-find-emails: single POST, fragment removed, Chrome UA.",
-    "tracking removed from email.ts (0 refs in src/); track routes archived to _archive/2026-06-02/track-routes.",
-    "3 route files (bulk-send, send-followups, sync-replies) were uncommitted corruption from a prior session; restored clean from HEAD.",
-    "tsc --noEmit exit 0 after Del 0.",
-    ".send_queue/ is gitignored (secrets/state) — daily_engine.mjs canonical tracked copy will live under scripts/."
+    ".send_queue/ is gitignored — daily_engine.mjs canonical tracked copy will live under scripts/ (Del 4).",
+    "git add -A swept pre-existing untracked dirs (graphify-out, docs, sync-rejections route) into Del 0 commit; all compiles."
   ]
 }
