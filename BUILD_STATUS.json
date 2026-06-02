@@ -1,41 +1,42 @@
 {
-  "phase": "Del 2 — research + draft",
-  "status": "done (committed); Del 3 next",
+  "phase": "Del 3 — /approve UI + queue API",
+  "status": "done (committed); Del 4 next",
   "lastError": null,
-  "ts": "2026-06-02T23:10:00Z",
-  "usage": "Lucas restarting computer ~23:10. Cloud usage ~67%+ earlier, cap resets ~2h. Max plan. Everything committed to night-build so `claude --resume` continues cleanly from Del 3.",
+  "ts": "2026-06-03T00:05:00Z",
+  "usage": "Resumed after restart. Working deliberately per Lucas feedback; committing + updating status each phase so cap reset / restart stays clean.",
   "resume": {
     "branch": "night-build",
-    "next_phase": "Del 3 — /approve UI (impeccable) + queue API",
-    "how": "Run `claude --resume`. The /goal Stop-hook is still armed and will drive the remaining phases. Del 0,1,2 are committed and verified (tsc exit 0).",
-    "verified_so_far": [
-      "Del 0: bulk-find-emails single POST + Chrome UA; 0 tracking refs in src/; track routes archived; 3 corrupted routes restored from HEAD; tsc exit 0.",
-      "Del 1: src/lib/qualify.ts (hardDrop + isProfessionalEnough) + src/lib/voice-guide.md. Smoke: 'Frisør Adnan' dropped (personal-name), 'Salon Lounge' passes (brand+reviews).",
-      "Del 2: src/lib/research.ts (research_lead, Chrome-UA+retry+jina, FB/IG Apify token-gated, graceful offline) + src/lib/demos.ts + src/lib/draft.ts (draft_personal_message + validateDraft rejecting pris/kr + robot-CTA). Offline smoke: drafts valid.",
-      "tsconfig: added allowImportingTsExtensions so node type-stripping (.ts imports) AND tsc both work for the engine CLI."
-    ]
+    "next_phase": "Del 4 — engine.ts + .send_queue/daily_engine.mjs + fixture + morning SKILL.md",
+    "how": "Run `claude --resume`. /goal Stop-hook drives remaining phases. Del 0-3 committed + tsc exit 0."
   },
   "phases": {
     "del0_cleanup": "done",
     "del1_qualify_voice": "done",
     "del2_research_draft": "done",
-    "del3_approve_ui": "pending",
+    "del3_approve_ui": "done",
     "del4_engine": "pending",
     "verify": "pending"
   },
-  "optimization_backlog": [
-    "Niche beauty demoer: salon-artec + streetcut er de eneste beauty-demoer. Byg frisør / negle-vipper / hudpleje / barber-specifikke så beauty får 2 FORSKELLIGE relevante (brief §9 TODO idé D). Når VIDA-siden er live -> brug som beauty-demo + bed om udtalelse (flywheel).",
-    "research_lead Google-reviews: pt. kun web+FB/IG+lead-felter. Tilføj Google Business reviews-tekst (hvad roses de for) som krog-kilde — stærkest signal pr. brief §8.",
-    "Chrome-agent fallback (mcp Claude_in_Chrome) til JS-tunge sider (Timma booking) som fetch+jina ikke fanger.",
-    "Email-finder (bulk-find-emails): udvid ud over website+CVR til FB/IG/booking-sider; stop med at kassere gmail/hotmail blindt (missede VIDA). 164 beauty-leads score>=60 uden email venter.",
-    "Ét datalag: .send_queue JSON-state vs Sheets kan divergere (VIDA blev vundet men aldrig registreret). Flyt kø-state mod Sheets/ét lag i Del 5.",
-    "Reply-assistent: 84 svar, kun ~3 blev kunde. Klassificér + udkast svar i Lucas' stemme -> flere kunder (Del 5).",
-    "isProfessionalEnough tuning: tærskler (reviews>=40/80, score>=55/70) er førstegæt — kalibrér mod rigtige vundne vs tabte leads.",
-    "package.json \"type\":\"module\" ville fjerne node's .ts-reparse-warning, men kan påvirke Next-build — undlod for nu; test separat."
+  "del3_notes": [
+    "src/lib/queue.ts: shared QueueDraft schema + readQueue/writeQueue/appendDrafts/updateDraft (fs, .send_queue/approval_queue.json). Imported by BOTH the API route and the Del 4 engine — one schema, no drift.",
+    "src/app/api/approve/queue/route.ts: GET returns drafts; POST {id,action:approve|edit|reject}. 'approve' only marks status=approved (NO mail sent). 'edit' re-validates via validateDraft and 422s on price/robot-CTA violations.",
+    "src/app/approve/page.tsx: client component, impeccable-designed review-stack (not card grid per PRODUCT.md). Light theme, Fraunces headings, status pills, inline edit, demo links, empty state shows engine command.",
+    "Nav: added /approve link 'Godkendelse'.",
+    "tsc --noEmit exit 0."
   ],
-  "process_feedback_applied": "Lucas (2026-06-02): arbejd mere bevidst/langsommere, ikke forhastet. Når jeg finder optimeringspunkter -> skriv dem i denne backlog + NIGHT_BUILD_OPTIMIZATIONS.md, så vi kan optimere siden maksimalt.",
+  "optimization_backlog": [
+    "Niche beauty demoer (salon-artec+streetcut only) -> build frisør/negle/hudpleje/barber specific; use VIDA when live (brief §9 idé D).",
+    "research_lead: add Google Business reviews text as hook source (brief §8, strongest signal).",
+    "Chrome-agent fallback for JS-heavy booking sites (Timma).",
+    "Email-finder: extend beyond website+CVR to FB/IG/booking; stop discarding gmail/hotmail blindly (missed VIDA); 164 beauty score>=60 no-email waiting.",
+    "Ét datalag (Del 5): unify .send_queue JSON vs Sheets (VIDA won but never registered).",
+    "Reply-assistent (Del 5): 84 replies -> only ~3 clients; classify+draft replies in voice.",
+    "isProfessionalEnough thresholds are first-guess; calibrate vs real won/lost leads.",
+    "/approve: add real send wiring (currently mark-approved only) once cold-path reopens; add keyboard triage (j/k + a/r).",
+    "/approve: poll/refresh or websocket so morning engine run appears without manual Opdatér."
+  ],
+  "process_feedback_applied": "Lucas (2026-06-02): work deliberately not rushed; capture optimizations into NIGHT_BUILD_OPTIMIZATIONS.md + this backlog for a follow-up /goal.",
   "notes": [
-    ".send_queue/ is gitignored — daily_engine.mjs canonical tracked copy will live under scripts/ (Del 4).",
-    "git add -A swept pre-existing untracked dirs (graphify-out, docs, sync-rejections route) into Del 0 commit; all compiles."
+    ".send_queue/ gitignored — daily_engine.mjs canonical tracked copy under scripts/ (Del 4); approval_queue.json created on first engine run, never committed."
   ]
 }
