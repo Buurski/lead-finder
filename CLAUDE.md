@@ -23,12 +23,13 @@ briefs. Think operating system for one person, not a SaaS dashboard.
 - `COMMAND_CENTER_VISION.md` is the current blueprint (throwaway-able — we may go
   bigger once Lucas shares examples).
 
-**Lead targeting (preference, 2026-06-03):** move **away from restaurants / food**
-— they're over-represented in the current pool and NOT what Lucas wants going
-forward. Favor branches with real budget + room to upgrade (service, trades,
-beauty/clinic, retail, professional). Reflect this when picking / scoring /
-drafting leads. The demo library is thin on non-food branches — note when a
-demo is a weak branch match.
+**Lead targeting (preference, 2026-06-03):** **keep restaurants — they work** —
+but don't let a batch be *only* restaurants. What's been most successful is a
+**mix**, and especially **beauty salons** (and similar: hair/negle/hudpleje/
+barber/clinic). The recent batch was 100% food, which is the problem, not food
+itself. So: **diversify the PICK** — restaurants + beauty/personal-care +
+service/trades/retail/professional, with beauty weighted up. The demo library is
+thin on non-food branches — note when a demo is a weak branch match.
 
 ## Commit / deploy discipline
 
