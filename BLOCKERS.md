@@ -43,16 +43,25 @@ just produces the deterministic draft.
 
 ---
 
-## 2. APIFY_TOKEN — already set ✓
+## 2. APIFY — deliberately OFF (cost decision, 2026-06-03)
 
-`APIFY_TOKEN` is present in `.env.local`, so FB/IG enrichment in `research.ts`
-and `email-finder.ts` is live. No action needed unless the token expires.
+You burned Apify credits fast before. In the new pipeline Apify only adds a
+FB/IG caption-hook or a social email, and only for leads whose `website` is a
+facebook/instagram URL — a marginal subset now covered better+cheaper by the
+website scrape + Google reviews + AI. **Not worth it.**
 
-## 3. GOOGLE_PLACES_API_KEY — already set ✓
+Code is now gated: even with `APIFY_TOKEN` set, social scraping runs ONLY when
+`ENABLE_APIFY=1`. Default = off, so the daily engine never burns credits.
+- Keep the token if you want; it does nothing until you opt in.
+- For a single hot lead you can do a one-off: `ENABLE_APIFY=1 node .send_queue/daily_engine.mjs --lead="X"`.
+- Free tier ($5/mo) is fine for that occasional manual use; never for a bulk run.
 
-Present, so the new Google-reviews hook source (`research.ts → googleReviews`)
-is live on real engine runs. Note Places "New" review fields are billable per
-request — enrichment only runs on real runs (`--dry-run` skips all paid APIs).
+## 3. GOOGLE_PLACES_API_KEY — set, kept ON (this is the Apify replacement)
+
+Powers the Google-reviews hook (`research.ts → googleReviews`) — genuine
+customer-voice openings, the main value that replaces Apify. Billable (~a few
+øre per lead) but only on **real** runs (`--dry-run` skips all paid APIs), so a
+12-lead daily batch is cheap. To kill it entirely, remove the key.
 
 ---
 

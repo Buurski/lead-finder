@@ -182,6 +182,8 @@ export async function findEmailOnWebsite(website: string): Promise<string | null
 // FB/IG/booking — token-gated (Apify). A booking link (Timma/Ordrupdal/…) often
 // has no email; in that case we mine the linked website if present.
 export async function findEmailViaSocial(website: string): Promise<string | null> {
+  // OFF by default (cost) — see ENABLE_APIFY note in research.ts.
+  if (process.env.ENABLE_APIFY !== "1") return null;
   const token = process.env.APIFY_TOKEN;
   if (!token || !website) return null;
   const ig = website.match(/instagram\.com\/([A-Za-z0-9._]+)/i);

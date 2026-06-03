@@ -109,6 +109,10 @@ function hooksFromLead(lead: ResearchLead): string[] {
 // Apify FB/IG actor — only attempted when a token is present. Graceful skip
 // otherwise. Kept deliberately defensive: any shape/timeout error -> [].
 async function hooksFromApify(lead: ResearchLead): Promise<string[]> {
+  // OFF by default — Apify bills per run and burns out fast on bulk passes.
+  // The website scrape + Google reviews + AI cover the hook need. Set
+  // ENABLE_APIFY=1 only for a deliberate, small manual run.
+  if (process.env.ENABLE_APIFY !== "1") return [];
   const token = process.env.APIFY_TOKEN;
   if (!token || !lead.website) return [];
   const handle = extractSocialHandle(lead.website);
