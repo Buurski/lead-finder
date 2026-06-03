@@ -9,6 +9,7 @@
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
 import type { Demo } from "./demos.ts";
+import { generate, isAiEnabled } from "./ai.ts";
 
 export interface Draft {
   subject: string;
@@ -131,8 +132,7 @@ async function composeWithLLM(
   research: ResearchResult,
   voiceGuide: string
 ): Promise<string | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
+  if (!isAiEnabled()) return null;
   const [d1, d2] = research.demoPair;
   const prompt = [
     `Skriv en kort, varm, personlig dansk besked fra Lucas til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
@@ -141,32 +141,17 @@ async function composeWithLLM(
     `→ ${d1.url}`,
     `→ ${d2.url}`,
     `Slut med "Mvh, Lucas".`,
-    `Følg denne stemme-guide nøje:`,
-    voiceGuide,
   ].join("\n\n");
 
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-opus-4-8",
-        max_tokens: 600,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(40000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { content?: Array<{ text?: string }> };
-    const text = data.content?.map((c) => c.text ?? "").join("").trim();
-    return text || null;
-  } catch {
-    return null;
-  }
+  // DRAFT -> Opus 4.8 (model resolved by ai.ts; gateway -> anthropic -> null).
+  const res = await generate({
+    task: "draft",
+    system: `Du er Lucas. Skriv kun selve beskeden, intet andet. Følg denne stemme-guide nøje:\n\n${voiceGuide}`,
+    prompt,
+    maxTokens: 600,
+    temperature: 0.7,
+  });
+  return res ? res.text : null;
 }
 
 export interface DraftOptions {

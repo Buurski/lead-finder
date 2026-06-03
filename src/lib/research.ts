@@ -13,6 +13,7 @@ import { isProfessionalEnough } from "./qualify.ts";
 import type { QualifyVerdict, QualifyLead } from "./qualify.ts";
 import { pickDemoPair } from "./demos.ts";
 import type { Demo } from "./demos.ts";
+import { generate, isAiEnabled } from "./ai.ts";
 
 export interface ResearchLead extends QualifyLead {
   notes: string;
@@ -145,9 +146,73 @@ function extractSocialHandle(website: string): { platform: string; id: string } 
   return null;
 }
 
-export async function research_lead(lead: ResearchLead): Promise<ResearchResult> {
+// ---- optional AI layer (Sonnet 4.6) -------------------------------------
+// Both helpers are gated by isAiEnabled() and wrapped to NEVER throw — with no
+// key they are no-ops and the deterministic results stand.
+
+// RESEARCH -> Sonnet: distil the single most genuine, human opening hook from
+// the raw collected text. Returns a short Danish phrase or null.
+async function refineHookWithAI(lead: ResearchLead, rawText: string, candidates: string[]): Promise<string | null> {
+  if (!isAiEnabled()) return null;
+  const corpus = rawText.replace(/\s+/g, " ").trim().slice(0, 4000);
+  if (!corpus && candidates.length === 0) return null;
+  const res = await generate({
+    task: "research",
+    system:
+      "Du finder ÉN ægte, specifik detalje om en dansk virksomhed, der kan bruges som varm åbning i en personlig besked. " +
+      "Svar med PRÆCIS én kort dansk sætning (max 12 ord), ingen anførselstegn, ingen forklaring. " +
+      "Opfind ALDRIG noget — brug kun hvad teksten understøtter. Hvis intet konkret findes, svar 'INGEN'.",
+    prompt: [
+      `Virksomhed: ${lead.name} (${lead.branch}, ${lead.city}).`,
+      candidates.length ? `Mulige detaljer fundet: ${candidates.join(" | ")}.` : "",
+      corpus ? `Rå tekst fra deres web/sociale medier:\n${corpus}` : "",
+    ].filter(Boolean).join("\n\n"),
+    maxTokens: 60,
+    temperature: 0.4,
+  });
+  if (!res) return null;
+  const line = res.text.split("\n")[0].trim().replace(/^["'»]|["'«]$/g, "").trim();
+  if (!line || /^ingen\b/i.test(line) || line.length < 6) return null;
+  return line.slice(0, 140);
+}
+
+// QUALIFY -> Sonnet: tiebreaker for the borderline band only. Never overrides a
+// hard cheap/personal drop; only adjudicates "thin profile" cases where the
+// deterministic gate is genuinely unsure.
+function isBorderline(verdict: QualifyVerdict): boolean {
+  return !verdict.ok && /thin profile/.test(verdict.reason);
+}
+
+async function aiProfessionalism(lead: ResearchLead, deterministic: QualifyVerdict): Promise<QualifyVerdict> {
+  if (!isAiEnabled() || !isBorderline(deterministic)) return deterministic;
+  const res = await generate({
+    task: "qualify",
+    system:
+      "Du vurderer om en dansk virksomhed er etableret nok til realistisk at investere i en ny hjemmeside (5-15k). " +
+      "Svar PRÆCIS med 'JA: <kort grund>' eller 'NEJ: <kort grund>'. Vær konservativ: i tvivl, svar NEJ.",
+    prompt:
+      `Navn: ${lead.name}\nBranche: ${lead.branch}\nBy: ${lead.city}\n` +
+      `Score: ${lead.score}\nAnmeldelser: ${lead.reviewsCount}\nWebsite-tier: ${lead.websiteQualityTier || "ukendt"}\n` +
+      `Noter: ${(lead.notes || "").slice(0, 200)}`,
+    maxTokens: 60,
+    temperature: 0.2,
+  });
+  if (!res) return deterministic;
+  const t = res.text.trim();
+  if (/^ja\b/i.test(t)) return { ok: true, reason: `AI-rescue: ${t.replace(/^ja:?\s*/i, "").slice(0, 120)}` };
+  if (/^nej\b/i.test(t)) return { ok: false, reason: `AI-bekræftet drop: ${t.replace(/^nej:?\s*/i, "").slice(0, 120)}` };
+  return deterministic;
+}
+
+export interface ResearchOptions {
+  useAI?: boolean; // default true; engine sets false for --dry-run
+}
+
+export async function research_lead(lead: ResearchLead, opts: ResearchOptions = {}): Promise<ResearchResult> {
+  const useAI = opts.useAI ?? true;
   const sources: string[] = [];
   const hookSet = new Set<string>();
+  const rawParts: string[] = [];
 
   // 1. Lead-local hooks first (always available, offline-safe).
   for (const h of hooksFromLead(lead)) {
@@ -158,20 +223,34 @@ export async function research_lead(lead: ResearchLead): Promise<ResearchResult>
   if (lead.website && lead.websiteStatus !== "none") {
     const html = await fetchSite(lead.website);
     if (html) {
+      rawParts.push(html);
       for (const h of hooksFromText(html)) { hookSet.add(h); sources.push("web"); }
     }
   }
 
   // 3. FB/IG via Apify (token-gated).
   for (const h of await hooksFromApify(lead)) {
-    if (h) { hookSet.add(h); sources.push("apify"); }
+    if (h) { hookSet.add(h); sources.push("apify"); rawParts.push(h); }
   }
 
-  const hooks = [...hookSet].filter(Boolean).slice(0, 3);
+  let hooks = [...hookSet].filter(Boolean).slice(0, 3);
+
+  // 4. AI refinement (Sonnet) — promotes one distilled hook to the front.
+  //    No-op without a key or when useAI is false; deterministic hooks remain.
+  const aiHook = useAI ? await refineHookWithAI(lead, rawParts.join("\n\n"), hooks) : null;
+  if (aiHook) {
+    hooks = [aiHook, ...hooks.filter((h) => h !== aiHook)].slice(0, 3);
+    sources.push("ai");
+  }
+
+  // 5. Professionalism — deterministic gate, with an AI tiebreaker on the
+  //    borderline "thin profile" band only.
+  const detVerdict = isProfessionalEnough(lead);
+  const verdict = useAI ? await aiProfessionalism(lead, detVerdict) : detVerdict;
 
   return {
     hooks,
-    professionalismVerdict: isProfessionalEnough(lead),
+    professionalismVerdict: verdict,
     branch: lead.branch,
     demoPair: pickDemoPair(lead.branch, lead.name),
     sources: [...new Set(sources)],

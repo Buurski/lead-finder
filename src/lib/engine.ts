@@ -173,7 +173,7 @@ async function pickLeads(
 export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary> {
   const limit = opts.leadName ? 1 : Math.max(1, opts.limit ?? 12);
   const dryRun = opts.dryRun ?? false;
-  const useLLM = !dryRun; // LLM lift only on real runs (and only if ANTHROPIC_API_KEY set)
+  const useLLM = !dryRun; // LLM lift only on real runs (and only if a key is set; see ai.ts)
   const voice = loadVoiceGuide();
 
   const { leads, source } = await pickLeads(opts.leadName);
@@ -195,7 +195,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     }
 
     // RESEARCH (hooks + professionalism verdict + demo pair).
-    const research = await research_lead(lead);
+    const research = await research_lead(lead, { useAI: useLLM });
 
     // QUALIFY (LLM-style gate; here the establishment gate from qualify.ts).
     if (!research.professionalismVerdict.ok && !opts.leadName) {
