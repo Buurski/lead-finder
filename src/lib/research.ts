@@ -138,6 +138,51 @@ async function hooksFromApify(lead: ResearchLead): Promise<string[]> {
   }
 }
 
+// Google Business reviews via Places API (New) — token-gated on
+// GOOGLE_PLACES_API_KEY. Returns short, genuine customer-voice snippets that
+// make strong, specific openings ("en kunde fremhæver jeres ..."). Defensive:
+// any error / no key -> []. Returns { hooks, raw } so the AI layer also gets the
+// fuller review text as corpus.
+async function googleReviews(lead: ResearchLead): Promise<{ hooks: string[]; raw: string }> {
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return { hooks: [], raw: "" };
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.reviews",
+      },
+      body: JSON.stringify({
+        textQuery: `${lead.name} ${lead.city}`.trim(),
+        languageCode: "da",
+        maxResultCount: 1,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return { hooks: [], raw: "" };
+    const data = (await res.json()) as {
+      places?: Array<{ reviews?: Array<{ text?: { text?: string }; rating?: number }> }>;
+    };
+    const reviews = data.places?.[0]?.reviews ?? [];
+    const texts = reviews
+      .map((r) => (r.text?.text ?? "").replace(/\s+/g, " ").trim())
+      .filter((t) => t.length > 20);
+    const raw = texts.join(" | ").slice(0, 3000);
+    // One concise hook from the best (longest, highest-rated) positive review.
+    const best = reviews
+      .filter((r) => (r.rating ?? 0) >= 4 && (r.text?.text ?? "").trim().length > 30)
+      .map((r) => (r.text?.text ?? "").replace(/\s+/g, " ").trim())
+      .sort((a, b) => b.length - a.length)[0];
+    const hooks: string[] = [];
+    if (best) hooks.push(`en kunde fremhæver: "${best.slice(0, 90)}${best.length > 90 ? "…" : ""}"`);
+    return { hooks, raw };
+  } catch {
+    return { hooks: [], raw: "" };
+  }
+}
+
 function extractSocialHandle(website: string): { platform: string; id: string } | null {
   const m = website.match(/(?:facebook|fb)\.com\/([A-Za-z0-9.\-_]+)/i);
   if (m) return { platform: "facebook", id: m[1] };
@@ -205,11 +250,13 @@ async function aiProfessionalism(lead: ResearchLead, deterministic: QualifyVerdi
 }
 
 export interface ResearchOptions {
-  useAI?: boolean; // default true; engine sets false for --dry-run
+  useAI?: boolean;      // default true; engine sets false for --dry-run
+  useNetwork?: boolean; // default true; engine sets false for --dry-run (no paid API hits)
 }
 
 export async function research_lead(lead: ResearchLead, opts: ResearchOptions = {}): Promise<ResearchResult> {
   const useAI = opts.useAI ?? true;
+  const useNetwork = opts.useNetwork ?? true;
   const sources: string[] = [];
   const hookSet = new Set<string>();
   const rawParts: string[] = [];
@@ -219,8 +266,8 @@ export async function research_lead(lead: ResearchLead, opts: ResearchOptions = 
     if (h) { hookSet.add(h); sources.push("lead"); }
   }
 
-  // 2. Live web (skipped cleanly when offline / no site).
-  if (lead.website && lead.websiteStatus !== "none") {
+  // 2. Live web (skipped cleanly when offline / no site / dry-run).
+  if (useNetwork && lead.website && lead.websiteStatus !== "none") {
     const html = await fetchSite(lead.website);
     if (html) {
       rawParts.push(html);
@@ -228,9 +275,15 @@ export async function research_lead(lead: ResearchLead, opts: ResearchOptions = 
     }
   }
 
-  // 3. FB/IG via Apify (token-gated).
-  for (const h of await hooksFromApify(lead)) {
-    if (h) { hookSet.add(h); sources.push("apify"); rawParts.push(h); }
+  // 3. FB/IG via Apify (token-gated; skipped in dry-run to avoid paid hits).
+  if (useNetwork) {
+    for (const h of await hooksFromApify(lead)) {
+      if (h) { hookSet.add(h); sources.push("apify"); rawParts.push(h); }
+    }
+    // 3b. Google Business reviews (token-gated on GOOGLE_PLACES_API_KEY).
+    const gr = await googleReviews(lead);
+    for (const h of gr.hooks) { if (h) { hookSet.add(h); sources.push("google-reviews"); } }
+    if (gr.raw) rawParts.push(gr.raw);
   }
 
   let hooks = [...hookSet].filter(Boolean).slice(0, 3);

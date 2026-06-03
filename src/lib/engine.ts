@@ -195,7 +195,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     }
 
     // RESEARCH (hooks + professionalism verdict + demo pair).
-    const research = await research_lead(lead, { useAI: useLLM });
+    const research = await research_lead(lead, { useAI: useLLM, useNetwork: useLLM });
 
     // QUALIFY (LLM-style gate; here the establishment gate from qualify.ts).
     if (!research.professionalismVerdict.ok && !opts.leadName) {

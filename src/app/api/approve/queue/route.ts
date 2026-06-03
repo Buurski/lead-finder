@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { validateDraft } from "@/lib/draft";
+import { registerDraftApproved } from "@/lib/datalayer";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -63,7 +64,15 @@ export async function POST(req: Request) {
   if (action === "approve") {
     const updated = updateDraft(id, { status: "approved" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
-    return NextResponse.json({ draft: updated, note: "marked approved — not sent (sending is a later layer)" });
+    // Register back to Sheets so the lead leaves the engine's "new" pool — the
+    // single-data-layer bridge. Best-effort: a Sheets failure never blocks the
+    // approval (the queue is still the source of truth for the draft itself).
+    const sync = await registerDraftApproved(updated);
+    return NextResponse.json({
+      draft: updated,
+      sync,
+      note: "marked approved — not sent (sending is a later layer)",
+    });
   }
 
   return NextResponse.json({ error: `unknown action "${action}"` }, { status: 400 });
