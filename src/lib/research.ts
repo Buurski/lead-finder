@@ -174,10 +174,17 @@ async function googleReviews(lead: ResearchLead): Promise<{ hooks: string[]; raw
       .map((r) => (r.text?.text ?? "").replace(/\s+/g, " ").trim())
       .filter((t) => t.length > 20);
     const raw = texts.join(" | ").slice(0, 3000);
-    // One concise hook from the best (longest, highest-rated) positive review.
+    // One concise hook from the best CLEAN, POSITIVE, high-rated review. We must
+    // exclude two failure modes that deterministic copy can't otherwise catch:
+    //   - negative-sentiment quotes (a complaint used as praise = disaster),
+    //   - price/kr mentions (collide with the no-price voice rule and get the
+    //     whole opener line stripped by the draft sanitizer).
+    const NEGATIVE = /\b(sløv|uorganiseret|dårlig|elendig|skuffe|skuffet|desværre|langsom|ventetid|koldt?\s+mad|beskidt|uhøflig|rod(et)?|fejl|surt|træls|ikke\s+(god|værd|tilfreds|imponer)|for\s+dyrt|aldrig\s+igen|undgå)\b/i;
+    const PRICEY = /\b(\d+\s?kr|kr\.?|kroner|pris(en|er)?|billig|dyrt|beløb|tilbud)\b/i;
     const best = reviews
-      .filter((r) => (r.rating ?? 0) >= 4 && (r.text?.text ?? "").trim().length > 30)
+      .filter((r) => (r.rating ?? 0) >= 4)
       .map((r) => (r.text?.text ?? "").replace(/\s+/g, " ").trim())
+      .filter((t) => t.length > 30 && !NEGATIVE.test(t) && !PRICEY.test(t))
       .sort((a, b) => b.length - a.length)[0];
     const hooks: string[] = [];
     if (best) hooks.push(`en kunde fremhæver: "${best.slice(0, 90)}${best.length > 90 ? "…" : ""}"`);
@@ -253,6 +260,23 @@ async function aiProfessionalism(lead: ResearchLead, deterministic: QualifyVerdi
   return deterministic;
 }
 
+// Rank hooks by how specific/personal they are, so the draft opener uses the
+// strongest material first. A genuine customer review quote beats a bare review
+// count beats generic notes. Stable sort within a tier.
+function hookScore(h: string): number {
+  if (/^en kunde fremhæver/i.test(h)) return 100; // real customer voice
+  if (/(prisvinder|award|kåret|anbefalet|certificeret|autoriseret)/i.test(h)) return 80;
+  if (/^(nævner|etableret|siden|grundlagt)/i.test(h)) return 60;
+  if (/anmeldelser på Google/i.test(h)) return 20; // generic, fine as fallback
+  return 45; // notes / enrichedInfo text
+}
+function rankHooks(hooks: string[]): string[] {
+  return hooks
+    .map((h, i) => ({ h, i, s: hookScore(h) }))
+    .sort((a, b) => (b.s - a.s) || (a.i - b.i))
+    .map((x) => x.h);
+}
+
 export interface ResearchOptions {
   useAI?: boolean;      // default true; engine sets false for --dry-run
   useNetwork?: boolean; // default true; engine sets false for --dry-run (no paid API hits)
@@ -290,7 +314,7 @@ export async function research_lead(lead: ResearchLead, opts: ResearchOptions = 
     if (gr.raw) rawParts.push(gr.raw);
   }
 
-  let hooks = [...hookSet].filter(Boolean).slice(0, 3);
+  let hooks = rankHooks([...hookSet].filter(Boolean)).slice(0, 3);
 
   // 4. AI refinement (Sonnet) — promotes one distilled hook to the front.
   //    No-op without a key or when useAI is false; deterministic hooks remain.

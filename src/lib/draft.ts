@@ -68,48 +68,132 @@ function firstName(name: string): string {
   return name.trim();
 }
 
-function buildOpener(lead: ResearchLead, research: ResearchResult): string {
-  const hook = research.hooks[0];
-  if (hook && hook.length > 8) {
-    // Use the genuine, lead-specific hook.
-    return `jeg faldt over jeres ${cleanHook(hook)} — det ser virkelig stærkt ud.`;
+// Stable per-lead index so 12 mails in a batch don't share one opener, without
+// introducing randomness (same lead -> same draft, re-runnable / testable).
+function pick<T>(name: string, variants: T[]): T {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return variants[h % variants.length];
+}
+
+// Pull a clean, sentence-bounded quote out of a `en kunde fremhæver: "…"` hook.
+// Trims mid-word truncation (the Places snippet often ends "…" or "og").
+function cleanQuote(hook: string): string | null {
+  const m = hook.match(/"([^"]+)"/);
+  if (!m) return null;
+  let q = m[1].replace(/[\s.…]+$/u, "").trim();
+  // Prefer the last full sentence; else cut at the last clause (comma) so a
+  // truncated snippet doesn't end mid-thought ("…som efter vo").
+  const dot = q.lastIndexOf(".");
+  if (dot > 25) {
+    q = q.slice(0, dot).trim();
+  } else {
+    const comma = q.lastIndexOf(",");
+    if (comma > 25) q = q.slice(0, comma).trim();
   }
-  if (lead.reviewsCount >= 50) {
-    return `jeg kiggede forbi jer og kunne se I har bygget noget rigtig solidt op i ${lead.city} med jeres mange anmeldelser.`;
-  }
-  return `jeg kiggede forbi jer her fra ${lead.city} og blev nysgerrig på det I laver.`;
+  // Drop any dangling truncation fragment (stopword / 1-2 char / lone number).
+  q = q.replace(/[\s,]+(og|men|som|der|at|en|et|med|på|til|af|for|er|var|[a-zæøå]{1,2}|\d+)$/i, "").trim();
+  q = q.replace(/[\s,]+$/u, "").trim();
+  if (q.length < 12) return null;
+  return q.charAt(0).toLowerCase() + q.slice(1);
 }
 
 function cleanHook(hook: string): string {
   let h = hook.trim();
-  // Strip leading verbs / labels that would read oddly after "jeres".
   h = h.replace(/^(nævner|etableret|summary[:\s]*)/i, "").trim();
   if (/^\d{4}$/.test(h)) return `historie helt tilbage til ${h}`;
   return h;
 }
 
+function buildOpener(lead: ResearchLead, research: ResearchResult): string {
+  const hook = research.hooks[0];
+
+  // 1. Genuine customer review quote — the strongest, most human opener.
+  if (hook && /^en kunde fremhæver/i.test(hook)) {
+    const q = cleanQuote(hook);
+    if (q) {
+      const cand = pick(lead.name, [
+        `jeg faldt over en af jeres Google-anmeldelser hvor en kunde skrev "${q}" — sådan noget siger jo en del.`,
+        `en af jeres anmeldelser fangede mig: en kunde skrev "${q}". Det er svært at købe sig til.`,
+        `jeg kom til at læse jeres anmeldelser — en kunde skrev "${q}", og det sagde mig en del om jer.`,
+      ]);
+      // Never emit an opener that breaks the voice rules (e.g. a quote that
+      // slipped a price/kr word) — that would get the whole line stripped.
+      if (validateDraft(cand).ok) return cand;
+    }
+  }
+
+  // 2. A specific named detail (service / award / established-since).
+  if (hook && hook.length > 8 && !/anmeldelser på Google/i.test(hook)) {
+    const cand = pick(lead.name, [
+      `jeg lagde mærke til jeres ${cleanHook(hook)} — det ser virkelig stærkt ud.`,
+      `jeg faldt over jeres ${cleanHook(hook)} og blev nysgerrig.`,
+    ]);
+    if (validateDraft(cand).ok) return cand;
+  }
+
+  // 3. Strong review volume (no quote available).
+  if (lead.reviewsCount >= 50) {
+    return pick(lead.name, [
+      `jeg kiggede forbi jer og kunne se I har bygget noget rigtig solidt op i ${lead.city} — mange tilfredse anmeldelser.`,
+      `jeg lagde mærke til hvor mange gode anmeldelser I har her i ${lead.city}.`,
+    ]);
+  }
+
+  // 4. Nothing specific — honest, local.
+  return pick(lead.name, [
+    `jeg kiggede forbi jer her fra ${lead.city} og blev nysgerrig på det I laver.`,
+    `jeg faldt over jer her fra ${lead.city} og blev nysgerrig.`,
+  ]);
+}
+
 function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
   const [d1, d2] = research.demoPair;
   const opener = buildOpener(lead, research);
+  const name = firstName(lead.name);
+
+  const intro = pick(lead.name + "i", [
+    `Jeg sidder og bygger hjemmesider som hobby ved siden af mit arbejde, og jeg kom til at tænke på hvordan sådan noget kunne se ud online for jer.`,
+    `Jeg laver hjemmesider som hobby ved siden af mit job, og jeg blev nysgerrig på hvordan en side til jer kunne se ud.`,
+    `Til daglig laver jeg ikke andet, men hjemmesider er blevet en hobby for mig — og jeg kom til at tænke på jer.`,
+  ]);
+  const demoLine = pick(lead.name + "d", [
+    `Jeg lavede et par demoer I kan kigge på:`,
+    `Jeg kastede et par hurtige demoer sammen som I kan kigge på:`,
+    `Her er et par eksempler jeg lavede:`,
+  ]);
+  const tailorLine = pick(lead.name + "t", [
+    `Det er bare eksempler — en rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`,
+    `Det er kun for at vise idéen — en rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
+  ]);
+  const closeLine = pick(lead.name + "c", [
+    `Sig endelig til hvis I vil se hvordan jeres kunne se ud — ellers ingen skade sket.`,
+    `Skriv gerne hvis det kunne være interessant at se en version til jer — ellers ingen skade sket.`,
+    `Hvis I har lyst, kigger jeg gerne på en version til netop jer — og hvis ikke, så ingen skade sket.`,
+  ]);
 
   const body = [
-    `Hej ${firstName(lead.name)},`,
+    `Hej ${name},`,
     ``,
-    `${opener} Jeg sidder og bygger hjemmesider som hobby ved siden af mit arbejde, og jeg kom til at tænke på hvordan sådan noget kunne se ud online for jer.`,
+    `${opener} ${intro}`,
     ``,
-    `Jeg lavede et par demoer I kan kigge på:`,
+    demoLine,
     `→ ${d1.url}`,
     `→ ${d2.url}`,
     ``,
-    `Det er bare eksempler — en rigtig version til ${firstName(lead.name)} ville selvfølgelig matche jeres egen stil og farver.`,
+    tailorLine,
     ``,
-    `Sig endelig til hvis I vil se hvordan jeres kunne se ud — ellers ingen skade sket.`,
+    closeLine,
     ``,
     `Mvh, Lucas`,
   ].join("\n");
 
   return {
-    subject: `En lille hilsen til ${firstName(lead.name)}`,
+    subject: pick(lead.name + "s", [
+      `En lille hilsen til ${name}`,
+      `En idé til ${name}`,
+      `Tænkte på ${name}`,
+    ]),
     body,
     demoPair: research.demoPair,
   };
