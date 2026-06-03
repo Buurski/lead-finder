@@ -53,16 +53,32 @@ const PRO_BRANCHES =
 
 const PRO_MIN_SCORE = 70;
 
-// Common Danish given names that, when they are the *entire* residue after the
-// branch prefix, mark a personal-name shop. We do not need an exhaustive list:
-// the structural test (single capitalised token, optional possessive 's, no
-// brand word) does most of the work; this list just hardens the obvious cases.
+// Common given names that, when they are the *entire* residue after the branch
+// prefix, mark a personal-name shop ("Frisør Adnan" -> "Adnan"). This is the
+// ONLY trigger for a single-token drop — we deliberately do NOT fall back to a
+// generic "any single capitalised word is a name" rule, because that misfires
+// on single-word brand names (Lumière, Vida, Aria, Zenz) and was the class of
+// false-drop that lost real leads like VIDA. A personal-name shop whose name is
+// not in this list survives the cheap filter and is then judged on its
+// establishment signals (reviews/score/site) by isProfessionalEnough.
 const COMMON_FIRST_NAMES = new Set(
   [
-    "adnan", "jonas", "walid", "sharwan", "ali", "ahmed", "mohammed", "mohamed",
-    "hassan", "omar", "ibrahim", "yusuf", "mehmet", "mads", "anne", "mette",
-    "louise", "camilla", "sofie", "maria", "jan", "lars", "peter", "thomas",
-    "michael", "martin", "henrik", "kim", "tina", "pia", "lone", "bo", "rasmus",
+    // immigrant / common barbershop names
+    "adnan", "jonas", "walid", "sharwan", "ali", "ahmed", "ahmad", "mohammed",
+    "mohamed", "muhammad", "hassan", "hussein", "omar", "ibrahim", "yusuf",
+    "youssef", "mehmet", "mustafa", "khaled", "samir", "karim", "rami", "tarek",
+    "bilal", "hamid", "saeed", "amir", "reza", "sami", "abdullah", "mahmoud",
+    // common Danish given names
+    "mads", "anne", "mette", "louise", "camilla", "sofie", "sofia", "maria",
+    "jan", "lars", "peter", "thomas", "michael", "martin", "henrik", "kim",
+    "tina", "pia", "lone", "bo", "rasmus", "jens", "niels", "søren", "soren",
+    "morten", "anders", "christian", "kristian", "jakob", "jacob", "frederik",
+    "mikkel", "daniel", "simon", "emil", "oliver", "magnus", "marie", "anna",
+    "ida", "emma", "freja", "laura", "julie", "katrine", "line", "nanna",
+    "signe", "hanne", "susanne", "helle", "dorte", "gitte", "bente", "lene",
+    "karen", "kirsten", "jette", "annette", "charlotte", "stine", "trine",
+    "winnie", "yvonne", "connie", "dennis", "brian", "john", "tom", "carsten",
+    "claus", "klaus", "flemming", "preben", "ole", "erik", "finn", "kurt",
   ].map((n) => n.toLowerCase())
 );
 
@@ -77,30 +93,33 @@ function stripBranchPrefix(name: string): string {
   return n;
 }
 
+// Does this token name a known first name? Handles the Danish possessive
+// apostrophe-s ("Bo's" -> "Bo") AND a bare trailing possessive s ("Walids" ->
+// "Walid") WITHOUT mangling names that genuinely end in s ("Jonas"): both the
+// token and its possessive-stripped form are tested against the set.
+function matchesFirstName(token: string): boolean {
+  const t = token.toLowerCase().replace(/[''`]s$/i, "").replace(/[^a-zæøåüäö]/gi, "");
+  if (!t) return false;
+  if (COMMON_FIRST_NAMES.has(t)) return true;
+  if (t.endsWith("s") && COMMON_FIRST_NAMES.has(t.slice(0, -1))) return true;
+  return false;
+}
+
 // Is the (prefix-stripped) residue a bare personal name with no brand marker?
 function isBarePersonalName(residue: string): boolean {
   if (!residue) return false;
-  // Strip a Danish possessive ("Walids" -> "Walid", "Bo's" -> "Bo").
-  const tokens = residue
-    .replace(/[''`]s\b/gi, "")
-    .replace(/s\b/i, (m, off) => (off === residue.length - 1 ? "" : m))
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const tokens = residue.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return false;
   if (BRAND_WORDS.test(residue)) return false;
-  // One token, looks like a name (alphabetic) -> personal-name shop.
+  // One token: drop ONLY if it is a known first name. A single unknown word is
+  // just as likely to be a brand (Lumière, Vida, Zenz) — keep it and let the
+  // establishment gate decide. (Prevents the VIDA-class false drop.)
   if (tokens.length === 1) {
-    const t = tokens[0].toLowerCase().replace(/[^a-zæøåüäö]/gi, "");
-    if (!t) return false;
-    if (COMMON_FIRST_NAMES.has(t)) return true;
-    // Generic structural test: a single capitalised alphabetic word with no
-    // brand marker is almost always a personal name in this dataset.
-    return /^[a-zæøå]{2,}$/i.test(t);
+    return matchesFirstName(tokens[0]);
   }
   // Two tokens that are both plausibly a person's name ("Jonas Hansen").
-  if (tokens.length === 2 && tokens.every((t) => /^[A-ZÆØÅ][a-zæøå]+$/.test(t))) {
-    return COMMON_FIRST_NAMES.has(tokens[0].toLowerCase());
+  if (tokens.length === 2 && tokens.every((t) => /^[A-ZÆØÅ][a-zæøåé]+$/.test(t))) {
+    return matchesFirstName(tokens[0]);
   }
   return false;
 }
