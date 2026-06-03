@@ -1,25 +1,47 @@
 {
-  "phase": "V — baseline verify (REVAMP /goal, continuation)",
-  "status": "in-progress — Phase V complete; AI/QUALITY/VISION pending",
+  "phase": "REVAMP continuation /goal — COMPLETE (V + AI + QUALITY + VISION)",
+  "status": "complete — all goal phases done, double-tested, committed; nothing pushed/merged/deployed",
   "lastError": null,
   "ts": "2026-06-03T00:00:00Z",
-  "usage": "Continuation /goal on night-build: verify baseline (V), wire real models (AI), harden core (QUALITY), write vision (VISION). Commit-only, no push/deploy.",
+  "branch": "night-build",
+  "usage": "Continuation /goal: verify baseline, wire real models, harden core, write vision. Commit-only, no push/deploy, no mass-mail, npm run dev never run.",
   "goal_phases": {
-    "V_verify": "done — build/lint/engine/approve all green; qualify false-drop (VIDA-class) fixed; VERIFY_REPORT.md written",
-    "AI_models": "pending — src/lib/ai.ts (AI Gateway + Anthropic fallback + deterministic), Sonnet 4.6 research/qualify, Opus 4.8 draft",
-    "QUALITY_hardening": "pending — Google reviews + Chrome/JS fallback + email-finder FB/IG/booking + unified data layer + reply-assistant",
-    "VISION_doc": "pending — COMMAND_CENTER_VISION.md (no UI build)"
+    "V_verify": "done — build/lint/engine/approve green; qualify VIDA-class false-drop fixed; VERIFY_REPORT.md",
+    "AI_models": "done — src/lib/ai.ts (Gateway via AI SDK -> Anthropic -> deterministic); DRAFT=Opus 4.8, RESEARCH+QUALIFY=Sonnet 4.6; env-configurable; tested with no-key + bad-key resilience",
+    "QUALITY_hardening": "done — email-finder lib + freemail-keep (VIDA) + FB/IG; research Google reviews + useNetwork gate; reply-assistant; queue<->Sheets datalayer; HARDENING_REPORT.md",
+    "VISION_doc": "done — COMMAND_CENTER_VISION.md (blueprint only, no UI built)"
   },
-  "verify_results": {
-    "build": "exit 0 (Next 16 Turbopack, 23 routes, /approve listed)",
-    "lint": "exit 0 (eslint src)",
-    "engine_dryrun": "exit 0, source=sheets, 3 drafts, 0 sent",
-    "engine_lead": "exit 0, 1 targeted draft",
-    "test_pipeline": "23/23 pass offline",
-    "approve_browser": "HTTP 200 + queue API JSON, server killed immediately"
+  "done_criteria": {
+    "build_exit_0": "PASS",
+    "lint_exit_0": "PASS (eslint src)",
+    "engine_dryrun_exit_0_correct_queue": "PASS — source=sheets, deterministic, no paid API, 0 sent",
+    "ai_fallback_exit_0_no_key": "PASS — test_ai 16/16, generate() returns null no-key",
+    "VIDA_exists": "PASS — email-finder freemail-keep + qualify brand-keep + test regression",
+    "approve_works_in_browser": "PASS — next start 3199, HTTP 200 + queue API JSON, killed immediately",
+    "VERIFY_REPORT_md": "PASS",
+    "HARDENING_REPORT_md": "PASS",
+    "COMMAND_CENTER_VISION_md": "PASS",
+    "BLOCKERS_md": "PASS"
   },
-  "fix_applied": "src/lib/qualify.ts — removed over-broad single-token personal-name catch-all (dropped brands like Lumière/Vida); expanded COMMON_FIRST_NAMES; new matchesFirstName() stops mangling names ending in s (Jonas).",
+  "tests": {
+    "test_all": "112 checks across 5 suites green (test_pipeline 23, test_ai 16, test_email_finder 17, test_reply 46, test_datalayer 10)",
+    "runner": "node scripts/test_all.mjs"
+  },
+  "new_libs": ["src/lib/ai.ts", "src/lib/email-finder.ts", "src/lib/reply.ts", "src/lib/datalayer.ts"],
+  "commits": {
+    "V": "259318a",
+    "AI": "13a029d",
+    "QUALITY_email": "e89e6a2",
+    "QUALITY_rest": "a2c4d06",
+    "VISION_blockers": "this commit"
+  },
   "blockers": [
-    "ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY not set — AI lift runs deterministic fallback until provided (see BLOCKERS.md)."
+    "AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY not set — live model lift runs deterministic until provided (BLOCKERS.md). APIFY_TOKEN + GOOGLE_PLACES_API_KEY already set."
+  ],
+  "next_for_lucas": [
+    "Add an AI key (BLOCKERS.md §1) then: node .send_queue/daily_engine.mjs --lead=\"<lead>\" and review in /approve.",
+    "Decide on the 3 non-blocking questions in BLOCKERS.md (approve->Sheets auto-register, /api/replies route, qualify calibration).",
+    "Command center UI is specced in COMMAND_CENTER_VISION.md — ready for a build /goal.",
+    "Deploy manually when satisfied (not done this session)."
   ]
 }
