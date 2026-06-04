@@ -1,5 +1,6 @@
 import { getClients } from "@/lib/sheets";
 import ClientCard from "@/components/ClientCard";
+import PageHeader from "@/components/shell/PageHeader";
 
 export const revalidate = 0;
 
@@ -15,24 +16,19 @@ export default async function ClientsPage() {
   const totalSetup = clients.reduce((sum, c) => sum + (parseFloat(c.setupFee) || 0), 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div>
-        <h1 style={{
-          fontFamily: "var(--font-fraunces), serif",
-          fontSize: 26,
-          fontWeight: 700,
-          color: "var(--text)",
-          letterSpacing: "-0.03em",
-        }}>
-          Klienter
-        </h1>
-        <p style={{ color: "var(--text-dim)", fontSize: 13, marginTop: 4 }}>
-          {clients.length} bekræftede klienter
-          {clients.length > 0 && (
-            <> · <strong style={{ color: "var(--text)" }}>MRR: {totalMRR.toLocaleString("da-DK")} kr</strong> · Setup: {totalSetup.toLocaleString("da-DK")} kr</>
-          )}
-        </p>
-      </div>
+    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <PageHeader
+        icon="Briefcase"
+        title="Klienter"
+        subtitle={
+          <>
+            {clients.length} bekræftede klienter
+            {clients.length > 0 && (
+              <> · <strong style={{ color: "var(--text)" }}>MRR: {totalMRR.toLocaleString("da-DK")} kr</strong> · Setup: {totalSetup.toLocaleString("da-DK")} kr</>
+            )}
+          </>
+        }
+      />
 
       {clients.length === 0 ? (
         <div style={{

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import EngineRunner from "./EngineRunner";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
@@ -84,11 +85,32 @@ function summaryLine(s: DeckSummary): string {
 /* TODAY                                                               */
 /* ------------------------------------------------------------------ */
 function TodayTab({ s }: { s: DeckSummary }) {
+  const router = useRouter();
+  const [sel, setSel] = useState(0);
+  const n = s.needsYou.length;
+
+  // Keyboard-first triage on the Morning Coffee list: j/k or ↑/↓ to move,
+  // Enter opens. Ignored while typing or when the ⌘K palette owns the keys.
+  useEffect(() => {
+    if (n === 0) return;
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      if (document.querySelector(".cc-palette")) return;
+      const k = e.key.toLowerCase();
+      if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setSel((i) => Math.min(i + 1, n - 1)); }
+      else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setSel((i) => Math.max(i - 1, 0)); }
+      else if (e.key === "Enter") { e.preventDefault(); router.push("/approve"); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [n, router]);
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <NumbersStrip s={s} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
-        <NeedsYouCard items={s.needsYou} />
+        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} />
         <div style={{ display: "grid", gap: 18 }}>
           <QueueCard s={s} />
           <PipelineMini s={s} />
@@ -126,13 +148,17 @@ const KIND_META: Record<NeedsYouItem["kind"], { icon: string; tone: string }> = 
   interested: { icon: "HeartPulse", tone: "var(--blue)" },
 };
 
-function NeedsYouCard({ items }: { items: NeedsYouItem[] }) {
+function NeedsYouCard({ items, sel, onSelect }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void }) {
   return (
     <section className="cc-card" aria-label="Kræver dig nu">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
         <Icon name="Coffee" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Morning Coffee · kræver dig nu</h2>
-        {items.length > 0 && <span className="cc-chip" style={{ marginLeft: "auto" }}>{items.length}</span>}
+        {items.length > 0 && (
+          <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5, display: "flex", alignItems: "center", gap: 7 }}>
+            <span className="cc-kbd">j</span><span className="cc-kbd">k</span> flyt · <span className="cc-kbd">↵</span> åbn
+          </span>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -143,10 +169,15 @@ function NeedsYouCard({ items }: { items: NeedsYouItem[] }) {
         </div>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-          {items.map((it) => {
+          {items.map((it, i) => {
             const m = KIND_META[it.kind];
+            const active = i === sel;
             return (
-              <li key={it.leadId + it.kind} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)" }}>
+              <li
+                key={it.leadId + it.kind}
+                onMouseEnter={() => onSelect(i)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)", background: active ? "var(--accent-soft)" : "transparent", transition: "background 120ms ease" }}
+              >
                 <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--bg-3)", display: "grid", placeItems: "center", flexShrink: 0 }}>
                   <Icon name={m.icon} style={{ width: 15, height: 15, color: m.tone }} />
                 </span>
