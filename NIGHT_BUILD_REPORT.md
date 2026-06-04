@@ -89,11 +89,24 @@ mobil.
     fejlklik ikke kan røre din rigtige kø. Sender aldrig mail.
 - **"Kør motor"-knappen** på Pipeline-fanen: preview → se listen → eksplicit
   *"Bekræft og fyld kø"* → toast. Med antal-vælger, loading/fejl-tilstande.
+  Jeg kørte preview i browseren: den listede 9 udkast ("9 ville drafte, 1
+  frasorteret", kilde fixture) og skrev intet. Jeg trykkede **ikke** bekræft.
 - Jeg lavede en lille, bagud-kompatibel `persist`-flag på `engine.ts` så
   preview kan køre uden at skrive. CLI'en opfører sig præcis som før.
+- **Svar-panel (`/replies`)** — indbakke-triage over `reply.ts`: klassificerings-
+  badge, udfoldelig besked + for-skrevet svar, "blev klient"-flag. Loading-
+  skeletter, rolig fejl-tilstand, tom-tilstand. Read-only — at sende svar +
+  skifte status er stadig en eksplicit handling.
 
 Jeg verificerede: **preview skrev 0** (køen blev på 12), og **run uden confirm
 gav 412**. Køen er urørt.
+
+### Tastatur & sammenhæng (efter første rapport-udkast)
+
+- **Tastatur-triage** på Morning Coffee: `j`/`k` (eller piletaster) flytter,
+  `Enter` åbner Godkendelse. Plus ⌘K-paletten der allerede var der.
+- **/clients** skåret ind i den fælles `PageHeader` (ikon + MRR-linje), så den
+  matcher resten. /approve og /followup-review er allerede på samme fonte/farver.
 
 ---
 
@@ -130,14 +143,11 @@ gav 412**. Køen er urørt.
 
 ## Hvad mangler / næste skridt
 
-- **Resten af Fase B:** de øvrige skill-knapper (Find emails, Sync replies →
-  triage-panel, Godkend "safe" drafts, Promovér svar → klient, Lav ny demo) og
-  keyboard-triage (j/k/a/r/e) i /approve.
-- **Replies-panel:** `GET /api/replies` er klar; den mangler en pæn UI-flade
-  (inbox-view med klassificerings-badge + for-udkast).
-- **Reskin af de gamle sider:** /approve, /clients og /followup-review virker og
-  er på samme palette/fonte, men deres headers er ikke helt skåret ind i den nye
-  stil endnu. Lavt hængende frugt.
+- **Resten af Fase B:** de øvrige skill-knapper (Find emails, Godkend "safe"
+  drafts, Promovér svar → klient, Lav ny demo) og fuld keyboard-triage
+  (a/r/e — godkend/afvis/redigér) i /approve.
+- **Svar → handling:** `/replies` viser og for-skriver; selve "send svar + skift
+  status" (via `datalayer.registerReplyOutcome`) er bevidst ikke koblet på endnu.
 - **Rollebaseret /login (Lucas vs Charlie):** ikke bygget endnu (Fase B).
 - **Fase C:** vault-handshake (Buurski/KnowledgeOS), Gmail+Calendar live,
   AI-spend, Health Score, Dreaming-log, voice. Skærmene siger allerede hvor det
