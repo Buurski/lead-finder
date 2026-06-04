@@ -1,5 +1,13 @@
 # DASHBOARD OVERHAUL — /goal (Agentic OS · Command Center v3)
 
+> **v4-note (2026-06-04):** Fase A + Del 2 er bygget på `command-center-v3`
+> (shell, Mission Control, read/act-ruter, demo-factory, SEO-værktøj,
+> vault-kobling, klient-leverancer, tone-mixer, motor-kadence, Charlie-adgang,
+> AI-spend, Hermes-skelet). Se `PLAN_DAGENS.md` (12 blocks) + `NIGHT_BUILD_REPORT.md`
+> / `NIGHT_BUILD_REPORT_v2.md`. Ikke merged/deployet. Resten herunder er den
+> oprindelige kontrakt, bevaret som historik.
+
+
 **Status:** byg-kontrakt for Claude Code. Bygger lead-systemet om til et roligt, stilrent
 **Agentic OS / Command Center** for Lucas + Charlie. Du må ændre alt — også backend —
 men genbrug det der virker. Læs også `COMMAND_CENTER_VISION.md`. Denne fil er den autoritative v3.
