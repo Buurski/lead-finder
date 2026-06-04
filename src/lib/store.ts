@@ -89,7 +89,8 @@ export class FSStore implements Store {
       return [];
     }
   }
-  async putAsset(key: string, content: string | Uint8Array, _contentType: string): Promise<PutAssetResult> {
+  async putAsset(key: string, content: string | Uint8Array, contentType: string): Promise<PutAssetResult> {
+    void contentType; // FS writes don't need the MIME type; Blob does.
     const file = fsAssetPath(key);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, content);
