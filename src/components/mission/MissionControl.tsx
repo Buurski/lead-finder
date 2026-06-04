@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
+import EngineRunner from "./EngineRunner";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 
 type Tab = "today" | "pipeline" | "goals" | "agents";
@@ -280,14 +281,7 @@ function PipelineTab({ s }: { s: DeckSummary }) {
         </div>
       </section>
 
-      <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Icon name="Sparkles" style={{ width: 18, height: 18, color: "var(--text-dim)" }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Kør motor (12)</div>
-          <div className="cc-dim" style={{ fontSize: 12.5 }}>Dry-run → bekræft → toast. Tændes i Fase B.</div>
-        </div>
-        <button className="cc-btn" disabled style={{ opacity: 0.55, cursor: "not-allowed" }}>Snart</button>
-      </section>
+      <EngineRunner />
     </div>
   );
 }

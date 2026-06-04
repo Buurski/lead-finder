@@ -31,6 +31,10 @@ export interface EngineOptions {
   limit?: number;
   dryRun?: boolean;
   leadName?: string;
+  // When false, run the full loop but DO NOT write to the approval queue. Used by
+  // the web "preview" action so Lucas can see what the engine would produce before
+  // an explicit confirm. Defaults to true so the CLI keeps filling the queue.
+  persist?: boolean;
 }
 
 export interface EngineSummary {
@@ -227,7 +231,9 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   }
 
   // Write to the queue (engine NEVER sends — it only fills the queue).
-  const written = collected.length;
+  // persist:false runs the full loop but writes nothing (web preview path).
+  const persist = opts.persist ?? true;
+  const written = persist ? collected.length : 0;
   if (written > 0) appendDrafts(collected);
 
   return {
