@@ -24,7 +24,13 @@ export async function POST(req: Request) {
   try {
     const recon = await reconCustomer(url || name, name);
     try { await saveRecon(recon); } catch { /* asset store is best-effort */ }
-    const build = await buildDemo(name, branch || recon.slug, recon, { persist: true });
+    const build = await buildDemo(name, branch || recon.slug, recon, { persist: true, requireMinData: true });
+    if (!build) {
+      return NextResponse.json(
+        { ok: false, error: "recon fandt for lidt indhold på siden — angiv en branche eller en side med mere indhold", recon },
+        { status: 422 },
+      );
+    }
     return NextResponse.json({
       ok: true,
       slug: build.slug,

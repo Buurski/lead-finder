@@ -127,19 +127,7 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
     ${hero ? `<img class="heroimg" src="${hero}" alt="${esc(name)}" />` : ""}
   </section>
 
-  ${sections
-    .slice(1)
-    .map(
-      (s) => `<section class="block">
-    <h2>${esc(capitalize(s))}</h2>
-    <div class="grid">
-      <div class="card">${esc(name)} — ${esc(s)}.</div>
-      <div class="card">Personligt indhold fra recon indsættes her.</div>
-      <div class="card">Branche-template: ${esc(t.label)}.</div>
-    </div>
-  </section>`
-    )
-    .join("\n")}
+  ${renderSections(name, t, recon, sections.slice(1))}
 </main>
 
 <footer class="wrap" id="kontakt">
@@ -154,11 +142,70 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export interface BuildOptions {
-  persist?: boolean; // write to dist/demo-{slug}/index.html (default true)
+// Real section content — never the old literal "Personligt indhold..." card.
+// We draw from the customer's own recon (extra headings + tone sentences) first,
+// then fall back to the branch template's inspiration (concrete, branch-relevant).
+// A section with no usable card is skipped entirely (fewer sections > empty ones).
+function renderSections(name: string, t: DesignTemplate, recon: ReconResult, sectionLabels: string[]): string {
+  const snippets: string[] = [];
+  for (const h of recon.headings.slice(1)) if (h && h.length > 3) snippets.push(h);
+  if (recon.toneSample) {
+    for (const sentence of recon.toneSample.split(/(?<=[.!?])\s+/)) {
+      const s = sentence.trim();
+      if (s.length >= 25 && s.length <= 160) snippets.push(s);
+    }
+  }
+  const inspiration = [...t.inspiration];
+
+  const blocks: string[] = [];
+  for (const label of sectionLabels) {
+    const cards: string[] = [];
+    // 1) the section's own intent (always real + branch-relevant)
+    cards.push(`<div class="card"><strong>${esc(capitalize(label))}</strong></div>`);
+    // 2) a real customer snippet if we have one
+    const snip = snippets.shift();
+    if (snip) cards.push(`<div class="card">${esc(snip)}</div>`);
+    // 3) else a concrete inspiration point from the branch template
+    else {
+      const insp = inspiration.shift();
+      if (insp) cards.push(`<div class="card">${esc(insp)}</div>`);
+    }
+    blocks.push(`<section class="block">
+    <h2>${esc(capitalize(label))}</h2>
+    <div class="grid">${cards.join("")}</div>
+  </section>`);
+  }
+  return blocks.join("\n");
 }
 
-export async function buildDemo(name: string, branchOrSlug: string, recon: ReconResult, opts: BuildOptions = {}): Promise<DemoBuild> {
+// How much real customer data did recon find? 0..1. Used to refuse building a
+// hollow demo (Council finding: don't ship empty/placeholder content).
+export function reconCompleteness(recon: ReconResult): number {
+  const fields = [
+    Boolean(recon.title),
+    Boolean(recon.description),
+    Boolean(recon.ogImage),
+    Boolean(recon.themeColor),
+    recon.palette.length > 0,
+    recon.headings.length > 0,
+    Boolean(recon.toneSample),
+  ];
+  return fields.filter(Boolean).length / fields.length;
+}
+
+export interface BuildOptions {
+  persist?: boolean; // write to dist/demo-{slug}/index.html (default true)
+  // When true, refuse to build if recon found almost nothing (returns null).
+  // Default false: a named lead + branch template is enough for a starter demo.
+  requireMinData?: boolean;
+}
+
+export async function buildDemo(name: string, branchOrSlug: string, recon: ReconResult, opts: BuildOptions = {}): Promise<DemoBuild | null> {
+  if (opts.requireMinData && recon.source !== "none" && reconCompleteness(recon) < 0.3) {
+    console.warn(`[demo-factory] recon too thin for "${name}" (${Math.round(reconCompleteness(recon) * 100)}%) — skipping build.`);
+    return null;
+  }
+
   const template = pickTemplate(branchOrSlug);
   const slug = recon.slug;
   const designMd = composeDesignMd(name, template, recon);
