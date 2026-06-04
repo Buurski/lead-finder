@@ -18,6 +18,23 @@ const D = {
   vestfjends: { label: "Service / lokal", url: "https://vestfjends.vercel.app/" },
 } as const;
 
+// Catalog for the Studio grid — every demo we can show a lead, tagged by the
+// branch family it best represents. Read-only; the engine still routes via
+// pickDemoPair below.
+export interface DemoEntry extends Demo {
+  branch: "mad" | "skønhed" | "håndværk" | "foto" | "service";
+}
+export const DEMO_CATALOG: DemoEntry[] = [
+  { ...D.underKlippen, branch: "mad" },
+  { ...D.zaytoon, branch: "mad" },
+  { ...D.salonArtec, branch: "skønhed" },
+  { ...D.streetcut, branch: "skønhed" },
+  { ...D.denlillemaler, branch: "håndværk" },
+  { ...D.ktvvs, branch: "håndværk" },
+  { ...D.buurfoto, branch: "foto" },
+  { ...D.vestfjends, branch: "service" },
+];
+
 const FOOD_INTL =
   /pizza|pizzeria|italia|sushi|kebab|shawarma|falafel|tapas|libanon|tyrk|grill|mexicansk|wok|asia|thai|indisk|kinesisk/i;
 const FOOD = /café|cafe|restaurant|bager|konditori|spise|køkken|bistro|brasserie|kro|smørrebrød|frokost/i;
