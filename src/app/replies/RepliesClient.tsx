@@ -35,6 +35,40 @@ const CAT_LABEL: Record<string, string> = {
   other: "Andet",
 };
 
+function QaSendButton({ row }: { row: ReplyRow }) {
+  const [state, setState] = useState<"idle" | "sending" | "done" | "dry" | "error">("idle");
+  const [msg, setMsg] = useState("");
+
+  async function send() {
+    setState("sending");
+    setMsg("");
+    try {
+      const res = await fetch(`/api/replies/${encodeURIComponent(row.leadId)}/send-reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: row.suggestedReply, subject: row.subject, leadName: row.name, mode: "qa" }),
+      });
+      const d = await res.json();
+      if (d.sent) { setState("done"); setMsg("QA-kopi sendt til buur.aigro."); }
+      else if (d.wouldSendTo) { setState("dry"); setMsg("Ingen mail-creds her — ville sende QA-kopi til buur.aigro."); }
+      else { setState("error"); setMsg(d.error ?? "Kunne ikke sende."); }
+    } catch (e) {
+      setState("error");
+      setMsg(String(e));
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <button className="cc-btn" onClick={send} disabled={state === "sending" || state === "done"}>
+        <Icon name="Mail" style={{ width: 14, height: 14 }} />
+        {state === "sending" ? "Sender…" : state === "done" ? "Sendt ✓" : "Send QA-kopi til mig"}
+      </button>
+      {msg && <span className="cc-dim" style={{ fontSize: 12, color: state === "error" ? "var(--red)" : "var(--text-dim)" }}>{msg}</span>}
+    </div>
+  );
+}
+
 function catTone(c: string): { bg: string; fg: string } {
   if (c === "interested") return { bg: "var(--accent-soft)", fg: "var(--accent-ink)" };
   if (c === "question") return { bg: "var(--blue-dim)", fg: "var(--blue)" };
@@ -152,9 +186,10 @@ export default function RepliesClient() {
                     <p className="cc-dim" style={{ fontSize: 13, margin: 0 }}>Intet svar foreslået (fx autosvar).</p>
                   )}
                 </div>
+                {r.suggestedReply && <QaSendButton row={r} />}
                 <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
                   <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
-                  Read-only triage. At sende svar + skifte status er en eksplicit Fase B-handling.
+                  QA-kopi går kun til buur.aigro. Rigtigt svar til kunden + status-skift er din egen handling.
                 </div>
               </div>
             )}

@@ -98,9 +98,74 @@ export default function ApprovePage() {
     return drafts;
   }, [drafts, filter]);
 
+  // ---- shared action (used by buttons AND keyboard triage) ----------------
+  const actOn = useCallback(
+    async (id: string, action: "approve" | "edit" | "reject", payload?: { subject: string; body: string }): Promise<{ ok: boolean; violations?: string[] }> => {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action === "edit" && payload ? { id, action, ...payload } : { id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, violations: Array.isArray(data.violations) ? data.violations : [data.error ?? "Ukendt fejl"] };
+      }
+      patchLocal(data.draft as QueueDraft);
+      return { ok: true };
+    },
+    [patchLocal]
+  );
+
+  // ---- keyboard triage: j/k move, a approve, r skip, e edit ---------------
+  const [focusIdx, setFocusIdx] = useState(0);
+  // (No clamp effect: the keyboard handler clamps on the next move, and an
+  // out-of-range index simply highlights nothing until then.)
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      if (document.querySelector(".cc-palette")) return;
+      const cur = visible[focusIdx];
+      const k = e.key.toLowerCase();
+      if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => Math.min(i + 1, visible.length - 1)); }
+      else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(i - 1, 0)); }
+      else if (cur && cur.status === "pending" && k === "a") { e.preventDefault(); actOn(cur.id, "approve"); }
+      else if (cur && cur.status === "pending" && k === "r") { e.preventDefault(); actOn(cur.id, "reject"); }
+      else if (cur && cur.status === "pending" && k === "e") {
+        e.preventDefault();
+        document.getElementById(`draft-body-${cur.id}`)?.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, focusIdx, actOn]);
+
+  // ---- bulk-approve all currently-pending "safe" drafts -------------------
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkApprove = useCallback(async () => {
+    const pendings = drafts.filter((d) => d.status === "pending");
+    if (pendings.length === 0) return;
+    if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
+    setBulkBusy(true);
+    for (const d of pendings) {
+      // sequential keeps the queue file writes ordered + avoids a write race
+      await actOn(d.id, "approve");
+    }
+    setBulkBusy(false);
+  }, [drafts, actOn]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <Header counts={counts} filter={filter} setFilter={setFilter} onRefresh={load} loading={loading} />
+      <Header
+        counts={counts}
+        filter={filter}
+        setFilter={setFilter}
+        onRefresh={load}
+        loading={loading}
+        onBulkApprove={bulkApprove}
+        bulkBusy={bulkBusy}
+      />
 
       {error && (
         <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>
@@ -110,8 +175,8 @@ export default function ApprovePage() {
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {visible.map((d) => (
-            <DraftLetter key={d.id} draft={d} onChange={patchLocal} />
+          {visible.map((d, i) => (
+            <DraftLetter key={d.id} draft={d} onAct={actOn} focused={i === focusIdx} onFocusRequest={() => setFocusIdx(i)} />
           ))}
         </div>
       )}
@@ -125,12 +190,16 @@ function Header({
   setFilter,
   onRefresh,
   loading,
+  onBulkApprove,
+  bulkBusy,
 }: {
   counts: { pending: number; decided: number; all: number };
   filter: Filter;
   setFilter: (f: Filter) => void;
   onRefresh: () => void;
   loading: boolean;
+  onBulkApprove: () => void;
+  bulkBusy: boolean;
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
@@ -157,9 +226,26 @@ function Header({
           Personlige udkast fra motoren. Læs hver som et brev, ret hvis nødvendigt, godkend de gode.
           Intet sendes herfra: godkend markerer kun til afsendelse.
         </p>
+        <p style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          Tastatur:
+          <span><span className="cc-kbd">j</span>/<span className="cc-kbd">k</span> flyt</span>
+          <span><span className="cc-kbd">a</span> godkend</span>
+          <span><span className="cc-kbd">r</span> skip</span>
+          <span><span className="cc-kbd">e</span> redigér</span>
+        </p>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {counts.pending > 0 && (
+          <button
+            onClick={onBulkApprove}
+            disabled={bulkBusy}
+            title="Godkend alle afventende udkast"
+            style={{ ...btnBase, background: bulkBusy ? "var(--green-dim)" : "var(--green)", color: bulkBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+          >
+            {bulkBusy ? "Godkender…" : `Godkend alle (${counts.pending})`}
+          </button>
+        )}
         <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3 }}>
           {tabs.map((t) => {
             const active = filter === t.key;
@@ -253,7 +339,17 @@ function EmptyState({ filter, total }: { filter: Filter; total: number }) {
   );
 }
 
-function DraftLetter({ draft, onChange }: { draft: QueueDraft; onChange: (d: QueueDraft) => void }) {
+function DraftLetter({
+  draft,
+  onAct,
+  focused,
+  onFocusRequest,
+}: {
+  draft: QueueDraft;
+  onAct: (id: string, action: "approve" | "edit" | "reject", payload?: { subject: string; body: string }) => Promise<{ ok: boolean; violations?: string[] }>;
+  focused: boolean;
+  onFocusRequest: () => void;
+}) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [busy, setBusy] = useState<null | "approve" | "edit" | "reject">(null);
@@ -268,38 +364,28 @@ function DraftLetter({ draft, onChange }: { draft: QueueDraft; onChange: (d: Que
       setBusy(action);
       setViolations([]);
       try {
-        const res = await fetch("/api/approve/queue", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            action === "edit" ? { id: draft.id, action, subject, body } : { id: draft.id, action }
-          ),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          if (res.status === 422 && Array.isArray(data.violations)) setViolations(data.violations);
-          else setViolations([data.error ?? "Ukendt fejl"]);
-          return;
-        }
-        onChange(data.draft as QueueDraft);
+        const r = await onAct(draft.id, action, action === "edit" ? { subject, body } : undefined);
+        if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
       } catch {
         setViolations(["Netværksfejl. Prøv igen."]);
       } finally {
         setBusy(null);
       }
     },
-    [draft.id, subject, body, onChange]
+    [draft.id, subject, body, onAct]
   );
 
   return (
     <article
+      onMouseEnter={onFocusRequest}
       style={{
         background: "var(--surface)",
-        border: "1px solid var(--border)",
+        border: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
+        boxShadow: focused ? "0 0 0 3px var(--accent-soft)" : "none",
         borderRadius: 14,
         padding: "22px 24px",
         opacity: draft.status === "rejected" ? 0.55 : 1,
-        transition: "opacity 200ms ease",
+        transition: "opacity 200ms ease, box-shadow 140ms ease, border-color 140ms ease",
       }}
     >
       {/* identity row */}
@@ -378,6 +464,7 @@ function DraftLetter({ draft, onChange }: { draft: QueueDraft; onChange: (d: Que
         </Field>
         <Field label="Besked">
           <textarea
+            id={`draft-body-${draft.id}`}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             disabled={decided}

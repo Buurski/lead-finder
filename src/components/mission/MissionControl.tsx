@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import EngineRunner from "./EngineRunner";
+import FindEmailsButton from "./FindEmailsButton";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 
 type Tab = "today" | "pipeline" | "goals" | "agents";
@@ -316,6 +317,7 @@ function PipelineTab({ s }: { s: DeckSummary }) {
       </section>
 
       <EngineRunner />
+      <FindEmailsButton />
     </div>
   );
 }
