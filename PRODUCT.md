@@ -47,3 +47,17 @@ The lead-CRM is one module inside it. See `DASHBOARD_OVERHAUL_GOAL.md` and
 - **AI Spend:** per-model estimated tracker + alert.
 - **Hermes:** Railway-ready skeleton + `SETUP_HERMES.md` (not deployed).
 - 11 offline test suites / 204 checks. See `NIGHT_BUILD_REPORT_v2.md`.
+
+### Changelog — Del 3 (2026-06-04, hardening)
+- **Storage abstraction** (`store.ts`): FS local, KV/Blob on Vercel — survives
+  the ephemeral filesystem. Delegating facade so drivers are swappable.
+- **Compose-at-draft-time** (`compose.ts`) + central **send-gate** (`canSendTo`)
+  wired into every send path. Achievement opener (analysis #1). isPublicEntity.
+- **Lead validation** (`probe-website`, `branch-confidence`, /api/leads/validate)
+  — caches in store, never mutates Sheets.
+- **Demo factory**: literal placeholder removed; min-data guard.
+- **Security**: constant-time auth + HMAC session + KV rate-limit (proxy),
+  SSRF-safe fetch (incl. IPv6 ::1). **Lighthouse** real (headless Chrome).
+  **Vault live** against Buurski/KnowledgeOS.
+- 21 offline test suites (incl. integration + security). Two real bugs caught by
+  the new tests (store facade, IPv6 SSRF). See `NIGHT_BUILD_REPORT_v3.md`.

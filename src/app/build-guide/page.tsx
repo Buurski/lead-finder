@@ -10,8 +10,10 @@ const DOCS = [
   { file: "DASHBOARD_OVERHAUL_GOAL.md", label: "Dashboard Overhaul — byg-kontrakt" },
   { file: "COMMAND_CENTER_VISION.md", label: "Command Center — vision" },
   { file: "PLAN_DAGENS.md", label: "Del 2 — dagsplan (12 blocks)" },
+  { file: "PLAN_DEL3.md", label: "Del 3 — dagsplan (12 blocks)" },
   { file: "NIGHT_BUILD_REPORT.md", label: "Nat-rapport v1" },
   { file: "NIGHT_BUILD_REPORT_v2.md", label: "Nat-rapport v2" },
+  { file: "NIGHT_BUILD_REPORT_v3.md", label: "Nat-rapport v3 (Del 3)" },
 ];
 
 function readDoc(file: string): string | null {
