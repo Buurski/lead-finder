@@ -49,3 +49,7 @@ next-env.d.ts
 .sa.json
 .tmp_keys/
 *.backup_*.json
+
+# demo factory runtime output
+dist/
+client-assets/
