@@ -1,5 +1,6 @@
 import { buildDeckSummary } from "@/lib/deck";
 import { readSettings, nextRunLabel } from "@/lib/settings";
+import { summarize } from "@/lib/spend-log";
 import MissionControl from "@/components/mission/MissionControl";
 
 // Mission Control is the home screen. We build the read model on the server so
@@ -10,5 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const summary = await buildDeckSummary();
   const cadence = nextRunLabel(readSettings());
-  return <MissionControl summary={summary} cadence={cadence} />;
+  const spend = summarize();
+  const spendAlert = spend.alert ? `AI-forbrug i dag: ${spend.todayDKK.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr` : null;
+  return <MissionControl summary={summary} cadence={cadence} spendAlert={spendAlert} />;
 }

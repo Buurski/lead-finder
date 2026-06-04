@@ -19,6 +19,8 @@
 //     package degrades to the Anthropic fetch or to null instead of throwing).
 //   - Every model is configurable per env; sensible Claude 4.x defaults.
 
+import { logSpend, estimateTokens } from "./spend-log.ts";
+
 export type AiTask = "research" | "qualify" | "draft";
 
 export interface AiRequest {
@@ -142,6 +144,12 @@ export async function generate(req: AiRequest): Promise<AiResult | null> {
   if (provider === "none") return null;
   const model = modelFor(req.task);
 
+  const result = await runGenerate(req, provider, model);
+  if (result) trackSpend(req, result);
+  return result;
+}
+
+async function runGenerate(req: AiRequest, provider: AiProvider, model: string): Promise<AiResult | null> {
   if (provider === "gateway") {
     const text = await viaGateway(req, model);
     if (text) return { text, provider: "gateway", model };
@@ -150,9 +158,26 @@ export async function generate(req: AiRequest): Promise<AiResult | null> {
     if (fb) return { text: fb, provider: "anthropic", model: stripProvider(model) };
     return null;
   }
-
   // provider === "anthropic"
   const text = await viaAnthropic(req, model);
   if (text) return { text, provider: "anthropic", model: stripProvider(model) };
   return null;
+}
+
+// Transparent spend logging — estimated tokens, best-effort, never throws.
+function trackSpend(req: AiRequest, result: AiResult): void {
+  try {
+    const inputTokens = estimateTokens((req.system ?? "") + "\n" + req.prompt);
+    const outputTokens = estimateTokens(result.text);
+    logSpend({
+      task: req.task,
+      model: result.model,
+      provider: result.provider,
+      inputTokens,
+      outputTokens,
+      estimated: true,
+    });
+  } catch {
+    /* never break generation over logging */
+  }
 }

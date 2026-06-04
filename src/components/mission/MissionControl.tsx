@@ -25,7 +25,7 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-export default function MissionControl({ summary, cadence }: { summary: DeckSummary; cadence?: string | null }) {
+export default function MissionControl({ summary, cadence, spendAlert }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [hello, setHello] = useState("Velkommen");
 
@@ -66,6 +66,13 @@ export default function MissionControl({ summary, cadence }: { summary: DeckSumm
             Kunne ikke nå Google Sheets — viser hvad køen ved lokalt. Tal opdateres når forbindelsen er der.
           </span>
         </div>
+      )}
+
+      {spendAlert && (
+        <Link href="/spend" className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)", textDecoration: "none", color: "inherit" }}>
+          <Icon name="CircleDollarSign" style={{ width: 17, height: 17, color: "var(--amber)" }} />
+          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Se AI Spend →</span>
+        </Link>
       )}
 
       {tab === "today" && <TodayTab s={summary} />}
