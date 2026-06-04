@@ -6,6 +6,9 @@ import { useEffect, useState } from "react";
 export default function Clock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    // Client-only: the first value must be set after mount to avoid an SSR
+    // hydration mismatch on the minute boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(id);

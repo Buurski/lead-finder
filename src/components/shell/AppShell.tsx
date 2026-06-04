@@ -37,10 +37,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Close the mobile drawer on route change.
-  useEffect(() => {
-    setNavOpen(false);
-  }, [pathname]);
+  // (The mobile drawer closes itself via Sidebar's onNavigate when a link is
+  // tapped, so no route-change effect is needed here.)
 
   // Hydrate badge + dock counts from the read-only deck summary. Best-effort.
   useEffect(() => {
@@ -86,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="cc-content">{children}</div>
       </div>
 
-      <CommandPalette open={paletteOpen} onClose={closePalette} />
+      {paletteOpen && <CommandPalette onClose={closePalette} />}
       <ChatDock counts={counts} />
     </div>
   );

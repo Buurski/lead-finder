@@ -5,8 +5,9 @@ import { NAV_FLAT } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 // ⌘K / Ctrl+K command palette. Keyboard-first: type to filter, ↑/↓ to move,
-// Enter to navigate, Esc to close. Opens via the topbar button or the shortcut.
-export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+// Enter to navigate, Esc to close. Mounted only while open (by AppShell), so its
+// initial state is the reset state — no reset effects needed.
+export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
@@ -20,20 +21,15 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     );
   }, [q]);
 
+  // Focus the input once on mount (DOM side effect only — no setState).
   useEffect(() => {
-    if (open) {
-      setQ("");
-      setIdx(0);
-      // Focus after paint so the modal is in the DOM.
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [open]);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
 
-  useEffect(() => {
-    setIdx(0);
-  }, [q]);
-
-  if (!open) return null;
+  function onQueryChange(value: string) {
+    setQ(value);
+    setIdx(0); // keep selection valid as the result set changes
+  }
 
   function go(href: string) {
     router.push(href);
@@ -71,7 +67,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
           className="cc-palette-input"
           placeholder="Hop til…  (skriv for at søge)"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={onKeyDown}
           aria-label="Søg i navigation"
         />

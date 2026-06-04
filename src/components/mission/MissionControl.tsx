@@ -29,6 +29,9 @@ export default function MissionControl({ summary }: { summary: DeckSummary }) {
   const [hello, setHello] = useState("Velkommen");
 
   useEffect(() => {
+    // Client-only greeting: server can't know the viewer's local hour, so we set
+    // it after mount to avoid a hydration mismatch (SSR renders "Velkommen").
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHello(greeting(new Date()));
   }, []);
 
