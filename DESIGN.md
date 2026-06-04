@@ -83,3 +83,21 @@ shows a calm amber banner and a queue-only view, never a crash.
 
 lucide-react, used sparingly, 14–20px, resolved through `Icon` so names stay
 data-driven (shared by sidebar + palette).
+
+## Del 2 patterns (2026-06-04)
+
+- **CSS bar charts** (`/spend`): hairline track (`--bg-3`) + sage fill, no chart
+  library. Decision-relevant only, never decorative.
+- **Two-pane vault browser** (`VaultBrowser`): searchable grouped list + on-
+  demand markdown render via `MarkdownLite` (now with table support). Skeleton
+  while a note loads; auto-opens the first note.
+- **Toggle switch** (`/settings`): 46×27 pill, sage when on, ease-out knob slide;
+  `role="switch"` + `aria-checked`.
+- **Preview → confirm action** pattern reused (engine runner, demo factory, SEO,
+  find-emails): a read-only/no-write preview, then an explicit confirm; result
+  toast. Destructive/sending paths are never one click.
+- **Generated demo HTML** (`demo-factory`): self-contained one-page site using
+  the branch template's OKLCH palette + Google Fonts, `color-mix()` for tints,
+  rendered in an iframe `srcDoc` preview.
+- **Honest status surfaces** (`/claude`, `/hermes`): dot + label reflecting real
+  env/connection state, plus a calm "not wired yet" path instead of fake data.

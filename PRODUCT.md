@@ -30,3 +30,20 @@ room-like space he runs his work from, with Claude at the center, a left sidebar
 now?", and one-click automations (dry-run → confirm → toast, never auto-send).
 The lead-CRM is one module inside it. See `DASHBOARD_OVERHAUL_GOAL.md` and
 `COMMAND_CENTER_VISION.md` for the full contract, `DESIGN.md` for the system.
+
+### Changelog — Del 2 (2026-06-04, branch command-center-v3)
+- **Outreach loop:** /approve keyboard triage + bulk-approve; QA-only reply send
+  (buur.aigro); find-emails preview.
+- **Demo factory:** branch design templates + customer recon + one-page HTML
+  demo builder; `/studio/new`.
+- **SEO tool:** schema scan, index check, AI-visibility, optional Lighthouse,
+  tiers (VIDA=full); live `/seo` + monthly report.
+- **Vault bridge:** local-first KnowledgeOS reader wiring Goals/Memory/Journal.
+- **Client deliverables:** `/clients/[id]` + auto vault notes on status→client.
+- **Tone-mixer:** OUTREACH_ANALYSIS-driven openers (dead opener dropped),
+  7-day follow-up, hostile blacklist.
+- **Cadence:** `/settings` auto-run toggle (default OFF) + cron + indicator.
+- **Charlie:** shared-password proxy auth + `/welcome`.
+- **AI Spend:** per-model estimated tracker + alert.
+- **Hermes:** Railway-ready skeleton + `SETUP_HERMES.md` (not deployed).
+- 11 offline test suites / 204 checks. See `NIGHT_BUILD_REPORT_v2.md`.
