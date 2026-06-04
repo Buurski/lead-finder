@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
+import { FOLLOWUP_DAYS } from "@/lib/tone-mixer";
 
 export const maxDuration = 300;
 
-const FOLLOWUP_DAYS = 5;
+// Single source of truth (OUTREACH_ANALYSIS: default 7 dage, not 12).
 
 function isReadyForFollowup(lead: {
   email: string;

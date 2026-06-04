@@ -24,6 +24,7 @@ import { research_lead } from "./research.ts";
 import type { ResearchLead } from "./research.ts";
 import { draft_personal_message } from "./draft.ts";
 import { hardDrop } from "./qualify.ts";
+import { isBlacklisted } from "./tone-mixer.ts";
 import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 
@@ -189,6 +190,13 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   for (const lead of leads) {
     if (collected.length >= limit) break;
     picked++;
+
+    // Hostile blacklist — explicit "never again" responders (OUTREACH_ANALYSIS).
+    // Applies even to "skriv til X", they should never be mailed.
+    if (isBlacklisted(lead.name)) {
+      skipped.push({ name: lead.name, reason: "hostile-blacklist" });
+      continue;
+    }
 
     // Fast regex pre-filter (cheap QUALIFY layer).
     const dropped = hardDrop(lead.name);

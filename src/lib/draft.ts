@@ -10,6 +10,7 @@
 import type { ResearchResult, ResearchLead } from "./research.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
+import { mixForLead } from "./tone-mixer.ts";
 
 export interface Draft {
   subject: string;
@@ -132,10 +133,11 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
     if (validateDraft(cand).ok) return cand;
   }
 
-  // 3. Strong review volume (no quote available).
+  // 3. Strong review volume (no quote available) — use their real number, not
+  //    the dead "bygget noget særligt op" phrasing.
   if (lead.reviewsCount >= 50) {
     return pick(lead.name, [
-      `jeg kiggede forbi jer og kunne se I har bygget noget rigtig solidt op i ${lead.city} — mange tilfredse anmeldelser.`,
+      `jeg sad og kiggede på jer i ${lead.city}, og ${lead.reviewsCount} anmeldelser — det er folk der kommer tilbage.`,
       `jeg lagde mærke til hvor mange gode anmeldelser I har her i ${lead.city}.`,
     ]);
   }
@@ -149,41 +151,39 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
 
 function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
   const [d1, d2] = research.demoPair;
-  const opener = buildOpener(lead, research);
   const name = firstName(lead.name);
 
-  const intro = pick(lead.name + "i", [
-    `Jeg sidder og bygger hjemmesider som hobby ved siden af mit arbejde, og jeg kom til at tænke på hvordan sådan noget kunne se ud online for jer.`,
-    `Jeg laver hjemmesider som hobby ved siden af mit job, og jeg blev nysgerrig på hvordan en side til jer kunne se ud.`,
-    `Til daglig laver jeg ikke andet, men hjemmesider er blevet en hobby for mig — og jeg kom til at tænke på jer.`,
-  ]);
-  const demoLine = pick(lead.name + "d", [
-    `Jeg lavede et par demoer I kan kigge på:`,
-    `Jeg kastede et par hurtige demoer sammen som I kan kigge på:`,
-    `Her er et par eksempler jeg lavede:`,
-  ]);
+  // Tone-mixer (OUTREACH_ANALYSIS-driven): data-aware, deterministic opener +
+  // the salgselev-hobby disclosure + demo intro + closing. The dead "bygget noget
+  // særligt op" opener is gone. Guard the opener through the validator and fall
+  // back to a quote-free deterministic opener if a review quote slipped a rule.
+  const mix = mixForLead({
+    name: lead.name,
+    branch: lead.branch,
+    city: lead.city,
+    reviewsCount: lead.reviewsCount,
+    websiteStatus: lead.websiteStatus,
+    hooks: research.hooks,
+  });
+  const opener = validateDraft(mix.opener).ok ? mix.opener : buildOpener(lead, research);
+
   const tailorLine = pick(lead.name + "t", [
     `Det er bare eksempler — en rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`,
     `Det er kun for at vise idéen — en rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
-  ]);
-  const closeLine = pick(lead.name + "c", [
-    `Sig endelig til hvis I vil se hvordan jeres kunne se ud — ellers ingen skade sket.`,
-    `Skriv gerne hvis det kunne være interessant at se en version til jer — ellers ingen skade sket.`,
-    `Hvis I har lyst, kigger jeg gerne på en version til netop jer — og hvis ikke, så ingen skade sket.`,
   ]);
 
   const body = [
     `Hej ${name},`,
     ``,
-    `${opener} ${intro}`,
+    `${opener} ${mix.disclosure}`,
     ``,
-    demoLine,
+    mix.demoIntro,
     `→ ${d1.url}`,
     `→ ${d2.url}`,
     ``,
     tailorLine,
     ``,
-    closeLine,
+    mix.closing,
     ``,
     `Mvh, Lucas`,
   ].join("\n");
