@@ -1,0 +1,15 @@
+{
+  "name": "hermes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lucas's 24/7 background agent — Telegram control + nightly vault dreaming. Railway-ready skeleton. Not deployed.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dream": "node dreaming.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
