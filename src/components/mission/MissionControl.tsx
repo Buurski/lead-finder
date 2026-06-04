@@ -108,9 +108,9 @@ function NumbersStrip({ s }: { s: DeckSummary }) {
     { label: "vundet i ugen", value: n.wonThisWeek },
   ];
   return (
-    <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 0, flexWrap: "wrap" }}>
-      {items.map((it, i) => (
-        <div key={it.label} style={{ flex: "1 1 120px", paddingLeft: i ? 22 : 0, borderLeft: i ? "1px solid var(--border)" : "none", marginLeft: i ? 22 : 0 }}>
+    <div className="cc-card cc-card-pad cc-numbers">
+      {items.map((it) => (
+        <div key={it.label} className="cc-numbers-cell">
           <div className="cc-stat-n">{it.value}</div>
           <div className="cc-stat-l">{it.label}</div>
         </div>

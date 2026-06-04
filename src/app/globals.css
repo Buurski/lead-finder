@@ -313,6 +313,11 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 .cc-skel { background: linear-gradient(90deg, var(--bg-3) 25%, var(--surface-2) 50%, var(--bg-3) 75%); background-size: 200% 100%; animation: cc-shimmer 1.4s ease infinite; border-radius: 8px; }
 @keyframes cc-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* numbers strip: clean column dividers that disappear on wrap */
+.cc-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); overflow: hidden; padding: 0; }
+.cc-numbers-cell { background: var(--surface); padding: 18px 22px; }
+@media (max-width: 640px) { .cc-numbers { grid-template-columns: repeat(2, 1fr); } }
+
 .cc-menu-btn { display: none; padding: 0 10px; }
 
 @media (max-width: 860px) {

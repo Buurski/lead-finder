@@ -78,7 +78,7 @@ function isWithinDays(iso: string, days: number): boolean {
   return Date.now() - t <= days * 86_400_000;
 }
 
-function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
+export function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
   const today = todayISO();
   const items: NeedsYouItem[] = [];
 
@@ -123,7 +123,7 @@ function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
   return items.slice(0, 8);
 }
 
-function buildQueuePeek(queue: QueueDraft[]): QueuePeek {
+export function buildQueuePeek(queue: QueueDraft[]): QueuePeek {
   const pending = queue.filter((d) => d.status === "pending");
   const top = pending
     .slice()
@@ -133,7 +133,7 @@ function buildQueuePeek(queue: QueueDraft[]): QueuePeek {
   return { count: queue.length, pending: pending.length, top };
 }
 
-function buildPipeline(queue: QueueDraft[]): PipelineStatus {
+export function buildPipeline(queue: QueueDraft[]): PipelineStatus {
   let lastRunAt: string | null = null;
   for (const d of queue) {
     if (d.createdAt && (!lastRunAt || d.createdAt > lastRunAt)) lastRunAt = d.createdAt;
@@ -148,7 +148,7 @@ function buildPipeline(queue: QueueDraft[]): PipelineStatus {
   };
 }
 
-function buildPulse(clients: Client[]): PulseClient[] {
+export function buildPulse(clients: Client[]): PulseClient[] {
   const out: PulseClient[] = [];
   for (const c of clients) {
     if (c.websiteStatus !== "live") {
@@ -166,7 +166,7 @@ function buildPulse(clients: Client[]): PulseClient[] {
   return out.slice(0, 6);
 }
 
-function buildNumbers(leads: Lead[]): DeckNumbers {
+export function buildNumbers(leads: Lead[]): DeckNumbers {
   return {
     newLeads: leads.filter((l) => l.status === "new").length,
     withEmail: leads.filter((l) => l.email).length,
