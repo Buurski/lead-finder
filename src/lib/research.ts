@@ -14,6 +14,7 @@ import type { QualifyVerdict, QualifyLead } from "./qualify.ts";
 import { pickDemoPair } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
+import { achievementStrings } from "./achievements.ts";
 
 export interface ResearchLead extends QualifyLead {
   notes: string;
@@ -27,6 +28,7 @@ export interface ResearchResult {
   branch: string;
   demoPair: [Demo, Demo];
   sources: string[];
+  achievements: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
 
 const CHROME_UA =
@@ -329,11 +331,19 @@ export async function research_lead(lead: ResearchLead, opts: ResearchOptions = 
   const detVerdict = isProfessionalEnough(lead);
   const verdict = useAI ? await aiProfessionalism(lead, detVerdict) : detVerdict;
 
+  // Achievement detection (Block 3) — scan everything we gathered + the lead's
+  // own notes/enrichedInfo for awards/titles that power the "Tillykke" opener.
+  const achievements = achievementStrings(
+    { text: rawParts.join("\n\n"), source: "web/reviews" },
+    { text: `${lead.notes || ""}\n${lead.enrichedInfo || ""}`, source: "lead" },
+  );
+
   return {
     hooks,
     professionalismVerdict: verdict,
     branch: lead.branch,
     demoPair: pickDemoPair(lead.branch, lead.name),
     sources: [...new Set(sources)],
+    achievements,
   };
 }

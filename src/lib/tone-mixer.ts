@@ -33,7 +33,7 @@ export interface MixLead {
   achievements?: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
 
-export type OpenerKind = "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
+export type OpenerKind = "achievement" | "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
 
 export interface ToneMix {
   comboId: string;
@@ -90,6 +90,19 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
   const city = lead.city || "byen";
   const seed = lead.name;
   const hook = (lead.hooks || []).find((h) => h && h.length > 4);
+
+  // 0. Achievement — the strongest opener in the analysis (RR Studio replied in
+  //    17h to a "Tillykke + ærlig talt netop derfor"). Highest priority.
+  const achievement = (lead.achievements || []).find((a) => a && a.length >= 4);
+  if (achievement) {
+    out.push({
+      kind: "achievement",
+      text: pick(seed + "ach", [
+        `først og fremmest — ${achievement} er altså ret stort. Tillykke. Men det er også ærlig talt netop derfor jeg skriver: når man er på det niveau fagligt, så er hjemmesiden tit det første sted nye kunder møder en.`,
+        `tillykke med ${achievement} — det er ærlig talt netop derfor jeg skriver. Når man har leveret på det niveau, fortjener hjemmesiden samme finish.`,
+      ]),
+    });
+  }
 
   // 1. Review-quote — strongest, most human (real customer words).
   const quoteHook = (lead.hooks || []).find((h) => /^en kunde fremhæver/i.test(h));
@@ -172,9 +185,10 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
 export function mixForLead(lead: MixLead): ToneMix {
   const seed = lead.name;
   const openers = eligibleOpeners(lead);
-  // Deterministic choice among the *eligible* openers (data-backed ones first
-  // since they're unshifted in priority order, but hash spreads the batch).
-  const chosen = openers[hash(seed + "open") % openers.length];
+  // Achievement is the analysis's #1 opener — always use it when present.
+  // Otherwise deterministic hash-pick among the eligible openers (spreads a batch).
+  const ach = openers.find((o) => o.kind === "achievement");
+  const chosen = ach ?? openers[hash(seed + "open") % openers.length];
 
   // The salgselev-hobby disclosure — the differentiator. Always present.
   // The salgselev-hobby disclosure (the differentiator). No "pris"/"gratis" — the

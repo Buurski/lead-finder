@@ -164,6 +164,7 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult): Dra
     reviewsCount: lead.reviewsCount,
     websiteStatus: lead.websiteStatus,
     hooks: research.hooks,
+    achievements: research.achievements,
   });
   const opener = validateDraft(mix.opener).ok ? mix.opener : buildOpener(lead, research);
 

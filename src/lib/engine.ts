@@ -232,7 +232,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
         reviewsCount: lead.reviewsCount,
         websiteStatus: lead.websiteStatus,
         hooks: research.hooks,
-        achievements: (lead as { achievements?: string[] }).achievements,
+        achievements: research.achievements,
       });
       comboId = composed.comboId;
       openerKind = composed.openerKind;
