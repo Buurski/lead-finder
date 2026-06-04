@@ -9,7 +9,35 @@ export default function MarkdownLite({ source }: { source: string }) {
   const out: ReactNode[] = [];
   let list: string[] = [];
   let code: string[] | null = null;
+  let table: string[] = [];
   let key = 0;
+
+  const flushTable = () => {
+    if (table.length < 2) {
+      // not a real table — fall back to plain paragraphs
+      table.forEach((t) => out.push(<p key={key++} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)", margin: "0 0 10px" }}>{inline(t)}</p>));
+      table = [];
+      return;
+    }
+    const rows = table.map((r) => r.replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+    const header = rows[0];
+    const bodyRows = rows.slice(1).filter((r) => !r.every((c) => /^:?-+:?$/.test(c) || c === ""));
+    out.push(
+      <div key={key++} style={{ overflowX: "auto", margin: "8px 0 14px" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
+          <thead>
+            <tr>{header.map((h, i) => <th key={i} style={{ textAlign: "left", padding: "7px 10px", borderBottom: "1px solid var(--border-strong)", color: "var(--text)", fontWeight: 600 }}>{inline(h)}</th>)}</tr>
+          </thead>
+          <tbody>
+            {bodyRows.map((r, ri) => (
+              <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ padding: "7px 10px", borderBottom: "1px solid var(--border)", color: "var(--text-muted)" }}>{inline(c)}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    table = [];
+  };
 
   const flushList = () => {
     if (!list.length) return;
@@ -43,6 +71,12 @@ export default function MarkdownLite({ source }: { source: string }) {
       code.push(line);
       continue;
     }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      flushList();
+      table.push(line.trim());
+      continue;
+    }
+    if (table.length) flushTable();
     if (/^#{1,6}\s/.test(line)) {
       flushList();
       const level = line.match(/^#+/)![0].length;
@@ -85,6 +119,7 @@ export default function MarkdownLite({ source }: { source: string }) {
     );
   }
   flushList();
+  flushTable();
   return <div>{out}</div>;
 }
 

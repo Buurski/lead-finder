@@ -1,52 +1,80 @@
 import PageHeader from "@/components/shell/PageHeader";
 import FaseNote from "@/components/shell/FaseNote";
+import MarkdownLite from "@/components/shell/MarkdownLite";
+import Icon from "@/components/shell/Icon";
+import { readVaultNote } from "@/lib/vault";
 import { buildDeckSummary } from "@/lib/deck";
 
 export const metadata = { title: "Goals · Command Center" };
 export const dynamic = "force-dynamic";
 
-const GOALS = [
-  { label: "5 betalende kunder", target: 5, unit: "kunder", live: true },
-  { label: "10.000 kr / md i abonnement", target: 10000, unit: "kr", live: false },
-  { label: "30 varme svar", target: 30, unit: "svar", live: false },
-];
+interface Checkbox { done: boolean; text: string }
+
+function parseCheckboxes(md: string): Checkbox[] {
+  const out: Checkbox[] = [];
+  for (const line of md.split("\n")) {
+    const m = line.match(/^\s*-\s*\[([ xX])\]\s+(.*)$/);
+    if (m) out.push({ done: m[1].toLowerCase() === "x", text: m[2].trim() });
+  }
+  return out;
+}
 
 export default async function GoalsPage() {
-  const s = await buildDeckSummary();
-  const goals = GOALS.map((g) => ({ ...g, current: g.live ? s.numbers.wonThisWeek : 0 }));
+  const [roadmap, priser, summary] = await Promise.all([
+    readVaultNote("wiki/os/roadmap-naeste-skridt"),
+    readVaultNote("context/priser"),
+    buildDeckSummary(),
+  ]);
+
+  const goals = roadmap.ok ? parseCheckboxes(roadmap.body) : [];
+  const done = goals.filter((g) => g.done).length;
+  const pct = goals.length ? Math.round((done / goals.length) * 100) : 0;
 
   return (
     <div className="cc-fade">
-      <PageHeader icon="Target" title="Goals" subtitle="90-dages mål. Det live signal er tyndt indtil vaulten er koblet på." />
-      <div style={{ display: "grid", gap: 18 }}>
-        <section className="cc-card cc-card-pad">
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>90-dages mål</h2>
-          <div style={{ display: "grid", gap: 16 }}>
-            {goals.map((g) => {
-              const pct = Math.min(100, Math.round((g.current / g.target) * 100));
-              return (
-                <div key={g.label}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginBottom: 6 }}>
-                    <span style={{ fontWeight: 600 }}>{g.label}</span>
-                    <span className="cc-dim">{g.current.toLocaleString("da-DK")} / {g.target.toLocaleString("da-DK")} {g.unit}</span>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", borderRadius: 999 }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      <PageHeader
+        icon="Target"
+        title="Goals"
+        subtitle={roadmap.ok ? `Fra vaulten (${roadmap.source}) · ${roadmap.frontmatter.horizon ?? "90 dage"}` : "Vaulten er ikke koblet på — viser skelet."}
+      />
 
-        <FaseNote
-          phase="Fase C"
-          title="Mål & priser fra vaulten"
-          points={[
-            "Læser og skriver KnowledgeOS/wiki/os/ så mål bor ét sted og kan redigeres fra mobilen.",
-            "Indtjening vs. mål hentes fra context/priser.md, ikke hårdkodet her.",
-          ]}
-        />
+      <div style={{ display: "grid", gap: 18 }}>
+        {roadmap.ok && goals.length > 0 ? (
+          <section className="cc-card cc-card-pad">
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>90-dages mål</h2>
+              <span className="cc-dim" style={{ fontSize: 13 }}>{done} / {goals.length} klaret</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden", marginBottom: 18 }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", borderRadius: 999, transition: "width 400ms cubic-bezier(0.22,1,0.36,1)" }} />
+            </div>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 9 }}>
+              {goals.map((g, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
+                  <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, display: "grid", placeItems: "center", background: g.done ? "var(--accent)" : "var(--bg-3)", border: g.done ? "none" : "1px solid var(--border-strong)" }}>
+                    {g.done && <Icon name="CheckCheck" style={{ width: 12, height: 12, color: "#fff" }} />}
+                  </span>
+                  <span style={{ color: g.done ? "var(--text-dim)" : "var(--text)", textDecoration: g.done ? "line-through" : "none" }}>{g.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <FaseNote phase="vault" title="Mål fra vaulten" points={["Læg en note i KnowledgeOS/wiki/os/roadmap-naeste-skridt.md med checkbokse, så vises de her med fremdrift.", roadmap.reason ?? ""]} />
+        )}
+
+        <section className="cc-card cc-card-pad">
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
+            <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Indtjening vs. mål</h2>
+            <span className="cc-chip" style={{ marginLeft: "auto" }}>{summary.numbers.wonThisWeek} vundet i ugen</span>
+          </div>
+          {priser.ok ? (
+            <div style={{ marginTop: 8 }}><MarkdownLite source={priser.body} /></div>
+          ) : (
+            <p className="cc-dim" style={{ fontSize: 13 }}>Priser hentes fra KnowledgeOS/context/priser.md ({priser.reason}).</p>
+          )}
+        </section>
       </div>
     </div>
   );
