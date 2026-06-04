@@ -178,3 +178,31 @@ export function vaultStatus(): { localRoot: string; hasLocal: boolean; repo: str
     tokenSet: Boolean(process.env.GITHUB_TOKEN || process.env.VAULT_GITHUB_TOKEN),
   };
 }
+
+export interface VaultLive {
+  live: boolean;
+  reason: "ok" | "no-token" | "unauthorized" | "not-found" | "network" | "rate-limited";
+  detail: string;
+}
+
+// Authenticated reachability check against the GitHub repo. Distinguishes a
+// good token from an expired one (401) and a missing repo (404). Used by the UI
+// to show "Vault: live" vs "lokal seed" vs "token udløbet".
+export async function vaultLiveCheck(): Promise<VaultLive> {
+  if (!(process.env.GITHUB_TOKEN || process.env.VAULT_GITHUB_TOKEN)) {
+    return { live: false, reason: "no-token", detail: "Ingen GITHUB_TOKEN — læser kun lokal seed." };
+  }
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}`, {
+      headers: ghHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status === 401) return { live: false, reason: "unauthorized", detail: "Token afvist (401) — sandsynligvis udløbet." };
+    if (res.status === 403) return { live: false, reason: "rate-limited", detail: "GitHub rate-limit (403)." };
+    if (res.status === 404) return { live: false, reason: "not-found", detail: `Repo ${REPO} ikke fundet (404).` };
+    if (!res.ok) return { live: false, reason: "network", detail: `GitHub svarede ${res.status}.` };
+    return { live: true, reason: "ok", detail: `Forbundet til ${REPO}.` };
+  } catch (err) {
+    return { live: false, reason: "network", detail: `Kunne ikke nå GitHub: ${String(err).slice(0, 80)}` };
+  }
+}
