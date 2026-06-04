@@ -51,7 +51,15 @@ export default async function SpendPage() {
               {s.byDay.slice(-14).map((d) => (
                 <div key={d.key} style={{ display: "grid", gridTemplateColumns: "84px 1fr 64px", alignItems: "center", gap: 10, fontSize: 12.5 }}>
                   <span className="cc-dim">{d.key.slice(5)}</span>
-                  <span style={{ height: 10, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}>
+                  <span
+                    role="progressbar"
+                    aria-label={`Forbrug ${d.key}`}
+                    aria-valuenow={Math.round(dkk(d.costUSD))}
+                    aria-valuemin={0}
+                    aria-valuemax={Math.round(dkk(maxDay))}
+                    aria-valuetext={`${kr(dkk(d.costUSD))} ud af ${kr(dkk(maxDay))} på den højeste dag`}
+                    style={{ height: 10, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}
+                  >
                     <span style={{ display: "block", height: "100%", width: `${(d.costUSD / maxDay) * 100}%`, background: "var(--accent)", borderRadius: 999 }} />
                   </span>
                   <span style={{ textAlign: "right" }}>{kr(dkk(d.costUSD))}</span>
@@ -69,7 +77,15 @@ export default async function SpendPage() {
                     <span style={{ fontWeight: 600 }}>{m.key}</span>
                     <span className="cc-dim">{kr(dkk(m.costUSD))} · {m.calls} kald</span>
                   </div>
-                  <span style={{ display: "block", height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}>
+                  <span
+                    role="progressbar"
+                    aria-label={`Forbrug ${m.key}`}
+                    aria-valuenow={Math.round(dkk(m.costUSD))}
+                    aria-valuemin={0}
+                    aria-valuemax={Math.round(dkk(maxModel))}
+                    aria-valuetext={`${kr(dkk(m.costUSD))} på ${m.calls} kald`}
+                    style={{ display: "block", height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}
+                  >
                     <span style={{ display: "block", height: "100%", width: `${(m.costUSD / maxModel) * 100}%`, background: "var(--accent-ink)", borderRadius: 999 }} />
                   </span>
                 </div>
