@@ -9,12 +9,13 @@ interface ClientRow {
   websiteStatus: string;
 }
 
+interface LhScores { performance: number; accessibility: number; bestPractices: number; seo: number }
 interface SeoResult {
   tier: string;
   schema: { found: boolean; types: string[]; count: number } | null;
   index: { indexed: number | null; note: string } | null;
   aiVisibility: { mentioned: boolean | null; detail: string } | null;
-  lighthouse: { available: boolean; note: string } | null;
+  lighthouse: { available: boolean; note: string; scores: LhScores | null; cached?: boolean } | null;
   notes: string[];
 }
 
@@ -95,7 +96,11 @@ function SeoCard({ client }: { client: ClientRow }) {
         <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
           <span className="cc-chip" style={{ width: "fit-content" }}>{result.tier === "tier_full" ? "fuld" : "basis"}-niveau</span>
           <Metric label="Schema.org" value={result.schema ? (result.schema.found ? result.schema.types.join(", ") : "ingen fundet") : "ikke tjekket"} good={!!result.schema?.found} />
-          <Metric label="Lighthouse" value={result.lighthouse?.note ?? "n/a"} />
+          {result.lighthouse?.scores ? (
+            <LighthouseRow s={result.lighthouse.scores} cached={result.lighthouse.cached} />
+          ) : (
+            <Metric label="Lighthouse" value={result.lighthouse?.note ?? "n/a"} />
+          )}
           {result.index && <Metric label="Google-index" value={result.index.indexed != null ? `~${result.index.indexed} sider` : result.index.note} />}
           {result.aiVisibility && <Metric label="AI-synlighed" value={result.aiVisibility.mentioned == null ? result.aiVisibility.detail : result.aiVisibility.mentioned ? "kendt ✓" : "ukendt"} good={result.aiVisibility.mentioned === true} />}
           {report && (
@@ -107,6 +112,29 @@ function SeoCard({ client }: { client: ClientRow }) {
         </div>
       )}
     </section>
+  );
+}
+
+function scoreColor(n: number): string {
+  if (n >= 90) return "var(--accent-ink)";
+  if (n >= 50) return "var(--amber)";
+  return "var(--red)";
+}
+
+function LighthouseRow({ s, cached }: { s: LhScores; cached?: boolean }) {
+  const items: [string, number][] = [["Perf", s.performance], ["A11y", s.accessibility], ["Best", s.bestPractices], ["SEO", s.seo]];
+  return (
+    <div style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "center" }}>
+      <span className="cc-dim" style={{ width: 120, flexShrink: 0 }}>Lighthouse{cached ? " (cache)" : ""}</span>
+      <div style={{ display: "flex", gap: 10 }}>
+        {items.map(([k, n]) => (
+          <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${scoreColor(n)}`, color: scoreColor(n), display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>{n}</span>
+            <span className="cc-dim" style={{ fontSize: 11 }}>{k}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

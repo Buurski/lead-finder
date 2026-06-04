@@ -124,24 +124,95 @@ export async function checkAiVisibility(name: string, city: string, domain: stri
   return { mentioned, detail: res.text.slice(0, 240) };
 }
 
-// ---- lighthouse (optional, dynamic) ------------------------------------
+// ---- lighthouse (dynamic; needs a local Chrome) ------------------------
+export interface LighthouseScores {
+  performance: number;
+  accessibility: number;
+  bestPractices: number;
+  seo: number;
+}
 export interface LighthouseResult {
   available: boolean;
-  scores: { performance: number; accessibility: number; bestPractices: number; seo: number } | null;
+  scores: LighthouseScores | null; // mobile (primary)
+  desktop?: LighthouseScores | null;
   note: string;
+  ranAt?: string;
+  cached?: boolean;
 }
 
-export async function runLighthouse(url: string): Promise<LighthouseResult> {
+// Kept as `as string` dynamic imports so the Next build never tries to bundle or
+// type-check the heavy Lighthouse/Chrome packages. Runs headless Chrome locally;
+// on Vercel (no Chrome) it returns available:false with a clear note.
+async function runOne(url: string, formFactor: "mobile" | "desktop", port: number): Promise<LighthouseScores | null> {
+  const lh = (await import("lighthouse" as string)).default as (u: string, o: unknown) => Promise<{ lhr: { categories: Record<string, { score: number | null }> } }>;
+  const screenEmulation = formFactor === "desktop"
+    ? { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false }
+    : undefined;
+  const res = await lh(url, {
+    port,
+    output: "json",
+    logLevel: "silent",
+    onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
+    formFactor,
+    screenEmulation,
+  });
+  const c = res.lhr.categories;
+  const pct = (s: number | null | undefined) => Math.round((s ?? 0) * 100);
+  return {
+    performance: pct(c.performance?.score),
+    accessibility: pct(c.accessibility?.score),
+    bestPractices: pct(c["best-practices"]?.score),
+    seo: pct(c.seo?.score),
+  };
+}
+
+export async function runLighthouse(url: string, opts: { desktop?: boolean } = {}): Promise<LighthouseResult> {
+  if (!/^https?:\/\/.+\..+/i.test(url || "")) {
+    return { available: false, scores: null, note: "ingen gyldig URL — Lighthouse springet over" };
+  }
+  const cacheKey = `lighthouse/${encodeURIComponent(url)}`;
+  // 24h cache via the store.
   try {
-    // Optional dep — only present if Lucas installs `lighthouse` + chrome-launcher.
-    // Kept as a runtime import so the build never requires the heavy package.
-    const mod = await import("lighthouse" as string).catch(() => null);
-    if (!mod) {
-      return { available: false, scores: null, note: "lighthouse ikke installeret (npm i -D lighthouse chrome-launcher)" };
+    const { store } = await import("./store.ts");
+    const cached = await store.get<LighthouseResult>(cacheKey);
+    if (cached?.ranAt && Date.now() - Date.parse(cached.ranAt) < 24 * 60 * 60 * 1000) {
+      return { ...cached, cached: true };
     }
-    return { available: false, scores: null, note: `lighthouse fundet — kør headless Chrome lokalt mod ${url}` };
+  } catch { /* cache is best-effort */ }
+
+  let chrome: { port: number; kill: () => Promise<void> } | null = null;
+  try {
+    const chromeLauncher = await import("chrome-launcher" as string).catch(() => null);
+    if (!chromeLauncher) {
+      return { available: false, scores: null, note: "chrome-launcher ikke installeret" };
+    }
+    const launched = await chromeLauncher.launch({ chromeFlags: ["--headless=new", "--no-sandbox", "--disable-gpu"] });
+    chrome = launched;
+    const port: number = launched.port;
+    const mobile = await Promise.race([
+      runOne(url, "mobile", port),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 60000)),
+    ]);
+    let desktop: LighthouseScores | null = null;
+    if (opts.desktop && mobile) {
+      desktop = await Promise.race([
+        runOne(url, "desktop", port),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 60000)),
+      ]);
+    }
+    const result: LighthouseResult = mobile
+      ? { available: true, scores: mobile, desktop, note: "mobil-scores (Lighthouse)", ranAt: new Date().toISOString() }
+      : { available: false, scores: null, note: "Lighthouse timeout eller kørsel fejlede" };
+    try {
+      const { store } = await import("./store.ts");
+      if (result.available) await store.put(cacheKey, result);
+    } catch { /* best-effort */ }
+    return result;
   } catch (err) {
-    return { available: false, scores: null, note: `lighthouse fejl: ${String(err)}` };
+    // No Chrome on the host (e.g. Vercel) or a launch failure.
+    return { available: false, scores: null, note: `Lighthouse kunne ikke køre: ${String(err).slice(0, 120)}` };
+  } finally {
+    if (chrome) { try { await chrome.kill(); } catch { /* ignore */ } }
   }
 }
 

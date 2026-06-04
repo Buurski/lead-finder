@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
-const suites = ["test_pipeline", "test_ai", "test_email_finder", "test_reply", "test_datalayer", "test_deck", "test_seo", "test_tone_mixer", "test_spend", "test_vault", "test_recon", "test_compose", "test_can_send", "test_achievements", "test_validate", "test_demo_render"];
+const suites = ["test_pipeline", "test_ai", "test_email_finder", "test_reply", "test_datalayer", "test_deck", "test_seo", "test_tone_mixer", "test_spend", "test_vault", "test_recon", "test_compose", "test_can_send", "test_achievements", "test_validate", "test_demo_render", "test_lighthouse"];
 
 let failed = 0;
 for (const s of suites) {
