@@ -24,6 +24,7 @@ export const NAV: NavGroup[] = [
       { href: "/", label: "Mission Control", icon: "LayoutDashboard", hint: "Dagens overblik" },
       { href: "/leads", label: "Leads", icon: "Users", hint: "Pipeline" },
       { href: "/approve", label: "Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
+      { href: "/replies", label: "Svar", icon: "Mail", hint: "Indbakke-triage" },
       { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
     ],
   },
