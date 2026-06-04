@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
 import { isChain } from "@/lib/chains";
+import { canSendTo } from "@/lib/canSendTo";
 
 export const maxDuration = 300;
 
@@ -89,11 +90,12 @@ export async function POST(req: Request) {
   const seenEmails = new Set<string>();
 
   for (const { lead, rowIndex } of targets) {
-    if (seenEmails.has(lead.email.toLowerCase())) {
-      results.push({ name: lead.name, email: lead.email, ok: false, error: "duplicate email address" });
+    // Central send-gate (Del 3): hostile/chain/public/bounced/duplicate in one place.
+    const gate = canSendTo(lead, { seenEmails });
+    if (!gate.ok) {
+      results.push({ name: lead.name, email: lead.email, ok: false, error: `blocked: ${gate.reason}` });
       continue;
     }
-    seenEmails.add(lead.email.toLowerCase());
     try {
       await sendLeadEmail(lead, "cold");
       const now = new Date().toISOString();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
+import { canSendTo } from "@/lib/canSendTo";
 
 export async function POST(
   req: NextRequest,
@@ -14,9 +15,10 @@ export async function POST(
     const lead = leads[rowIndex];
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-    if (!lead.email) return NextResponse.json({ error: "Lead has no email" }, { status: 400 });
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(lead.email)) return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+
+    // Central send-gate (Del 3): hostile/chain/public/no-email/bad-email/bounced.
+    const gate = canSendTo(lead);
+    if (!gate.ok) return NextResponse.json({ error: `blocked: ${gate.reason}` }, { status: 400 });
 
     await sendLeadEmail(lead, type as "cold" | "followup");
 

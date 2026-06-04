@@ -25,6 +25,7 @@ import type { ResearchLead } from "./research.ts";
 import { draft_personal_message } from "./draft.ts";
 import { hardDrop } from "./qualify.ts";
 import { isBlacklisted } from "./tone-mixer.ts";
+import { composeColdEmail } from "./compose.ts";
 import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 
@@ -218,6 +219,28 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     // DRAFT.
     const draft = await draft_personal_message(lead, research, voice, { useLLM });
 
+    // COMPOSE METADATA (Del 3): record the deterministic tone-mixer combination
+    // so a follow-up can deliberately vary the opener, and so send paths know
+    // which kind was used. Compose itself shares the same mixer the draft uses.
+    let comboId: string | undefined;
+    let openerKind: string | undefined;
+    try {
+      const composed = composeColdEmail({
+        name: lead.name,
+        branch: lead.branch,
+        city: lead.city,
+        reviewsCount: lead.reviewsCount,
+        websiteStatus: lead.websiteStatus,
+        hooks: research.hooks,
+        achievements: (lead as { achievements?: string[] }).achievements,
+      });
+      comboId = composed.comboId;
+      openerKind = composed.openerKind;
+    } catch {
+      // compose throws only on a voice violation; the draft path already
+      // validated, so just leave the metadata unset.
+    }
+
     // COLLECT.
     const now = new Date().toISOString();
     collected.push({
@@ -235,6 +258,8 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
       source: opts.leadName ? "write-to-x" : "daily-engine",
       createdAt: now,
       updatedAt: now,
+      comboId,
+      openerKind,
     });
   }
 

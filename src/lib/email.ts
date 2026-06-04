@@ -208,7 +208,9 @@ function complimentLine(group: string, name: string, city: string): string {
     case "craft":
       return name + " ser ud til at have et solidt ry i " + city + " — det er tydeligt I staar for kvalitetsarbejde.".replace("staar", "står");
     case "beauty":
-      return name + " ser ud til at have bygget noget saerligt op i " + city + ".".replace("saerligt", "særligt");
+      // Dropped the dead "ser ud til at have bygget noget særligt op" opener
+      // (OUTREACH_ANALYSIS: 30+ sends, 0 positives). Neutral, low-risk instead.
+      return ("Jeg blev nysgerrig paa " + name + " i " + city + " og kom til at taenke paa, hvordan en rolig, stilren side kunne klaede jer.").replace(/paa/g, "på").replace(/taenke/g, "tænke").replace(/klaede/g, "klæde");
     case "professional":
       return "I " + city + " kender folk " + name + " — det er tydeligt I har en staerk position.".replace("staerk", "stærk");
     case "gallery":
@@ -659,27 +661,51 @@ export function getEmailTemplate(
 }
 
 export async function sendLeadEmail(
-  lead: { id: string; name: string; branch: string; city: string; email: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
+  lead: {
+    id: string; name: string; branch: string; city: string; email: string;
+    websiteStatus: string; websiteQualityTier: string; emailSentAt: string;
+    // Del 3: the engine composes the email ONCE (tone-mixer) and persists it.
+    // When present we send those exact bytes; the legacy templates are fallback.
+    composedSubject?: string; composedBody?: string; composedHtml?: string;
+  },
   type: "cold" | "followup"
 ): Promise<void> {
-  const daysSince = type === "followup" && lead.emailSentAt
-    ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
-    : 7;
-  const template = getEmailTemplate(lead.branch, type, {
-    leadId: lead.id,
-    name: lead.name,
-    branch: lead.branch,
-    city: lead.city,
-    websiteStatus: lead.websiteStatus,
-    websiteQualityTier: lead.websiteQualityTier,
-    daysSince,
-  });
+  let subject: string;
+  let text: string;
+  let html: string;
+
+  if (type === "cold" && lead.composedBody) {
+    // Compose-at-draft-time path — send the exact bytes the engine produced.
+    subject = lead.composedSubject || `En idé til ${lead.name}`;
+    text = lead.composedBody + UNSUBSCRIBE_TEXT;
+    html = lead.composedHtml || lead.composedBody.replace(/\n/g, "<br>");
+  } else {
+    if (type === "cold") {
+      console.warn(`[email] LEGACY template path for "${lead.name}" — no composedBody on the lead.`);
+    }
+    const daysSince = type === "followup" && lead.emailSentAt
+      ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
+      : 7;
+    const template = getEmailTemplate(lead.branch, type, {
+      leadId: lead.id,
+      name: lead.name,
+      branch: lead.branch,
+      city: lead.city,
+      websiteStatus: lead.websiteStatus,
+      websiteQualityTier: lead.websiteQualityTier,
+      daysSince,
+    });
+    subject = template.subject;
+    text = template.text;
+    html = template.html;
+  }
+
   await transporter.sendMail({
     from: `Lucas Buur <${process.env.GMAIL_USER}>`,
     to: lead.email,
-    subject: template.subject,
-    text: template.text,
-    html: template.html,
+    subject,
+    text,
+    html,
     headers: {
       // Gmail's 2024 bulk-sender guidelines: one-click List-Unsubscribe lifts deliverability
       // significantly and reduces the chance of a sender-side rate-limit (the 4.7.0 throttle

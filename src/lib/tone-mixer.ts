@@ -30,6 +30,7 @@ export interface MixLead {
   reviewsCount?: number;
   websiteStatus?: string; // "none" | "dead" | "old" | "ok"
   hooks?: string[];
+  achievements?: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
 
 export type OpenerKind = "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
@@ -151,7 +152,7 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
   out.push({
     kind: "demo-hook",
     text: pick(seed + "h", [
-      `jeg kom til at lave en lille gratis demo med jer i tankerne — helt uforpligtende.`,
+      `jeg kom til at lave en lille demo med jer i tankerne — helt uden forventning.`,
       `jeg har bygget en lille demo som et eksempel på hvordan jeres kunne se ud — uden nogen forventning.`,
     ]),
   });
@@ -176,10 +177,13 @@ export function mixForLead(lead: MixLead): ToneMix {
   const chosen = openers[hash(seed + "open") % openers.length];
 
   // The salgselev-hobby disclosure — the differentiator. Always present.
+  // The salgselev-hobby disclosure (the differentiator). No "pris"/"gratis" — the
+  // voice-guide bans money words in cold mail, so we keep the humble, fair tone
+  // without the literal word.
   const disclosure = pick(seed + "i", [
-    `Jeg laver hjemmesider som hobby ved siden af min salgselev-plads, så det er helt uden det store setup — bare mig, til en fair pris.`,
-    `Det er mig der sidder og bygger dem, ved siden af min salgselev-plads. Ingen bureau-pakke, bare en ærlig pris.`,
-    `Jeg bygger sider som hobby ved siden af mit arbejde som salgselev — så det er afslappet og til en fair pris.`,
+    `Jeg laver hjemmesider som hobby ved siden af min salgselev-plads, så det er helt uden det store setup — bare mig, ærligt og ligetil.`,
+    `Det er mig der sidder og bygger dem, ved siden af min salgselev-plads. Ingen bureau-pakke, bare en ærlig snak.`,
+    `Jeg bygger sider som hobby ved siden af mit arbejde som salgselev — så det er afslappet og ligetil.`,
   ]);
 
   const demoIntro = pick(seed + "dm", [
@@ -191,7 +195,7 @@ export function mixForLead(lead: MixLead): ToneMix {
   const closing = pick(seed + "c", [
     `Sig endelig til, hvis I vil se en version til jer — ellers ingen skade sket.`,
     `Bare en idé — skriv gerne hvis det lyder interessant.`,
-    `Helt uforpligtende. Skriv hvis I har lyst, ellers intet problem.`,
+    `Helt uden forventning. Skriv hvis I har lyst, ellers intet problem.`,
     `Skriv endelig hvis det kunne være noget — og hvis ikke, så ingen skade sket.`,
   ]);
 

@@ -30,6 +30,8 @@ export interface QueueDraft {
   source: string; // "daily-engine" | "write-to-x"
   createdAt: string;
   updatedAt: string;
+  comboId?: string;      // tone-mixer combination id (Del 3) — for follow-up variation
+  openerKind?: string;   // which opener kind was used (achievement/quote/...)
 }
 
 // The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
 import { sendLeadEmail } from "@/lib/email";
 import { FOLLOWUP_DAYS } from "@/lib/tone-mixer";
+import { canSendTo } from "@/lib/canSendTo";
 
 export const maxDuration = 300;
 
@@ -70,7 +71,15 @@ export async function POST(request: Request) {
       let sent = 0;
       let failed = 0;
 
+      const seenEmails = new Set<string>();
       for (const { lead, rowIndex } of eligible) {
+        // Central send-gate (Del 3) — skip hostile/chain/public/bounced/dupes.
+        const gate = canSendTo(lead, { seenEmails });
+        if (!gate.ok) {
+          failed++;
+          controller.enqueue(encoder.encode(JSON.stringify({ sent, failed, total, done: false, skipped: gate.reason }) + "\n"));
+          continue;
+        }
         try {
           await sendLeadEmail(lead, "followup");
           await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });

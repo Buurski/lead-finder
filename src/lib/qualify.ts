@@ -30,6 +30,17 @@ export interface QualifyVerdict {
   reason: string;
 }
 
+// Public-sector / institutional entities that should NEVER be cold-mailed
+// (OUTREACH_ANALYSIS: Tønder Sygehus turned out to be Tønder Kommune). Matches
+// name OR branch.
+const PUBLIC_ENTITY =
+  /\b(kommune|kommunen|sygehus|hospital|region(?:en|s)?|ministerie(?:t|r)?|styrelse(?:n)?|politi(?:et)?|skattestyrelsen|borgerservice|jobcenter|folkeskole|gymnasium|universitet|biblioteket?|retten i|domstol|forsvaret|forsvarsministeriet|offentlig sektor|public sector)\b/i;
+
+export function isPublicEntity(lead: { name: string; branch?: string }): boolean {
+  const hay = `${lead.name || ""} ${lead.branch || ""}`;
+  return PUBLIC_ENTITY.test(hay);
+}
+
 // Branch prefixes stripped before deciding whether the residue is a bare
 // personal name. "Frisør Adnan" -> "Adnan".
 const BRANCH_PREFIX =
