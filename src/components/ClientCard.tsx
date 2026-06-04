@@ -81,6 +81,12 @@ export default function ClientCard({ client }: { client: Client }) {
         </div>
       )}
 
+      <Link href={`/clients/${client.id}`}
+        style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "var(--accent-ink)", textDecoration: "none", marginTop: client.briefFilled ? "auto" : 0 }}
+      >
+        Åbn klient <ArrowRight size={13} />
+      </Link>
+
       {!client.briefFilled && (
         <Link href={`/clients/${client.id}/brief`}
           style={{
