@@ -81,20 +81,21 @@ function looksLikeRawIp(host: string): boolean {
 }
 
 async function validateHost(host: string): Promise<void> {
-  const lower = host.toLowerCase();
+  // Strip IPv6 brackets so "[::1]" is normalised to "::1" before the checks.
+  const lower = host.toLowerCase().replace(/^\[|\]$/g, "");
 
   if (isCloudMetadata(lower)) {
     throw new SsrfBlockedError(`cloud metadata host (${lower})`);
   }
 
+  // Reject explicit loopback / unspecified (incl. IPv6 loopback ::1).
+  if (lower === "localhost" || lower === "0.0.0.0" || lower === "::" || lower === "::1" || lower === "0:0:0:0:0:0:0:1") {
+    throw new SsrfBlockedError(`loopback hostname (${lower})`);
+  }
+
   // Reject literal-IP private targets immediately.
   if (looksLikeRawIp(lower) && isPrivateIp(lower)) {
     throw new SsrfBlockedError(`private ip literal (${lower})`);
-  }
-
-  // Reject explicit loopback / unspecified.
-  if (lower === "localhost" || lower === "0.0.0.0" || lower === "[::]" || lower === "::") {
-    throw new SsrfBlockedError(`loopback hostname (${lower})`);
   }
 
   // DNS check via DoH. Best-effort — if DoH itself is down, we still allow

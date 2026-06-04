@@ -207,9 +207,26 @@ export function createStore(): Store {
   return _store;
 }
 
-// For tests: swap in a driver.
+function active(): Store {
+  return _store ?? createStore();
+}
+
+// For tests: swap in a driver. Because `store` below delegates at call time, the
+// swap is seen by every module that imported `store` (even those imported first).
 export function __setStore(s: Store | null): void {
   _store = s;
 }
 
-export const store = createStore();
+// A stable facade that always delegates to the current driver. Importing this
+// const never pins a specific driver instance.
+export const store: Store = {
+  append: (k, e) => active().append(k, e),
+  readAll: (k) => active().readAll(k),
+  get: (k) => active().get(k),
+  put: (k, v) => active().put(k, v),
+  delete: (k) => active().delete(k),
+  list: (p) => active().list(p),
+  putAsset: (k, c, t) => active().putAsset(k, c, t),
+  getAssetUrl: (k) => active().getAssetUrl(k),
+  deleteAsset: (k) => active().deleteAsset(k),
+};
