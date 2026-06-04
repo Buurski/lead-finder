@@ -41,7 +41,7 @@ check("unknown -> default template", templates.templateForBranch("ukendt branche
 // ---- demo factory blends template + recon -------------------------------
 {
   const r = await recon.reconCustomer("", "Bryggens VVS");
-  const build = factory.buildDemo("Bryggens VVS", "vvs", r, { persist: false });
+  const build = await factory.buildDemo("Bryggens VVS", "vvs", r, { persist: false });
   check("factory picks vvs template", build.template.slug === "vvs");
   check("factory designMd mentions name", build.designMd.includes("Bryggens VVS"));
   check("factory html is a full document", build.html.startsWith("<!doctype html>") && build.html.includes("</html>"));

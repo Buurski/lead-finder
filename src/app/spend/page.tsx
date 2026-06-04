@@ -1,14 +1,14 @@
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
-import { summarize, DAILY_ALERT_DKK } from "@/lib/spend-log";
+import { loadSpendSummary, DAILY_ALERT_DKK } from "@/lib/spend-log";
 
 export const metadata = { title: "AI Spend · Command Center" };
 export const dynamic = "force-dynamic";
 
 const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 2 })} kr`;
 
-export default function SpendPage() {
-  const s = summarize();
+export default async function SpendPage() {
+  const s = await loadSpendSummary();
   const maxDay = Math.max(1, ...s.byDay.map((d) => d.costUSD));
   const maxModel = Math.max(1, ...s.byModel.map((m) => m.costUSD));
   const dkk = (usd: number) => usd * 6.9;

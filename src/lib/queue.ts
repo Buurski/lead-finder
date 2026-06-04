@@ -9,8 +9,7 @@
 //
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
-import fs from "node:fs";
-import path from "node:path";
+import { store } from "./store.ts";
 
 import type { Demo } from "./demos.ts";
 
@@ -33,44 +32,36 @@ export interface QueueDraft {
   updatedAt: string;
 }
 
-const QUEUE_DIR = path.join(process.cwd(), ".send_queue");
-const QUEUE_FILE = path.join(QUEUE_DIR, "approval_queue.json");
-
-export function queueFilePath(): string {
-  return QUEUE_FILE;
-}
-
-export function readQueue(): QueueDraft[] {
+// The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;
+// Vercel: KV). Async so it survives the ephemeral filesystem in production.
+export async function readQueue(): Promise<QueueDraft[]> {
   try {
-    const raw = fs.readFileSync(QUEUE_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as QueueDraft[]) : [];
+    const parsed = await store.get<QueueDraft[]>("queue");
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    // Missing file / bad JSON -> empty queue (the engine creates it on first run).
     return [];
   }
 }
 
-export function writeQueue(drafts: QueueDraft[]): void {
-  fs.mkdirSync(QUEUE_DIR, { recursive: true });
-  fs.writeFileSync(QUEUE_FILE, JSON.stringify(drafts, null, 2), "utf-8");
+export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
+  await store.put("queue", drafts);
 }
 
 // Append new drafts (used by the engine COLLECT step). Returns the full queue.
-export function appendDrafts(newDrafts: QueueDraft[]): QueueDraft[] {
-  const existing = readQueue();
+export async function appendDrafts(newDrafts: QueueDraft[]): Promise<QueueDraft[]> {
+  const existing = await readQueue();
   const merged = [...existing, ...newDrafts];
-  writeQueue(merged);
+  await writeQueue(merged);
   return merged;
 }
 
 // Update one draft's status/body (used by /approve actions). Never sends mail —
 // "approve" only marks the draft approved; real sending is a later layer.
-export function updateDraft(
+export async function updateDraft(
   id: string,
   patch: { status?: DraftStatus; subject?: string; body?: string }
-): QueueDraft | null {
-  const drafts = readQueue();
+): Promise<QueueDraft | null> {
+  const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
   if (idx === -1) return null;
   const next = {
@@ -81,7 +72,7 @@ export function updateDraft(
     updatedAt: new Date().toISOString(),
   };
   drafts[idx] = next;
-  writeQueue(drafts);
+  await writeQueue(drafts);
   return next;
 }
 

@@ -4,10 +4,7 @@
 // shape; cost is derived from per-model price constants. This is a "watch the
 // meter / catch a runaway" tool, not an invoice — the UI labels it an estimate.
 
-import fs from "node:fs";
-import path from "node:path";
-
-const FILE = path.join(process.cwd(), ".send_queue", "spend.jsonl");
+import { store } from "./store.ts";
 
 // USD per 1M tokens (input/output), approximate 2026 list prices.
 export const MODEL_PRICES: Record<string, { in: number; out: number }> = {
@@ -45,8 +42,9 @@ export function costUSD(model: string, inputTokens: number, outputTokens: number
   return (inputTokens / 1_000_000) * p.in + (outputTokens / 1_000_000) * p.out;
 }
 
-// Best-effort append. Never throws into the AI path.
-export function logSpend(e: Omit<SpendEntry, "costUSD" | "ts"> & { ts?: string }): void {
+// Best-effort append. Never throws into the AI path. Async (store-backed) — the
+// caller (ai.ts) fires it and does not await.
+export async function logSpend(e: Omit<SpendEntry, "costUSD" | "ts"> & { ts?: string }): Promise<void> {
   try {
     const entry: SpendEntry = {
       ts: e.ts ?? new Date().toISOString(),
@@ -58,24 +56,24 @@ export function logSpend(e: Omit<SpendEntry, "costUSD" | "ts"> & { ts?: string }
       costUSD: costUSD(e.model, e.inputTokens, e.outputTokens),
       estimated: e.estimated,
     };
-    fs.mkdirSync(path.dirname(FILE), { recursive: true });
-    fs.appendFileSync(FILE, JSON.stringify(entry) + "\n", "utf-8");
+    await store.append("spend", entry);
   } catch {
     /* logging must never break a generation */
   }
 }
 
-export function readSpend(): SpendEntry[] {
+export async function readSpend(): Promise<SpendEntry[]> {
   try {
-    return fs
-      .readFileSync(FILE, "utf-8")
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l) as SpendEntry)
-      .filter((e) => e && typeof e.costUSD === "number");
+    const rows = (await store.readAll("spend")) as SpendEntry[];
+    return rows.filter((e) => e && typeof e.costUSD === "number");
   } catch {
     return [];
   }
+}
+
+// Async convenience for callers that want the rolled-up summary from storage.
+export async function loadSpendSummary(): Promise<SpendSummary> {
+  return summarize(await readSpend());
 }
 
 export interface SpendBucket {
@@ -95,7 +93,7 @@ export interface SpendSummary {
   estimated: boolean;
 }
 
-export function summarize(entries = readSpend()): SpendSummary {
+export function summarize(entries: SpendEntry[]): SpendSummary {
   const today = new Date().toISOString().slice(0, 10);
   const byModel = new Map<string, SpendBucket>();
   const byDay = new Map<string, SpendBucket>();

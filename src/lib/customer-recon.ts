@@ -8,8 +8,7 @@
 // partial result rather than throwing — a demo can still be built from the
 // branch template alone.
 
-import fs from "node:fs";
-import path from "node:path";
+import { store } from "./store.ts";
 
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -161,11 +160,15 @@ export async function reconCustomer(inputUrl: string, name?: string): Promise<Re
   };
 }
 
-// Persist a recon result for later reuse (gitignored runtime dir).
-export function saveRecon(result: ReconResult): string {
-  const dir = path.join(process.cwd(), "client-assets", result.slug);
-  fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, "recon.json");
-  fs.writeFileSync(file, JSON.stringify(result, null, 2), "utf-8");
-  return file;
+// Persist a recon result for later reuse (FS: client-assets/{slug}/recon.json;
+// Vercel: KV). Best-effort.
+export async function saveRecon(result: ReconResult): Promise<string> {
+  const key = `recon/${result.slug}`;
+  await store.put(key, result);
+  return key;
+}
+
+// Read a cached recon result (24h TTL is enforced by the caller).
+export async function loadRecon(slug: string): Promise<ReconResult | null> {
+  return store.get<ReconResult>(`recon/${slug}`);
 }

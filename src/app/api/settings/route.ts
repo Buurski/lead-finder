@@ -5,7 +5,7 @@ import { readSettings, writeSettings, nextRunLabel } from "@/lib/settings";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const s = readSettings();
+  const s = await readSettings();
   return NextResponse.json({ settings: s, nextRun: nextRunLabel(s) });
 }
 
@@ -16,6 +16,6 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
-  const s = writeSettings(patch);
+  const s = await writeSettings(patch);
   return NextResponse.json({ settings: s, nextRun: nextRunLabel(s) });
 }

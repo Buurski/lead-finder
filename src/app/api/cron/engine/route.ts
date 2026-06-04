@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     }
   }
 
-  const s = readSettings();
+  const s = await readSettings();
   if (!s.autoEngine) {
     return NextResponse.json({ ok: true, ran: false, reason: "auto-engine slukket i settings" });
   }

@@ -3,7 +3,7 @@ import Icon from "@/components/shell/Icon";
 import Link from "next/link";
 import { aiStatus } from "@/lib/ai";
 import { vaultStatus } from "@/lib/vault";
-import { summarize } from "@/lib/spend-log";
+import { loadSpendSummary } from "@/lib/spend-log";
 
 export const metadata = { title: "Claude · Command Center" };
 export const dynamic = "force-dynamic";
@@ -15,10 +15,10 @@ const CAPS = [
   { t: "Holder mennesket i loop", d: "Sender og sletter aldrig selv. Alt går gennem en bekræftelse." },
 ];
 
-export default function ClaudePage() {
+export default async function ClaudePage() {
   const ai = aiStatus();
   const vault = vaultStatus();
-  const spend = summarize();
+  const spend = await loadSpendSummary();
 
   const connections = [
     { name: "AI-model", ok: ai.enabled, detail: ai.enabled ? `${ai.provider} · ${ai.models.draft}` : "ingen nøgle — deterministisk fallback" },

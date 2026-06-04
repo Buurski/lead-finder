@@ -23,8 +23,8 @@ export async function POST(req: Request) {
 
   try {
     const recon = await reconCustomer(url || name, name);
-    try { saveRecon(recon); } catch { /* asset dir is best-effort */ }
-    const build = buildDemo(name, branch || recon.slug, recon, { persist: true });
+    try { await saveRecon(recon); } catch { /* asset store is best-effort */ }
+    const build = await buildDemo(name, branch || recon.slug, recon, { persist: true });
     return NextResponse.json({
       ok: true,
       slug: build.slug,

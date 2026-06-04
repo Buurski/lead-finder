@@ -145,7 +145,7 @@ export async function generate(req: AiRequest): Promise<AiResult | null> {
   const model = modelFor(req.task);
 
   const result = await runGenerate(req, provider, model);
-  if (result) trackSpend(req, result);
+  if (result) void trackSpend(req, result);
   return result;
 }
 
@@ -165,11 +165,11 @@ async function runGenerate(req: AiRequest, provider: AiProvider, model: string):
 }
 
 // Transparent spend logging — estimated tokens, best-effort, never throws.
-function trackSpend(req: AiRequest, result: AiResult): void {
+async function trackSpend(req: AiRequest, result: AiResult): Promise<void> {
   try {
     const inputTokens = estimateTokens((req.system ?? "") + "\n" + req.prompt);
     const outputTokens = estimateTokens(result.text);
-    logSpend({
+    await logSpend({
       task: req.task,
       model: result.model,
       provider: result.provider,

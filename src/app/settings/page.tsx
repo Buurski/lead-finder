@@ -5,8 +5,8 @@ import { readSettings, nextRunLabel } from "@/lib/settings";
 export const metadata = { title: "Indstillinger · Command Center" };
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const settings = readSettings();
+export default async function SettingsPage() {
+  const settings = await readSettings();
   return (
     <div className="cc-fade">
       <PageHeader

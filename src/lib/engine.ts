@@ -242,7 +242,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   // persist:false runs the full loop but writes nothing (web preview path).
   const persist = opts.persist ?? true;
   const written = persist ? collected.length : 0;
-  if (written > 0) appendDrafts(collected);
+  if (written > 0) await appendDrafts(collected);
 
   return {
     picked,

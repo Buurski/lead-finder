@@ -176,7 +176,7 @@ export function buildNumbers(leads: Lead[]): DeckNumbers {
 }
 
 export async function buildDeckSummary(): Promise<DeckSummary> {
-  const queue = readQueue();
+  const queue = await readQueue();
 
   let leads: Lead[] = [];
   let clients: Client[] = [];

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/approve/queue — return all drafts (newest first).
 export async function GET() {
-  const drafts = readQueue();
+  const drafts = await readQueue();
   drafts.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   return NextResponse.json({ drafts, count: drafts.length });
 }
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   if (action === "reject") {
-    const updated = updateDraft(id, { status: "rejected" });
+    const updated = await updateDraft(id, { status: "rejected" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
-    const updated = updateDraft(id, {
+    const updated = await updateDraft(id, {
       status: "edited",
       subject: payload.subject,
       body: payload.body,
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   }
 
   if (action === "approve") {
-    const updated = updateDraft(id, { status: "approved" });
+    const updated = await updateDraft(id, { status: "approved" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     // Register back to Sheets so the lead leaves the engine's "new" pool — the
     // single-data-layer bridge. Best-effort: a Sheets failure never blocks the

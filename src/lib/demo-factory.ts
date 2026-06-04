@@ -6,8 +6,7 @@
 // deploy it to Vercel himself (we never auto-deploy). Pure string composition —
 // safe to run anywhere, offline.
 
-import fs from "node:fs";
-import path from "node:path";
+import { store } from "./store.ts";
 
 import { templateForBranch, templateBySlug } from "./design-templates.ts";
 import type { DesignTemplate } from "./design-templates.ts";
@@ -159,7 +158,7 @@ export interface BuildOptions {
   persist?: boolean; // write to dist/demo-{slug}/index.html (default true)
 }
 
-export function buildDemo(name: string, branchOrSlug: string, recon: ReconResult, opts: BuildOptions = {}): DemoBuild {
+export async function buildDemo(name: string, branchOrSlug: string, recon: ReconResult, opts: BuildOptions = {}): Promise<DemoBuild> {
   const template = pickTemplate(branchOrSlug);
   const slug = recon.slug;
   const designMd = composeDesignMd(name, template, recon);
@@ -167,11 +166,10 @@ export function buildDemo(name: string, branchOrSlug: string, recon: ReconResult
 
   let demoPath: string | null = null;
   if (opts.persist ?? true) {
-    const dir = path.join(process.cwd(), "dist", `demo-${slug}`);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, "index.html"), html, "utf-8");
-    fs.writeFileSync(path.join(dir, "design.md"), designMd, "utf-8");
-    demoPath = path.relative(process.cwd(), path.join(dir, "index.html"));
+    // Asset -> Blob on Vercel (served URL), dist/ locally. design.md -> doc store.
+    const asset = await store.putAsset(`demos/${slug}/index.html`, html, "text/html; charset=utf-8");
+    await store.put(`demos/${slug}/design.md`, designMd);
+    demoPath = asset.url;
   }
 
   return { slug, template, designMd, html, demoPath };
