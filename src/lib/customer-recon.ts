@@ -85,17 +85,13 @@ function extractPalette(html: string, themeColor: string | null): string[] {
 }
 
 async function fetchText(url: string, timeoutMs = 9000): Promise<string | null> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { headers: { "User-Agent": CHROME_UA, Accept: "text/html,*/*" }, signal: ctrl.signal });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
+  // Routed through safe-fetch for SSRF guards (private IP block, cloud metadata,
+  // response-size cap, DoH-resolution check). See src/lib/safe-fetch.ts.
+  const { safeFetchText } = await import("./safe-fetch.ts");
+  return safeFetchText(url, {
+    timeoutMs,
+    headers: { "User-Agent": CHROME_UA },
+  });
 }
 
 export async function reconCustomer(inputUrl: string, name?: string): Promise<ReconResult> {
@@ -119,14 +115,18 @@ export async function reconCustomer(inputUrl: string, name?: string): Promise<Re
 
   if (!html || html.length < 400) {
     // JS-only or blocked — try a readability proxy for at least text + tone.
-    const jina = await fetchText("https://r.jina.ai/" + resolvedUrl, 12000);
-    if (jina) {
-      notes.push("Rå HTML var tynd; brugte r.jina.ai readability-fallback til tekst.");
-      base.source = "jina";
-      base.toneSample = jina.replace(/\s+/g, " ").trim().slice(0, 600);
-      base.headings = (jina.match(/^#{1,3}\s+(.+)$/gm) || []).slice(0, 6).map((l) => l.replace(/^#+\s+/, ""));
-      base.title = base.headings[0] ?? null;
-      return base;
+    // r.jina.ai is a 3rd-party that processes the URL on its servers (Singapore).
+    // Gated behind RECON_ALLOW_JINA=1 for GDPR opt-in; default OFF in production.
+    if (process.env.RECON_ALLOW_JINA === "1") {
+      const jina = await fetchText("https://r.jina.ai/" + resolvedUrl, 12000);
+      if (jina) {
+        notes.push("Rå HTML var tynd; brugte r.jina.ai readability-fallback til tekst.");
+        base.source = "jina";
+        base.toneSample = jina.replace(/\s+/g, " ").trim().slice(0, 600);
+        base.headings = (jina.match(/^#{1,3}\s+(.+)$/gm) || []).slice(0, 6).map((l) => l.replace(/^#+\s+/, ""));
+        base.title = base.headings[0] ?? null;
+        return base;
+      }
     }
     notes.push("Kunne ikke hente siden — demo bygges på branche-template alene.");
     return base;
