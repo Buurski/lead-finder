@@ -45,7 +45,8 @@ export const NAV: NavGroup[] = [
       { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer & klient-sites" },
       { href: "/journal", label: "Journal", icon: "BookOpen", hint: "Daglige briefs" },
       { href: "/memory", label: "Memory", icon: "Brain", hint: "Second brain" },
-      { href: "/build-guide", label: "Build Guide", icon: "Map", hint: "Planen & systemet" },
+      { href: "/build-guide", label: "Plan-historik", icon: "Map", hint: "Planen & systemet" },
+      { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence" },
     ],
   },
 ];

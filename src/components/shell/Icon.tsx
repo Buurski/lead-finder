@@ -4,6 +4,7 @@ import {
   Search, LayoutGrid, BookOpen, Brain, Map, Command, MessageSquare,
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
   Clock, Mail, FileText, ChevronRight, Bot, Workflow,
+  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck,
   type LucideProps,
 } from "lucide-react";
 
@@ -12,6 +13,7 @@ const MAP = {
   Search, LayoutGrid, BookOpen, Brain, Map, Command, MessageSquare,
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
   Clock, Mail, FileText, ChevronRight, Bot, Workflow,
+  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck,
 } as const;
 
 export type IconName = keyof typeof MAP;

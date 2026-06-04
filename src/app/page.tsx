@@ -1,4 +1,5 @@
 import { buildDeckSummary } from "@/lib/deck";
+import { readSettings, nextRunLabel } from "@/lib/settings";
 import MissionControl from "@/components/mission/MissionControl";
 
 // Mission Control is the home screen. We build the read model on the server so
@@ -8,5 +9,6 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const summary = await buildDeckSummary();
-  return <MissionControl summary={summary} />;
+  const cadence = nextRunLabel(readSettings());
+  return <MissionControl summary={summary} cadence={cadence} />;
 }

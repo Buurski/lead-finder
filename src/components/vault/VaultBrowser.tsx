@@ -54,7 +54,6 @@ export default function VaultBrowser({
     let cancelled = false;
     fetchNote(first).then((n) => { if (!cancelled) setNote(n); });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [first]);
 
   const filtered = useMemo(() => {

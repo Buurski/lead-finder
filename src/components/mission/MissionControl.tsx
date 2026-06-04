@@ -25,7 +25,7 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-export default function MissionControl({ summary }: { summary: DeckSummary }) {
+export default function MissionControl({ summary, cadence }: { summary: DeckSummary; cadence?: string | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [hello, setHello] = useState("Velkommen");
 
@@ -69,7 +69,7 @@ export default function MissionControl({ summary }: { summary: DeckSummary }) {
       )}
 
       {tab === "today" && <TodayTab s={summary} />}
-      {tab === "pipeline" && <PipelineTab s={summary} />}
+      {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
       {tab === "agents" && <AgentsTab s={summary} />}
     </div>
@@ -296,10 +296,15 @@ function PulseCard({ s }: { s: DeckSummary }) {
 /* ------------------------------------------------------------------ */
 /* PIPELINE                                                            */
 /* ------------------------------------------------------------------ */
-function PipelineTab({ s }: { s: DeckSummary }) {
+function PipelineTab({ s, cadence }: { s: DeckSummary; cadence?: string | null }) {
   const p = s.pipeline;
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <Icon name="Calendar" style={{ width: 17, height: 17, color: cadence ? "var(--accent-ink)" : "var(--text-dim)" }} />
+        <span style={{ fontSize: 13.5, fontWeight: 600 }}>{cadence ? `Næste auto-kørsel: ${cadence}` : "Auto-kørsel slukket"}</span>
+        <Link href="/settings" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5 }}>Indstillinger →</Link>
+      </section>
       <section className="cc-card cc-card-pad">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Motor-status</h2>
         <p className="cc-dim" style={{ fontSize: 13 }}>

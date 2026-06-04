@@ -139,7 +139,7 @@ export async function runLighthouse(url: string): Promise<LighthouseResult> {
     if (!mod) {
       return { available: false, scores: null, note: "lighthouse ikke installeret (npm i -D lighthouse chrome-launcher)" };
     }
-    return { available: false, scores: null, note: "lighthouse fundet, men headless Chrome-kørsel er et lokalt skridt" };
+    return { available: false, scores: null, note: `lighthouse fundet — kør headless Chrome lokalt mod ${url}` };
   } catch (err) {
     return { available: false, scores: null, note: `lighthouse fejl: ${String(err)}` };
   }
