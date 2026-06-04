@@ -33,9 +33,10 @@ export interface ReconResult {
 export function slugify(s: string): string {
   return (s || "")
     .toLowerCase()
+    // Danish letters first — before NFD strips the å ring to a bare "a".
+    .replace(/æ/g, "ae").replace(/ø/g, "oe").replace(/å/g, "aa")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .replace(/æ/g, "ae").replace(/ø/g, "oe").replace(/å/g, "aa")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "kunde";
