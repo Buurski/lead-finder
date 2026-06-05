@@ -1,5 +1,7 @@
 "use client";
-import { FolderOpen, CheckCircle, Clock, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FolderOpen, CheckCircle, Clock, ArrowRight, Pencil } from "lucide-react";
 import Link from "next/link";
 import type { Client } from "@/lib/sheets";
 
@@ -11,6 +13,32 @@ const WS_STYLE = {
 
 export default function ClientCard({ client }: { client: Client }) {
   const ws = WS_STYLE[client.websiteStatus] ?? WS_STYLE.demo;
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [monthly, setMonthly] = useState(client.monthlyFee || "");
+  const [setup, setSetup] = useState(client.setupFee || "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const isPaying = (parseFloat(client.monthlyFee) || 0) > 0;
+
+  async function save() {
+    setSaving(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/clients/fees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: client.id, monthlyFee: monthly, setupFee: setup }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "fejl");
+      setEditing(false);
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "fejl");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div
@@ -73,11 +101,54 @@ export default function ClientCard({ client }: { client: Client }) {
         </div>
       )}
 
-      {client.monthlyFee && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          <span style={{ color: "var(--green)", fontWeight: 600 }}>{client.monthlyFee} kr</span>
-          <span style={{ color: "var(--text-dim)" }}>/md · </span>
-          <span>{client.setupFee} kr setup</span>
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--bg-3)", borderRadius: 8, padding: 10 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <label style={{ flex: 1, fontSize: 11, color: "var(--text-dim)" }}>
+              kr/md
+              <input
+                type="number" inputMode="numeric" value={monthly} placeholder="0"
+                onChange={(e) => setMonthly(e.target.value)}
+                style={{ width: "100%", marginTop: 3, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }}
+              />
+            </label>
+            <label style={{ flex: 1, fontSize: 11, color: "var(--text-dim)" }}>
+              setup kr
+              <input
+                type="number" inputMode="numeric" value={setup} placeholder="0"
+                onChange={(e) => setSetup(e.target.value)}
+                style={{ width: "100%", marginTop: 3, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }}
+              />
+            </label>
+          </div>
+          {err && <span style={{ fontSize: 11, color: "var(--red, #dc2626)" }}>{err}</span>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={save} disabled={saving}
+              style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: "var(--green)", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Gemmer…" : "Gem"}
+            </button>
+            <button onClick={() => { setEditing(false); setMonthly(client.monthlyFee || ""); setSetup(client.setupFee || ""); setErr(""); }} disabled={saving}
+              style={{ padding: "7px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-dim)", fontSize: 12.5, cursor: "pointer" }}>
+              Annullér
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
+          {isPaying ? (
+            <span>
+              <span style={{ color: "var(--green)", fontWeight: 600 }}>{client.monthlyFee} kr</span>
+              <span style={{ color: "var(--text-dim)" }}>/md · </span>
+              <span>{client.setupFee || 0} kr setup</span>
+            </span>
+          ) : (
+            <span style={{ color: "var(--text-dim)" }}>Ingen pris endnu — prospect</span>
+          )}
+          <button onClick={() => setEditing(true)}
+            title="Rediger pris"
+            style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--accent-ink)", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+            <Pencil size={12} /> {isPaying ? "Rediger" : "Sæt pris"}
+          </button>
         </div>
       )}
 

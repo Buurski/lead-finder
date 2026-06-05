@@ -13,7 +13,9 @@ export const MODEL_PRICES: Record<string, { in: number; out: number }> = {
   haiku: { in: 0.8, out: 4 },
 };
 export const USD_TO_DKK = 6.9;
-export const DAILY_ALERT_DKK = 50;
+// Lucas's budget decision (2026-06-05): alert at 100 kr/day, hard cap 150 kr/day.
+export const DAILY_ALERT_DKK = 100;
+export const DAILY_CAP_DKK = 150;
 
 export interface SpendEntry {
   ts: string;

@@ -7,6 +7,7 @@ import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
 import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
+import type { SpendSummary } from "@/lib/spend-log";
 
 type Tab = "today" | "pipeline" | "goals" | "agents";
 
@@ -46,7 +47,7 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-export default function MissionControl({ summary, cadence, spendAlert }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null }) {
+export default function MissionControl({ summary, cadence, spendAlert, spend }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [hello, setHello] = useState("Velkommen");
 
@@ -88,7 +89,7 @@ export default function MissionControl({ summary, cadence, spendAlert }: { summa
       {tab === "today" && <TodayTab s={summary} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
-      {tab === "agents" && <AgentsTab s={summary} />}
+      {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} />}
 
       {/* Secondary nav — only shown on mobile (header tabs hide there). */}
       <div className="cc-tabs-secondary">
@@ -127,11 +128,11 @@ function TodayTab({ s }: { s: DeckSummary }) {
       const k = e.key.toLowerCase();
       if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setSel((i) => Math.min(i + 1, n - 1)); }
       else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setSel((i) => Math.max(i - 1, 0)); }
-      else if (e.key === "Enter") { e.preventDefault(); router.push("/approve"); }
+      else if (e.key === "Enter") { e.preventDefault(); router.push(hrefForKind(s.needsYou[sel]?.kind)); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [n, router]);
+  }, [n, router, sel, s.needsYou]);
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -141,7 +142,7 @@ function TodayTab({ s }: { s: DeckSummary }) {
       </div>
       <NumbersStrip s={s} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
-        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} />
+        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} />
         <div style={{ display: "grid", gap: 18 }}>
           <QueueCard s={s} />
           <PipelineMini s={s} />
@@ -194,7 +195,15 @@ const KIND_META: Record<NeedsYouItem["kind"], { icon: string; tone: string }> = 
   interested: { icon: "HeartPulse", tone: "var(--blue)" },
 };
 
-function NeedsYouCard({ items, sel, onSelect }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void }) {
+// Each Morning Coffee item opens where the action actually lives — a reply goes
+// to /replies, a callback or warm lead to /leads. (Approval of drafts is its own
+// queue, surfaced as a single banner, not per-item "godkend nu".)
+function hrefForKind(kind?: NeedsYouItem["kind"]): string {
+  if (kind === "reply") return "/replies";
+  return "/leads";
+}
+
+function NeedsYouCard({ items, sel, onSelect, queuePending }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void; queuePending: number }) {
   return (
     <section className="cc-card" aria-label="Kræver dig nu">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
@@ -207,12 +216,31 @@ function NeedsYouCard({ items, sel, onSelect }: { items: NeedsYouItem[]; sel: nu
         )}
       </div>
 
+      {/* One calm pointer to the approval queue — not a "godkend nu" per item.
+          The actual per-draft approval lives on /approve. */}
+      {queuePending > 0 && (
+        <Link href="/approve" style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)", textDecoration: "none", color: "inherit", background: "var(--accent-soft)" }}>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--surface)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Icon name="CheckCheck" style={{ width: 15, height: 15, color: "var(--accent-ink)" }} />
+          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{queuePending} udkast til godkendelse</div>
+            <div className="cc-dim" style={{ fontSize: 12.5 }}>gennemgå og godkend i køen</div>
+          </div>
+          <span className="cc-link" style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+            Åbn <Icon name="ChevronRight" style={{ width: 13, height: 13 }} />
+          </span>
+        </Link>
+      )}
+
       {items.length === 0 ? (
-        <div className="cc-empty">
-          <Icon name="Coffee" />
-          <div>Ingen ildebrande. Drik kaffen i ro.</div>
-          <div className="cc-dim" style={{ fontSize: 12 }}>Svar, opkald i dag og varme leads dukker op her.</div>
-        </div>
+        queuePending === 0 ? (
+          <div className="cc-empty">
+            <Icon name="Coffee" />
+            <div>Ingen ildebrande. Drik kaffen i ro.</div>
+            <div className="cc-dim" style={{ fontSize: 12 }}>Svar, opkald i dag og varme leads dukker op her.</div>
+          </div>
+        ) : null
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {items.map((it, i) => {
@@ -231,7 +259,7 @@ function NeedsYouCard({ items, sel, onSelect }: { items: NeedsYouItem[]; sel: nu
                   <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
                   <div className="cc-dim" style={{ fontSize: 12.5 }}>{it.why}{it.branch ? ` · ${it.branch}` : ""}</div>
                 </div>
-                <Link href="/approve" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                <Link href={hrefForKind(it.kind)} className="cc-link" style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
                   Åbn <Icon name="ChevronRight" style={{ width: 13, height: 13 }} />
                 </Link>
               </li>
@@ -377,7 +405,7 @@ function GoalsTab({ s }: { s: DeckSummary }) {
   const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr`;
   // Real signals: clients (count + monthly fees) + replies today.
   const goals = [
-    { label: "5 betalende kunder", current: rev.clientCount, target: 5, unit: "kunder" },
+    { label: "5 betalende kunder", current: rev.payingClientCount, target: 5, unit: "kunder" },
     { label: `${kr(rev.goalMonthlyDKK)} / md i abonnement`, current: rev.monthlyDKK, target: rev.goalMonthlyDKK, unit: "kr" },
     { label: "30 varme svar", current: s.numbers.repliesToday, target: 30, unit: "svar" },
   ];
@@ -412,7 +440,7 @@ function GoalsTab({ s }: { s: DeckSummary }) {
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 14 }}>
           <div>
             <div className="cc-stat-n" style={{ color: "var(--accent-ink)" }}>{kr(rev.monthlyDKK)}</div>
-            <div className="cc-stat-l">løbende pr. måned · {rev.clientCount} kunder</div>
+            <div className="cc-stat-l">løbende pr. måned · {rev.payingClientCount} betalende{rev.clientCount > rev.payingClientCount ? ` af ${rev.clientCount} i CRM` : ""}</div>
           </div>
           <div>
             <div className="cc-stat-n">{kr(rev.setupDKK)}</div>
@@ -429,6 +457,9 @@ function GoalsTab({ s }: { s: DeckSummary }) {
         {rev.clientCount === 0 && (
           <p className="cc-dim" style={{ fontSize: 12, marginTop: 10 }}>Ingen klienter i Sheets endnu (eller Sheets ikke nået) — tallene fyldes når klienter er registreret.</p>
         )}
+        {rev.clientCount > 0 && rev.payingClientCount === 0 && (
+          <p className="cc-dim" style={{ fontSize: 12, marginTop: 10 }}>{rev.clientCount} klient(er) registreret, men ingen med et beløb endnu. Indtast pris pr. klient på Klienter-siden — så tæller de med her.</p>
+        )}
       </section>
     </div>
   );
@@ -437,7 +468,10 @@ function GoalsTab({ s }: { s: DeckSummary }) {
 /* ------------------------------------------------------------------ */
 /* AGENTS                                                              */
 /* ------------------------------------------------------------------ */
-function AgentsTab({ s }: { s: DeckSummary }) {
+function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null }) {
+  const spendCalls = spend ? spend.byModel.reduce((a, b) => a + b.calls, 0) : 0;
+  const spendOn = spendCalls > 0;
+  const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: n < 10 ? 2 : 0 })} kr`;
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
@@ -460,19 +494,55 @@ function AgentsTab({ s }: { s: DeckSummary }) {
       </div>
 
       <section className="cc-card cc-card-pad">
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+          <Icon name="CircleDollarSign" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>AI-forbrug</h2>
+          <Link href="/spend" className="cc-link" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Detaljer →</Link>
+        </div>
+        {spendOn ? (
+          <>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+              <div>
+                <div className="cc-stat-n" style={{ color: spend!.alert ? "var(--amber)" : "var(--accent-ink)" }}>{kr(spend!.todayDKK)}</div>
+                <div className="cc-stat-l">i dag · {spendCalls} kald</div>
+              </div>
+              <div>
+                <div className="cc-stat-n">{kr(spend!.totalDKK)}</div>
+                <div className="cc-stat-l">i alt</div>
+              </div>
+              {spend!.byModel.slice(0, 3).map((m) => (
+                <div key={m.key}>
+                  <div className="cc-stat-n" style={{ fontSize: 18 }}>{kr(m.costUSD * 6.9)}</div>
+                  <div className="cc-stat-l">{m.key} · {m.calls}×</div>
+                </div>
+              ))}
+            </div>
+            <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 10 }}>
+              Estimat (≈4 tegn/token). Alert ved 100 kr/dag · hard cap 150 kr/dag.
+            </div>
+          </>
+        ) : (
+          <div className="cc-dim" style={{ fontSize: 13 }}>
+            Ingen AI-kørsler logget endnu — tallene fyldes når motoren kører med en API-nøgle.
+            <div style={{ fontSize: 11.5, marginTop: 4 }}>Alert ved 100 kr/dag · hard cap 150 kr/dag.</div>
+          </div>
+        )}
+      </section>
+
+      <section className="cc-card cc-card-pad">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, marginBottom: 10 }}>Skills & motorer</h2>
         <div style={{ display: "grid", gap: 0 }}>
           {[
-            { n: "Daily engine", d: "PICK→DRAFT, fylder kø", on: true },
-            { n: "Email-finder", d: "MX-verificeret opslag", on: true },
-            { n: "Reply-assistant", d: "klassificér + udkast", on: true },
-            { n: "AI Spend & Health", d: "pr. model + vault-lint", on: false },
+            { n: "Daily engine", d: "PICK→DRAFT, fylder kø", on: true, label: "klar" },
+            { n: "Email-finder", d: "MX-verificeret opslag", on: true, label: "klar" },
+            { n: "Reply-assistant", d: "klassificér + udkast", on: true, label: "klar" },
+            { n: "AI Spend & Health", d: "pr. model + dagsgrænse", on: spendOn, label: spendOn ? "klar" : "ingen kørsler endnu" },
           ].map((r, i) => (
             <div key={r.n} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: r.on ? "var(--accent)" : "var(--border-strong)" }} />
               <span style={{ fontWeight: 600, fontSize: 13.5 }}>{r.n}</span>
               <span className="cc-dim" style={{ fontSize: 12.5 }}>{r.d}</span>
-              <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>{r.on ? "klar" : "Fase C"}</span>
+              <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>{r.label}</span>
             </div>
           ))}
         </div>

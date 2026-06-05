@@ -14,6 +14,7 @@ export default async function ClientsPage() {
 
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
   const totalSetup = clients.reduce((sum, c) => sum + (parseFloat(c.setupFee) || 0), 0);
+  const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
 
   return (
     <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -22,7 +23,7 @@ export default async function ClientsPage() {
         title="Klienter"
         subtitle={
           <>
-            {clients.length} bekræftede klienter
+            {clients.length} i CRM · <strong style={{ color: "var(--text)" }}>{payingCount} betalende</strong>
             {clients.length > 0 && (
               <> · <strong style={{ color: "var(--text)" }}>MRR: {totalMRR.toLocaleString("da-DK")} kr</strong> · Setup: {totalSetup.toLocaleString("da-DK")} kr</>
             )}

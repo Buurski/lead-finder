@@ -24,7 +24,8 @@ export interface DeckNumbers {
 export interface Revenue {
   monthlyDKK: number; // sum of client monthly fees
   setupDKK: number;   // sum of client setup fees
-  clientCount: number;
+  clientCount: number;     // all rows in the Clients tab (CRM total)
+  payingClientCount: number; // only rows with a monthly fee > 0 (real paying)
   goalMonthlyDKK: number; // 90-day target (from roadmap / priser)
 }
 
@@ -211,6 +212,7 @@ export function buildRevenue(clients: Client[], goalMonthlyDKK = 10000): Revenue
     monthlyDKK: clients.reduce((a, c) => a + num(c.monthlyFee), 0),
     setupDKK: clients.reduce((a, c) => a + num(c.setupFee), 0),
     clientCount: clients.length,
+    payingClientCount: clients.filter((c) => num(c.monthlyFee) > 0).length,
     goalMonthlyDKK,
   };
 }

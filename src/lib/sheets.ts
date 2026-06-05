@@ -164,6 +164,26 @@ export async function addClient(lead: Lead): Promise<void> {
   });
 }
 
+// Manual revenue entry. `clientId` is the sheet row number (getClients sets
+// id = sheet row), so we write straight to that row's fee columns G (monthly)
+// and H (setup). Lucas types these in himself from the Klienter page so the
+// CRM knows who actually pays — only rows with monthlyFee>0 count as paying.
+export async function updateClientFees(
+  clientId: string,
+  monthlyFee: string,
+  setupFee: string
+): Promise<void> {
+  const row = parseInt(clientId, 10);
+  if (!Number.isFinite(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Clients!G${row}:H${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[monthlyFee, setupFee]] },
+  });
+}
+
 export async function updateClientFolder(
   rowIndex: number,
   folderPath: string
