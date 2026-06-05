@@ -479,6 +479,32 @@ export async function moveLeadsToDeadLeads(
   return { moved: leads.length };
 }
 
+// Aggressive cleanup executor (P0.2). Archives `toArchive` into Dead Leads
+// (recoverable) and permanently removes both `toArchive` and `toDelete` rows
+// from the Leads tab. Index-safe: archived rows are appended FIRST, then all
+// removed rows go through deleteLeadRows in a single reverse-sorted batch so no
+// row index shifts under another deletion.
+export async function purgeAndArchiveLeads(
+  toDelete: Lead[],
+  toArchive: Lead[],
+  archiveReason: string
+): Promise<{ deleted: number; archived: number }> {
+  if (toArchive.length > 0) {
+    const rows = toArchive.map((l) => [
+      l.name, l.branch, l.phone, l.city, l.score, l.source, l.website,
+      l.websiteStatus, l.status, l.notes, l.lastUpdated, l.websiteQualityTier,
+      l.enrichedInfo, l.email, l.emailSentAt, l.emailOpenedAt, l.emailClickedAt,
+      l.emailStatus, l.followupSentAt, l.reviewsCount, l.callbackDate, archiveReason,
+    ]);
+    await appendToDeadLeads(rows);
+  }
+  const rowNums = [...toDelete, ...toArchive]
+    .map((l) => parseInt(l.id, 10))
+    .filter((n) => Number.isFinite(n));
+  await deleteLeadRows(rowNums); // reverse-sorted internally — safe combined batch
+  return { deleted: toDelete.length, archived: toArchive.length };
+}
+
 export async function markBriefFilled(rowIndex: number): Promise<void> {
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
