@@ -1,19 +1,13 @@
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import Link from "next/link";
+import FaseNote from "@/components/shell/FaseNote";
 import { aiStatus } from "@/lib/ai";
 import { vaultStatus } from "@/lib/vault";
 import { loadSpendSummary } from "@/lib/spend-log";
 
 export const metadata = { title: "Claude · Command Center" };
 export const dynamic = "force-dynamic";
-
-const CAPS = [
-  { t: "Bygger", d: "Skriver og refaktorerer hele systemet — frontend, routes, datalag." },
-  { t: "Analyserer", d: "Læser leads, svar og kø; foreslår hvad der kræver dig." },
-  { t: "Skriver i din stemme", d: "Udkast til kolde mails og svar gennem tone-mixer + soul.md." },
-  { t: "Holder mennesket i loop", d: "Sender og sletter aldrig selv. Alt går gennem en bekræftelse." },
-];
 
 export default async function ClaudePage() {
   const ai = aiStatus();
@@ -53,14 +47,15 @@ export default async function ClaudePage() {
           </div>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-          {CAPS.map((c) => (
-            <section key={c.t} className="cc-card cc-card-pad">
-              <div style={{ fontWeight: 600, fontSize: 14.5, marginBottom: 4 }}>{c.t}</div>
-              <p className="cc-muted" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{c.d}</p>
-            </section>
-          ))}
-        </div>
+        <FaseNote
+          phase="deployment-pending"
+          title="Hvad Claude gør (og hvad der mangler)"
+          points={[
+            "Bygger + analyserer systemet i dag via CLI'en — det er sådan dette command center bliver til.",
+            "In-app chat (skrive-felt der kører handlinger) er IKKE deployet endnu — det kræver en server-side agent-rute.",
+            "Sender og sletter aldrig selv. Alt går gennem en bekræftelse (samme guardrails som resten).",
+          ]}
+        />
 
         <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Icon name="Map" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />

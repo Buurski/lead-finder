@@ -165,12 +165,17 @@ export default function RepliesClient() {
   }
 
   if (state === "error") {
+    const notConfigured = /imap not configured|not configured|gmail/i.test(err);
     return (
       <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center" }}>
-        <Icon name="Activity" style={{ width: 18, height: 18, color: "var(--amber)" }} />
+        <Icon name={notConfigured ? "Mail" : "Activity"} style={{ width: 18, height: 18, color: "var(--amber)" }} />
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Kunne ikke nå indbakken</div>
-          <div className="cc-dim" style={{ fontSize: 12.5 }}>{err} — read-only scan, intet blev rørt.</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{notConfigured ? "Gmail er ikke sat op endnu" : "Kunne ikke nå indbakken"}</div>
+          <div className="cc-dim" style={{ fontSize: 12.5 }}>
+            {notConfigured
+              ? "Sæt GMAIL_USER + GMAIL_APP_PASSWORD i miljøet, så scanner jeg indbakken for svar. Intet blev rørt."
+              : `${err} — read-only scan, intet blev rørt.`}
+          </div>
         </div>
       </div>
     );

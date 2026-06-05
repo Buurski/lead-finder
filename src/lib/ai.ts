@@ -36,6 +36,9 @@ export interface AiResult {
   text: string;
   provider: "gateway" | "anthropic";
   model: string;
+  // Exact token usage when the provider returns it (Anthropic direct). Undefined
+  // on the gateway path → spend logging falls back to a length estimate.
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 // ---- model selection (env-configurable) ---------------------------------
@@ -107,7 +110,8 @@ async function viaGateway(req: AiRequest, model: string): Promise<string | null>
 }
 
 // ---- anthropic-direct path (raw fetch) ----------------------------------
-async function viaAnthropic(req: AiRequest, model: string): Promise<string | null> {
+interface AnthropicResponse { text: string; usage?: { inputTokens: number; outputTokens: number } }
+async function viaAnthropic(req: AiRequest, model: string): Promise<AnthropicResponse | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
@@ -128,9 +132,14 @@ async function viaAnthropic(req: AiRequest, model: string): Promise<string | nul
       signal: AbortSignal.timeout(req.timeoutMs ?? 45000),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { content?: Array<{ text?: string }> };
+    const data = (await res.json()) as { content?: Array<{ text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
     const text = (data.content ?? []).map((c) => c.text ?? "").join("").trim();
-    return text || null;
+    if (!text) return null;
+    const u = data.usage;
+    return {
+      text,
+      usage: u ? { inputTokens: u.input_tokens ?? 0, outputTokens: u.output_tokens ?? 0 } : undefined,
+    };
   } catch {
     return null;
   }
@@ -155,27 +164,29 @@ async function runGenerate(req: AiRequest, provider: AiProvider, model: string):
     if (text) return { text, provider: "gateway", model };
     // Gateway failed (network/quota) — try Anthropic direct if a key exists.
     const fb = await viaAnthropic(req, model);
-    if (fb) return { text: fb, provider: "anthropic", model: stripProvider(model) };
+    if (fb) return { text: fb.text, provider: "anthropic", model: stripProvider(model), usage: fb.usage };
     return null;
   }
   // provider === "anthropic"
-  const text = await viaAnthropic(req, model);
-  if (text) return { text, provider: "anthropic", model: stripProvider(model) };
+  const r = await viaAnthropic(req, model);
+  if (r) return { text: r.text, provider: "anthropic", model: stripProvider(model), usage: r.usage };
   return null;
 }
 
-// Transparent spend logging — estimated tokens, best-effort, never throws.
+// Transparent spend logging — exact tokens when the provider returns them
+// (Anthropic direct), else a length estimate. Best-effort, never throws.
 async function trackSpend(req: AiRequest, result: AiResult): Promise<void> {
   try {
-    const inputTokens = estimateTokens((req.system ?? "") + "\n" + req.prompt);
-    const outputTokens = estimateTokens(result.text);
+    const exact = result.usage;
+    const inputTokens = exact ? exact.inputTokens : estimateTokens((req.system ?? "") + "\n" + req.prompt);
+    const outputTokens = exact ? exact.outputTokens : estimateTokens(result.text);
     await logSpend({
       task: req.task,
       model: result.model,
       provider: result.provider,
       inputTokens,
       outputTokens,
-      estimated: true,
+      estimated: !exact,
     });
   } catch {
     /* never break generation over logging */
