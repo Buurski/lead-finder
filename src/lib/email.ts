@@ -660,6 +660,41 @@ export function getEmailTemplate(
   return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
 }
 
+// Thrown when no template group resolves for a lead. The command-center email.ts
+// uses a neutral "service" fallback (see getBranchGroup) so this is effectively a
+// guard rather than a frequent path — but the Vercel send routes catch it to
+// record skipReason="wrong_template" instead of sending mismatched copy.
+export class NoMatchingTemplateError extends Error {
+  readonly name = "NoMatchingTemplateError";
+  constructor(readonly leadName: string, readonly branch: string) {
+    super(`No matching email template for name="${leadName}" branch="${branch}"`);
+  }
+}
+
+/**
+ * Pure render: resolves a lead's template WITHOUT calling Gmail, for the
+ * enqueue-only Vercel send paths (SendQueue). Returns the exact bytes that
+ * would be sent.
+ */
+export function buildLeadEmail(
+  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
+  type: "cold" | "followup"
+): { subject: string; text: string; html: string } {
+  const daysSince = type === "followup" && lead.emailSentAt
+    ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 7;
+  const template = getEmailTemplate(lead.branch, type, {
+    leadId: lead.id,
+    name: lead.name,
+    branch: lead.branch,
+    city: lead.city,
+    websiteStatus: lead.websiteStatus,
+    websiteQualityTier: lead.websiteQualityTier,
+    daysSince,
+  });
+  return { subject: template.subject, text: template.text, html: template.html };
+}
+
 export async function sendLeadEmail(
   lead: {
     id: string; name: string; branch: string; city: string; email: string;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { sendLeadEmail } from "@/lib/email";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { getPauseStatus, enqueueSend } from "@/lib/sheets";
 import type { Lead } from "@/lib/sheets";
 
 // Fake lead for test sends
@@ -31,15 +32,35 @@ function fakeLead(email: string): Lead {
 }
 
 export async function POST(req: Request) {
-  const { emails, type }: { emails: string[]; type: "cold" | "followup" } = await req.json();
+  const { emails, type, override = false }: { emails: string[]; type: "cold" | "followup"; override?: boolean } = await req.json();
 
-  const results: { email: string; ok: boolean; error?: string }[] = [];
+  if (!override) {
+    const pause = await getPauseStatus("manual");
+    if (pause.paused) {
+      return NextResponse.json({ error: "Sends are halted (pause active). Pass override:true to force a test send.", pausedUntil: pause.until }, { status: 423 });
+    }
+  }
+
+  const results: { email: string; ok: boolean; enqueuedId?: string; error?: string }[] = [];
 
   for (const email of emails) {
     try {
-      await sendLeadEmail(fakeLead(email), type);
-      results.push({ email, ok: true });
+      const lead = fakeLead(email);
+      const tpl = buildLeadEmail(lead, type);
+      const id = await enqueueSend({
+        leadId: "test",
+        toEmail: email,
+        kind: "manual",
+        subject: tpl.subject,
+        body: tpl.text,
+        htmlBody: tpl.html,
+      });
+      results.push({ email, ok: true, enqueuedId: id });
     } catch (err) {
+      if (err instanceof NoMatchingTemplateError) {
+        results.push({ email, ok: false, error: "no matching template" });
+        continue;
+      }
       results.push({ email, ok: false, error: String(err) });
     }
   }

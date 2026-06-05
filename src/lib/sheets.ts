@@ -25,6 +25,18 @@ function getSheetsClient() {
 export type LeadStatus = "new" | "called" | "interested" | "client" | "skip";
 export type WebsiteQualityTier = "modern" | "mediocre" | "old" | "dead" | "";
 
+// Reasons used by the morning-review queue to flag a lead so today's cold-mail
+// or follow-up gets skipped. Kept as a string union so the values can be
+// written straight to the sheet without an extra mapping.
+export type SkipReason =
+  | ""
+  | "cloudflare_false_positive"
+  | "chain"
+  | "bad_fit"
+  | "wrong_template"
+  | "already_contacted_elsewhere"
+  | "other";
+
 export interface Lead {
   id: string;
   name: string;
@@ -48,6 +60,7 @@ export interface Lead {
   followupSentAt: string;    // kolonne S
   reviewsCount: number;      // kolonne T — review count at scrape time
   callbackDate: string;      // column U — ISO date "YYYY-MM-DD" or ""
+  skipReason?: SkipReason;    // kolonne V — set by morning-review skip UI
 }
 
 export interface Client {
@@ -62,7 +75,10 @@ export interface Client {
   setupFee: string;
 }
 
-const LEADS_RANGE = "Leads!A2:U";
+// Bumped from A2:U to A2:V to include the new skipReason column. Existing
+// rows that haven't been touched will just return undefined → "" via the ??
+// fallback below, so this is backwards-compatible.
+const LEADS_RANGE = "Leads!A2:V";
 const CLIENTS_RANGE = "Clients!A2:I";
 
 export async function getLeads(): Promise<Lead[]> {
@@ -95,6 +111,7 @@ export async function getLeads(): Promise<Lead[]> {
     followupSentAt: row[18] ?? "",
     reviewsCount:   Number(row[19]) || 0,
     callbackDate:   row[20] ?? "",
+    skipReason:     (row[21] as SkipReason) ?? "",
   }));
 }
 
@@ -222,6 +239,7 @@ export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
     "", "", "", "", "",       // columns O–S (email tracking — empty at scrape time)
     l.reviewsCount ?? 0,     // column T
     "",                       // column U — callbackDate (empty at scrape time)
+    "",                       // column V — skipReason (empty at scrape time)
   ]);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
@@ -306,6 +324,45 @@ export async function updateCallbackDate(rowIndex: number, date: string): Promis
     range: `Leads!U${row}`,
     valueInputOption: "RAW",
     requestBody: { values: [[date]] },
+  });
+}
+
+// Writes to the new column V on the Leads sheet. Used by the morning-review
+// UI when Lucas marks a lead as "skip today". The scheduled-send cron checks
+// this column (combined with the date it was set) to drop the lead from
+// today's send queue.
+export async function updateLeadSkipReason(
+  rowIndex: number,
+  reason: SkipReason
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Leads!V${row}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[reason]] },
+  });
+}
+
+// Updates websiteStatus (col H) + websiteQualityTier (col L) in one call.
+// Used by pre-cleanup to flip false-positive "dead" leads back to alive.
+export async function updateLeadWebsiteStatus(
+  rowIndex: number,
+  websiteStatus: Lead["websiteStatus"],
+  qualityTier: WebsiteQualityTier
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [
+        { range: `Leads!H${row}`, values: [[websiteStatus]] },
+        { range: `Leads!L${row}`, values: [[qualityTier]] },
+      ],
+    },
   });
 }
 
@@ -410,5 +467,491 @@ export async function markBriefFilled(rowIndex: number): Promise<void> {
     range: `Clients!D${row}`,
     valueInputOption: "RAW",
     requestBody: { values: [["Yes"]] },
+  });
+}
+
+// ============================================================
+// ===== Phase 2: review-pipeline tabs ========================
+// ============================================================
+//
+// Three new tabs, all auto-created on first access via the same pattern as
+// ensureDeadLeadsTab():
+//
+//   • TreatAsAlive  — manually-curated "this site IS alive, don't claim it's
+//                     broken" list. Populated automatically when Lucas skips a
+//                     lead in the review queue with reason `cloudflare_false_positive`.
+//
+//   • PauseSchedule — single-row kill switch. If pausedUntil > now, all
+//                     cron + manual send routes return early without sending.
+//
+//   • SkipReasons   — audit log of every skip decision. One row per skip
+//                     so we can spot patterns (e.g. "lots of cloudflare
+//                     skips on rema-domains → add to TreatAsAlive permanently").
+
+// ----- TreatAsAlive --------------------------------------------------------
+
+const TREAT_AS_ALIVE_TAB = "TreatAsAlive";
+
+async function ensureTreatAsAliveTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === TREAT_AS_ALIVE_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: TREAT_AS_ALIVE_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A1:C1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [["Domain", "Reason", "AddedAt"]] },
+  });
+}
+
+export async function getTreatAsAliveDomains(): Promise<string[]> {
+  await ensureTreatAsAliveTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A2:A`,
+  });
+  return (res.data.values ?? [])
+    .map((r) => (r[0] ?? "").toString().trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function addTreatAsAliveDomain(domain: string, reason: string): Promise<void> {
+  const clean = (domain ?? "").trim().toLowerCase();
+  if (!clean) return;
+  await ensureTreatAsAliveTab();
+  // De-dupe — don't append if the domain is already on the list.
+  const existing = await getTreatAsAliveDomains();
+  if (existing.includes(clean)) return;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${TREAT_AS_ALIVE_TAB}!A:C`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[clean, reason ?? "", new Date().toISOString()]],
+    },
+  });
+}
+
+// ----- PauseSchedule -------------------------------------------------------
+//
+// Granular pause schema. Master kill (A2) keeps its existing meaning — fail
+// CLOSED on unparseable. Specific-scope cells fail OPEN by default so a
+// keyboard slip in column C/D/E cannot freeze the whole system; they DO
+// still honour the indefinite-halt sentinels.
+//
+//   A1 PausedUntil          A2 = master kill timestamp / sentinel / empty
+//   B1 SetAt                B2 = master SetAt
+//   C1 PausedCold           C2 = cold timestamp / sentinel / empty
+//   D1 PausedFollowup       D2
+//   E1 PausedManual         E2
+//   F1 ColdSetAt            F2
+//   G1 FollowupSetAt        G2
+//   H1 ManualSetAt          H2
+
+const PAUSE_TAB = "PauseSchedule";
+
+export type PauseScope = "all" | "cold" | "followup" | "manual";
+
+const SCOPE_CELL: Record<PauseScope, { until: string; setAt: string }> = {
+  all:      { until: "A2", setAt: "B2" },
+  cold:     { until: "C2", setAt: "F2" },
+  followup: { until: "D2", setAt: "G2" },
+  manual:   { until: "E2", setAt: "H2" },
+};
+
+const PAUSE_HEADERS = [
+  "PausedUntil", "SetAt", "PausedCold", "PausedFollowup", "PausedManual",
+  "ColdSetAt", "FollowupSetAt", "ManualSetAt",
+];
+
+async function ensurePauseScheduleTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === PAUSE_TAB);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: PAUSE_TAB } } }],
+      },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${PAUSE_TAB}!A1:H2`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [PAUSE_HEADERS, ["", "", "", "", "", "", "", ""]],
+      },
+    });
+    return;
+  }
+  // Idempotent header upgrade — extend an older A1:B2 schema to A1:H2 without
+  // touching the master (A2) value or any specific cell that's already set.
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A1:H1`,
+  });
+  const current = (headerRes.data.values?.[0] ?? []) as string[];
+  if (current.length < PAUSE_HEADERS.length) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${PAUSE_TAB}!A1:H1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [PAUSE_HEADERS] },
+    });
+  }
+}
+
+export interface PauseStatus {
+  paused: boolean;
+  until: string | null;
+  scope: PauseScope;
+  /** True if the master kill (A2) is what's paused us. */
+  masterActive: boolean;
+  /** True if the specific-scope cell is what's paused us. */
+  scopeActive: boolean;
+}
+
+const SENTINEL_RE = /^(indefinite|paused|forever|true|stop|halt)$/i;
+
+function classifyCell(value: string, failClosed: boolean): { paused: boolean; raw: string | null } {
+  const raw = (value ?? "").toString().trim();
+  if (!raw) return { paused: false, raw: null };
+  if (SENTINEL_RE.test(raw)) return { paused: true, raw };
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) return { paused: failClosed, raw };
+  return { paused: parsed > Date.now(), raw };
+}
+
+/**
+ * Returns the pause status for a given send-scope. Master kill (A2) is
+ * always honoured — if it's set, every scope reports paused. Otherwise the
+ * scope-specific cell decides.
+ *
+ * scope === "all" returns the master cell's status verbatim (used by the
+ * cron-jobs and any caller that wants to know "is anything paused").
+ */
+export async function getPauseStatus(scope: PauseScope = "all"): Promise<PauseStatus> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A2:H2`,
+  });
+  const row = (res.data.values?.[0] ?? []) as string[];
+  const master = classifyCell(row[0] ?? "", true);  // A2 — fail CLOSED
+  if (scope === "all") {
+    return {
+      paused: master.paused,
+      until: master.raw,
+      scope: "all",
+      masterActive: master.paused,
+      scopeActive: false,
+    };
+  }
+  const colIndex = scope === "cold" ? 2 : scope === "followup" ? 3 : 4;
+  const specific = classifyCell(row[colIndex] ?? "", false);  // fail OPEN
+  if (master.paused) {
+    return { paused: true, until: master.raw, scope, masterActive: true, scopeActive: specific.paused };
+  }
+  return {
+    paused: specific.paused,
+    until: specific.raw,
+    scope,
+    masterActive: false,
+    scopeActive: specific.paused,
+  };
+}
+
+/**
+ * Writes the PausedUntil cell for the given scope. Pass empty string to
+ * clear. Master (scope="all") writes A2+B2; the others write their own
+ * column pair. Master is never touched by a non-"all" scope write.
+ */
+export async function setPauseUntil(scope: PauseScope, isoDate: string): Promise<void> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  const cells = SCOPE_CELL[scope];
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [
+        { range: `${PAUSE_TAB}!${cells.until}`, values: [[isoDate]] },
+        { range: `${PAUSE_TAB}!${cells.setAt}`, values: [[isoDate ? new Date().toISOString() : ""]] },
+      ],
+    },
+  });
+}
+
+/**
+ * Read-only snapshot of all four cells in one go. Useful for the review UI
+ * which renders all toggles at once.
+ */
+export interface PauseSnapshot {
+  master:   { paused: boolean; until: string | null };
+  cold:     { paused: boolean; until: string | null };
+  followup: { paused: boolean; until: string | null };
+  manual:   { paused: boolean; until: string | null };
+}
+
+export async function getPauseSnapshot(): Promise<PauseSnapshot> {
+  await ensurePauseScheduleTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${PAUSE_TAB}!A2:H2`,
+  });
+  const row = (res.data.values?.[0] ?? []) as string[];
+  const master = classifyCell(row[0] ?? "", true);
+  const cold = classifyCell(row[2] ?? "", false);
+  const followup = classifyCell(row[3] ?? "", false);
+  const manual = classifyCell(row[4] ?? "", false);
+  return {
+    master:   { paused: master.paused,   until: master.raw },
+    cold:     { paused: cold.paused,     until: cold.raw },
+    followup: { paused: followup.paused, until: followup.raw },
+    manual:   { paused: manual.paused,   until: manual.raw },
+  };
+}
+
+// ----- SendQueue -----------------------------------------------------------
+//
+// Single message-broker tab for outbound mail. Every Vercel send-route
+// writes here and never touches Gmail directly. The local send.mjs polls
+// this tab, claims pending rows, and sends them with its 4-14 min
+// triangular-jitter spacing. This is the only Gmail caller in the system,
+// which means the spacing guarantee is enforced in exactly one place.
+//
+// Schema (A1:L1 header / appended rows):
+//   A  id            uuid v4, unique
+//   B  enqueuedAt    ISO timestamp of write
+//   C  leadId        Leads-sheet row id, "test" for synthetic
+//   D  toEmail       recipient address
+//   E  kind          "cold" | "followup" | "manual"
+//   F  subject       full subject line
+//   G  body          plain-text body (already personalised + tracking-pixel free)
+//   H  htmlBody      full HTML body (includes tracking pixel)
+//   I  status        "pending" | "claimed" | "sent" | "skipped" | "expired"
+//   J  claimedAt     ISO when send.mjs took ownership
+//   K  sentAt        ISO when Gmail accepted
+//   L  skipReason    reason string if status=skipped
+
+const SEND_QUEUE_TAB = "SendQueue";
+
+const SEND_QUEUE_HEADERS = [
+  "id", "enqueuedAt", "leadId", "toEmail", "kind",
+  "subject", "body", "htmlBody",
+  "status", "claimedAt", "sentAt", "skipReason",
+];
+
+export type SendQueueKind = "cold" | "followup" | "manual";
+export type SendQueueStatus = "pending" | "claimed" | "sent" | "skipped" | "expired";
+
+export interface SendQueueItem {
+  id: string;
+  enqueuedAt: string;
+  leadId: string;
+  toEmail: string;
+  kind: SendQueueKind;
+  subject: string;
+  body: string;
+  htmlBody: string;
+  status: SendQueueStatus;
+  claimedAt: string;
+  sentAt: string;
+  skipReason: string;
+  /** Row index in the sheet (0-based starting after header) — needed for in-place updates. */
+  rowIndex: number;
+}
+
+async function ensureSendQueueTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === SEND_QUEUE_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: SEND_QUEUE_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A1:L1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [SEND_QUEUE_HEADERS] },
+  });
+}
+
+function uuidv4(): string {
+  // Built-in if available (Node 19+ and modern browsers), else fallback.
+  if (typeof crypto !== "undefined" && typeof (crypto as { randomUUID?: () => string }).randomUUID === "function") {
+    return (crypto as { randomUUID: () => string }).randomUUID();
+  }
+  // Fallback — RFC4122 v4-like; good enough for queue ids.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export interface EnqueueSendInput {
+  leadId: string;            // Leads row id ("test" for synthetic)
+  toEmail: string;
+  kind: SendQueueKind;
+  subject: string;
+  body: string;
+  htmlBody: string;
+}
+
+/**
+ * Append a pending item to SendQueue. Returns the generated id.
+ *
+ * This is the only path by which Vercel-side code "sends" mail —
+ * actual Gmail dispatch happens later, in send.mjs, with the
+ * triangular 4-14 min spacing. The function never blocks for Gmail.
+ */
+export async function enqueueSend(item: EnqueueSendInput): Promise<string> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A:L`,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [[
+        id, now, item.leadId, item.toEmail, item.kind,
+        item.subject, item.body, item.htmlBody,
+        "pending", "", "", "",
+      ]],
+    },
+  });
+  return id;
+}
+
+/**
+ * Fetch all rows currently in the SendQueue tab (including completed ones —
+ * filter on .status as needed). Each row carries its sheet rowIndex so the
+ * caller can issue in-place status updates.
+ */
+export async function getSendQueueRows(): Promise<SendQueueItem[]> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SEND_QUEUE_TAB}!A2:L`,
+  });
+  const rows = (res.data.values ?? []) as string[][];
+  return rows.map((row, i) => ({
+    id:         row[0] ?? "",
+    enqueuedAt: row[1] ?? "",
+    leadId:     row[2] ?? "",
+    toEmail:    row[3] ?? "",
+    kind:       (row[4] ?? "cold") as SendQueueKind,
+    subject:    row[5] ?? "",
+    body:       row[6] ?? "",
+    htmlBody:   row[7] ?? "",
+    status:     (row[8] ?? "pending") as SendQueueStatus,
+    claimedAt:  row[9] ?? "",
+    sentAt:     row[10] ?? "",
+    skipReason: row[11] ?? "",
+    rowIndex:   i,
+  }));
+}
+
+/**
+ * Convenience helper for send.mjs: just the rows still waiting.
+ */
+export async function getPendingSendQueue(): Promise<SendQueueItem[]> {
+  const all = await getSendQueueRows();
+  return all.filter((r) => r.status === "pending");
+}
+
+interface SendQueueUpdate {
+  status: SendQueueStatus;
+  claimedAt?: string;
+  sentAt?: string;
+  skipReason?: string;
+}
+
+/**
+ * Update a SendQueue row's status (and timestamps / reason). Uses the
+ * sheet-row offset from getSendQueueRows. Pass only the fields you want to
+ * change.
+ */
+export async function markSendQueueItem(rowIndex: number, update: SendQueueUpdate): Promise<void> {
+  await ensureSendQueueTab();
+  const sheets = getSheetsClient();
+  const row = rowIndex + 2; // skip header
+  const data: { range: string; values: string[][] }[] = [
+    { range: `${SEND_QUEUE_TAB}!I${row}`, values: [[update.status]] },
+  ];
+  if (update.claimedAt !== undefined) data.push({ range: `${SEND_QUEUE_TAB}!J${row}`, values: [[update.claimedAt]] });
+  if (update.sentAt !== undefined)    data.push({ range: `${SEND_QUEUE_TAB}!K${row}`, values: [[update.sentAt]] });
+  if (update.skipReason !== undefined) data.push({ range: `${SEND_QUEUE_TAB}!L${row}`, values: [[update.skipReason]] });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
+// ----- SkipReasons ---------------------------------------------------------
+
+const SKIP_REASONS_TAB = "SkipReasons";
+
+async function ensureSkipReasonsTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === SKIP_REASONS_TAB);
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: SKIP_REASONS_TAB } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SKIP_REASONS_TAB}!A1:D1`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[ "Timestamp", "LeadId", "Reason", "Notes" ]],
+    },
+  });
+}
+
+export async function logSkipReason(
+  leadId: string,
+  reason: SkipReason | string,
+  notes?: string
+): Promise<void> {
+  await ensureSkipReasonsTab();
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SKIP_REASONS_TAB}!A:D`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[
+        new Date().toISOString(),
+        leadId,
+        reason,
+        notes ?? "",
+      ]],
+    },
   });
 }

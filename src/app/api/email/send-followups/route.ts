@@ -1,38 +1,14 @@
 import { NextResponse } from "next/server";
-import { getLeads, updateLeadEmailStatus, updateLeadStatus } from "@/lib/sheets";
-import { sendLeadEmail } from "@/lib/email";
-import { FOLLOWUP_DAYS } from "@/lib/tone-mixer";
-import { canSendTo } from "@/lib/canSendTo";
+import { getLeads, getPauseStatus, updateLeadSkipReason, logSkipReason, enqueueSend } from "@/lib/sheets";
+import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
+import { isEligibleForFollowup } from "@/lib/eligibility";
 
 export const maxDuration = 300;
-
-// Single source of truth (OUTREACH_ANALYSIS: default 7 dage, not 12).
-
-function isReadyForFollowup(lead: {
-  email: string;
-  emailSentAt: string;
-  emailOpenedAt: string;
-  emailStatus: string;
-  followupSentAt: string;
-  status: string;
-}): boolean {
-  if (!lead.email) return false;
-  if (!lead.emailSentAt) return false;
-  if (lead.emailOpenedAt) return false;
-  if (lead.emailStatus === "replied") return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.followupSentAt) return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-
-  const sentDate = new Date(lead.emailSentAt);
-  const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
-  return daysSince >= FOLLOWUP_DAYS;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const leads = await getLeads();
-  const eligible = leads.filter((l) => isReadyForFollowup(l));
+  const eligible = leads.filter((l) => isEligibleForFollowup(l));
 
   if (searchParams.get("list") === "1") {
     const now = Date.now();
@@ -52,13 +28,20 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Phase 2 kill switch — granular: follow-ups respect both master kill and
+  // the followup-specific scope.
+  const pause = await getPauseStatus("followup");
+  if (pause.paused) {
+    return NextResponse.json({ paused: true, pausedUntil: pause.until, sent: 0, failed: 0, total: 0, done: true });
+  }
+
   const body = await request.json().catch(() => ({}));
   const leadIds: string[] | undefined = body.leadIds;
 
   const leads = await getLeads();
   const eligible = leads
     .map((lead, i) => ({ lead, rowIndex: i }))
-    .filter(({ lead }) => isReadyForFollowup(lead))
+    .filter(({ lead }) => isEligibleForFollowup(lead))
     .filter(({ lead }) => !leadIds || leadIds.includes(lead.id));
 
   const total = eligible.length;
@@ -71,21 +54,41 @@ export async function POST(request: Request) {
       let sent = 0;
       let failed = 0;
 
-      const seenEmails = new Set<string>();
-      for (const { lead, rowIndex } of eligible) {
-        // Central send-gate (Del 3) — skip hostile/chain/public/bounced/dupes.
-        const gate = canSendTo(lead, { seenEmails });
-        if (!gate.ok) {
-          failed++;
-          controller.enqueue(encoder.encode(JSON.stringify({ sent, failed, total, done: false, skipped: gate.reason }) + "\n"));
-          continue;
-        }
+      let processed = 0;
+  for (const { lead, rowIndex } of eligible) {
+    if (processed > 0 && processed % 5 === 0) {
+      const recheck = await getPauseStatus("followup");
+      if (recheck.paused) {
+        return NextResponse.json({
+          paused: true,
+          pausedUntil: recheck.until,
+          haltedMidRun: true,
+          sent,
+          failed,
+          remaining: eligible.length - processed,
+        });
+      }
+    }
+    processed++;
         try {
-          await sendLeadEmail(lead, "followup");
-          await updateLeadEmailStatus(rowIndex, { followupSentAt: new Date().toISOString() });
-          if (lead.status === "new") await updateLeadStatus(rowIndex, "called");
+          // Enqueue instead of calling Gmail — send.mjs polls and dispatches.
+          const tpl = buildLeadEmail(lead, "followup");
+          await enqueueSend({
+            leadId: lead.id,
+            toEmail: lead.email,
+            kind: "followup",
+            subject: tpl.subject,
+            body: tpl.text,
+            htmlBody: tpl.html,
+          });
           sent++;
-        } catch {
+        } catch (err) {
+          if (err instanceof NoMatchingTemplateError) {
+            try {
+              await updateLeadSkipReason(rowIndex, "wrong_template");
+              await logSkipReason(lead.id, "wrong_template", `no matching followup template for branch="${lead.branch}" name="${lead.name}"`);
+            } catch {}
+          }
           failed++;
         }
         controller.enqueue(
