@@ -50,9 +50,22 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
 }
 
 // Append new drafts (used by the engine COLLECT step). Returns the full queue.
+// Dedupes by leadId: a lead that already has a PENDING draft is skipped, so a
+// re-run of the engine never stacks duplicate cards for the same lead in the
+// approval queue. (Approved/edited/rejected drafts don't block a fresh draft.)
 export async function appendDrafts(newDrafts: QueueDraft[]): Promise<QueueDraft[]> {
   const existing = await readQueue();
-  const merged = [...existing, ...newDrafts];
+  const pendingLeadIds = new Set(
+    existing.filter((d) => d.status === "pending" && d.leadId).map((d) => d.leadId)
+  );
+  const seen = new Set<string>();
+  const deduped = newDrafts.filter((d) => {
+    if (!d.leadId) return true; // no leadId ⇒ can't dedupe, keep it
+    if (pendingLeadIds.has(d.leadId) || seen.has(d.leadId)) return false;
+    seen.add(d.leadId);
+    return true;
+  });
+  const merged = [...existing, ...deduped];
   await writeQueue(merged);
   return merged;
 }

@@ -53,6 +53,11 @@ const q = await readQueue();
 check("step queue: draft persisted", q.length === 1 && q[0].leadId === "L1");
 check("step queue: comboId carried", q[0].comboId === composed.comboId);
 
+// 4b. Re-running the engine must NOT stack a duplicate card for the same lead.
+await appendDrafts([{ ...draft, id: newDraftId() }]);
+const qDup = await readQueue();
+check("step queue: duplicate pending leadId skipped", qDup.length === 1);
+
 // 5. A reply comes back and is classified.
 const cls = classifyReply("Ja tak, lad os gå videre — send en aftale!");
 check("step reply: becameClient detected", cls.becameClient === true);
