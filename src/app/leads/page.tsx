@@ -3,6 +3,7 @@ import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
+import DeepResearchPanel from "@/components/DeepResearchPanel";
 
 export const revalidate = 60;
 
@@ -45,6 +46,8 @@ export default async function LeadsPage() {
           <ScrapeButton />
         </div>
       </div>
+
+      <DeepResearchPanel />
 
       <BulkEmailPanel />
 
