@@ -29,6 +29,7 @@ import { composeColdEmail } from "./compose.ts";
 import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { compositeScore } from "./leads/composite-score.ts";
+import { diversifyByFamily } from "./leads/diversify.ts";
 import type { Lead } from "./sheets.ts";
 
 export interface EngineOptions {
@@ -171,6 +172,9 @@ async function pickLeads(
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: compositeScore(lead).score }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
+      // Spread the batch across branch families so it's a MIX, not all one
+      // branch — the single best lead still leads, then picks rotate branches.
+      candidates = diversifyByFamily(candidates, (c) => c.branch);
     }
     return { leads: candidates, source: "sheets" };
   } catch {

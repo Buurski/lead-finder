@@ -99,6 +99,20 @@ export function branchRelevanceMultiplier(branch: string | undefined): number {
   return 0.85; // unmatched local SMB → neutral-ish
 }
 
+export type BranchFamily = "beauty" | "food" | "trade" | "retail" | "professional" | "other";
+
+/** Coarse branch family — used to diversify a PICK batch so it isn't all one
+ *  branch (Lucas: keep a MIX, beauty weighted up). Mirrors the multiplier buckets. */
+export function branchFamily(branch: string | undefined): BranchFamily {
+  const b = (branch ?? "").toLowerCase();
+  if (/(skønhed|hud|negle|vippe|frisør|frisor|barber|klinik|hudpleje|massage|spa|wellness|kosmet|brow|lash|tatover)/.test(b)) return "beauty";
+  if (/(restaurant|café|cafe|bistro|pizzeria|bageri|konditori|catering|food|spiseri|kro)/.test(b)) return "food";
+  if (/(tømrer|tomrer|maler|elektriker|vvs|blikkenslager|tagdækker|tagdaekker|murer|rengøring|rengoring|vinduespudser|gartner|handyman|smed|snedker|montør|montor|flytte|kloak)/.test(b)) return "trade";
+  if (/(butik|shop|forretning|fotograf|blomster|frugt|deli)/.test(b)) return "retail";
+  if (/(advokat|revisor|fysioterapeut|fysio|tandlæge|tandlaege|optiker|ejendomsmægler|maegler|mægler|konsulent|bogholder)/.test(b)) return "professional";
+  return "other";
+}
+
 /** Sleeping beauty: strong reputation, weak/no website = our ideal target. */
 export function isSleepingBeauty(
   rating: number,
