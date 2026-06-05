@@ -14,6 +14,7 @@ const DOCS = [
   { file: "NIGHT_BUILD_REPORT.md", label: "Nat-rapport v1" },
   { file: "NIGHT_BUILD_REPORT_v2.md", label: "Nat-rapport v2" },
   { file: "NIGHT_BUILD_REPORT_v3.md", label: "Nat-rapport v3 (Del 3)" },
+  { file: "NIGHT_BUILD_REPORT_v4.md", label: "Nat-rapport v4 (Del 4)" },
 ];
 
 function readDoc(file: string): string | null {
