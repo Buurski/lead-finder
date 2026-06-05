@@ -43,6 +43,9 @@ const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|m
 const PHOTO = /fotograf|foto|photo/i;
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
+// Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
+// Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
+const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
 
 // Returns two distinct, branch-relevant demos. Photo is the one case that maps
 // to a single strong demo (we still return two by pairing with a neutral one).
@@ -56,5 +59,6 @@ export function pickDemoPair(branch: string, name: string): [Demo, Demo] {
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.denlillemaler, D.ktvvs];
+  if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];
   return [D.vestfjends, D.underKlippen];
 }
