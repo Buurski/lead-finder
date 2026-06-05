@@ -44,18 +44,30 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: `sheets: ${String(err)}`, replies: [] }, { status: 200 });
   }
 
-  // Only leads we have actually emailed are candidates for an inbound reply.
-  const emailed = leads.filter((l) => l.emailSentAt && l.email);
+  // Any lead with an email is a candidate — not just ones the engine emailed —
+  // so replies from manually-contacted prospects (e.g. RR Studio) show up too.
+  const emailed = leads.filter((l) => l.email);
   if (emailed.length === 0) {
     return NextResponse.json({ ok: true, replies: [], checked: 0 });
   }
 
   const byEmail = new Map(emailed.map((l) => [l.email.toLowerCase().trim(), l]));
-  const earliest = emailed
+  // Anchor the scan on the earliest real send date when we have one; otherwise
+  // fall back to a bounded recent window so we never scan years of inbox.
+  const sendDates = emailed
     .map((l) => new Date(l.emailSentAt))
-    .reduce((a, b) => (a < b ? a : b));
-  const since = new Date(earliest);
-  since.setDate(since.getDate() - 1);
+    .filter((d) => !Number.isNaN(d.getTime()));
+  const since = new Date();
+  if (sendDates.length > 0) {
+    const earliest = sendDates.reduce((a, b) => (a < b ? a : b));
+    since.setTime(earliest.getTime());
+    since.setDate(since.getDate() - 1);
+  } else {
+    since.setDate(since.getDate() - 30);
+  }
+  const floor = new Date();
+  floor.setDate(floor.getDate() - 60);
+  if (since < floor) since.setTime(floor.getTime());
 
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     return NextResponse.json({ ok: false, error: "imap not configured", replies: [] }, { status: 200 });
