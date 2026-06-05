@@ -21,6 +21,13 @@ export interface DeckNumbers {
   wonThisWeek: number;
 }
 
+export interface Revenue {
+  monthlyDKK: number; // sum of client monthly fees
+  setupDKK: number;   // sum of client setup fees
+  clientCount: number;
+  goalMonthlyDKK: number; // 90-day target (from roadmap / priser)
+}
+
 export interface NeedsYouItem {
   leadId: string;
   name: string;
@@ -67,6 +74,7 @@ export interface DeckSummary {
   pipeline: PipelineStatus;
   pulse: PulseClient[];
   dailySent: DailySent[]; // last 14 days, oldest -> newest (for the usage sparkline)
+  revenue: Revenue;
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
   buckets: Record<
     "indtjening" | "kunder" | "kalender" | "kommunikation" | "opgaver" | "moeder" | "viden",
@@ -192,6 +200,21 @@ export function buildDailySent(leads: Lead[], days = 14): DailySent[] {
   return [...byDate.entries()].map(([date, v]) => ({ date, count: v.count, replies: v.replies }));
 }
 
+// Real revenue from the confirmed clients (Clients tab). Goal default 10.000 kr/md
+// (90-day roadmap) unless an override is passed from the vault priser/roadmap.
+export function buildRevenue(clients: Client[], goalMonthlyDKK = 10000): Revenue {
+  const num = (s: string) => {
+    const n = parseFloat(String(s ?? "").replace(/[^\d.,]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  };
+  return {
+    monthlyDKK: clients.reduce((a, c) => a + num(c.monthlyFee), 0),
+    setupDKK: clients.reduce((a, c) => a + num(c.setupFee), 0),
+    clientCount: clients.length,
+    goalMonthlyDKK,
+  };
+}
+
 export function buildNumbers(leads: Lead[]): DeckNumbers {
   return {
     newLeads: leads.filter((l) => l.status === "new").length,
@@ -231,6 +254,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     pipeline,
     pulse: buildPulse(clients),
     dailySent: buildDailySent(leads),
+    revenue: buildRevenue(clients),
     buckets: {
       indtjening: clients.length > 0,
       kunder: clients.length > 0 || leads.some((l) => l.status === "client"),

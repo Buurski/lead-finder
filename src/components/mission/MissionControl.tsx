@@ -372,21 +372,22 @@ function PipelineTab({ s, cadence }: { s: DeckSummary; cadence?: string | null }
 /* ------------------------------------------------------------------ */
 /* GOALS & REVENUE                                                     */
 /* ------------------------------------------------------------------ */
-const GOALS = [
-  { label: "5 betalende kunder", current: 0, target: 5, unit: "kunder" },
-  { label: "10.000 kr / md i abonnement", current: 0, target: 10000, unit: "kr" },
-  { label: "30 varme svar", current: 0, target: 30, unit: "svar" },
-];
-
 function GoalsTab({ s }: { s: DeckSummary }) {
-  // wonThisWeek + clients give the only live signal we have without the vault.
-  const goals = GOALS.map((g, i) => (i === 0 ? { ...g, current: s.numbers.wonThisWeek } : g));
+  const rev = s.revenue;
+  const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr`;
+  // Real signals: clients (count + monthly fees) + replies today.
+  const goals = [
+    { label: "5 betalende kunder", current: rev.clientCount, target: 5, unit: "kunder" },
+    { label: `${kr(rev.goalMonthlyDKK)} / md i abonnement`, current: rev.monthlyDKK, target: rev.goalMonthlyDKK, unit: "kr" },
+    { label: "30 varme svar", current: s.numbers.repliesToday, target: 30, unit: "svar" },
+  ];
+  const revPct = Math.min(100, Math.round((rev.monthlyDKK / Math.max(1, rev.goalMonthlyDKK)) * 100));
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <section className="cc-card cc-card-pad">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>90-dages mål</h2>
         <p className="cc-dim" style={{ fontSize: 13, marginBottom: 18 }}>
-          Mål og priser flytter til vaulten (KnowledgeOS) i Fase C. Indtil da er det her et roligt skelet.
+          Live tal fra Klienter-fanen. Detaljerede mål kan redigeres i vaulten (Goals-siden).
         </p>
         <div style={{ display: "grid", gap: 16 }}>
           {goals.map((g) => {
@@ -407,12 +408,27 @@ function GoalsTab({ s }: { s: DeckSummary }) {
       </section>
 
       <section className="cc-card cc-card-pad">
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, marginBottom: 10 }}>Indtjening vs. mål</h2>
-        <div className="cc-empty" style={{ padding: "26px 18px" }}>
-          <Icon name="Target" />
-          <div>Priser hentes fra vaulten (context/priser.md) i Fase C.</div>
-          <div className="cc-dim" style={{ fontSize: 12 }}>Når GitHub-handshake står, vises rigtig omsætning her.</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Indtjening vs. mål</h2>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 14 }}>
+          <div>
+            <div className="cc-stat-n" style={{ color: "var(--accent-ink)" }}>{kr(rev.monthlyDKK)}</div>
+            <div className="cc-stat-l">løbende pr. måned · {rev.clientCount} kunder</div>
+          </div>
+          <div>
+            <div className="cc-stat-n">{kr(rev.setupDKK)}</div>
+            <div className="cc-stat-l">setup i alt</div>
+          </div>
+          <div>
+            <div className="cc-stat-n">{revPct}%</div>
+            <div className="cc-stat-l">af {kr(rev.goalMonthlyDKK)}-målet</div>
+          </div>
         </div>
+        <div style={{ height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}>
+          <div style={{ width: `${revPct}%`, height: "100%", background: "var(--accent)", borderRadius: 999 }} />
+        </div>
+        {rev.clientCount === 0 && (
+          <p className="cc-dim" style={{ fontSize: 12, marginTop: 10 }}>Ingen klienter i Sheets endnu (eller Sheets ikke nået) — tallene fyldes når klienter er registreret.</p>
+        )}
       </section>
     </div>
   );

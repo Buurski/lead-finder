@@ -184,7 +184,8 @@ export async function runLighthouse(url: string, opts: { desktop?: boolean } = {
   try {
     const chromeLauncher = await import("chrome-launcher" as string).catch(() => null);
     if (!chromeLauncher) {
-      return { available: false, scores: null, note: "chrome-launcher ikke installeret" };
+      // No local Chrome (e.g. Vercel) — use Google PageSpeed Insights instead.
+      return await pageSpeedFallback(url, cacheKey);
     }
     const launched = await chromeLauncher.launch({ chromeFlags: ["--headless=new", "--no-sandbox", "--disable-gpu"] });
     chrome = launched;
@@ -209,10 +210,50 @@ export async function runLighthouse(url: string, opts: { desktop?: boolean } = {
     } catch { /* best-effort */ }
     return result;
   } catch (err) {
-    // No Chrome on the host (e.g. Vercel) or a launch failure.
-    return { available: false, scores: null, note: `Lighthouse kunne ikke køre: ${String(err).slice(0, 120)}` };
+    // Chrome launch failed (e.g. Vercel) — fall back to PageSpeed Insights.
+    const fb = await pageSpeedFallback(url, cacheKey);
+    if (fb.available) return fb;
+    return { available: false, scores: null, note: `Lighthouse kunne ikke køre: ${String(err).slice(0, 90)} — ${fb.note}` };
   } finally {
     if (chrome) { try { await chrome.kill(); } catch { /* ignore */ } }
+  }
+}
+
+// Google PageSpeed Insights — the Vercel-safe fallback (runs Lighthouse on
+// Google's servers). Free tier works without a key; PAGESPEED_API_KEY raises the
+// quota. Same four category scores. Cached 24h like the local run.
+async function pageSpeedFallback(url: string, cacheKey: string): Promise<LighthouseResult> {
+  try {
+    const cats = ["performance", "accessibility", "best-practices", "seo"];
+    const params = new URLSearchParams({ url, strategy: "mobile" });
+    for (const c of cats) params.append("category", c);
+    if (process.env.PAGESPEED_API_KEY) params.set("key", process.env.PAGESPEED_API_KEY);
+    const res = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params}`, {
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) {
+      return { available: false, scores: null, note: `Lighthouse ikke tilgængelig her — PageSpeed API svarede ${res.status}` };
+    }
+    const data = (await res.json()) as { lighthouseResult?: { categories?: Record<string, { score: number | null }> } };
+    const c = data.lighthouseResult?.categories;
+    if (!c) return { available: false, scores: null, note: "Lighthouse ikke tilgængelig her — PageSpeed gav intet resultat" };
+    const pct = (s: number | null | undefined) => Math.round((s ?? 0) * 100);
+    const scores: LighthouseScores = {
+      performance: pct(c.performance?.score),
+      accessibility: pct(c.accessibility?.score),
+      bestPractices: pct(c["best-practices"]?.score),
+      seo: pct(c.seo?.score),
+    };
+    const result: LighthouseResult = {
+      available: true,
+      scores,
+      note: "Lighthouse er ikke tilgængelig på Vercel — bruger PageSpeed API i stedet",
+      ranAt: new Date().toISOString(),
+    };
+    try { const { store } = await import("./store.ts"); await store.put(cacheKey, result); } catch { /* best-effort */ }
+    return result;
+  } catch (err) {
+    return { available: false, scores: null, note: `PageSpeed fallback fejlede: ${String(err).slice(0, 90)}` };
   }
 }
 

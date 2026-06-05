@@ -139,6 +139,20 @@ function client(over = {}) {
   check("dailySent excludes out-of-window", series.reduce((a, d) => a + d.count, 0) === 3);
 }
 
+// ---- buildRevenue --------------------------------------------------------
+{
+  const cs = [
+    client({ monthlyFee: "545", setupFee: "5000" }),
+    client({ monthlyFee: "295", setupFee: "3.000" }),
+    client({ monthlyFee: "", setupFee: "" }),
+  ];
+  const r = deck.buildRevenue(cs, 10000);
+  check("revenue monthly sum", r.monthlyDKK === 840);
+  check("revenue setup parses thousands sep", r.setupDKK === 8000);
+  check("revenue clientCount", r.clientCount === 3);
+  check("revenue goal default", r.goalMonthlyDKK === 10000);
+}
+
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all deck checks ok");
 console.log(`\ntest_deck — ${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

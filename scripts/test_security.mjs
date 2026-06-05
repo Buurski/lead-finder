@@ -64,7 +64,9 @@ check("gate allows a clean lead", canSendTo({ name: "Salon Lumière", branch: "f
 {
   const route = fs.readFileSync(path.join(REPO_ROOT, "src", "app", "api", "replies", "[id]", "send-reply", "route.ts"), "utf-8");
   check("send-reply hard-locks QA recipient to buur.aigro", /QA_RECIPIENT\s*=\s*"buur\.aigro@gmail\.com"/.test(route));
-  check("send-reply live mode is operator-only (412)", /needsOperator|operator-only/.test(route) && /412/.test(route));
+  check("send-reply live mode is ARM-gated (LIVE_SEND_ARMED + needsArm + 412)",
+    /LIVE_SEND_ARMED/.test(route) && /needsArm/.test(route) && /412/.test(route));
+  check("send-reply live send requires confirm:true", /confirm !== true/.test(route));
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all security checks ok");

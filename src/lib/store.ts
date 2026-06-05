@@ -143,7 +143,19 @@ class KVStore implements Store {
   async get<T = unknown>(key: string) { const kv = await this.kv(); return ((await kv.get(`doc:${key}`)) as T) ?? null; }
   async put(key: string, value: unknown) { const kv = await this.kv(); await kv.set(`doc:${key}`, value); }
   async delete(key: string) { const kv = await this.kv(); await kv.del(`doc:${key}`); }
-  async list(prefix: string) { const kv = await this.kv(); const keys = (await kv.keys(`doc:${prefix}*`)) as string[]; return keys.map((k) => k.replace(/^doc:/, "")); }
+  async list(prefix: string) {
+    // SCAN cursor loop — never KEYS (KEYS blocks the Redis event loop in
+    // production; flagged by the QA council). Pages through with a cursor.
+    const kv = await this.kv();
+    const out: string[] = [];
+    let cursor = 0;
+    do {
+      const [next, batch] = (await kv.scan(cursor, { match: `doc:${prefix}*`, count: 200 })) as [number, string[]];
+      for (const k of batch) out.push(k.replace(/^doc:/, ""));
+      cursor = Number(next);
+    } while (cursor !== 0);
+    return out;
+  }
   async putAsset(): Promise<PutAssetResult> { throw new Error("KVStore does not serve assets — use ComposedStore"); }
   async getAssetUrl() { return null; }
   async deleteAsset() { /* n/a */ }
