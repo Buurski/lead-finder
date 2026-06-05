@@ -52,6 +52,12 @@ export interface PulseClient {
   stage: "demo" | "in progress" | "live" | string;
 }
 
+export interface DailySent {
+  date: string; // YYYY-MM-DD
+  count: number; // mails sent that day
+  replies: number; // replies attributed to that day (by send date — no reply ts)
+}
+
 export interface DeckSummary {
   generatedAt: string;
   ok: boolean; // false when Sheets was unreachable (queue-only view)
@@ -60,6 +66,7 @@ export interface DeckSummary {
   queue: QueuePeek;
   pipeline: PipelineStatus;
   pulse: PulseClient[];
+  dailySent: DailySent[]; // last 14 days, oldest -> newest (for the usage sparkline)
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
   buckets: Record<
     "indtjening" | "kunder" | "kalender" | "kommunikation" | "opgaver" | "moeder" | "viden",
@@ -166,6 +173,25 @@ export function buildPulse(clients: Client[]): PulseClient[] {
   return out.slice(0, 6);
 }
 
+// Mails-per-day for the last `days` days, with replies attributed to the send
+// date (Sheets has no reply timestamp). Oldest -> newest, gaps filled with zeros.
+export function buildDailySent(leads: Lead[], days = 14): DailySent[] {
+  const byDate = new Map<string, { count: number; replies: number }>();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+    byDate.set(d, { count: 0, replies: 0 });
+  }
+  for (const l of leads) {
+    if (!l.emailSentAt) continue;
+    const d = l.emailSentAt.slice(0, 10);
+    const bucket = byDate.get(d);
+    if (!bucket) continue; // outside the window
+    bucket.count += 1;
+    if (l.emailStatus === "replied") bucket.replies += 1;
+  }
+  return [...byDate.entries()].map(([date, v]) => ({ date, count: v.count, replies: v.replies }));
+}
+
 export function buildNumbers(leads: Lead[]): DeckNumbers {
   return {
     newLeads: leads.filter((l) => l.status === "new").length,
@@ -204,6 +230,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     queue: queuePeek,
     pipeline,
     pulse: buildPulse(clients),
+    dailySent: buildDailySent(leads),
     buckets: {
       indtjening: clients.length > 0,
       kunder: clients.length > 0 || leads.some((l) => l.status === "client"),

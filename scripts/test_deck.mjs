@@ -118,6 +118,27 @@ function client(over = {}) {
   check("numbers: wonThisWeek only recent client", n.wonThisWeek === 1);
 }
 
+// ---- buildDailySent ------------------------------------------------------
+{
+  const today = new Date().toISOString();
+  const yest = new Date(Date.now() - 86_400_000).toISOString();
+  const old = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const leads = [
+    lead({ emailSentAt: today }),
+    lead({ emailSentAt: today, emailStatus: "replied" }),
+    lead({ emailSentAt: yest }),
+    lead({ emailSentAt: old }),       // outside 14d window
+    lead({ emailSentAt: "" }),         // never sent
+  ];
+  const series = deck.buildDailySent(leads, 14);
+  check("dailySent has 14 entries", series.length === 14);
+  check("dailySent oldest->newest", series[0].date < series[13].date);
+  const todayBucket = series[series.length - 1];
+  check("dailySent today count = 2", todayBucket.count === 2);
+  check("dailySent today replies = 1", todayBucket.replies === 1);
+  check("dailySent excludes out-of-window", series.reduce((a, d) => a + d.count, 0) === 3);
+}
+
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all deck checks ok");
 console.log(`\ntest_deck — ${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

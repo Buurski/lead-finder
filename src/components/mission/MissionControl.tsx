@@ -5,16 +5,37 @@ import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
+import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 
 type Tab = "today" | "pipeline" | "goals" | "agents";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "today", label: "Today" },
-  { id: "pipeline", label: "Pipeline" },
-  { id: "goals", label: "Goals & Revenue" },
-  { id: "agents", label: "Agents" },
+const TABS: { id: Tab; label: string; short: string }[] = [
+  { id: "today", label: "Today", short: "I dag" },
+  { id: "pipeline", label: "Pipeline", short: "Pipeline" },
+  { id: "goals", label: "Goals & Revenue", short: "Mål" },
+  { id: "agents", label: "Agents", short: "Agenter" },
 ];
+
+function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void; secondary?: boolean }) {
+  return (
+    <div className="cc-tabs cc-tabs-scroll" role="tablist" aria-label="Mission Control faner" style={secondary ? { alignSelf: "center" } : undefined}>
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          role="tab"
+          aria-selected={tab === t.id}
+          data-active={tab === t.id}
+          className="cc-tab"
+          onClick={() => setTab(t.id)}
+        >
+          <span className="cc-tab-full">{t.label}</span>
+          <span className="cc-tab-short">{t.short}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function greeting(d: Date): string {
   const h = d.getHours();
@@ -43,20 +64,9 @@ export default function MissionControl({ summary, cadence, spendAlert }: { summa
           <h1 className="cc-h1">{hello}, Lucas.</h1>
           <p className="cc-sub">{summaryLine(summary)}</p>
         </div>
-        <div className="cc-tabs" role="tablist" aria-label="Mission Control faner">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
-              data-active={tab === t.id}
-              className="cc-tab"
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* On wider screens the tabs sit in the header; on mobile they move below
+            the Today content (secondary nav) so the screen leads with what matters. */}
+        <div className="cc-tabs-header"><TabNav tab={tab} setTab={setTab} /></div>
       </header>
 
       {!summary.ok && (
@@ -79,6 +89,12 @@ export default function MissionControl({ summary, cadence, spendAlert }: { summa
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
       {tab === "agents" && <AgentsTab s={summary} />}
+
+      {/* Secondary nav — only shown on mobile (header tabs hide there). */}
+      <div className="cc-tabs-secondary">
+        <span className="cc-kicker" style={{ display: "block", textAlign: "center", marginBottom: 8 }}>Skift visning</span>
+        <TabNav tab={tab} setTab={setTab} secondary />
+      </div>
     </div>
   );
 }
@@ -119,6 +135,10 @@ function TodayTab({ s }: { s: DeckSummary }) {
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(0, 1.2fr)", gap: 18, alignItems: "stretch" }} className="cc-today-cols">
+        <HeroNumber s={s} />
+        <UsageSparkline data={s.dailySent} />
+      </div>
       <NumbersStrip s={s} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
         <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} />
@@ -128,8 +148,23 @@ function TodayTab({ s }: { s: DeckSummary }) {
         </div>
       </div>
       <PulseCard s={s} />
-      <style>{`@media (max-width: 820px){ .cc-today-cols { grid-template-columns: 1fr !important; } }`}</style>
     </div>
+  );
+}
+
+// The single most important number, big — what needs attention today.
+function HeroNumber({ s }: { s: DeckSummary }) {
+  const replies = s.numbers.repliesToday;
+  const lead = replies > 0
+    ? { value: replies, label: replies === 1 ? "svar i dag — åbn det" : "svar i dag — kig på dem", href: "/replies", tone: "var(--accent)" }
+    : s.queue.pending > 0
+      ? { value: s.queue.pending, label: "udkast venter på dig", href: "/approve", tone: "var(--accent)" }
+      : { value: s.numbers.newLeads, label: "nye leads i pipelinen", href: "/leads", tone: "var(--text)" };
+  return (
+    <Link href={lead.href} className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{lead.value}</div>
+      <div className="cc-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{lead.label} →</div>
+    </Link>
   );
 }
 

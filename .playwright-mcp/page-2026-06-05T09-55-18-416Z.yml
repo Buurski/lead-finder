@@ -1,0 +1,176 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary "Hovednavigation" [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: ls
+        - generic [ref=e6]:
+          - text: Command Center
+          - generic [ref=e7]: Lucas · agentic OS
+      - navigation "Workspace" [ref=e8]:
+        - generic [ref=e9]: Workspace
+        - link "Mission Control" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - generic [ref=e16]: Mission Control
+        - link "Leads" [ref=e17] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e18]
+          - generic [ref=e23]: Leads
+        - link "Godkendelse" [ref=e24] [cursor=pointer]:
+          - /url: /approve
+          - img [ref=e25]
+          - generic [ref=e28]: Godkendelse
+        - link "Svar" [ref=e29] [cursor=pointer]:
+          - /url: /replies
+          - img [ref=e30]
+          - generic [ref=e33]: Svar
+        - link "Klienter" [ref=e34] [cursor=pointer]:
+          - /url: /clients
+          - img [ref=e35]
+          - generic [ref=e38]: Klienter
+      - navigation "Agents" [ref=e39]:
+        - generic [ref=e40]: Agents
+        - link "Claude" [ref=e41] [cursor=pointer]:
+          - /url: /claude
+          - img [ref=e42]
+          - generic [ref=e45]: Claude
+        - link "Hermes snart" [ref=e46] [cursor=pointer]:
+          - /url: /hermes
+          - img [ref=e47]
+          - generic [ref=e53]: Hermes
+          - generic [ref=e54]: snart
+        - link "AI Spend" [ref=e55] [cursor=pointer]:
+          - /url: /spend
+          - img [ref=e56]
+          - generic [ref=e59]: AI Spend
+      - navigation "Self" [ref=e60]:
+        - generic [ref=e61]: Self
+        - link "Goals" [ref=e62] [cursor=pointer]:
+          - /url: /goals
+          - img [ref=e63]
+          - generic [ref=e67]: Goals
+        - link "SEO" [ref=e68] [cursor=pointer]:
+          - /url: /seo
+          - img [ref=e69]
+          - generic [ref=e72]: SEO
+        - link "Studio" [ref=e73] [cursor=pointer]:
+          - /url: /studio
+          - img [ref=e74]
+          - generic [ref=e79]: Studio
+        - link "Journal" [ref=e80] [cursor=pointer]:
+          - /url: /journal
+          - img [ref=e81]
+          - generic [ref=e83]: Journal
+        - link "Memory" [ref=e84] [cursor=pointer]:
+          - /url: /memory
+          - img [ref=e85]
+          - generic [ref=e93]: Memory
+        - link "Plan-historik" [ref=e94] [cursor=pointer]:
+          - /url: /build-guide
+          - img [ref=e95]
+          - generic [ref=e97]: Plan-historik
+        - link "Indstillinger" [ref=e98] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e99]
+          - generic [ref=e102]: Indstillinger
+      - generic [ref=e103]:
+        - generic [ref=e104]: Status
+        - generic [ref=e105]: read-only · ingen auto-send
+    - generic [ref=e107]:
+      - banner [ref=e108]:
+        - button "Vis menu" [ref=e109] [cursor=pointer]:
+          - img [ref=e110]
+        - generic [ref=e111]: Mission Control
+        - generic [ref=e112]:
+          - generic [ref=e113]: fre. 5. jun.·11.55
+          - button "Åbn kommando-palette" [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+            - text: Hop til
+            - generic [ref=e117]: ⌘K
+      - generic [ref=e119]:
+        - banner [ref=e120]:
+          - generic [ref=e121]:
+            - heading "God formiddag, Lucas." [level=1] [ref=e122]
+            - paragraph [ref=e123]: 8 i kø
+        - generic [ref=e124]:
+          - img [ref=e125]
+          - generic [ref=e127]: Kunne ikke nå Google Sheets — viser hvad køen ved lokalt. Tal opdateres når forbindelsen er der.
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - link "8 udkast venter på dig →" [ref=e130] [cursor=pointer]:
+              - /url: /approve
+              - generic [ref=e131]: "8"
+              - generic [ref=e132]: udkast venter på dig →
+            - region "Aktivitet sidste 14 dage" [ref=e133]:
+              - generic [ref=e134]:
+                - generic [ref=e135]: Aktivitet · 14 dage
+                - generic [ref=e136]: ingen mails sendt endnu
+          - generic [ref=e138]:
+            - generic [ref=e139]:
+              - generic [ref=e140]: "0"
+              - generic [ref=e141]: nye leads
+            - generic [ref=e142]:
+              - generic [ref=e143]: "0"
+              - generic [ref=e144]: emails fundet
+            - generic [ref=e145]:
+              - generic [ref=e146]: "0"
+              - generic [ref=e147]: svar i dag
+            - generic [ref=e148]:
+              - generic [ref=e149]: "0"
+              - generic [ref=e150]: vundet i ugen
+          - generic [ref=e151]:
+            - region "Kræver dig nu" [ref=e152]:
+              - generic [ref=e153]:
+                - img [ref=e154]
+                - heading "Morning Coffee · kræver dig nu" [level=2] [ref=e156]
+              - generic [ref=e157]:
+                - img [ref=e158]
+                - generic [ref=e160]: Ingen ildebrande. Drik kaffen i ro.
+                - generic [ref=e161]: Svar, opkald i dag og varme leads dukker op her.
+            - generic [ref=e162]:
+              - region "Godkendelses-kø" [ref=e163]:
+                - generic [ref=e164]:
+                  - img [ref=e165]
+                  - heading "Godkendelses-kø" [level=2] [ref=e168]
+                  - generic [ref=e169]: 8 afventer
+                - list [ref=e170]:
+                  - listitem [ref=e171]:
+                    - generic [ref=e172]: Nicolai Café
+                    - generic [ref=e173]: Tænkte på Nicolai Café
+                  - listitem [ref=e174]:
+                    - generic [ref=e175]: Guldægget
+                    - generic [ref=e176]: Tænkte på Guldægget
+                  - listitem [ref=e177]:
+                    - generic [ref=e178]: Cafe Mathilde//Madam Smed
+                    - generic [ref=e179]: En idé til Cafe Mathilde//Madam Smed
+                - link "Åbn godkendelse" [ref=e181] [cursor=pointer]:
+                  - /url: /approve
+              - region "Dagens pipeline" [ref=e182]:
+                - generic [ref=e183]:
+                  - img [ref=e184]
+                  - heading "Dagens pipeline" [level=2] [ref=e188]
+                - generic [ref=e189]:
+                  - generic [ref=e190]: 12drafts i alt
+                  - generic [ref=e191]: 8afventer
+                  - generic [ref=e192]: 0godkendt
+                  - generic [ref=e193]: 4afvist
+                - generic [ref=e194]: "Sidste kørsel: for 2 dage siden"
+          - region "Pulse Check" [ref=e195]:
+            - generic [ref=e196]:
+              - img [ref=e197]
+              - heading "Pulse Check · kunder" [level=2] [ref=e200]
+              - generic [ref=e201]: "0"
+            - generic [ref=e202]:
+              - img [ref=e203]
+              - generic [ref=e206]: Ingen kunder kræver opfølgning.
+        - generic [ref=e207]:
+          - generic [ref=e208]: Skift visning
+          - tablist "Mission Control faner" [ref=e209]:
+            - tab "I dag" [selected] [ref=e210] [cursor=pointer]
+            - tab "Pipeline" [ref=e211] [cursor=pointer]
+            - tab "Mål" [ref=e212] [cursor=pointer]
+            - tab "Agenter" [ref=e213] [cursor=pointer]
+    - button "Åbn chat / control room" [ref=e214] [cursor=pointer]:
+      - img [ref=e215]
+      - text: Spørg Claude
+  - alert [ref=e217]
