@@ -62,12 +62,14 @@ process.stdin.on("end", () => {
     deny("Calling the deployed email send routes directly is blocked. Use the /approve UI or run send.mjs locally.");
   }
 
-  // 2. Block git history rewrites, force pushes, pushes to main, hard resets.
+  // 2. Block git history rewrites, force pushes, hard resets, rebases.
+  //    2026-06-05 — Lucas authorized normal pushes to main (merge command-center-v3
+  //    into main as the production branch). Force-push to main stays blocked to
+  //    protect history; normal fast-forward/merge pushes to main are now allowed.
   if (/git\s+push\s+.*(--force|-f)\b/.test(cmd) ||
-      /git\s+push\s+\S*\s*(origin\s+)?(main|master)\b/.test(cmd) ||
       /git\s+reset\s+--hard/.test(cmd) ||
       /git\s+rebase/.test(cmd)) {
-    deny("Force/main push, hard reset and rebase are blocked. Commit to a branch only.");
+    deny("Force push, hard reset and rebase are blocked (history rewrite protection).");
   }
 
   // 3. Block destructive recursive deletes.
@@ -76,8 +78,9 @@ process.stdin.on("end", () => {
   }
 
   // 4. Never run the dev server (port conflict per CLAUDE.md).
-  if (/npm\s+run\s+dev|next\s+dev|vercel\s+(deploy|--prod|build\s+--prod)/.test(cmd)) {
-    deny("npm run dev and any deploy are blocked. Build/lint only; deploy is a manual morning step.");
+  //    2026-06-05 — Lucas authorized agent deploys; only the dev server stays blocked.
+  if (/npm\s+run\s+dev|next\s+dev/.test(cmd)) {
+    deny("npm run dev / next dev is blocked (port conflict per CLAUDE.md). Use a short `next start` for browser checks.");
   }
 
   // 5. Protect secrets, the pause schedule logic, and git internals from edits.
