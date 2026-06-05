@@ -68,6 +68,9 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
     host: "imap.gmail.com",
     port: 993,
     secure: true,
+    // Local-dev escape hatch: machines behind a TLS-intercepting AV/proxy see a
+    // self-signed cert in the chain. Opt-in only (default stays fully verified).
+    ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
     auth: {
       user: process.env.GMAIL_USER!,
       pass: process.env.GMAIL_APP_PASSWORD!,

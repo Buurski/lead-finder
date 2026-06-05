@@ -77,6 +77,9 @@ export async function GET() {
     host: "imap.gmail.com",
     port: 993,
     secure: true,
+    // Local-dev escape hatch for TLS-intercepting AV/proxy (self-signed in chain).
+    // Opt-in only via IMAP_ALLOW_SELFSIGNED=1; default stays fully verified.
+    ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
     auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
     logger: false,
   });
