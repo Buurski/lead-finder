@@ -28,6 +28,8 @@ import { isBlacklisted } from "./tone-mixer.ts";
 import { composeColdEmail } from "./compose.ts";
 import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
+import { compositeScore } from "./leads/composite-score.ts";
+import type { Lead } from "./sheets.ts";
 
 export interface EngineOptions {
   limit?: number;
@@ -158,12 +160,17 @@ async function pickLeads(
       const needle = leadName.toLowerCase();
       candidates = candidates.filter((l) => l.name.toLowerCase().includes(needle));
     } else {
-      // Daily batch: focus on un-worked leads, best score first.
+      // Daily batch: focus on un-worked leads, best composite score first.
+      // Composite blends base score with review-velocity, email/mobile quality,
+      // sleeping-beauty bonus and a branch-relevance multiplier (beauty ×1.2,
+      // restaurants ×1.05, professional ×0.7) — so the PICK naturally favours
+      // the mix Lucas wants (beauty weighted up) instead of raw base score.
       candidates = all
-        .map((l, i) => ({ raw: l as unknown as Record<string, unknown>, id: String(i + 2) }))
-        .filter(({ raw }) => raw.name && (raw.status === "new" || raw.status === undefined))
-        .map(({ raw, id }) => ({ ...toResearchLead(raw), id }))
-        .sort((a, b) => b.score - a.score);
+        .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
+        .filter(({ lead }) => lead.name && (lead.status === "new" || (lead.status as string) === undefined))
+        .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: compositeScore(lead).score }))
+        .sort((a, b) => b.comp - a.comp)
+        .map((x) => x.rl);
     }
     return { leads: candidates, source: "sheets" };
   } catch {
