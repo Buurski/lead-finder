@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
-import { loadDigest, saveDigest, summarizeDigest } from "@/lib/inbox-digest";
+import { loadDigest, saveDigest, summarizeDigest, normalizeDigest } from "@/lib/inbox-digest";
+import type { InboxDigest } from "@/lib/inbox-digest";
 import { liveScanDigest } from "@/lib/inbox-live";
+import { readVaultJson } from "@/lib/vault";
+
+function ts(d: { generatedAt?: string } | null): number {
+  const t = d?.generatedAt ? Date.parse(d.generatedAt) : NaN;
+  return Number.isNaN(t) ? 0 : t;
+}
 
 // GET /api/replies — inbox triage for the "Svar" page.
 //
@@ -13,7 +20,23 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET() {
-  const stored = await loadDigest();
+  // Obsidian channel: a Cowork task may have pushed data/inbox.json to the vault.
+  // Use whichever is fresher (vault vs KV); if the vault one wins, cache it to KV so
+  // Mission Control's "needs reply" count (which reads KV) reflects it too.
+  const [stored, vaultRaw] = await Promise.all([
+    loadDigest(),
+    readVaultJson<InboxDigest>("data/inbox.json").catch(() => null),
+  ]);
+  // Compare the RAW vault timestamp (before normalize, which would stamp it "now")
+  // and require it to be strictly newer than the stored one — so a stale or
+  // timestamp-less vault file can never overwrite good KV data.
+  const vt = vaultRaw?.generatedAt ? Date.parse(vaultRaw.generatedAt) : NaN;
+  const vaultFresher = Number.isFinite(vt) && (vt as number) > ts(stored);
+  if (vaultRaw && Array.isArray(vaultRaw.items) && vaultRaw.items.length > 0 && vaultFresher) {
+    const vault = normalizeDigest(vaultRaw, "cowork-opus");
+    await saveDigest(vault);
+    return NextResponse.json({ ok: true, source: "artifact", digest: vault, summary: summarizeDigest(vault) });
+  }
   if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
     return NextResponse.json({ ok: true, source: "artifact", digest: stored, summary: summarizeDigest(stored) });
   }

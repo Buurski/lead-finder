@@ -3,6 +3,7 @@ import { appendLeads, getLeadNames } from "@/lib/sheets";
 import { detectWebsiteStatus } from "@/lib/apify";
 import { normalizeIngest, dedupeByName, saveRun, loadRun } from "@/lib/leadgen";
 import type { IngestLead, LeadgenRun } from "@/lib/leadgen";
+import { readVaultJson } from "@/lib/vault";
 
 // /api/leads/ingest — the lead-gen artifact endpoint.
 //   POST { leads: IngestLead[], source? }  append fresh leads to Sheets + save run.
@@ -32,7 +33,22 @@ function checkAuth(req: NextRequest): boolean {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, run: await loadRun() });
+  // Obsidian channel: prefer a fresher data/leadgen.json from the vault if a Cowork
+  // task pushed one; else the KV run from the last in-app ingest.
+  const [kv, vault] = await Promise.all([
+    loadRun(),
+    readVaultJson<LeadgenRun>("data/leadgen.json").catch(() => null),
+  ]);
+  const valid = (r: LeadgenRun | null): number | null => {
+    const t = r?.at ? Date.parse(r.at) : NaN;
+    return Number.isFinite(t) ? t : null;
+  };
+  const vt = valid(vault);
+  const kt = valid(kv);
+  // Prefer the vault run only when it has items AND is genuinely newer (or KV has
+  // no valid run). GET doesn't persist, so this only chooses what to display.
+  const useVault = vault && Array.isArray(vault.items) && vault.items.length > 0 && (kt == null || (vt != null && vt >= kt));
+  return NextResponse.json({ ok: true, run: useVault ? vault : kv });
 }
 
 export async function POST(req: NextRequest) {

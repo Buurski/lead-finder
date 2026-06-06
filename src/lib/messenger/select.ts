@@ -5,6 +5,7 @@
 // ranked candidates with a resolved handle + a ready draft.
 
 import type { Lead } from "../sheets.ts";
+import { isContactable } from "../leads/contactable.ts";
 import { handleFromWebsite } from "./handle.ts";
 import { branchGroupFor, buildMessengerDraft, MSG_PATTERNS } from "./compose.ts";
 import type { MsgGroup, MsgPattern } from "./compose.ts";
@@ -68,6 +69,8 @@ function hasUsableEmail(email: string): boolean {
 export function isMessengerEligible(lead: Lead): boolean {
   const branch = (lead.branch || "").toLowerCase();
   const website = (lead.website || "").toLowerCase();
+  // Hard suppression: never re-surface a lead we've already contacted / who said no.
+  if (!isContactable(lead)) return false;
   if (DROP_BRANCHES.test(branch) || DROP_BRANCHES.test(lead.name || "")) return false;
   if (website && !website.includes("facebook.com")) return false; // has a real site already
   if (hasUsableEmail(lead.email)) return false;                    // reachable by email → not this channel

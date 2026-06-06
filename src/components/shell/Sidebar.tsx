@@ -27,10 +27,12 @@ export default function Sidebar({
   return (
     <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
       <div className="cc-brand">
-        <span className="cc-brand-mark">ls</span>
+        <span className="cc-brand-mark" aria-hidden style={{ display: "grid", placeItems: "center" }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 10px var(--accent)", display: "block" }} />
+        </span>
         <span>
           <span className="cc-brand-name">Command Center</span>
-          <span className="cc-brand-sub" style={{ display: "block" }}>Lucas · agentic OS</span>
+          <span className="cc-brand-sub" style={{ display: "block" }}>agentic OS</span>
         </span>
       </div>
 

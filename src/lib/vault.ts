@@ -211,6 +211,50 @@ export async function listVault(
   return { source: "none", entries: [] };
 }
 
+// Read a JSON data file from the vault (e.g. data/inbox.json) that a Cowork task
+// wrote + pushed. Remote-first (live) by default with the in-repo mirror as offline
+// fallback — same idea as daily notes, but for structured artifacts the app shows
+// (inbox digest, lead-gen run, messenger candidates). Returns null on any failure.
+const jsonCache = new Map<string, { at: number; value: unknown }>();
+const JSON_TTL_MS = 90 * 1000;
+
+export async function readVaultJson<T = unknown>(relInput: string, opts: { preferRemote?: boolean } = {}): Promise<T | null> {
+  const preferRemote = opts.preferRemote ?? true;
+  const rel = safeRel(relInput);
+
+  const cached = jsonCache.get(rel);
+  if (cached && Date.now() - cached.at < JSON_TTL_MS) return cached.value as T | null;
+
+  const tryLocal = (): string | null => {
+    try {
+      const local = path.join(LOCAL_ROOT, rel);
+      if (local.startsWith(LOCAL_ROOT) && fs.existsSync(local)) return fs.readFileSync(local, "utf-8");
+    } catch {
+      /* ignore */
+    }
+    return null;
+  };
+
+  let raw: string | null = null;
+  if (preferRemote) {
+    raw = await readRemote(rel);
+    if (raw == null) raw = tryLocal();
+  } else {
+    raw = tryLocal();
+    if (raw == null) raw = await readRemote(rel);
+  }
+  let value: T | null = null;
+  if (raw != null) {
+    try {
+      value = JSON.parse(raw) as T;
+    } catch {
+      value = null;
+    }
+  }
+  jsonCache.set(rel, { at: Date.now(), value });
+  return value;
+}
+
 export function vaultStatus(): { localRoot: string; hasLocal: boolean; repo: string; branch: string; tokenSet: boolean } {
   let hasLocal = false;
   try {

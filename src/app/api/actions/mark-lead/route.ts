@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { updateLeadStatus, updateCallbackDate } from "@/lib/sheets";
 import { queueNote } from "@/lib/notes-queue";
+import { addSuppressed } from "@/lib/today-overrides";
 
 // POST /api/actions/mark-lead — confirmed lead-status action from the chat.
 //   { leadId, leadName?, status: "interested"|"not-interested"|"maybe-later" }
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   try {
     if (body.status === "not-interested") {
       await updateLeadStatus(rowIndex, "not-interested");
+      if (body.leadName) await addSuppressed(body.leadName); // only suppress by a real name, never a row id
       await queueNote({ bucket: "said-no", text: `${name} sagde nej tak.`, leadId: body.leadId, leadName: body.leadName });
     } else if (body.status === "interested") {
       await updateLeadStatus(rowIndex, "interested");

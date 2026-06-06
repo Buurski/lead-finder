@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generate, isAiEnabled } from "@/lib/ai";
-import { getLeads } from "@/lib/sheets";
+import { getLeads, getClients } from "@/lib/sheets";
 
 // POST /api/chat — the in-app Claude assistant (ChatDock + /claude).
 //
@@ -21,7 +21,11 @@ type Status = "interested" | "not-interested" | "maybe-later";
 
 // Deterministic Danish intent detection. Returns the status verb + whether it's a
 // note, or null when it's just a question.
-function detectIntent(text: string): { kind: "status"; status: Status } | { kind: "note"; bucket: string; note: string } | null {
+function detectIntent(text: string):
+  | { kind: "status"; status: Status }
+  | { kind: "note"; bucket: string; note: string }
+  | { kind: "suppress" }
+  | null {
   const t = text.toLowerCase();
   const noteM = text.match(/^\s*(noter|note|husk|skriv ned)\b[:\-\s]+(.+)/i);
   if (noteM) {
@@ -29,10 +33,30 @@ function detectIntent(text: string): { kind: "status"; status: Status } | { kind
     const bucket = /sagde nej|ikke interesseret/i.test(note) ? "said-no" : /senere|fremtid/i.test(note) ? "maybe-later" : "general";
     return { kind: "note", bucket, note };
   }
-  if (/\b(ikke interesseret|ikke interesserede|sagde nej|nej tak|drop(?:per)?|frasort\w+|afvis)\b/.test(t)) return { kind: "status", status: "not-interested" };
+  if (/\b(ikke interesseret|ikke interesserede|sagde nej|nej tak|frasort\w+|afvis)\b/.test(t)) return { kind: "status", status: "not-interested" };
   if (/\b(måske senere|maaske senere|om en måned|følg op senere|senere hen|ikke nu men)\b/.test(t)) return { kind: "status", status: "maybe-later" };
   if (/\b(er interesseret|interesseret nu|sagde ja|vil gerne|positiv|varm lead)\b/.test(t)) return { kind: "status", status: "interested" };
+  // "fjern X fra i dag", "jeg vil ikke have X", "X skal ikke stå der", "drop X"
+  if (/\b(fjern|drop(?:per)?|skjul|ikke have|skal ikke stå|skal ikke vises|fjerne)\b/.test(t)) return { kind: "suppress" };
   return null;
+}
+
+// Find the lead or client whose name appears in the message (longest wins, ≥3 chars).
+function findBusiness(message: string, leads: { id: string; name: string }[], clients: { id: string; name: string }[]):
+  { id: string; name: string; kind: "lead" | "client" } | null {
+  const lower = message.toLowerCase();
+  let best: { id: string; name: string; kind: "lead" | "client" } | null = null;
+  const scan = (rows: { id: string; name: string }[], kind: "lead" | "client") => {
+    for (const r of rows) {
+      const n = (r.name || "").trim();
+      if (n.length >= 3 && lower.includes(n.toLowerCase()) && (!best || n.length > best.name.length)) {
+        best = { id: r.id, name: n, kind };
+      }
+    }
+  };
+  scan(leads, "lead");
+  scan(clients, "client");
+  return best;
 }
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -59,33 +83,39 @@ export async function POST(req: Request) {
     });
   }
 
-  // STATUS action — resolve which known lead is mentioned.
-  if (intent && intent.kind === "status") {
-    let match: { id: string; name: string } | null = null;
+  // STATUS / SUPPRESS — resolve which known lead OR client is mentioned.
+  if (intent && (intent.kind === "status" || intent.kind === "suppress")) {
+    let biz: { id: string; name: string; kind: "lead" | "client" } | null = null;
     try {
-      const leads = await getLeads();
-      const lower = message.toLowerCase();
-      // longest lead-name that appears in the message wins (avoids matching "A").
-      for (const l of leads) {
-        const n = (l.name || "").trim();
-        if (n.length >= 3 && lower.includes(n.toLowerCase())) {
-          if (!match || n.length > match.name.length) match = { id: l.id, name: n };
-        }
-      }
+      const [leads, clients] = await Promise.all([getLeads(), getClients()]);
+      biz = findBusiness(message, leads, clients);
     } catch {
       /* sheets unreachable → fall through to advisory */
     }
-    if (match) {
+
+    if (biz) {
+      // A real LEAD with a status verb → mark it (also suppresses from today server-side).
+      if (intent.kind === "status" && biz.kind === "lead") {
+        return NextResponse.json({
+          action: { type: "mark-lead", args: { leadId: biz.id, leadName: biz.name, status: intent.status }, label: `Marker "${biz.name}" som ${STATUS_LABEL[intent.status]}` },
+          humanText: `Skal jeg markere ${biz.name} som ${STATUS_LABEL[intent.status]}?${intent.status === "not-interested" ? " (kontakter ikke igen + fjernes fra i dag)" : intent.status === "maybe-later" ? " (følger op om ~30 dage)" : ""}`,
+        });
+      }
+      // A positive client signal shouldn't hide them — just note it.
+      if (intent.kind === "status" && intent.status === "interested") {
+        return NextResponse.json({
+          action: { type: "note", args: { text: `${biz.name} er interesseret.`, bucket: "interested" }, label: `Noter: ${biz.name} er interesseret` },
+          humanText: `Skal jeg notere at ${biz.name} er interesseret?`,
+        });
+      }
+      // A client said no / maybe-later, or an explicit "fjern fra i dag" → hide it.
+      const note = intent.kind === "status" && intent.status === "maybe-later" ? `${biz.name} — opfølgning senere.` : intent.kind === "status" && intent.status === "not-interested" ? `${biz.name} sagde nej / ikke nu.` : `Skjult fra i dag: ${biz.name}.`;
       return NextResponse.json({
-        action: {
-          type: "mark-lead",
-          args: { leadId: match.id, leadName: match.name, status: intent.status },
-          label: `Marker "${match.name}" som ${STATUS_LABEL[intent.status]}`,
-        },
-        humanText: `Skal jeg markere ${match.name} som ${STATUS_LABEL[intent.status]}?${intent.status === "not-interested" ? " (kontakter ikke igen)" : intent.status === "maybe-later" ? " (følger op om ~30 dage)" : ""}`,
+        action: { type: "suppress", args: { name: biz.name, note }, label: `Fjern "${biz.name}" fra "i dag"` },
+        humanText: `Skal jeg fjerne ${biz.name} fra "Hvad skal vi i dag" og notere det? (rører ikke layoutet)`,
       });
     }
-    // verb but no known lead → let the model answer/ask which lead.
+    // verb but no known business → let the model ask which one.
   }
 
   // ADVISORY — the original behaviour.

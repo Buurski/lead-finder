@@ -14,6 +14,7 @@ import type { Lead, Client } from "./sheets.ts";
 import { readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { loadDigest, summarizeDigest } from "./inbox-digest.ts";
+import { getSuppressed, isSuppressed } from "./today-overrides.ts";
 
 export interface DeckNumbers {
   newLeads: number;
@@ -251,7 +252,20 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
 
   const queuePeek = buildQueuePeek(queue);
   const pipeline = buildPipeline(queue);
-  const needsYou = buildNeedsYou(leads);
+  let needsYou = buildNeedsYou(leads);
+  let pulse = buildPulse(clients);
+
+  // Chat-driven "fjern X fra i dag" overrides: hide suppressed businesses from the
+  // today lists (without touching layout).
+  try {
+    const suppressed = await getSuppressed();
+    if (suppressed.size > 0) {
+      needsYou = needsYou.filter((i) => !isSuppressed(suppressed, i.name));
+      pulse = pulse.filter((c) => !isSuppressed(suppressed, c.name));
+    }
+  } catch {
+    /* no overrides */
+  }
 
   const numbers = buildNumbers(leads);
   // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
@@ -271,7 +285,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     needsYou,
     queue: queuePeek,
     pipeline,
-    pulse: buildPulse(clients),
+    pulse,
     dailySent: buildDailySent(leads),
     revenue: buildRevenue(clients),
     buckets: {

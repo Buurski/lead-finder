@@ -3,9 +3,13 @@ import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
-import DeepResearchPanel from "@/components/DeepResearchPanel";
 
 export const revalidate = 60;
+
+// Mobile Safari ran out of memory rendering/filtering all ~8000 leads client-side
+// ("This page couldn't load"). Cap what we hand the client to the top N by score;
+// the full database still lives in Sheets and the lead-gen feed surfaces fresh ones.
+const LEADS_CAP = 1000;
 
 export default async function LeadsPage() {
   let leads: Awaited<ReturnType<typeof getLeads>> = [];
@@ -27,6 +31,10 @@ export default async function LeadsPage() {
     interested: leads.filter((l) => norm(l.status) === "interested").length,
     client: leads.filter((l) => norm(l.status) === "client").length,
   };
+
+  const totalLeads = leads.length;
+  // Hand the client only the top-scored slice so mobile doesn't OOM.
+  const capped = [...leads].sort((a, b) => b.score - a.score).slice(0, LEADS_CAP);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -66,11 +74,15 @@ export default async function LeadsPage() {
         </div>
       </div>
 
-      <DeepResearchPanel />
+      {totalLeads > LEADS_CAP && (
+        <div className="cc-card cc-card-pad" role="status" style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+          Viser de {LEADS_CAP.toLocaleString("da-DK")} højest scorede af {totalLeads.toLocaleString("da-DK")} leads (for hastighed). Brug søgning/filtre for at finde resten.
+        </div>
+      )}
 
       <BulkEmailPanel />
 
-      <EmailDashboardClient leads={leads} />
+      <EmailDashboardClient leads={capped} />
     </div>
   );
 }

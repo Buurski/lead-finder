@@ -71,7 +71,7 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   // Confirmed an action proposal → call the matching endpoint, replace the bubble.
   async function confirmAction(idx: number, action: ChatAction) {
     setMsgs((m) => m.map((mm, i) => (i === idx ? { ...mm, resolved: true } : mm)));
-    const url = action.type === "note" ? "/api/actions/note" : "/api/actions/mark-lead";
+    const url = action.type === "note" ? "/api/actions/note" : action.type === "suppress" ? "/api/actions/suppress" : "/api/actions/mark-lead";
     try {
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action.args) });
       const d = await res.json().catch(() => ({}));
