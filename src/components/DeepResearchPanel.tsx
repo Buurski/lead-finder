@@ -194,7 +194,7 @@ export default function DeepResearchPanel() {
                 Åbn Cowork →
               </a>
               <span className="cc-dim" style={{ fontSize: 12, alignSelf: "center" }}>
-                Paste prompten i Cowork. Den processer leads og POST'er resultater tilbage.
+                Paste prompten i Cowork. Den processer leads og POST’er resultater tilbage.
               </span>
             </div>
             <pre
