@@ -449,10 +449,9 @@ function PulseCard({ s }: { s: DeckSummary }) {
 const FLOW_STEPS: { n: number; title: string; detail: string; href: string; cta: string; optional?: boolean }[] = [
   { n: 1, title: "Hent leads", detail: "Skraber nye virksomheder ind i Sheets (råvarer).", href: "/leads", cta: "Åbn Leads" },
   { n: 2, title: "Verify", detail: "Scorer + vurderer websitet på hver lead.", href: "/leads", cta: "Åbn Leads" },
-  { n: 3, title: "Deep research", detail: "Gratis dyb berigelse i Cowork — løfter de bedste leads. Valgfri, men giver bedre mails.", href: "/leads", cta: "Åbn Leads", optional: true },
-  { n: 4, title: "Kør motor", detail: "Skriver personlige udkast til de bedste leads → fylder Godkendelse. Det er HER køen fyldes.", href: "#kor-motor", cta: "Nedenfor ↓" },
-  { n: 5, title: "Godkendelse", detail: "Du gennemgår og godkender hvert udkast.", href: "/approve", cta: "Åbn Godkendelse" },
-  { n: 6, title: "Find emails + send", detail: "Find adresser og send de godkendte — separat, sender aldrig af sig selv.", href: "/leads", cta: "Åbn Leads" },
+  { n: 3, title: "Kør motor", detail: "Skriver personlige udkast til de bedste leads → fylder Godkendelse. Det er HER køen fyldes.", href: "#kor-motor", cta: "Nedenfor ↓" },
+  { n: 4, title: "Godkendelse", detail: "Du gennemgår og godkender hvert udkast.", href: "/approve", cta: "Åbn Godkendelse" },
+  { n: 5, title: "Find emails + send", detail: "Find adresser og send de godkendte — separat, sender aldrig af sig selv.", href: "/leads", cta: "Åbn Leads" },
 ];
 
 function FlowGuide() {
@@ -463,7 +462,7 @@ function FlowGuide() {
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Sådan virker det</h2>
       </div>
       <p className="cc-dim" style={{ fontSize: 13, marginBottom: 14 }}>
-        Fra rå lead til godkendt mail. Leads kommer i Godkendelse via trin 4 — “Kør motor”.
+        Fra rå lead til godkendt mail. Leads kommer i Godkendelse via trin 3 — “Kør motor”.
       </p>
       <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
         {FLOW_STEPS.map((step, i) => (
@@ -704,7 +703,7 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         <div style={{ display: "grid", gap: 0 }}>
           {[
             { n: "Daily engine", d: "PICK→DRAFT, fylder kø", on: true, label: "klar" },
-            { n: "Deep research (Cowork)", d: "gratis berigelse → løfter PICK", on: true, label: "wired" },
+            { n: "Daily-ops (Cowork)", d: "gratis dyb berigelse → løfter PICK", on: true, label: "wired" },
             { n: "Email-finder", d: "MX-verificeret opslag", on: true, label: "klar" },
             { n: "Reply-assistant", d: "klassificér + udkast", on: true, label: "klar" },
             { n: "AI Spend & Health", d: "pr. model + dagsgrænse", on: spendOn, label: spendOn ? "klar" : "ingen kørsler endnu" },
