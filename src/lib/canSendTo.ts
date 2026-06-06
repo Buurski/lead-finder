@@ -36,7 +36,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function canSendTo(lead: SendCandidate, opts: { seenEmails?: Set<string> } = {}): SendDecision {
   if (isBlacklisted(lead.name)) return { ok: false, reason: "hostile" };
-  if (lead.status === "skip") return { ok: false, reason: "skip" };
+  // Normalize lead status: Sheets values arrive with stray whitespace/casing
+  // ("Skip", "skip "), so trim+lowercase before the equality gate — otherwise a
+  // skip-marked lead slips through and gets mailed.
+  if ((lead.status || "").trim().toLowerCase() === "skip") return { ok: false, reason: "skip" };
   if (isChain(lead.name, lead.branch ? [lead.branch] : undefined)) return { ok: false, reason: "chain" };
   if (isPublicEntity(lead)) return { ok: false, reason: "public" };
 
@@ -44,7 +47,10 @@ export function canSendTo(lead: SendCandidate, opts: { seenEmails?: Set<string> 
   if (!email) return { ok: false, reason: "no-email" };
   if (!EMAIL_RE.test(email)) return { ok: false, reason: "bad-email" };
 
-  const st = (lead.emailStatus || "").toLowerCase();
+  // Same normalization for emailStatus — a "bounced "/"Replied"/"unsubscribed "
+  // value from the sheet must still block. Untrimmed it would re-mail a replier
+  // or, worse, an unsubscriber (compliance breach).
+  const st = (lead.emailStatus || "").trim().toLowerCase();
   if (st === "bounced") return { ok: false, reason: "bounced" };
   if (st === "replied") return { ok: false, reason: "replied" };
   if (st === "unsubscribed" || st === "unsubscribe") return { ok: false, reason: "unsubscribed" };

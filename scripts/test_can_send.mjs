@@ -28,6 +28,14 @@ check("replied blocked", canSendTo({ ...ok, emailStatus: "replied" }).reason ===
 check("unsubscribed blocked", canSendTo({ ...ok, emailStatus: "unsubscribed" }).reason === "unsubscribed");
 check("status skip blocked", canSendTo({ ...ok, status: "skip" }).reason === "skip");
 
+// Sheets values arrive with stray whitespace / mixed case — the gate must still
+// block them. (Regression guard: untrimmed equality let these slip through and
+// re-mailed repliers / unsubscribers.)
+check("bounced blocked w/ trailing space", canSendTo({ ...ok, emailStatus: "bounced " }).reason === "bounced");
+check("replied blocked mixed-case", canSendTo({ ...ok, emailStatus: "Replied" }).reason === "replied");
+check("unsubscribed blocked w/ space+case", canSendTo({ ...ok, emailStatus: " Unsubscribed " }).reason === "unsubscribed");
+check("skip blocked w/ space+case", canSendTo({ ...ok, status: " Skip " }).reason === "skip");
+
 // chain: use a known chain-ish name; isChain handles the matching
 {
   const chainDecision = canSendTo({ ...ok, name: "McDonald's" });
