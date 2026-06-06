@@ -171,20 +171,27 @@ export async function proxy(req: NextRequest): Promise<Response> {
     if (sessTok && (await verifySession(sessTok, SECRET))) {
       authed = true;
     } else {
-      // 2. Rate limit before any credential work.
-      const ip = clientIp(req);
-      const rl = await rateLimitCheck(ip);
-      if (!rl.allowed) {
-        logAuthFailure(ip, rl.blocked ? "rate_block" : "rate_window");
-        return tooManyRequests();
-      }
-      // 3. Verify Basic auth.
+      // 2. Verify Basic auth.
       const header = req.headers.get("authorization") || "";
       const parsed = parseBasic(header);
       if (parsed && ctEqual(parsed.user, USER) && ctEqual(parsed.pass, PASS)) {
         authed = true;
+      } else if (parsed) {
+        // A credential WAS supplied but it's WRONG → this is the only case that
+        // counts toward the brute-force rate limit. (A missing/empty header is just
+        // a browser that hasn't been prompted yet — mobile fires many parallel,
+        // cookie-less requests on first load; counting those wrongly tripped the
+        // 1h block and made mobile login impossible.)
+        const ip = clientIp(req);
+        const rl = await rateLimitCheck(ip);
+        if (!rl.allowed) {
+          logAuthFailure(ip, rl.blocked ? "rate_block" : "rate_window");
+          return tooManyRequests();
+        }
+        logAuthFailure(ip, "bad_credential");
       } else {
-        logAuthFailure(ip, parsed ? "bad_credential" : "no_or_malformed_header");
+        // No/malformed header → just prompt the dialog, never rate-limited.
+        logAuthFailure(clientIp(req), "no_or_malformed_header");
       }
     }
 
