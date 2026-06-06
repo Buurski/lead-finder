@@ -37,7 +37,11 @@ export interface ReplyClassification {
 const P = {
   unsubscribe: /\b(afmeld|frabed(er|e)?|fjern mig|tag mig af|spam|unsubscribe|ikke (skriv|kontakt|henvend)|hold op med)\b/i,
   notInterested: /\b(ikke interesseret|nej tak|ellers tak|ikke aktuelt|ikke relevant|har allerede|vi klarer|ingen interesse|ikke behov)\b/i,
-  client: /\b(ja tak|vi er med|lad os|kom (forbi|igang)|send (en )?(aftale|kontrakt|tilbud)|vi vil gerne|book(?:er)? et møde|hvornår kan (du|vi)|sæt(ter)? i gang|gå videre|helt sikkert|det lyder perfekt)\b/i,
+  // NOTE: bare "lad os" was removed — it matched delay phrases ("lad os vente",
+  // "lad os tænke over det") and wrongly flagged them as a won client. The real
+  // commitment phrases ("gå videre", "sæt i gang", "kom igang") are their own
+  // alternatives, so "lad os gå videre" still classifies as a client.
+  client: /\b(ja tak|vi er med|kom (forbi|igang)|send (en )?(aftale|kontrakt|tilbud)|vi vil gerne|book(?:er)? et møde|hvornår kan (du|vi)|sæt(ter)? i gang|gå videre|helt sikkert|det lyder perfekt)\b/i,
   interested: /\b(interesseret|lyder (spændende|interessant|godt)|fortæl (mere|gerne)|send (mig )?mere|kan (du|vi)|ring(e)?|møde|kontakt mig|hvad (koster|med)|pris)\b/i,
   objection: /\b(for dyrt|har ikke (tid|råd|budget)|tænker over|vender tilbage|måske senere|skal lige|ikke (nu|lige nu)|travlt)\b/i,
   autoReply: /\b(automatisk svar|autosvar|ude af kontoret|out of office|på ferie|holder ferie|fri indtil|vender tilbage den|modtaget din (mail|besked))\b/i,

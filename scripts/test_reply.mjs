@@ -45,6 +45,12 @@ check("becameClient only on explicit yes",
   reply.classifyReply("Vi vil gerne sætte i gang").becameClient === true &&
   reply.classifyReply("Måske, fortæl lidt mere").becameClient === false);
 
+// "lad os" delay phrases must NOT count as a won client (regression: bare
+// "lad os" used to flip these). Genuine commitment still flips.
+check("'lad os vente' is not becameClient", reply.classifyReply("Tak, men lad os vente til efter sommeren").becameClient === false);
+check("'lad os tænke over det' is not becameClient", reply.classifyReply("Spændende, lad os lige tænke over det").becameClient === false);
+check("'lad os gå videre' still becameClient", reply.classifyReply("Ja, lad os gå videre med det").becameClient === true);
+
 // ---- draftReply deterministic obeys voice rules --------------------------
 const ctx = { leadName: "Salon Lumière", branch: "frisør", city: "Aarhus" };
 for (const [text] of cases) {
