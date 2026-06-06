@@ -5,18 +5,20 @@
 
 export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | "service";
 
-// The specific deployed demo sites the digest links to (kept identical so the
-// branch→demo mapping is consistent with prior outreach).
+// Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
+// to the messenger branch buckets.
+import { DEMO_SITES } from "../demos.ts";
+
 const DEMO_URLS = {
-  beautyBarber: "https://streetcut.vercel.app/",
-  beautySalon: "https://salon-artec.vercel.app/Salon%20Artec.html",
-  beautyClinic: "https://vida-ten-gamma.vercel.app/",
-  foodInter: "https://zaytoon-six.vercel.app/",
-  foodCafe: "https://under-klippen.vercel.app/",
-  photo: "https://buurfoto.vercel.app/",
-  craftUtility: "https://ktvvs.vercel.app/",
-  craft: "https://denlillemaler.vercel.app/",
-  service: "https://vestfjends.vercel.app/",
+  beautyBarber: DEMO_SITES.streetcut,
+  beautySalon: DEMO_SITES.salonArtec,
+  beautyClinic: DEMO_SITES.vida,
+  foodInter: DEMO_SITES.zaytoon,
+  foodCafe: DEMO_SITES.underKlippen,
+  photo: DEMO_SITES.buurfoto,
+  craftUtility: DEMO_SITES.ktvvs,
+  craft: DEMO_SITES.denlillemaler,
+  service: DEMO_SITES.vestfjends,
 };
 
 export function branchGroupFor(branch: string, name: string): MsgGroup {

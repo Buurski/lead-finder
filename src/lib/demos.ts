@@ -7,16 +7,31 @@ export interface Demo {
   url: string;
 }
 
+// SINGLE SOURCE OF TRUTH for every demo-site URL. email.ts + messenger/compose.ts
+// import from here so a URL only ever changes in one place (consolidated 2026-06-06).
+export const DEMO_SITES = {
+  underKlippen: "https://under-klippen.vercel.app/",
+  zaytoon: "https://zaytoon-six.vercel.app/",
+  denlillemaler: "https://denlillemaler.vercel.app/",
+  ktvvs: "https://ktvvs.vercel.app/",
+  buurfoto: "https://buurfoto.vercel.app/",
+  streetcut: "https://streetcut.vercel.app/",
+  salonArtec: "https://salon-artec.vercel.app/Salon%20Artec.html",
+  vida: "https://vida-ten-gamma.vercel.app/",
+  vestfjends: "https://vestfjends.vercel.app/",
+  midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
+} as const;
+
 const D = {
-  underKlippen: { label: "Café / dansk", url: "https://under-klippen.vercel.app/" },
-  zaytoon: { label: "Restaurant / takeaway", url: "https://zaytoon-six.vercel.app/" },
-  denlillemaler: { label: "Maler / håndværk", url: "https://denlillemaler.vercel.app/" },
-  ktvvs: { label: "VVS / el", url: "https://ktvvs.vercel.app/" },
-  buurfoto: { label: "Fotograf", url: "https://buurfoto.vercel.app/" },
-  streetcut: { label: "Barber", url: "https://streetcut.vercel.app/" },
-  salonArtec: { label: "Salon / skønhed", url: "https://salon-artec.vercel.app/Salon%20Artec.html" },
-  vida: { label: "Skønhedsklinik", url: "https://vida-ten-gamma.vercel.app/" },
-  vestfjends: { label: "Service / lokal", url: "https://vestfjends.vercel.app/" },
+  underKlippen: { label: "Café / dansk", url: DEMO_SITES.underKlippen },
+  zaytoon: { label: "Restaurant / takeaway", url: DEMO_SITES.zaytoon },
+  denlillemaler: { label: "Maler / håndværk", url: DEMO_SITES.denlillemaler },
+  ktvvs: { label: "VVS / el", url: DEMO_SITES.ktvvs },
+  buurfoto: { label: "Fotograf", url: DEMO_SITES.buurfoto },
+  streetcut: { label: "Barber", url: DEMO_SITES.streetcut },
+  salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
+  vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
+  vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the

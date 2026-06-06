@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { DEMO_SITES } from "./demos.ts";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -13,19 +14,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// URLs come from the single source of truth in demos.ts (DEMO_SITES); this map
+// just shapes them for the email templates (food = [primary, secondary] etc.).
 const DEMO_URLS = {
-  food: [
-    "https://under-klippen.vercel.app/",
-    "https://zaytoon-six.vercel.app/",
-  ],
-  craft: "https://denlillemaler.vercel.app/",
-  craftUtility: "https://ktvvs.vercel.app/",
-  photo: "https://buurfoto.vercel.app/",
-  gallery: "https://buurfoto.vercel.app/",
-  professional: "https://midtadvokaterne-dttc.vercel.app/",
+  food: [DEMO_SITES.underKlippen, DEMO_SITES.zaytoon],
+  craft: DEMO_SITES.denlillemaler,
+  craftUtility: DEMO_SITES.ktvvs,
+  photo: DEMO_SITES.buurfoto,
+  gallery: DEMO_SITES.buurfoto,
+  professional: DEMO_SITES.midtadvokaterne,
   // Beauty demos — added 2026-05-20
-  beautyBarber: "https://streetcut.vercel.app/",
-  beautySalon: "https://salon-artec.vercel.app/Salon%20Artec.html",
+  beautyBarber: DEMO_SITES.streetcut,
+  beautySalon: DEMO_SITES.salonArtec,
 } as const;
 
 // vvs/elektriker/blikkenslager/mekaniker/smed get the ktvvs demo.
