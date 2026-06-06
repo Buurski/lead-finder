@@ -20,16 +20,22 @@ interface Run {
   items: Item[];
 }
 
-const REGIONS = ["aarhus", "aalborg", "odense", "koebenhavn", "trekanten", "vestjylland", "sydjylland"];
-const BRANCHES = ["beauty", "food", "craft", "service"];
+// Valid presets ONLY (mirror REGION_PRESETS / BRANCH_PRESETS in apify.ts). Anything
+// else falls back to the full DK sweep server-side and times out. Beauty first —
+// Lucas weights skønhed up.
+const REGIONS = ["aarhus", "odense", "esbjerg", "aalborg", "midt"];
+const BRANCHES = ["beauty", "food", "craft", "professional"];
 
 export default function LeadgenPanel() {
   const [run, setRun] = useState<Run | null>(null);
   const [ageMin, setAgeMin] = useState<number | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  // DEFAULT = auto (whole DK, all branches). Specific narrows via the dropdowns.
+  const [mode, setMode] = useState<"auto" | "specific">("auto");
   const [region, setRegion] = useState("aarhus");
   const [branch, setBranch] = useState("beauty");
   const [scraping, setScraping] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [msg, setMsg] = useState("");
 
   function load() {
@@ -44,17 +50,51 @@ export default function LeadgenPanel() {
   }
   useEffect(() => { load(); }, []);
 
+  async function scrapeOne(r: string, b: string): Promise<number> {
+    const res = await fetch(`/api/scrape?region=${r}&branch=${b}`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && typeof d.added === "number") return d.added;
+    if (!res.ok) throw new Error(d.error ?? "scrape fejlede");
+    return 0;
+  }
+
+  // Auto-sweep: loop region×branch chunks SEQUENTIALLY (each its own 300s budget),
+  // never one giant timeout-prone call. New leads are composite-scored server-side;
+  // already-known names/phones are skipped. Resilient: a failed chunk keeps the sweep going.
+  async function runAuto() {
+    let total = 0;
+    let i = 0;
+    const totalChunks = REGIONS.length * BRANCHES.length;
+    setProgress({ done: 0, total: totalChunks });
+    for (const b of BRANCHES) {
+      for (const r of REGIONS) {
+        i++;
+        setProgress({ done: i, total: totalChunks });
+        setMsg(`Skraber hele DK… ${i}/${totalChunks} (${total} nye)`);
+        try { total += await scrapeOne(r, b); } catch { /* skip chunk, keep sweeping */ }
+      }
+    }
+    return total;
+  }
+
   async function scrapeNow() {
     setScraping(true);
     setMsg("");
     try {
-      const r = await fetch(`/api/scrape?region=${region}&branch=${branch}`, { method: "POST" });
-      const d = await r.json().catch(() => ({}));
-      setMsg(r.ok ? `Places-scrape færdig: ${d.added ?? d.count ?? "?"} nye leads i Sheets.` : (d.error ?? "Kunne ikke scrape."));
+      let added = 0;
+      if (mode === "auto") {
+        added = await runAuto();
+      } else {
+        setMsg(`Skraber ${branch} i ${region}…`);
+        added = await scrapeOne(region, branch);
+      }
+      setMsg(`Places-scrape færdig: ${added} nye leads i Sheets.`);
+      load();
     } catch (e) {
-      setMsg(String(e));
+      setMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setScraping(false);
+      setProgress({ done: 0, total: 0 });
     }
   }
 
@@ -68,17 +108,35 @@ export default function LeadgenPanel() {
             <div className="cc-dim" style={{ fontSize: 12 }}>Gratis hurtig top-up (Google Places). Den dybe rating laver den daglige Cowork-task.</div>
           </div>
         </div>
+
+        {/* Mode toggle: hele DK (default) vs specifik */}
+        <div style={{ display: "inline-flex", gap: 0, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          <button onClick={() => setMode("auto")} disabled={scraping} style={seg(mode === "auto")}>Kør hele DK</button>
+          <button onClick={() => setMode("specific")} disabled={scraping} style={seg(mode === "specific")}>Kør specifik</button>
+        </div>
+
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select value={region} onChange={(e) => setRegion(e.target.value)} style={sel}>
-            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select value={branch} onChange={(e) => setBranch(e.target.value)} style={sel}>
-            {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
-          </select>
+          {mode === "specific" && (
+            <>
+              <select value={region} onChange={(e) => setRegion(e.target.value)} style={sel} disabled={scraping}>
+                {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <select value={branch} onChange={(e) => setBranch(e.target.value)} style={sel} disabled={scraping}>
+                {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </>
+          )}
           <button className="cc-btn cc-btn-accent" onClick={scrapeNow} disabled={scraping}>
-            {scraping ? "Scraper…" : "Kør nu"}
+            {scraping
+              ? (mode === "auto" && progress.total ? `Skraber… ${progress.done}/${progress.total}` : "Scraper…")
+              : (mode === "auto" ? "Kør nu (hele DK)" : "Kør nu")}
           </button>
-          <button className="cc-btn" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater feed</button>
+          <button className="cc-btn" onClick={load} disabled={scraping}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater feed</button>
+        </div>
+        <div className="cc-dim" style={{ fontSize: 11.5 }}>
+          {mode === "auto"
+            ? "Skraber alle brancher i alle regioner (beauty først), composite-scorer, springer kendte over. Ingen valg nødvendigt."
+            : "Vælg én region + branche for en hurtig målrettet scrape."}
         </div>
         {msg && <div className="cc-dim" style={{ fontSize: 12.5 }}>{msg}</div>}
       </div>
@@ -116,3 +174,8 @@ export default function LeadgenPanel() {
 }
 
 const sel: React.CSSProperties = { height: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", padding: "0 8px", fontSize: 13, color: "var(--text)" };
+const seg = (active: boolean): React.CSSProperties => ({
+  height: 32, padding: "0 14px", fontSize: 12.5, fontWeight: 600, border: "none", cursor: "pointer",
+  background: active ? "var(--accent)" : "transparent",
+  color: active ? "white" : "var(--text-dim)",
+});
