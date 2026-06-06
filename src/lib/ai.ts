@@ -19,7 +19,7 @@
 //     package degrades to the Anthropic fetch or to null instead of throwing).
 //   - Every model is configurable per env; sensible Claude 4.x defaults.
 
-import { logSpend, estimateTokens } from "./spend-log.ts";
+import { logSpend, estimateTokens, isOverDailyCap } from "./spend-log.ts";
 
 export type AiTask = "research" | "qualify" | "draft";
 
@@ -151,6 +151,11 @@ async function viaAnthropic(req: AiRequest, model: string): Promise<AnthropicRes
 export async function generate(req: AiRequest): Promise<AiResult | null> {
   const provider = activeProvider();
   if (provider === "none") return null;
+  // Honour Lucas's hard daily spend cap (spend-log DAILY_CAP_DKK, override via
+  // AI_DAILY_CAP_DKK). Once today's spend hits the cap, skip the model call and
+  // let the caller fall back to deterministic. Only runs when a key is set (the
+  // no-key path returned above), and is fail-open so it never wrongly blocks.
+  if (await isOverDailyCap()) return null;
   const model = modelFor(req.task);
 
   const result = await runGenerate(req, provider, model);

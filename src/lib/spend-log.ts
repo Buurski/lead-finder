@@ -78,6 +78,31 @@ export async function loadSpendSummary(): Promise<SpendSummary> {
   return summarize(await readSpend());
 }
 
+// ---- hard daily cap (Lucas's 150 kr/day decision) ------------------------
+// The constant is the default; AI_DAILY_CAP_DKK lets Lucas tune it without a
+// code change. <= 0 / unparseable env falls back to the constant.
+export function dailyCapDKK(): number {
+  const env = parseFloat(process.env.AI_DAILY_CAP_DKK ?? "");
+  return Number.isFinite(env) && env > 0 ? env : DAILY_CAP_DKK;
+}
+
+// Pure threshold so the policy is unit-testable without touching storage.
+export function isOverCap(todayDKK: number, cap = dailyCapDKK()): boolean {
+  return todayDKK >= cap;
+}
+
+// True when today's spend has reached the hard cap — ai.ts then skips the model
+// call and the caller uses its deterministic path. Best-effort and FAIL-OPEN: a
+// read failure reports false so a logging glitch never silently disables AI.
+export async function isOverDailyCap(): Promise<boolean> {
+  try {
+    const { todayDKK } = await loadSpendSummary();
+    return isOverCap(todayDKK);
+  } catch {
+    return false;
+  }
+}
+
 export interface SpendBucket {
   key: string; // date / model
   costUSD: number;
