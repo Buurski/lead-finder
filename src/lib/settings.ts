@@ -9,13 +9,18 @@ import { store } from "./store.ts";
 export interface Settings {
   autoEngine: boolean;
   dailyLimit: number;
-  autoEngineHour: number; // local hour, 0-23
+  autoEngineHour: number; // local (Europe/Copenhagen) hour, 0-23
+  // Idempotency guard for the hourly cron: the Copenhagen date (YYYY-MM-DD) of the
+  // last auto-run, so the engine fills the queue at most once per day even if the
+  // cron fires more than once during the armed hour. Empty = never run.
+  lastAutoRunDate?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   autoEngine: false,
   dailyLimit: 12,
   autoEngineHour: 7,
+  lastAutoRunDate: "",
 };
 
 function normalize(raw: Partial<Settings> | null): Settings {
@@ -24,7 +29,21 @@ function normalize(raw: Partial<Settings> | null): Settings {
     autoEngine: Boolean(raw.autoEngine),
     dailyLimit: clampInt(raw.dailyLimit, 1, 25, DEFAULT_SETTINGS.dailyLimit),
     autoEngineHour: clampInt(raw.autoEngineHour, 0, 23, DEFAULT_SETTINGS.autoEngineHour),
+    lastAutoRunDate: typeof raw.lastAutoRunDate === "string" ? raw.lastAutoRunDate : "",
   };
+}
+
+// Current date + hour in Lucas's timezone (Europe/Copenhagen), DST-correct, so the
+// cron gate matches the "time (hour)" he set regardless of the UTC server clock.
+export function copenhagenNow(now = new Date()): { date: string; hour: number } {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Copenhagen",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
+  const hour = parseInt(parts.hour, 10) % 24; // "24" → 0 on some platforms
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour };
 }
 
 export async function readSettings(): Promise<Settings> {

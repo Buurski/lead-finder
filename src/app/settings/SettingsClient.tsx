@@ -74,7 +74,7 @@ export default function SettingsClient({ initial, initialNextRun }: { initial: S
             style={numInp}
           />
         </Field>
-        <Field label="Tidspunkt (time)" hint="Lokal time for morgen-kørslen.">
+        <Field label="Tidspunkt (time)" hint="Dansk time for morgen-kørslen (0–23). Cron tjekker hver time og kører på dette klokkeslæt.">
           <input
             type="number" min={0} max={23} value={s.autoEngineHour}
             onChange={(e) => setS({ ...s, autoEngineHour: Number(e.target.value) })}
@@ -83,7 +83,7 @@ export default function SettingsClient({ initial, initialNextRun }: { initial: S
           />
         </Field>
         <p className="cc-dim" style={{ fontSize: 12, margin: 0 }}>
-          Vercel-cron kalder kun motoren hvis kontakten ovenfor er tændt. Selv da sendes der aldrig mail.
+          Vercel-cron tjekker hver time og kører motoren på det valgte tidspunkt — kun hvis kontakten ovenfor er tændt, og højst én gang om dagen. Selv da sendes der aldrig mail; den fylder kun godkendelse.
         </p>
       </section>
 

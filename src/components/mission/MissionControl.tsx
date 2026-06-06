@@ -488,16 +488,61 @@ function FlowGuide() {
   );
 }
 
+function AutoEngineToggle({ cadence }: { cadence?: string | null }) {
+  const router = useRouter();
+  const [armed, setArmed] = useState<boolean>(cadence != null);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    const next = !armed;
+    setArmed(next);
+    setBusy(true);
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoEngine: next }),
+      });
+      router.refresh();
+    } catch {
+      setArmed(!next); // revert on failure
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <Icon name="Calendar" style={{ width: 17, height: 17, color: armed ? "var(--accent-ink)" : "var(--text-dim)" }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+          {armed ? `Daglig auto-motor: tændt${cadence ? ` · næste ${cadence}` : ""}` : "Daglig auto-motor: slukket"}
+        </div>
+        <div className="cc-dim" style={{ fontSize: 12 }}>
+          {armed ? "Fylder godkendelse hver morgen. Sender aldrig." : "Tænd, så fyldes godkendelse automatisk hver morgen."}
+        </div>
+      </div>
+      <button
+        role="switch"
+        aria-checked={armed}
+        aria-label="Daglig auto-motor"
+        onClick={toggle}
+        disabled={busy}
+        style={{ width: 46, height: 27, borderRadius: 999, border: "none", cursor: busy ? "default" : "pointer", position: "relative", background: armed ? "var(--accent)" : "var(--border-strong)", transition: "background 160ms ease", flexShrink: 0, opacity: busy ? 0.7 : 1 }}
+      >
+        <span style={{ position: "absolute", top: 3, left: armed ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left 160ms cubic-bezier(0.22,1,0.36,1)" }} />
+      </button>
+      <Link href="/settings" className="cc-link" style={{ fontSize: 12.5 }}>Mere →</Link>
+    </section>
+  );
+}
+
 function PipelineTab({ s, cadence }: { s: DeckSummary; cadence?: string | null }) {
   const p = s.pipeline;
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <FlowGuide />
-      <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        <Icon name="Calendar" style={{ width: 17, height: 17, color: cadence ? "var(--accent-ink)" : "var(--text-dim)" }} />
-        <span style={{ fontSize: 13.5, fontWeight: 600 }}>{cadence ? `Næste auto-kørsel: ${cadence}` : "Auto-kørsel slukket"}</span>
-        <Link href="/settings" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5 }}>Indstillinger →</Link>
-      </section>
+      <AutoEngineToggle cadence={cadence} />
       <section className="cc-card cc-card-pad">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Motor-status</h2>
         <p className="cc-dim" style={{ fontSize: 13 }}>
