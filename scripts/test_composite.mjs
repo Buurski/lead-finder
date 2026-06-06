@@ -68,5 +68,6 @@ const personal = compositeScore(makeLead({ email: "anna@salon.dk" }));
 const role = compositeScore(makeLead({ email: "info@salon.dk" }));
 check("personal inbox >= role inbox term", personal.breakdown.emailQuality > role.breakdown.emailQuality);
 
-console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : `all composite checks ok (${pass})`);
+console.log(`test_composite — ${pass} passed, ${fail} failed`);
+if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 process.exit(fail ? 1 : 0);

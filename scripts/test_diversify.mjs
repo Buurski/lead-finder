@@ -53,5 +53,6 @@ check("single family preserves order", monoOut.map((x) => x.n).join("") === "AB"
 // Empty input.
 check("empty input ok", diversifyByFamily([], (x) => x.branch).length === 0);
 
-console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : `all diversify checks ok (${pass})`);
+console.log(`test_diversify — ${pass} passed, ${fail} failed`);
+if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 process.exit(fail ? 1 : 0);

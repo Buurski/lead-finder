@@ -62,5 +62,6 @@ check("summary archive count", s.wouldArchive === 1);
 check("summary keep count", s.wouldKeep === 1);
 check("summary byReason chain", s.byReason["chain"] === 1);
 
-console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : `all cleanup checks ok (${pass})`);
+console.log(`test_cleanup — ${pass} passed, ${fail} failed`);
+if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 process.exit(fail ? 1 : 0);
