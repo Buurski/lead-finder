@@ -6,6 +6,8 @@ interface Settings {
   autoEngine: boolean;
   dailyLimit: number;
   autoEngineHour: number;
+  autoInboxFallback?: boolean;
+  fallbackCutoffHour?: number;
 }
 
 export default function SettingsClient({ initial, initialNextRun }: { initial: Settings; initialNextRun: string | null }) {
@@ -85,6 +87,30 @@ export default function SettingsClient({ initial, initialNextRun }: { initial: S
         <p className="cc-dim" style={{ fontSize: 12, margin: 0 }}>
           Vercel-cron tjekker hver time og kører motoren på det valgte tidspunkt — kun hvis kontakten ovenfor er tændt, og højst én gang om dagen. Selv da sendes der aldrig mail; den fylder kun godkendelse.
         </p>
+      </section>
+
+      <section className="cc-card cc-card-pad">
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Icon name="Mail" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>Indbakke-scan fallback</div>
+            <div className="cc-dim" style={{ fontSize: 12.5 }}>
+              {s.autoInboxFallback
+                ? `Tændt — hvis din Cowork-task ikke har leveret en svar-digest inden kl ${String(s.fallbackCutoffHour ?? 9).padStart(2, "0")}, scanner appen selv indbakken. Bruger kun tokens når Cowork ikke har kørt.`
+                : "Slukket. Svar-siden fyldes kun af din Cowork-task (eller når du selv trykker 'Scan nu')."}
+            </div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={Boolean(s.autoInboxFallback)}
+            aria-label="Indbakke-scan fallback"
+            onClick={() => save({ autoInboxFallback: !s.autoInboxFallback })}
+            disabled={saving}
+            style={{ width: 46, height: 27, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: s.autoInboxFallback ? "var(--accent)" : "var(--border-strong)", transition: "background 160ms ease" }}
+          >
+            <span style={{ position: "absolute", top: 3, left: s.autoInboxFallback ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left 160ms cubic-bezier(0.22,1,0.36,1)" }} />
+          </button>
+        </div>
       </section>
 
       {toast && (

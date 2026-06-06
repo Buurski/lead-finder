@@ -23,6 +23,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Mission Control", icon: "LayoutDashboard", hint: "Dagens overblik" },
       { href: "/leads", label: "Leads", icon: "Users", hint: "Pipeline" },
+      { href: "/leadgen", label: "Lead-gen", icon: "Search", hint: "Live lead-feed" },
       { href: "/approve", label: "Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Indbakke-triage" },
       { href: "/messenger", label: "Messenger", icon: "MessageSquare", hint: "FB-leads at skrive til" },

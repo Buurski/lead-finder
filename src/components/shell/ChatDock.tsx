@@ -37,7 +37,9 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const [msgs, setMsgs] = useState<{ role: "you" | "claude"; text: string }[]>([]);
+  interface ChatAction { type: string; args: Record<string, unknown>; label: string }
+  interface Msg { role: "you" | "claude"; text: string; action?: ChatAction; resolved?: boolean }
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -54,12 +56,33 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
         body: JSON.stringify({ message: q, screen: screenLabel(pathname), queue: counts.queue, needs: counts.needs }),
       });
       const data = await res.json().catch(() => ({}));
-      setMsgs((m) => [...m, { role: "claude", text: data.reply || "Noget gik galt — prøv igen." }]);
+      if (data.action) {
+        setMsgs((m) => [...m, { role: "claude", text: data.humanText || data.action.label, action: data.action }]);
+      } else {
+        setMsgs((m) => [...m, { role: "claude", text: data.reply || "Noget gik galt — prøv igen." }]);
+      }
     } catch {
       setMsgs((m) => [...m, { role: "claude", text: "Kunne ikke nå serveren — prøv igen." }]);
     } finally {
       setSending(false);
     }
+  }
+
+  // Confirmed an action proposal → call the matching endpoint, replace the bubble.
+  async function confirmAction(idx: number, action: ChatAction) {
+    setMsgs((m) => m.map((mm, i) => (i === idx ? { ...mm, resolved: true } : mm)));
+    const url = action.type === "note" ? "/api/actions/note" : "/api/actions/mark-lead";
+    try {
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action.args) });
+      const d = await res.json().catch(() => ({}));
+      setMsgs((m) => [...m, { role: "claude", text: d.ok ? `✓ ${d.message || "Udført."}` : `Kunne ikke: ${d.error || "fejl"}` }]);
+    } catch {
+      setMsgs((m) => [...m, { role: "claude", text: "Kunne ikke nå serveren — prøv igen." }]);
+    }
+  }
+  function cancelAction(idx: number) {
+    setMsgs((m) => m.map((mm, i) => (i === idx ? { ...mm, resolved: true } : mm)));
+    setMsgs((m) => [...m, { role: "claude", text: "Annulleret." }]);
   }
 
   if (!open) {
@@ -101,21 +124,26 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, minHeight: 0 }}>
                 {msgs.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      alignSelf: m.role === "you" ? "flex-end" : "flex-start",
-                      maxWidth: "85%",
-                      background: m.role === "you" ? "var(--accent-soft)" : "var(--bg-3)",
-                      color: "var(--text)",
-                      borderRadius: 10,
-                      padding: "8px 11px",
-                      fontSize: 13,
-                      whiteSpace: "pre-wrap",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {m.text}
+                  <div key={i} style={{ alignSelf: m.role === "you" ? "flex-end" : "flex-start", maxWidth: "85%", display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div
+                      style={{
+                        background: m.role === "you" ? "var(--accent-soft)" : "var(--bg-3)",
+                        color: "var(--text)",
+                        borderRadius: 10,
+                        padding: "8px 11px",
+                        fontSize: 13,
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {m.text}
+                    </div>
+                    {m.action && !m.resolved && (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="cc-btn cc-btn-accent" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => confirmAction(i, m.action!)}>Bekræft</button>
+                        <button className="cc-btn" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => cancelAction(i)}>Annullér</button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {sending && <div style={{ alignSelf: "flex-start", color: "var(--text-dim)", fontSize: 12.5 }}>Claude skriver…</div>}

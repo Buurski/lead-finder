@@ -28,7 +28,7 @@ export interface MessengerCandidate {
 const V4_MIN_REVIEWS = 50;
 const QUOTAS: Record<MsgGroup, number> = { beauty: 4, food: 5, photo: 2, craftUtility: 2, craft: 2, service: 2 };
 const DROP_BRANCHES = /(kommune|bibliotek|skole|gymnasium|hospital|region|borgerservice|jobcenter|politi|kirke|menighed|forening|klub)/i;
-const SKIP_STATUSES = new Set(["client", "kunde", "interested", "interesseret", "skip", "frasorteret", "messenger", "messenger-queued", "contacted", "kontaktet", "replied"]);
+const SKIP_STATUSES = new Set(["client", "kunde", "interested", "interesseret", "skip", "frasorteret", "messenger", "messenger-queued", "contacted", "kontaktet", "replied", "not-interested", "ikke-interesseret", "ikke interesseret", "nej"]);
 
 const CHEAP_RE = /\b(cheap|billig|quick|express|discount|hurtig|low.?cost)\b/i;
 const HARD_PERSONAL_NAMES = new Set(["adnan", "walid", "essam", "asim", "sharwan", "shahin", "jonas", "ali", "azar", "therese", "ghariba", "simon", "adnans", "walids", "simons", "alan", "alans", "nermin", "don", "poshya", "arabella", "zin", "ahmad", "hassan", "khaled", "omar", "yusuf", "ibrahim", "mohamed", "muhammad", "mustafa", "peter", "lars", "kenneth", "michael", "anders"]);

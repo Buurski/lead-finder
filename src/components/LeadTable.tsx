@@ -13,6 +13,7 @@ const STATUS: Record<LeadStatus, { color: string; bg: string; label: string }> =
   interested: { color: "#15803d", bg: "#dcfce7", label: "Interesseret" },
   client:     { color: "#14532d", bg: "#bbf7d0", label: "Klient ✓" },
   skip:       { color: "#64748b", bg: "#f1f5f9", label: "Skip" },
+  "not-interested": { color: "#b91c1c", bg: "#fee2e2", label: "Ikke int." },
 };
 
 const NEXT: Partial<Record<LeadStatus, LeadStatus>> = {

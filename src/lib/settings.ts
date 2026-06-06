@@ -14,6 +14,13 @@ export interface Settings {
   // last auto-run, so the engine fills the queue at most once per day even if the
   // cron fires more than once during the armed hour. Empty = never run.
   lastAutoRunDate?: string;
+  // Hybrid inbox-triage fallback: when armed, a Vercel cron runs the inbox scan
+  // ITSELF (costs a little) — but ONLY after the cutoff hour AND only if the Cowork
+  // task hasn't already delivered a fresh digest that day. So tokens are spent only
+  // when Cowork didn't. Off by default; Lucas arms it.
+  autoInboxFallback?: boolean;
+  fallbackCutoffHour?: number; // Copenhagen hour after which the fallback may run
+  lastInboxFallbackDate?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +28,9 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyLimit: 12,
   autoEngineHour: 7,
   lastAutoRunDate: "",
+  autoInboxFallback: false,
+  fallbackCutoffHour: 9,
+  lastInboxFallbackDate: "",
 };
 
 function normalize(raw: Partial<Settings> | null): Settings {
@@ -30,6 +40,9 @@ function normalize(raw: Partial<Settings> | null): Settings {
     dailyLimit: clampInt(raw.dailyLimit, 1, 25, DEFAULT_SETTINGS.dailyLimit),
     autoEngineHour: clampInt(raw.autoEngineHour, 0, 23, DEFAULT_SETTINGS.autoEngineHour),
     lastAutoRunDate: typeof raw.lastAutoRunDate === "string" ? raw.lastAutoRunDate : "",
+    autoInboxFallback: Boolean(raw.autoInboxFallback),
+    fallbackCutoffHour: clampInt(raw.fallbackCutoffHour, 0, 23, DEFAULT_SETTINGS.fallbackCutoffHour!),
+    lastInboxFallbackDate: typeof raw.lastInboxFallbackDate === "string" ? raw.lastInboxFallbackDate : "",
   };
 }
 

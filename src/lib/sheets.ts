@@ -24,7 +24,7 @@ function getSheetsClient() {
   return google.sheets({ version: "v4", auth: getAuth() });
 }
 
-export type LeadStatus = "new" | "called" | "interested" | "client" | "skip";
+export type LeadStatus = "new" | "called" | "interested" | "client" | "skip" | "not-interested";
 export type WebsiteQualityTier = "modern" | "mediocre" | "old" | "dead" | "";
 
 // Reasons used by the morning-review queue to flag a lead so today's cold-mail

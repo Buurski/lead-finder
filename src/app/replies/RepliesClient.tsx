@@ -100,6 +100,33 @@ function LiveSendButton({ item }: { item: InboxItem }) {
   return <span className="cc-dim" style={{ fontSize: 12.5, color: state === "error" ? "var(--red)" : state === "done" ? "var(--accent-ink)" : "var(--text-muted)" }}>{state === "sending" ? "Sender…" : msg}</span>;
 }
 
+function StatusButtons({ item }: { item: InboxItem }) {
+  const [done, setDone] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function set(status: "interested" | "not-interested" | "maybe-later") {
+    if (!item.leadId) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, leadName: item.fromName }),
+      });
+      const d = await res.json();
+      setDone(d.ok ? (status === "not-interested" ? "Markeret: ikke interesseret — kontakter ikke igen" : status === "maybe-later" ? "Markeret: måske senere (~30 dage)" : "Markeret: interesseret") : (d.error ?? "fejl"));
+    } catch { setDone("fejl"); } finally { setBusy(false); }
+  }
+  if (!item.leadId) return null;
+  if (done) return <span className="cc-dim" style={{ fontSize: 12, color: "var(--accent-ink)" }}>{done}</span>;
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <button className="cc-btn" onClick={() => set("interested")} disabled={busy}>Interesseret</button>
+      <button className="cc-btn" onClick={() => set("maybe-later")} disabled={busy}>Måske senere</button>
+      <button className="cc-btn" onClick={() => set("not-interested")} disabled={busy} style={{ borderColor: "var(--red)", color: "var(--red)" }}>Ikke interesseret</button>
+    </div>
+  );
+}
+
 function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
   const [open, setOpen] = useState(false);
   const tone = catTone(item.category);
@@ -139,6 +166,10 @@ function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
             {item.leadId && item.suggestedReply && <QaSendButton item={item} />}
             {armed && item.leadId && item.suggestedReply && <LiveSendButton item={item} />}
           </div>
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+            <div className="cc-kicker" style={{ marginBottom: 6 }}>Marker lead</div>
+            <StatusButtons item={item} />
+          </div>
           <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
             Triage er read-only. QA-kopi går kun til buur.aigro. Rigtigt svar + status-skift er din egen handling.
@@ -165,6 +196,17 @@ function CopyPromptButton() {
     setTimeout(() => setLabel("Hent morgen-scan prompt"), 2000);
   }
   return <button className="cc-btn" onClick={copy}><Icon name="Sparkles" style={{ width: 14, height: 14 }} /> {label}</button>;
+}
+
+// Manual "kør nu": runs the live inbox scan immediately (bypasses the fallback
+// gates) and refreshes — for when Cowork hasn't delivered and Lucas wants it now.
+function ScanNowButton({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  async function scan() {
+    setBusy(true);
+    try { await fetch("/api/cron/inbox-triage?force=1"); onDone(); } catch { /* ignore */ } finally { setBusy(false); }
+  }
+  return <button className="cc-btn" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>;
 }
 
 export default function RepliesClient() {
@@ -227,6 +269,7 @@ export default function RepliesClient() {
             {ageMin != null && ageMin >= 0 ? ` · opdateret for ${ageMin} min siden` : ""}
           </div>
         </div>
+        <ScanNowButton onDone={load} />
         <CopyPromptButton />
         <button className="cc-btn" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
       </div>

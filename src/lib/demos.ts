@@ -15,6 +15,7 @@ const D = {
   buurfoto: { label: "Fotograf", url: "https://buurfoto.vercel.app/" },
   streetcut: { label: "Barber", url: "https://streetcut.vercel.app/" },
   salonArtec: { label: "Salon / skønhed", url: "https://salon-artec.vercel.app/Salon%20Artec.html" },
+  vida: { label: "Skønhedsklinik", url: "https://vida-ten-gamma.vercel.app/" },
   vestfjends: { label: "Service / lokal", url: "https://vestfjends.vercel.app/" },
 } as const;
 
@@ -28,6 +29,7 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.underKlippen, branch: "mad" },
   { ...D.zaytoon, branch: "mad" },
   { ...D.salonArtec, branch: "skønhed" },
+  { ...D.vida, branch: "skønhed" },
   { ...D.streetcut, branch: "skønhed" },
   { ...D.denlillemaler, branch: "håndværk" },
   { ...D.ktvvs, branch: "håndværk" },
@@ -39,6 +41,9 @@ const FOOD_INTL =
   /pizza|pizzeria|italia|sushi|kebab|shawarma|falafel|tapas|libanon|tyrk|grill|mexicansk|wok|asia|thai|indisk|kinesisk/i;
 const FOOD = /café|cafe|restaurant|bager|konditori|spise|køkken|bistro|brasserie|kro|smørrebrød|frokost/i;
 const BARBER = /barber|herrefrisør|herre ?frisør|herreklip/i;
+// Skønhedsklinik (hud/kosmetolog/spa/laser/botox) → Vida-demoen (klinik-look),
+// adskilt fra frisør/salon → Salon Artec. Tjekkes FØR BEAUTY.
+const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|laser|botox|filler|wax|wellness|spa\b|klinik|cosmetic|aesthet|microblading|vipper|vippe|fillers/i;
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
@@ -53,7 +58,8 @@ export function pickDemoPair(branch: string, name: string): [Demo, Demo] {
   const t = `${name} ${branch}`.toLowerCase();
 
   if (BARBER.test(t)) return [D.streetcut, D.salonArtec];
-  if (BEAUTY.test(t)) return [D.salonArtec, D.streetcut];
+  if (CLINIC.test(t)) return [D.vida, D.salonArtec];
+  if (BEAUTY.test(t)) return [D.salonArtec, D.vida];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];

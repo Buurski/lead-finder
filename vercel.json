@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/engine",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/inbox-triage",
+      "schedule": "0 * * * *"
     }
   ]
 }

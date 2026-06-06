@@ -10,6 +10,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 const DEMO_URLS = {
   beautyBarber: "https://streetcut.vercel.app/",
   beautySalon: "https://salon-artec.vercel.app/Salon%20Artec.html",
+  beautyClinic: "https://vida-ten-gamma.vercel.app/",
   foodInter: "https://zaytoon-six.vercel.app/",
   foodCafe: "https://under-klippen.vercel.app/",
   photo: "https://buurfoto.vercel.app/",
@@ -30,7 +31,12 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
 
 export function demoUrlFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
-  if (group === "beauty") return /barber|herrefr/.test(b) ? DEMO_URLS.beautyBarber : DEMO_URLS.beautySalon;
+  if (group === "beauty") {
+    if (/barber|herrefr/.test(b)) return DEMO_URLS.beautyBarber;
+    // Skønhedsklinik (hud/kosmetolog/spa/laser) → Vida; frisør/salon → Salon Artec.
+    if (/hudplej|hudklinik|kosmetolog|skønhedsklinik|laser|botox|filler|wax|wellness|spa\b|klinik|aesthet|microblading|vippe/.test(b)) return DEMO_URLS.beautyClinic;
+    return DEMO_URLS.beautySalon;
+  }
   if (group === "food") {
     if (/café|cafe|kaffe/.test(b)) return DEMO_URLS.foodCafe;
     return /pizza|sushi|kebab|grill|wok|thai|kinesisk|tyrk|libanon|indisk|mexicansk|shawarma|falafel/.test(b)
