@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { runScraper, scoreLead, detectWebsiteStatus, BRANCHES, CITIES, REGION_PRESETS, BRANCH_PRESETS, buildQueries } from "@/lib/apify";
 import { appendLeads, getLeadNames, getLeadPhones } from "@/lib/sheets";
+import type { Lead } from "@/lib/sheets";
+import { compositeScore } from "@/lib/leads/composite-score";
 
 export const maxDuration = 300;
 
@@ -35,29 +37,37 @@ export async function POST(req: Request) {
         ) return false;
         return true;
       })
-      .map((p) => ({
-        name: p.title,
-        branch: p.categoryName ?? "",
-        phone: p.phone ?? "",
-        city: p.city ?? "",
-        score: scoreLead(p),
-        source: "Google Maps",
-        website: p.website ?? "",
-        websiteStatus: detectWebsiteStatus(p.website),
-        status: "new" as const,
-        notes: "",
-        lastUpdated: now,
-        websiteQualityTier: "" as const,
-        enrichedInfo: "",
-        email: p.email ?? "",
-        emailSentAt: "",
-        emailOpenedAt: "",
-        emailClickedAt: "",
-        emailStatus: "",
-        followupSentAt: "",
-        reviewsCount: p.reviewsCount ?? 0,
-        callbackDate: "",
-      }));
+      .map((p) => {
+        const base = {
+          name: p.title,
+          branch: p.categoryName ?? "",
+          phone: p.phone ?? "",
+          city: p.city ?? "",
+          score: scoreLead(p),
+          source: "Google Maps",
+          website: p.website ?? "",
+          websiteStatus: detectWebsiteStatus(p.website),
+          status: "new" as const,
+          notes: "",
+          lastUpdated: now,
+          websiteQualityTier: "" as const,
+          enrichedInfo: "",
+          email: p.email ?? "",
+          emailSentAt: "",
+          emailOpenedAt: "",
+          emailClickedAt: "",
+          emailStatus: "",
+          followupSentAt: "",
+          reviewsCount: p.reviewsCount ?? 0,
+          callbackDate: "",
+        };
+        // "Vælg de bedste": store the composite score (base + review-velocity +
+        // branch-relevance + sleeping-beauty…) so the feed/engine rank by quality,
+        // not raw Google stars. rating derived from the place.
+        const rating = (p as { rating?: number; totalScore?: number }).rating ?? (p as { totalScore?: number }).totalScore;
+        base.score = compositeScore(base as unknown as Lead, undefined, { rating: typeof rating === "number" ? rating : undefined }).score;
+        return base;
+      });
 
     if (newLeads.length > 0) {
       await appendLeads(newLeads);
