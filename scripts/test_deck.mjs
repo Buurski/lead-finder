@@ -150,7 +150,25 @@ function client(over = {}) {
   check("revenue monthly sum", r.monthlyDKK === 840);
   check("revenue setup parses thousands sep", r.setupDKK === 8000);
   check("revenue clientCount", r.clientCount === 3);
+  check("revenue payingClientCount only fee>0", r.payingClientCount === 2);
   check("revenue goal default", r.goalMonthlyDKK === 10000);
+}
+
+// ---- Sheets-value tolerance (whitespace / casing) ------------------------
+// A "replied "/" Replied" value from the sheet must still count — otherwise a
+// real reply is hidden from Mission Control (the wrong-number class Lucas hit).
+{
+  const leads = [
+    lead({ id: "a", emailStatus: "replied " }),
+    lead({ id: "b", emailStatus: "Replied", status: "client", lastUpdated: today }),
+    lead({ id: "c", status: " interested " }),
+  ];
+  const n = deck.buildNumbers(leads);
+  check("numbers: trailing-space 'replied ' counted", n.repliesToday === 2);
+  check("numbers: mixed-case 'Replied' counts as won client", n.wonThisWeek === 1);
+  const ny = deck.buildNeedsYou(leads);
+  check("needsYou: 'replied ' surfaces as reply", ny.some((i) => i.kind === "reply"));
+  check("needsYou: ' interested ' surfaces", ny.some((i) => i.kind === "interested"));
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all deck checks ok");

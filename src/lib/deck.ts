@@ -87,6 +87,13 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Sheets status/emailStatus values arrive with stray whitespace/casing, so every
+// equality comparison here normalizes first — otherwise a "replied " value
+// silently hides a real reply from Mission Control (the wrong-number class Lucas
+// flagged). Whitespace+case only; it never reclassifies a genuinely different
+// status.
+const norm = (s: string | undefined): string => (s ?? "").trim().toLowerCase();
+
 function isWithinDays(iso: string, days: number): boolean {
   if (!iso) return false;
   const t = Date.parse(iso);
@@ -100,7 +107,7 @@ export function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
 
   for (const l of leads) {
     // A reply landed — highest urgency.
-    if (l.emailStatus === "replied") {
+    if (norm(l.emailStatus) === "replied") {
       items.push({
         leadId: l.id,
         name: l.name,
@@ -122,7 +129,7 @@ export function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
       continue;
     }
     // Marked interested but no reply yet — warm, needs a nudge.
-    if (l.status === "interested") {
+    if (norm(l.status) === "interested") {
       items.push({
         leadId: l.id,
         name: l.name,
@@ -196,7 +203,7 @@ export function buildDailySent(leads: Lead[], days = 14): DailySent[] {
     const bucket = byDate.get(d);
     if (!bucket) continue; // outside the window
     bucket.count += 1;
-    if (l.emailStatus === "replied") bucket.replies += 1;
+    if (norm(l.emailStatus) === "replied") bucket.replies += 1;
   }
   return [...byDate.entries()].map(([date, v]) => ({ date, count: v.count, replies: v.replies }));
 }
@@ -219,10 +226,10 @@ export function buildRevenue(clients: Client[], goalMonthlyDKK = 10000): Revenue
 
 export function buildNumbers(leads: Lead[]): DeckNumbers {
   return {
-    newLeads: leads.filter((l) => l.status === "new").length,
+    newLeads: leads.filter((l) => norm(l.status) === "new").length,
     withEmail: leads.filter((l) => l.email).length,
-    repliesToday: leads.filter((l) => l.emailStatus === "replied").length,
-    wonThisWeek: leads.filter((l) => l.status === "client" && isWithinDays(l.lastUpdated, 7)).length,
+    repliesToday: leads.filter((l) => norm(l.emailStatus) === "replied").length,
+    wonThisWeek: leads.filter((l) => norm(l.status) === "client" && isWithinDays(l.lastUpdated, 7)).length,
   };
 }
 
@@ -259,7 +266,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     revenue: buildRevenue(clients),
     buckets: {
       indtjening: clients.length > 0,
-      kunder: clients.length > 0 || leads.some((l) => l.status === "client"),
+      kunder: clients.length > 0 || leads.some((l) => norm(l.status) === "client"),
       kalender: leads.some((l) => l.callbackDate),
       kommunikation: needsYou.length > 0 || queuePeek.count > 0,
       opgaver: queuePeek.pending > 0 || needsYou.length > 0,
