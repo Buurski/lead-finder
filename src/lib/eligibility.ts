@@ -9,8 +9,8 @@
 // of eligible leads and the actual send path filtered a different set. Both
 // paths now import from here.
 
-import type { Lead } from "@/lib/sheets";
-import { isChain, isPublicSector } from "@/lib/chains";
+import type { Lead } from "./sheets.ts";
+import { isChain, isPublicSector } from "./chains.ts";
 
 export const PROFESSIONAL_BRANCHES = [
   "advokat", "revisor", "fysioterapi", "tandlæge", "optiker", "kiropraktor", "apotek",
@@ -51,12 +51,17 @@ export function isProfessional(branch: string): boolean {
   return PROFESSIONAL_BRANCHES.some((p) => b.includes(p));
 }
 
+// Sheets status/tier values carry stray whitespace/casing — normalize before any
+// suppression check, or a "bounced "/"replied "/"Skip" value slips the gate and
+// the lead gets (re-)mailed. Same class as canSendTo.
+const norm = (s: string | undefined): string => (s ?? "").trim().toLowerCase();
+
 export function isEligibleForCold(lead: Lead): boolean {
   if (!isCleanEmail(lead.email)) return false;
   if (lead.emailSentAt) return false;
-  if (lead.emailStatus === "bounced") return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
-  if (lead.websiteQualityTier === "modern") return false;
+  if (norm(lead.emailStatus) === "bounced") return false;
+  if (norm(lead.status) === "skip" || norm(lead.status) === "client") return false;
+  if (norm(lead.websiteQualityTier) === "modern") return false;
   if (isChain(lead.name)) return false;
   if (isPublicSector(lead.name)) return false;
   if (lead.skipReason) return false;
@@ -70,10 +75,10 @@ export function isEligibleForFollowup(lead: Lead): boolean {
   if (!lead.email) return false;
   if (!lead.emailSentAt) return false;
   if (lead.emailOpenedAt) return false;
-  if (lead.emailStatus === "replied") return false;
-  if (lead.emailStatus === "bounced") return false;
+  if (norm(lead.emailStatus) === "replied") return false;
+  if (norm(lead.emailStatus) === "bounced") return false;
   if (lead.followupSentAt) return false;
-  if (lead.status === "skip" || lead.status === "client") return false;
+  if (norm(lead.status) === "skip" || norm(lead.status) === "client") return false;
   if (lead.skipReason) return false;
   // A chain or public-sector lead that slipped through before these guards
   // existed must not receive a follow-up either.
