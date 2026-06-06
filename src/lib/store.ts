@@ -45,6 +45,22 @@ function fsDocPath(key: string): string {
 function fsLogPath(key: string): string {
   return path.join(process.cwd(), ".send_queue", `${key}.jsonl`);
 }
+
+// Parse an append-only JSONL blob resiliently. A single corrupt or half-written
+// line (e.g. a crash mid-append to spend.jsonl) is skipped — it must NOT throw
+// and discard every other valid entry in the log.
+export function parseJsonl(raw: string): unknown[] {
+  const out: unknown[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line) continue;
+    try {
+      out.push(JSON.parse(line));
+    } catch {
+      /* skip corrupt line, keep the rest of the log */
+    }
+  }
+  return out;
+}
 function fsAssetPath(key: string): string {
   return path.join(process.cwd(), "dist", key);
 }
@@ -56,11 +72,13 @@ export class FSStore implements Store {
     fs.appendFileSync(file, JSON.stringify(entry) + "\n", "utf-8");
   }
   async readAll(key: string): Promise<unknown[]> {
+    let raw: string;
     try {
-      return fs.readFileSync(fsLogPath(key), "utf-8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+      raw = fs.readFileSync(fsLogPath(key), "utf-8");
     } catch {
-      return [];
+      return []; // no log file yet
     }
+    return parseJsonl(raw);
   }
   async get<T = unknown>(key: string): Promise<T | null> {
     try {
@@ -138,7 +156,12 @@ class KVStore implements Store {
   async readAll(key: string) {
     const kv = await this.kv();
     const items = (await kv.lrange(`log:${key}`, 0, -1)) as unknown[];
-    return items.map((i) => (typeof i === "string" ? JSON.parse(i) : i));
+    const out: unknown[] = [];
+    for (const i of items) {
+      if (typeof i !== "string") { out.push(i); continue; }
+      try { out.push(JSON.parse(i)); } catch { /* skip corrupt entry */ }
+    }
+    return out;
   }
   async get<T = unknown>(key: string) { const kv = await this.kv(); return ((await kv.get(`doc:${key}`)) as T) ?? null; }
   async put(key: string, value: unknown) { const kv = await this.kv(); await kv.set(`doc:${key}`, value); }
