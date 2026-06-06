@@ -1,5 +1,7 @@
 import { google } from "googleapis";
 
+import { planRowDeletions } from "./leads/row-plan.ts";
+
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
 function getAuth() {
@@ -397,10 +399,13 @@ async function getLeadsSheetId(): Promise<number> {
 // Delete rows by sheet row number (1-based). Must be called with the actual sheet row numbers
 // (i.e. lead.id values, which equal sheet row number). Deletes in reverse order to avoid index shift.
 export async function deleteLeadRows(sheetRowNumbers: number[]): Promise<void> {
-  if (sheetRowNumbers.length === 0) return;
+  // Dedupe + sort descending + drop header/invalid rows (see row-plan.ts) so a
+  // batched delete never shifts an index under a queued deletion, double-deletes
+  // a neighbour, or removes the header row.
+  const sorted = planRowDeletions(sheetRowNumbers);
+  if (sorted.length === 0) return;
   const sheetId = await getLeadsSheetId();
   const sheets = getSheetsClient();
-  const sorted = [...sheetRowNumbers].sort((a, b) => b - a);
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
     requestBody: {
