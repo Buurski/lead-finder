@@ -52,8 +52,8 @@ export default async function ClaudePage() {
           title="Hvad Claude gør (og hvad der mangler)"
           points={[
             "Bygger + analyserer systemet i dag via CLI'en — det er sådan dette command center bliver til.",
-            "In-app chat (skrive-felt der kører handlinger) er IKKE deployet endnu — det kræver en server-side agent-rute.",
-            "Sender og sletter aldrig selv. Alt går gennem en bekræftelse (samme guardrails som resten).",
+            "In-app chat er LIVE: tryk \"Spørg Claude\" nederst til højre og skriv. Den rådgiver om dine leads, køen og svar (kører på din API-nøgle, vises på AI Spend).",
+            "Chatten udfører ingen handlinger endnu — den sender og sletter aldrig selv. Det kommer bag en bekræftelse.",
           ]}
         />
 

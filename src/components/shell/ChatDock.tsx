@@ -37,6 +37,31 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const [msgs, setMsgs] = useState<{ role: "you" | "claude"; text: string }[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function send(text: string) {
+    const q = text.trim();
+    if (!q || sending) return;
+    setInput("");
+    setMsgs((m) => [...m, { role: "you", text: q }]);
+    setSending(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: q, screen: screenLabel(pathname), queue: counts.queue, needs: counts.needs }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setMsgs((m) => [...m, { role: "claude", text: data.reply || "Noget gik galt — prøv igen." }]);
+    } catch {
+      setMsgs((m) => [...m, { role: "claude", text: "Kunne ikke nå serveren — prøv igen." }]);
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (!open) {
     return (
       <button className="cc-chatdock-fab" onClick={() => setOpen(true)} aria-label="Åbn chat / control room">
@@ -68,16 +93,52 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
 
       <div className="cc-chatdock-body">
         {mode === "chat" ? (
-          <div style={{ display: "grid", gap: 10 }}>
-            <p style={{ margin: 0 }}>
-              Her taler du med Claude om det du kigger på. Skrive-feltet tændes i Fase B,
-              hvor knappen kan køre rigtige handlinger (dry-run, bekræft, toast).
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {["Hvad kræver mig nu?", "Resumér køen", "Hvem skal følges op?"].map((s) => (
-                <span key={s} className="cc-chip" style={{ cursor: "default" }}>{s}</span>
-              ))}
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%", minHeight: 0 }}>
+            {msgs.length === 0 ? (
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
+                Spørg om dine leads, køen, svar eller det du kigger på. Jeg rådgiver — men sender og sletter intet.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, minHeight: 0 }}>
+                {msgs.map((m, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      alignSelf: m.role === "you" ? "flex-end" : "flex-start",
+                      maxWidth: "85%",
+                      background: m.role === "you" ? "var(--accent-soft)" : "var(--bg-3)",
+                      color: "var(--text)",
+                      borderRadius: 10,
+                      padding: "8px 11px",
+                      fontSize: 13,
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {m.text}
+                  </div>
+                ))}
+                {sending && <div style={{ alignSelf: "flex-start", color: "var(--text-dim)", fontSize: 12.5 }}>Claude skriver…</div>}
+              </div>
+            )}
+            {msgs.length === 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {["Hvad kræver mig nu?", "Resumér køen", "Hvem skal følges op?"].map((s) => (
+                  <button key={s} className="cc-chip" style={{ cursor: "pointer", border: "none" }} onClick={() => send(s)} disabled={sending}>{s}</button>
+                ))}
+              </div>
+            )}
+            <form onSubmit={(e) => { e.preventDefault(); send(input); }} style={{ display: "flex", gap: 6, marginTop: "auto" }}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Skriv til Claude…"
+                disabled={sending}
+                aria-label="Skriv til Claude"
+                style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", borderRadius: 8, padding: "8px 11px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "var(--font-body)" }}
+              />
+              <button type="submit" disabled={sending || !input.trim()} className="cc-btn" style={{ padding: "0 14px" }}>Send</button>
+            </form>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 9 }}>
