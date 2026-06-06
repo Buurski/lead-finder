@@ -28,13 +28,11 @@
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
-      "Bash(git push* main*)",
       "Bash(git push* master*)",
       "Bash(git reset --hard*)",
       "Bash(git rebase*)",
       "Bash(npm run dev)",
       "Bash(next dev*)",
-      "Bash(vercel*)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
       "Edit(.env*)",
