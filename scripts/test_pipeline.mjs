@@ -82,7 +82,12 @@ check("draft passes validateDraft (no price/robot)", validateDraft(draft.body).o
 check("validateDraft rejects kr", validateDraft("Det koster 5000 kr").ok === false);
 check("validateDraft rejects 'skriv ja'", validateDraft("Skriv ja hvis interesseret").ok === false);
 check("validateDraft rejects gratis", validateDraft("Helt gratis tilbud").ok === false);
+check("validateDraft rejects DKK", validateDraft("Det koster 5000 DKK").ok === false);
+check("validateDraft rejects euro sign", validateDraft("Kun 500 € for det hele").ok === false);
 check("validateDraft accepts clean copy", validateDraft("Hej, jeg lavede en demo til jer. Mvh, Lucas").ok === true);
+// guard against false-positives the kr/DKK rules must NOT trip on:
+check("validateDraft accepts year 2026", validateDraft("Vi ses i 2026, mvh Lucas").ok === true);
+check("validateDraft accepts review count", validateDraft("I har over 200 gode anmeldelser").ok === true);
 
 // ---- report -------------------------------------------------------------
 console.log("");

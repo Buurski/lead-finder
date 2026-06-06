@@ -30,6 +30,8 @@ const PRICE_PATTERNS: Array<[RegExp, string]> = [
   [/\b\d+\s?kr\b/i, "kr-beløb"],
   [/\bkr\.?\b/i, "kr-reference"],
   [/\bkroner\b/i, "ordet 'kroner'"],
+  [/\bdkk\b/i, "DKK-reference"],
+  [/€/, "euro-tegn"],
   [/\b\d{1,3}[.,]\d{3}\b/, "pengebeløb"], // require thousands separator so a bare year (2026) is not a false "price"
   [/\b\d+\s?k\b/i, "pris som '5k'"],
   [/\bprisvenlig\w*/i, "ordet 'prisvenlig'"],
