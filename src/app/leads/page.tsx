@@ -15,10 +15,13 @@ export default async function LeadsPage() {
     // Sheets not configured yet
   }
 
+  // Normalize Sheets status (stray whitespace/casing) so the pipeline counts
+  // are correct even on dirty rows — same robustness as Mission Control.
+  const norm = (s?: string) => (s ?? "").trim().toLowerCase();
   const byStatus = {
-    new: leads.filter((l) => l.status === "new").length,
-    interested: leads.filter((l) => l.status === "interested").length,
-    client: leads.filter((l) => l.status === "client").length,
+    new: leads.filter((l) => norm(l.status) === "new").length,
+    interested: leads.filter((l) => norm(l.status) === "interested").length,
+    client: leads.filter((l) => norm(l.status) === "client").length,
   };
 
   return (

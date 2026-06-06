@@ -15,9 +15,10 @@ interface Props {
 }
 
 export default function EmailStatsPanel({ leads, activeFilter, onFilter }: Props) {
+  const norm = (s?: string) => (s ?? "").trim().toLowerCase();
   const withEmail = leads.filter((l) => l.email);
-  const sent = withEmail.filter((l) => ["sent", "opened", "clicked", "replied"].includes(l.emailStatus));
-  const replied = withEmail.filter((l) => l.emailStatus === "replied");
+  const sent = withEmail.filter((l) => ["sent", "opened", "clicked", "replied"].includes(norm(l.emailStatus)));
+  const replied = withEmail.filter((l) => norm(l.emailStatus) === "replied");
   const followedUp = leads.filter((l) => l.followupSentAt);
 
   const stats: { label: string; value: string | number; color: string; filter: EmailFilter }[] = [
