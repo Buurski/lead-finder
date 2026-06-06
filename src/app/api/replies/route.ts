@@ -3,60 +3,72 @@ import { ImapFlow } from "imapflow";
 import { getLeads } from "@/lib/sheets";
 import type { Lead } from "@/lib/sheets";
 import { classifyReply, draftReply } from "@/lib/reply";
-import type { ReplyClassification } from "@/lib/reply";
+import {
+  loadDigest, summarizeDigest, scoreImportance, isActionable,
+} from "@/lib/inbox-digest";
+import type { InboxDigest, InboxItem, InboxCategory } from "@/lib/inbox-digest";
 
-// GET /api/replies — read-only inbox triage for the Replies panel.
+// GET /api/replies — inbox triage for the "Svar" page.
 //
-// Scans the Gmail INBOX over IMAP for messages whose sender matches a lead we
-// have emailed, pulls the latest reply text, classifies it with reply.ts, and
-// pre-drafts a suggested response. NOTHING is sent and NOTHING is written back —
-// flipping a lead's status is a separate, explicit Fase B action.
-//
-// Network/credential failures degrade gracefully to { ok:false, replies:[] } so
-// the panel can show a calm "couldn't reach inbox" state instead of crashing.
+// Artifact-first: returns the ranked digest a local Opus/Cowork task pushed to
+// /api/inbox/digest (preferred — the model call ran on Lucas's subscription, not
+// Vercel budget). When no digest exists yet, falls back to a LIVE, deterministic
+// scan of lead-matched IMAP replies so the page is never empty before the first
+// scheduled run. Nothing is sent and nothing is written back.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-interface ReplyRow {
-  leadId: string;
-  name: string;
-  branch: string;
-  city: string;
-  from: string;
-  subject: string;
-  date: string;
-  preview: string;
-  classification: ReplyClassification;
-  suggestedReply: string;
-  source: "ai" | "deterministic";
-}
 
 function previewOf(text: string, n = 280): string {
   return (text || "").replace(/\s+/g, " ").trim().slice(0, n);
 }
 
+function gmailSearchLink(email: string): string {
+  return `https://mail.google.com/mail/u/0/#search/from:${encodeURIComponent(email)}`;
+}
+
+// Map the reply.ts classifier category onto the inbox-digest category vocabulary.
+function toInboxCategory(c: string, becameClient: boolean): InboxCategory {
+  if (becameClient) return "client";
+  switch (c) {
+    case "interested": return "interested";
+    case "question": return "question";
+    case "objection": return "objection";
+    case "not-interested": return "not-interested";
+    case "auto-reply": return "auto-reply";
+    case "wrong-person": return "other";
+    case "unsubscribe": return "not-interested";
+    default: return "other";
+  }
+}
+
 export async function GET() {
+  // 1) Artifact path — the digest a scheduled task produced.
+  const stored = await loadDigest();
+  if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
+    return NextResponse.json({ ok: true, source: "artifact", digest: stored, summary: summarizeDigest(stored) });
+  }
+
+  // 2) Live fallback — lead-matched IMAP replies, deterministic.
   let leads: Lead[];
   try {
     leads = await getLeads();
   } catch (err) {
-    return NextResponse.json({ ok: false, error: `sheets: ${String(err)}`, replies: [] }, { status: 200 });
+    return NextResponse.json({ ok: false, error: `sheets: ${String(err)}`, source: "none", digest: null }, { status: 200 });
   }
 
-  // Any lead with an email is a candidate — not just ones the engine emailed —
-  // so replies from manually-contacted prospects (e.g. RR Studio) show up too.
   const emailed = leads.filter((l) => l.email);
   if (emailed.length === 0) {
-    return NextResponse.json({ ok: true, replies: [], checked: 0 });
+    const empty: InboxDigest = { generatedAt: new Date().toISOString(), generatedBy: "live-fallback", account: "all", items: [] };
+    return NextResponse.json({ ok: true, source: "live-fallback", digest: empty, summary: summarizeDigest(empty), checked: 0 });
+  }
+
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    return NextResponse.json({ ok: false, error: "imap not configured", source: "none", digest: null }, { status: 200 });
   }
 
   const byEmail = new Map(emailed.map((l) => [l.email.toLowerCase().trim(), l]));
-  // Anchor the scan on the earliest real send date when we have one; otherwise
-  // fall back to a bounded recent window so we never scan years of inbox.
-  const sendDates = emailed
-    .map((l) => new Date(l.emailSentAt))
-    .filter((d) => !Number.isNaN(d.getTime()));
+  const sendDates = emailed.map((l) => new Date(l.emailSentAt)).filter((d) => !Number.isNaN(d.getTime()));
   const since = new Date();
   if (sendDates.length > 0) {
     const earliest = sendDates.reduce((a, b) => (a < b ? a : b));
@@ -69,24 +81,16 @@ export async function GET() {
   floor.setDate(floor.getDate() - 60);
   if (since < floor) since.setTime(floor.getTime());
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    return NextResponse.json({ ok: false, error: "imap not configured", replies: [] }, { status: 200 });
-  }
-
   const client = new ImapFlow({
     host: "imap.gmail.com",
     port: 993,
     secure: true,
-    // Local-dev escape hatch for TLS-intercepting AV/proxy (self-signed in chain).
-    // Opt-in only via IMAP_ALLOW_SELFSIGNED=1; default stays fully verified.
     ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
     auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
     logger: false,
   });
 
-  // Keep only the newest message per lead.
   const latest = new Map<string, { lead: Lead; subject: string; date: string; text: string }>();
-
   try {
     await client.connect();
     await client.mailboxOpen("INBOX");
@@ -98,45 +102,45 @@ export async function GET() {
       const prev = latest.get(lead.id);
       if (prev && prev.date >= when) continue;
       const raw = msg.source ? msg.source.toString("utf-8") : "";
-      // Crude body extraction: text after the first blank line, headers stripped.
       const body = raw.split(/\r?\n\r?\n/).slice(1).join("\n\n");
-      latest.set(lead.id, {
-        lead,
-        subject: msg.envelope?.subject ?? "(intet emne)",
-        date: when,
-        text: body || raw,
-      });
+      latest.set(lead.id, { lead, subject: msg.envelope?.subject ?? "(intet emne)", date: when, text: body || raw });
     }
     await client.logout();
   } catch (err) {
-    return NextResponse.json({ ok: false, error: `imap: ${String(err)}`, replies: [] }, { status: 200 });
+    return NextResponse.json({ ok: false, error: `imap: ${String(err)}`, source: "none", digest: null }, { status: 200 });
   }
 
-  const replies: ReplyRow[] = [];
+  const items: InboxItem[] = [];
   for (const { lead, subject, date, text } of latest.values()) {
-    const draft = await draftReply(
-      text,
-      { leadName: lead.name, branch: lead.branch, city: lead.city },
-      "",
-      { useAI: false } // read-only triage stays deterministic + fast; AI lift is a Fase B action
-    );
-    replies.push({
-      leadId: lead.id,
-      name: lead.name,
-      branch: lead.branch,
-      city: lead.city,
+    const draft = await draftReply(text, { leadName: lead.name, branch: lead.branch, city: lead.city }, "", { useAI: false });
+    const cls = draft.classification ?? classifyReply(text);
+    const category = toInboxCategory(cls.category, cls.becameClient);
+    items.push({
+      id: lead.id,
+      account: process.env.GMAIL_USER || "lucas",
       from: lead.email,
+      fromName: lead.name,
       subject,
+      snippet: previewOf(text),
       date,
-      preview: previewOf(text),
-      classification: draft.classification ?? classifyReply(text),
+      category,
+      importance: scoreImportance(category, true),
+      needsReply: cls.isInterested || isActionable(category),
+      reason: cls.becameClient ? "Eksplicit ja — blev kunde" : cls.isInterested ? "Viste interesse" : "Svar fra lead",
+      gmailLink: gmailSearchLink(lead.email),
+      leadId: lead.id,
       suggestedReply: draft.suggestedReply,
-      source: draft.source,
     });
   }
+  items.sort((a, b) => b.importance - a.importance);
 
-  // Most interesting first: interested/becameClient, then questions, then rest.
-  replies.sort((a, b) => Number(b.classification.isInterested) - Number(a.classification.isInterested));
-
-  return NextResponse.json({ ok: true, replies, checked: emailed.length });
+  const digest: InboxDigest = {
+    generatedAt: new Date().toISOString(),
+    generatedBy: "live-fallback",
+    account: process.env.GMAIL_USER || "lucas",
+    items,
+    windowDays: 30,
+    note: `live fallback — ${items.length} lead-matchede svar (kun kendte leads). Kør indbakke-scan for fuld triage.`,
+  };
+  return NextResponse.json({ ok: true, source: "live-fallback", digest, summary: summarizeDigest(digest), checked: emailed.length });
 }

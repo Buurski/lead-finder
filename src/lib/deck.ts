@@ -13,6 +13,7 @@ import { getLeads, getClients } from "./sheets.ts";
 import type { Lead, Client } from "./sheets.ts";
 import { readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
+import { loadDigest, summarizeDigest } from "./inbox-digest.ts";
 
 export interface DeckNumbers {
   newLeads: number;
@@ -252,10 +253,21 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
   const pipeline = buildPipeline(queue);
   const needsYou = buildNeedsYou(leads);
 
+  const numbers = buildNumbers(leads);
+  // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
+  // it reflects what actually needs answering (incl. non-lead mail), not just the
+  // Sheets "replied" flag. Falls back to the Sheets count when no digest yet.
+  try {
+    const dg = summarizeDigest(await loadDigest());
+    if (dg.total > 0) numbers.repliesPending = dg.needsReply;
+  } catch {
+    /* keep the Sheets-derived count */
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     ok,
-    numbers: buildNumbers(leads),
+    numbers,
     needsYou,
     queue: queuePeek,
     pipeline,
