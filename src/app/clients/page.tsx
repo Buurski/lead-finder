@@ -6,10 +6,13 @@ export const revalidate = 0;
 
 export default async function ClientsPage() {
   let clients: Awaited<ReturnType<typeof getClients>> = [];
+  let sheetsOk = true;
   try {
     clients = await getClients();
   } catch {
-    // not configured yet
+    // Couldn't reach Sheets — flag it so an empty list isn't shown as "no
+    // clients yet" (which looks like the client list was wiped).
+    sheetsOk = false;
   }
 
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
@@ -31,7 +34,18 @@ export default async function ClientsPage() {
         }
       />
 
-      {clients.length === 0 ? (
+      {!sheetsOk ? (
+        <div
+          className="cc-card cc-card-pad"
+          role="status"
+          style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}
+        >
+          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
+          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
+            Kunne ikke nå Google Sheets lige nu — dine klienter er der stadig. Genindlæs om et øjeblik.
+          </span>
+        </div>
+      ) : clients.length === 0 ? (
         <div style={{
           border: "1px dashed var(--border-light)",
           borderRadius: 12,

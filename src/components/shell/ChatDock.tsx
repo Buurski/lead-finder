@@ -1,11 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { NAV_FLAT } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 interface DockCounts {
   queue?: number;
   needs?: number;
+}
+
+// Map a route to its human nav label ("/leads" -> "Leads") so the Control Room
+// shows a friendly screen name, not a raw path.
+function screenLabel(pathname: string): string {
+  if (pathname === "/") return "Mission Control";
+  return NAV_FLAT.find((i) => i.href === pathname)?.label ?? pathname;
 }
 
 // The contextual chat widget. Two modes:
@@ -17,6 +25,17 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"chat" | "control">("control");
   const pathname = usePathname();
+
+  // Escape closes the dock (a11y: a dialog must be dismissible from the keyboard,
+  // not only via the X button).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   if (!open) {
     return (
@@ -63,7 +82,7 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
         ) : (
           <div style={{ display: "grid", gap: 9 }}>
             <div className="cc-kicker">Hvad jeg kan se lige nu</div>
-            <Row label="Skærm" value={pathname === "/" ? "Mission Control" : pathname} />
+            <Row label="Skærm" value={screenLabel(pathname)} />
             <Row label="Drafts i kø" value={counts.queue != null ? String(counts.queue) : "—"} />
             <Row label="Kræver dig" value={counts.needs != null ? String(counts.needs) : "—"} />
             <p style={{ margin: "4px 0 0", color: "var(--text-dim)", fontSize: 12 }}>

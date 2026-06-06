@@ -9,10 +9,14 @@ export const revalidate = 60;
 
 export default async function LeadsPage() {
   let leads: Awaited<ReturnType<typeof getLeads>> = [];
+  let sheetsOk = true;
   try {
     leads = await getLeads();
   } catch {
-    // Sheets not configured yet
+    // Couldn't reach Sheets (rate limit / network / not configured). Keep the
+    // empty list but flag it, so the page doesn't masquerade a fetch failure as
+    // "0 leads / Hent leads" — that looks like the whole database vanished.
+    sheetsOk = false;
   }
 
   // Normalize Sheets status (stray whitespace/casing) so the pipeline counts
@@ -26,6 +30,18 @@ export default async function LeadsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {!sheetsOk && (
+        <div
+          className="cc-card cc-card-pad"
+          role="status"
+          style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}
+        >
+          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
+          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
+            Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
+          </span>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
           <h1 className="cc-h1">Lead Pipeline</h1>
