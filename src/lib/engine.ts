@@ -30,6 +30,7 @@ import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { compositeScore } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
+import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import type { Lead } from "./sheets.ts";
 
 export interface EngineOptions {
@@ -168,7 +169,10 @@ async function pickLeads(
       // the mix Lucas wants (beauty weighted up) instead of raw base score.
       candidates = all
         .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
-        .filter(({ lead }) => lead.name && (lead.status === "new" || (lead.status as string) === undefined))
+        // Un-worked = blank or "new" status (Sheets returns "" for a blank cell
+        // when a later column is filled, so a strict === "new" wrongly dropped
+        // real un-worked leads). Normalized in isUnworkedStatus.
+        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status))
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: compositeScore(lead).score }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
