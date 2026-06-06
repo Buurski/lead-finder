@@ -73,9 +73,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="cc-topbar-title">{titleFor(pathname)}</span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
             <Clock />
-            <button className="cc-cmdk" onClick={() => setPaletteOpen(true)} aria-label="Åbn kommando-palette">
-              <Icon name="Command" style={{ width: 14, height: 14 }} />
-              Hop til
+            <button className="cc-cmdk" onClick={() => setPaletteOpen(true)} aria-label="Søg og naviger">
+              <Icon name="Search" style={{ width: 14, height: 14 }} />
+              Søg
               <span className="cc-kbd">⌘K</span>
             </button>
           </div>

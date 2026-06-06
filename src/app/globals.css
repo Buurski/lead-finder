@@ -337,6 +337,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .cc-tab-full { display: none; }
   .cc-tab-short { display: inline; }
   .cc-tab { padding: 0 13px; }
+  /* No physical keyboard on mobile — the ⌘K hint is noise. */
+  .cc-kbd { display: none; }
 }
 
 .cc-menu-btn { display: none; padding: 0 10px; }
