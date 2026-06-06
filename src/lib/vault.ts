@@ -61,6 +61,22 @@ function safeRel(rel: string): string {
 }
 
 async function readRemote(rel: string): Promise<string | null> {
+  const token = process.env.GITHUB_TOKEN || process.env.VAULT_GITHUB_TOKEN;
+  // PRIVATE repos: raw.githubusercontent.com ignores the Authorization header and
+  // 404s, so when we have a token use the contents API with the raw media type —
+  // that works for private repos. Public/no-token falls back to the raw host.
+  if (token) {
+    try {
+      const url = `https://api.github.com/repos/${REPO}/contents/${rel.split("/").map(encodeURIComponent).join("/")}?ref=${BRANCH}`;
+      const res = await fetch(url, {
+        headers: { ...ghHeaders(), Accept: "application/vnd.github.raw" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) return await res.text();
+    } catch {
+      /* fall through to raw host */
+    }
+  }
   try {
     const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${rel}`;
     const res = await fetch(url, { headers: ghHeaders(), signal: AbortSignal.timeout(8000) });
@@ -71,32 +87,49 @@ async function readRemote(rel: string): Promise<string | null> {
   }
 }
 
-export async function readVaultNote(relInput: string): Promise<VaultNote> {
+// readVaultNote options.
+//   preferRemote — try the live GitHub vault FIRST, local mirror only as offline
+//   fallback. Used for daily/ notes: the in-repo mirror is a stale snapshot, so
+//   local-first would shadow the live note Lucas's Obsidian Git pushes each day.
+export async function readVaultNote(
+  relInput: string,
+  opts: { preferRemote?: boolean } = {},
+): Promise<VaultNote> {
   const rel = safeRel(relInput.endsWith(".md") ? relInput : relInput + ".md");
-  const cached = cache.get(rel);
+  const cacheKey = (opts.preferRemote ? "r:" : "l:") + rel;
+  const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.value;
 
   let raw: string | null = null;
   let source: VaultNote["source"] = "none";
 
-  // local-first
-  try {
-    const local = path.join(LOCAL_ROOT, rel);
-    if (local.startsWith(LOCAL_ROOT) && fs.existsSync(local)) {
-      raw = fs.readFileSync(local, "utf-8");
-      source = "local";
+  const tryLocal = (): boolean => {
+    try {
+      const local = path.join(LOCAL_ROOT, rel);
+      if (local.startsWith(LOCAL_ROOT) && fs.existsSync(local)) {
+        raw = fs.readFileSync(local, "utf-8");
+        source = "local";
+        return true;
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
-  }
-
-  // remote fallback
-  if (raw == null) {
+    return false;
+  };
+  const tryRemote = async (): Promise<boolean> => {
     const remote = await readRemote(rel);
     if (remote != null) {
       raw = remote;
       source = "remote";
+      return true;
     }
+    return false;
+  };
+
+  if (opts.preferRemote) {
+    if (!(await tryRemote())) tryLocal();
+  } else {
+    if (!tryLocal()) await tryRemote();
   }
 
   let value: VaultNote;
@@ -106,7 +139,7 @@ export async function readVaultNote(relInput: string): Promise<VaultNote> {
     const { frontmatter, body } = parseFrontmatter(raw);
     value = { ok: true, pathRel: rel, source, frontmatter, body, raw };
   }
-  cache.set(rel, { at: Date.now(), value });
+  cache.set(cacheKey, { at: Date.now(), value });
   return value;
 }
 
@@ -159,7 +192,18 @@ async function listRemote(prefixRel: string): Promise<VaultEntry[]> {
   }
 }
 
-export async function listVault(prefixRel = ""): Promise<{ source: "local" | "remote" | "none"; entries: VaultEntry[] }> {
+export async function listVault(
+  prefixRel = "",
+  opts: { preferRemote?: boolean } = {},
+): Promise<{ source: "local" | "remote" | "none"; entries: VaultEntry[] }> {
+  if (opts.preferRemote) {
+    // Live vault first (daily/): the in-repo mirror is a stale snapshot.
+    const remote = await listRemote(prefixRel);
+    if (remote.length) return { source: "remote", entries: remote };
+    const local = walkLocal(prefixRel);
+    if (local.length) return { source: "local", entries: local };
+    return { source: "none", entries: [] };
+  }
   const local = walkLocal(prefixRel);
   if (local.length) return { source: "local", entries: local };
   const remote = await listRemote(prefixRel);

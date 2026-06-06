@@ -3,8 +3,8 @@ import {
   LayoutDashboard, Users, CheckCheck, Briefcase, Sparkles, Radio, Target,
   Search, LayoutGrid, BookOpen, Brain, Map, Command, MessageSquare,
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
-  Clock, Mail, FileText, ChevronRight, Bot, Workflow,
-  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck,
+  Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
+  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
   type LucideProps,
 } from "lucide-react";
 
@@ -12,8 +12,8 @@ const MAP = {
   LayoutDashboard, Users, CheckCheck, Briefcase, Sparkles, Radio, Target,
   Search, LayoutGrid, BookOpen, Brain, Map, Command, MessageSquare,
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
-  Clock, Mail, FileText, ChevronRight, Bot, Workflow,
-  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck,
+  Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
+  Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
 } as const;
 
 export type IconName = keyof typeof MAP;

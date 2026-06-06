@@ -6,7 +6,9 @@ export const metadata = { title: "Journal · Command Center" };
 export const dynamic = "force-dynamic";
 
 export default async function JournalPage() {
-  const { source, entries } = await listVault("daily");
+  // Remote-first: read the live Obsidian vault (pushed each morning), not the
+  // stale in-repo mirror that would otherwise shadow today's note.
+  const { source, entries } = await listVault("daily", { preferRemote: true });
   // newest first by filename (daily notes are date-named)
   const sorted = [...entries].sort((a, b) => b.pathRel.localeCompare(a.pathRel));
 

@@ -3,11 +3,23 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
+import MarkdownLite from "@/components/shell/MarkdownLite";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
 import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
+
+// Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
+// page.tsx and passed down so the "Hvad skal vi i dag" hub can lead with it.
+export interface DailyBrief {
+  ok: boolean;
+  date: string;
+  title: string;
+  body: string;
+  source: string;
+  pathRel: string;
+}
 
 type Tab = "today" | "pipeline" | "goals" | "agents";
 
@@ -47,7 +59,7 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-export default function MissionControl({ summary, cadence, spendAlert, spend }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null }) {
+export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [hello, setHello] = useState("Velkommen");
 
@@ -86,7 +98,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend }: 
         </Link>
       )}
 
-      {tab === "today" && <TodayTab s={summary} />}
+      {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
       {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} />}
@@ -112,7 +124,7 @@ function summaryLine(s: DeckSummary): string {
 /* ------------------------------------------------------------------ */
 /* TODAY                                                               */
 /* ------------------------------------------------------------------ */
-function TodayTab({ s }: { s: DeckSummary }) {
+function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | null }) {
   const router = useRouter();
   const [sel, setSel] = useState(0);
   const n = s.needsYou.length;
@@ -136,6 +148,7 @@ function TodayTab({ s }: { s: DeckSummary }) {
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <DailyBriefCard brief={dailyBrief} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(0, 1.2fr)", gap: 18, alignItems: "stretch" }} className="cc-today-cols">
         <HeroNumber s={s} />
         <UsageSparkline data={s.dailySent} />
@@ -203,12 +216,59 @@ function hrefForKind(kind?: NeedsYouItem["kind"]): string {
   return "/leads";
 }
 
+// "Hvad skal vi i dag" — the daily brief Lucas writes in Obsidian, read live from
+// the vault. Leads the home screen: what today is about, in his own words. Falls
+// back to a calm hint when no note exists yet (or the vault isn't reachable).
+function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
+  const [open, setOpen] = useState(true);
+  const dateLabel = brief?.date
+    ? new Date(brief.date + "T00:00:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })
+    : "";
+
+  return (
+    <section className="cc-card" aria-label="Hvad skal vi i dag">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: brief?.ok && open ? "1px solid var(--border)" : "none" }}>
+        <Icon name="Sun" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Hvad skal vi i dag</h2>
+        {dateLabel && <span className="cc-dim" style={{ fontSize: 12.5, marginLeft: 2 }}>· {dateLabel}</span>}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/journal" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Journal →</Link>
+          {brief?.ok && (
+            <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Skjul" : "Vis"} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", display: "grid", placeItems: "center" }}>
+              <Icon name={open ? "ChevronUp" : "ChevronDown"} style={{ width: 16, height: 16 }} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!brief?.ok ? (
+        <div className="cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <Icon name="BookOpen" style={{ width: 16, height: 16, color: "var(--text-dim)", marginTop: 2 }} />
+          <div className="cc-dim" style={{ fontSize: 13, lineHeight: 1.55 }}>
+            Ingen note for i dag endnu. Skriv dagens brief i Obsidian (<code style={{ fontSize: 12 }}>daily/{brief?.date ?? "i-dag"}.md</code>) — den dukker op her automatisk, så snart den er pushet.
+          </div>
+        </div>
+      ) : open ? (
+        <div className="cc-card-pad" style={{ paddingTop: 14 }}>
+          <div style={{ maxHeight: 360, overflowY: "auto" }}>
+            <MarkdownLite source={brief.body} />
+          </div>
+          <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+            <span>kilde: {brief.source === "remote" ? "live vault" : brief.source}</span>
+            <Link href="/journal" className="cc-link" style={{ marginLeft: "auto", fontWeight: 600 }}>Åbn i Journal →</Link>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void; queuePending: number; repliesPending: number }) {
   return (
-    <section className="cc-card" aria-label="Kræver dig nu">
+    <section className="cc-card" aria-label="Dagens opgaver">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
         <Icon name="Coffee" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Morning Coffee · kræver dig nu</h2>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Dagens opgaver</h2>
         {items.length > 0 && (
           <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5, display: "flex", alignItems: "center", gap: 7 }}>
             <span className="cc-kbd">j</span><span className="cc-kbd">k</span> flyt · <span className="cc-kbd">↵</span> åbn
@@ -383,10 +443,56 @@ function PulseCard({ s }: { s: DeckSummary }) {
 /* ------------------------------------------------------------------ */
 /* PIPELINE                                                            */
 /* ------------------------------------------------------------------ */
+// The canonical lead flow, spelled out so it's obvious what to press and in what
+// order. Each step links to where the action actually lives. Step 4 (Kør motor)
+// is the one that fills Godkendelse — the most-asked question.
+const FLOW_STEPS: { n: number; title: string; detail: string; href: string; cta: string; optional?: boolean }[] = [
+  { n: 1, title: "Hent leads", detail: "Skraber nye virksomheder ind i Sheets (råvarer).", href: "/leads", cta: "Åbn Leads" },
+  { n: 2, title: "Verify", detail: "Scorer + vurderer websitet på hver lead.", href: "/leads", cta: "Åbn Leads" },
+  { n: 3, title: "Deep research", detail: "Gratis dyb berigelse i Cowork — løfter de bedste leads. Valgfri, men giver bedre mails.", href: "/leads", cta: "Åbn Leads", optional: true },
+  { n: 4, title: "Kør motor", detail: "Skriver personlige udkast til de bedste leads → fylder Godkendelse. Det er HER køen fyldes.", href: "#kor-motor", cta: "Nedenfor ↓" },
+  { n: 5, title: "Godkendelse", detail: "Du gennemgår og godkender hvert udkast.", href: "/approve", cta: "Åbn Godkendelse" },
+  { n: 6, title: "Find emails + send", detail: "Find adresser og send de godkendte — separat, sender aldrig af sig selv.", href: "/leads", cta: "Åbn Leads" },
+];
+
+function FlowGuide() {
+  return (
+    <section className="cc-card cc-card-pad">
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
+        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Sådan virker det</h2>
+      </div>
+      <p className="cc-dim" style={{ fontSize: 13, marginBottom: 14 }}>
+        Fra rå lead til godkendt mail. Leads kommer i Godkendelse via trin 4 — “Kør motor”.
+      </p>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
+        {FLOW_STEPS.map((step, i) => (
+          <li key={step.n} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+            <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: step.n === 4 ? "var(--accent)" : "var(--bg-3)", color: step.n === 4 ? "#fff" : "var(--text-muted)", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 700, fontFamily: "var(--font-display)" }}>{step.n}</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5, display: "flex", alignItems: "center", gap: 7 }}>
+                {step.title}
+                {step.optional && <span className="cc-chip" style={{ height: 17, fontSize: 10 }}>valgfri</span>}
+              </div>
+              <div className="cc-dim" style={{ fontSize: 12.5, marginTop: 2 }}>{step.detail}</div>
+            </div>
+            {step.href.startsWith("#") ? (
+              <a href={step.href} className="cc-link" style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>{step.cta}</a>
+            ) : (
+              <Link href={step.href} className="cc-link" style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>{step.cta}</Link>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function PipelineTab({ s, cadence }: { s: DeckSummary; cadence?: string | null }) {
   const p = s.pipeline;
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <FlowGuide />
       <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 11 }}>
         <Icon name="Calendar" style={{ width: 17, height: 17, color: cadence ? "var(--accent-ink)" : "var(--text-dim)" }} />
         <span style={{ fontSize: 13.5, fontWeight: 600 }}>{cadence ? `Næste auto-kørsel: ${cadence}` : "Auto-kørsel slukket"}</span>
@@ -408,7 +514,9 @@ function PipelineTab({ s, cadence }: { s: DeckSummary; cadence?: string | null }
         </div>
       </section>
 
-      <EngineRunner />
+      <div id="kor-motor" style={{ scrollMarginTop: 80 }}>
+        <EngineRunner />
+      </div>
       <FindEmailsButton />
     </div>
   );
@@ -551,6 +659,7 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         <div style={{ display: "grid", gap: 0 }}>
           {[
             { n: "Daily engine", d: "PICK→DRAFT, fylder kø", on: true, label: "klar" },
+            { n: "Deep research (Cowork)", d: "gratis berigelse → løfter PICK", on: true, label: "wired" },
             { n: "Email-finder", d: "MX-verificeret opslag", on: true, label: "klar" },
             { n: "Reply-assistant", d: "klassificér + udkast", on: true, label: "klar" },
             { n: "AI Spend & Health", d: "pr. model + dagsgrænse", on: spendOn, label: spendOn ? "klar" : "ingen kørsler endnu" },

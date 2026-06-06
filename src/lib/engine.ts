@@ -29,9 +29,24 @@ import { composeColdEmail } from "./compose.ts";
 import { appendDrafts, newDraftId } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { compositeScore } from "./leads/composite-score.ts";
+import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import type { Lead } from "./sheets.ts";
+
+// Progress events emitted during a run so a UI can show the engine working
+// (it's a slow sequential loop — one Opus draft per lead). Purely observational:
+// the callback never changes engine behaviour, and a thrown callback is swallowed.
+export interface EngineProgress {
+  // "pick" once the candidate list is known (total = target draft count);
+  // "research"/"draft" before each step; "skip" when a lead is filtered;
+  // "collected" after a draft lands; "done" at the end.
+  phase: "pick" | "research" | "draft" | "skip" | "collected" | "done";
+  idx: number; // drafts collected so far
+  total: number; // target draft count (the limit)
+  name?: string; // current lead
+  reason?: string; // for "skip"
+}
 
 export interface EngineOptions {
   limit?: number;
@@ -41,6 +56,8 @@ export interface EngineOptions {
   // the web "preview" action so Lucas can see what the engine would produce before
   // an explicit confirm. Defaults to true so the CLI keeps filling the queue.
   persist?: boolean;
+  // Optional progress sink (web streaming UI). Never affects the result.
+  onProgress?: (ev: EngineProgress) => void;
 }
 
 export interface EngineSummary {
@@ -147,6 +164,51 @@ function toResearchLead(l: Record<string, unknown>): ResearchLead {
   };
 }
 
+// Map a Cowork email-quality tier to the 0–1 term compositeScore expects.
+const EMAIL_TIER_QUALITY: Record<string, number> = {
+  personal: 1, kontakt: 0.6, info: 0.4, generic: 0.2, noreply: 0,
+};
+
+// Pull the deep-research enrichment a Cowork session wrote into a lead's
+// enrichedInfo (column M, under the `deepResearch` key — see
+// /api/leads/deep-research-result). Returns compositeScore signals + the manual
+// score delta the session assigned, or null when the lead hasn't been
+// deep-researched. Pure + defensive: bad/missing JSON just yields null.
+export function deepResearchSignals(enrichedInfo: string): { signals: CompositeSignals; delta: number } | null {
+  if (!enrichedInfo) return null;
+  let dr: Record<string, unknown> | undefined;
+  try {
+    const parsed = JSON.parse(enrichedInfo) as Record<string, unknown>;
+    const d = parsed?.deepResearch;
+    if (d && typeof d === "object") dr = d as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (!dr) return null;
+
+  const num = (v: unknown): number | undefined => (typeof v === "number" && isFinite(v) ? v : undefined);
+  const tier = typeof dr.emailQualityTier === "string" ? dr.emailQualityTier : undefined;
+  const vel90 = num(dr.reviewVelocity90d);
+
+  const signals: CompositeSignals = {
+    madeByBureau: Boolean(dr.madeByBureau),
+    emailQuality: tier ? EMAIL_TIER_QUALITY[tier] : undefined,
+    reviewVelocity: typeof vel90 === "number" ? vel90 / 3 : undefined, // 90d → per-month
+    mobileScore: num(dr.lighthouseScoreMobile),
+  };
+  const delta = num(dr.compositeScoreDelta) ?? 0;
+  return { signals, delta };
+}
+
+// Composite score for a lead, lifted by any Cowork deep-research enrichment.
+// clamp keeps the manual delta from pushing out of 0–100.
+export function enrichedComposite(lead: Lead): number {
+  const dr = deepResearchSignals(lead.enrichedInfo);
+  const base = compositeScore(lead, undefined, dr?.signals ?? {}).score;
+  const lifted = base + (dr?.delta ?? 0);
+  return lifted < 0 ? 0 : lifted > 100 ? 100 : lifted;
+}
+
 // PICK — get candidate leads. Tries Sheets; falls back to fixture on any error.
 async function pickLeads(
   leadName: string | undefined
@@ -173,7 +235,7 @@ async function pickLeads(
         // when a later column is filled, so a strict === "new" wrongly dropped
         // real un-worked leads). Normalized in isUnworkedStatus.
         .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status))
-        .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: compositeScore(lead).score }))
+        .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
       // Spread the batch across branch families so it's a MIX, not all one
@@ -199,9 +261,20 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
 
   const { leads, source } = await pickLeads(opts.leadName);
 
+  // Safe progress emitter — never let an observer throw break a run.
+  const emit = (ev: EngineProgress) => {
+    try {
+      opts.onProgress?.(ev);
+    } catch {
+      /* observation only */
+    }
+  };
+
   const skipped: Array<{ name: string; reason: string }> = [];
   const collected: QueueDraft[] = [];
   let picked = 0;
+
+  emit({ phase: "pick", idx: 0, total: limit });
 
   for (const lead of leads) {
     if (collected.length >= limit) break;
@@ -211,6 +284,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     // Applies even to "skriv til X", they should never be mailed.
     if (isBlacklisted(lead.name)) {
       skipped.push({ name: lead.name, reason: "hostile-blacklist" });
+      emit({ phase: "skip", idx: collected.length, total: limit, name: lead.name, reason: "hostile-blacklist" });
       continue;
     }
 
@@ -219,19 +293,23 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     if (dropped && !opts.leadName) {
       // "skriv til X" bypasses the pre-filter (Lucas chose this lead on purpose).
       skipped.push({ name: lead.name, reason: dropped });
+      emit({ phase: "skip", idx: collected.length, total: limit, name: lead.name, reason: dropped });
       continue;
     }
 
     // RESEARCH (hooks + professionalism verdict + demo pair).
+    emit({ phase: "research", idx: collected.length, total: limit, name: lead.name });
     const research = await research_lead(lead, { useAI: useLLM, useNetwork: useLLM });
 
     // QUALIFY (LLM-style gate; here the establishment gate from qualify.ts).
     if (!research.professionalismVerdict.ok && !opts.leadName) {
       skipped.push({ name: lead.name, reason: research.professionalismVerdict.reason });
+      emit({ phase: "skip", idx: collected.length, total: limit, name: lead.name, reason: research.professionalismVerdict.reason });
       continue;
     }
 
     // DRAFT.
+    emit({ phase: "draft", idx: collected.length, total: limit, name: lead.name });
     const draft = await draft_personal_message(lead, research, voice, { useLLM });
 
     // COMPOSE METADATA (Del 3): record the deterministic tone-mixer combination
@@ -276,7 +354,10 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
       comboId,
       openerKind,
     });
+    emit({ phase: "collected", idx: collected.length, total: limit, name: lead.name });
   }
+
+  emit({ phase: "done", idx: collected.length, total: limit });
 
   // Write to the queue (engine NEVER sends — it only fills the queue).
   // persist:false runs the full loop but writes nothing (web preview path).

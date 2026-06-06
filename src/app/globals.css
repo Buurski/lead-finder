@@ -128,6 +128,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 @keyframes cc-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .cc-fade { animation: cc-fade-in 220ms ease both; }
 
+@keyframes cc-spin { to { transform: rotate(360deg); } }
+.cc-spin { animation: cc-spin 0.7s linear infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
 }

@@ -11,8 +11,14 @@ import { runEngine } from "@/lib/engine";
 // The engine NEVER sends mail in either mode — it only ever fills the queue, and
 // only the explicitly-confirmed "run" mode persists. "run" without confirm:true
 // is rejected, so a stray click can't mutate the live queue.
+//
+// Response is an NDJSON stream (one JSON object per line) so the UI can show the
+// engine working — each line is either {type:"progress", ...EngineProgress} as a
+// lead is researched/drafted, or a final {type:"summary"|"error"}. The loop is
+// sequential (one Opus draft per lead), so without this the request looks frozen
+// for a couple of minutes. maxDuration is raised so a full batch can't time out.
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body {
   mode?: "preview" | "run";
@@ -40,22 +46,42 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const summary =
-      mode === "preview"
-        ? await runEngine({ dryRun: true, persist: false, limit, leadName })
-        : await runEngine({ dryRun: false, persist: true, limit, leadName });
+  const note =
+    mode === "preview"
+      ? "preview only — nothing written, no mail sent"
+      : "queue filled — no mail sent (approve to mark for the separate send path)";
 
-    return NextResponse.json({
-      mode,
-      persisted: mode === "run",
-      summary,
-      note:
-        mode === "preview"
-          ? "preview only — nothing written, no mail sent"
-          : "queue filled — no mail sent (approve to mark for the separate send path)",
-    });
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+        } catch {
+          /* client gone */
+        }
+      };
+      try {
+        const summary = await runEngine({
+          dryRun: mode === "preview",
+          persist: mode === "run",
+          limit,
+          leadName,
+          onProgress: (ev) => send({ type: "progress", ...ev }),
+        });
+        send({ type: "summary", mode, persisted: mode === "run", summary, note });
+      } catch (err) {
+        send({ type: "error", error: String(err) });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+    },
+  });
 }
