@@ -200,27 +200,31 @@ function websiteLine(v: TemplateVars): string {
   return "Jeg kiggede forbi jeres hjemmeside — den ser fin ud. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer noget nyt.";
 }
 
-// Warm opener — compliments the business before any critique
+// Warm opener — compliments the business before any critique.
+// (Danish written directly: the previous ASCII-digraph + .replace() trick was
+// broken for food/service/default — the .replace bound only to the trailing
+// string literal, so those branches shipped "stoedt paa"/"tilstedevaerelse"/
+// "koerende" in real cold emails.)
 function complimentLine(group: string, name: string, city: string): string {
   switch (group) {
     case "food":
-      return "Jeg er stoedt paa " + name + " i " + city + " — det ser ud som et sted folk virkelig kommer for stemningen.".replace("stoedt", "stødt").replace("paa", "på");
+      return "Jeg er stødt på " + name + " i " + city + " — det ser ud som et sted folk virkelig kommer for stemningen.";
     case "craft":
-      return name + " ser ud til at have et solidt ry i " + city + " — det er tydeligt I staar for kvalitetsarbejde.".replace("staar", "står");
+      return name + " ser ud til at have et solidt ry i " + city + " — det er tydeligt I står for kvalitetsarbejde.";
     case "beauty":
       // Dropped the dead "ser ud til at have bygget noget særligt op" opener
       // (OUTREACH_ANALYSIS: 30+ sends, 0 positives). Neutral, low-risk instead.
-      return ("Jeg blev nysgerrig paa " + name + " i " + city + " og kom til at taenke paa, hvordan en rolig, stilren side kunne klaede jer.").replace(/paa/g, "på").replace(/taenke/g, "tænke").replace(/klaede/g, "klæde");
+      return "Jeg blev nysgerrig på " + name + " i " + city + " og kom til at tænke på, hvordan en rolig, stilren side kunne klæde jer.";
     case "professional":
-      return "I " + city + " kender folk " + name + " — det er tydeligt I har en staerk position.".replace("staerk", "stærk");
+      return "I " + city + " kender folk " + name + " — det er tydeligt I har en stærk position.";
     case "gallery":
-      return "Det visuelle udtryk hos " + name + " er staerkt — det fortjener at blive set af flere.".replace("staerkt", "stærkt");
+      return "Det visuelle udtryk hos " + name + " er stærkt — det fortjener at blive set af flere.";
     case "photo":
-      return "Med det oeje du har bag kameraet er der allerede meget at vise frem.".replace("oeje", "øje");
+      return "Med det øje du har bag kameraet er der allerede meget at vise frem.";
     case "service":
-      return name + " har en solid tilstedevaerelse i " + city + ".".replace("vaerelse", "værelse");
+      return name + " har en solid tilstedeværelse i " + city + ".";
     default:
-      return name + " ser ud til at have noget godt koerende i " + city + ".".replace("koerende", "kørende");
+      return name + " ser ud til at have noget godt kørende i " + city + ".";
   }
 }
 
@@ -666,8 +670,15 @@ export function getEmailTemplate(
 // record skipReason="wrong_template" instead of sending mismatched copy.
 export class NoMatchingTemplateError extends Error {
   readonly name = "NoMatchingTemplateError";
-  constructor(readonly leadName: string, readonly branch: string) {
+  // Explicit fields (not constructor parameter properties): keeps email.ts
+  // strip-safe so Node's type-stripping can import it (the offline test harness
+  // and any plain-node caller). Parameter properties are not strippable.
+  readonly leadName: string;
+  readonly branch: string;
+  constructor(leadName: string, branch: string) {
     super(`No matching email template for name="${leadName}" branch="${branch}"`);
+    this.leadName = leadName;
+    this.branch = branch;
   }
 }
 
