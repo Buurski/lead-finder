@@ -39,26 +39,26 @@ function client(over = {}) {
     projectFolder: "", websiteStatus: "live", monthlyFee: "", setupFee: "", ...over };
 }
 
-// ---- buildNeedsYou: priority + cap --------------------------------------
+// ---- buildNeedsYou: callbacks + interested only (replies are consolidated) ---
 {
   const leads = [
     lead({ id: "a", status: "interested" }),
-    lead({ id: "b", emailStatus: "replied" }),
+    lead({ id: "b", emailStatus: "replied" }),   // replies no longer surface here
     lead({ id: "c", callbackDate: yesterday }),
   ];
   const n = deck.buildNeedsYou(leads);
-  check("needsYou: reply ranks first", n[0].kind === "reply");
-  check("needsYou: callback before interested", n[1].kind === "callback");
-  check("needsYou: overdue callback labelled forsinket", n[1].why.includes("forsinket"));
-  check("needsYou: all three surfaced", n.length === 3);
+  check("needsYou: replies NOT listed per-item", n.every((i) => i.kind !== "reply"));
+  check("needsYou: overdue callback ranks before interested", n[0].kind === "callback");
+  check("needsYou: overdue callback labelled forsinket", n[0].why.includes("forsinket"));
+  check("needsYou: only callback + interested surface (2)", n.length === 2);
 }
 {
-  // replied takes precedence over interested status on the same lead
-  const n = deck.buildNeedsYou([lead({ status: "interested", emailStatus: "replied" })]);
-  check("needsYou: replied wins over interested", n.length === 1 && n[0].kind === "reply");
+  // a replied-only lead produces no per-item row (it's counted in repliesPending)
+  const n = deck.buildNeedsYou([lead({ emailStatus: "replied" })]);
+  check("needsYou: replied-only lead is not a row", n.length === 0);
 }
 {
-  const many = Array.from({ length: 12 }, (_, i) => lead({ id: "x" + i, emailStatus: "replied" }));
+  const many = Array.from({ length: 12 }, (_, i) => lead({ id: "x" + i, status: "interested" }));
   check("needsYou: capped at 8", deck.buildNeedsYou(many).length === 8);
 }
 {
@@ -110,11 +110,13 @@ function client(over = {}) {
     lead({ status: "client", lastUpdated: today }),
     lead({ status: "client", lastUpdated: "2020-01-01" }),
     lead({ status: "called", emailStatus: "replied" }),
+    lead({ status: "called", emailSentAt: `${today}T08:00:00Z` }),       // sent today
+    lead({ status: "called", emailSentAt: "2020-01-01T08:00:00Z" }),     // sent long ago
   ];
   const n = deck.buildNumbers(leads);
   check("numbers: newLeads", n.newLeads === 2);
-  check("numbers: withEmail", n.withEmail === 1);
-  check("numbers: repliesToday", n.repliesToday === 1);
+  check("numbers: sentToday counts only today's emailSentAt", n.sentToday === 1);
+  check("numbers: repliesPending", n.repliesPending === 1);
   check("numbers: wonThisWeek only recent client", n.wonThisWeek === 1);
 }
 
@@ -164,10 +166,10 @@ function client(over = {}) {
     lead({ id: "c", status: " interested " }),
   ];
   const n = deck.buildNumbers(leads);
-  check("numbers: trailing-space 'replied ' counted", n.repliesToday === 2);
+  check("numbers: trailing-space 'replied ' counted in repliesPending", n.repliesPending === 2);
   check("numbers: mixed-case 'Replied' counts as won client", n.wonThisWeek === 1);
   const ny = deck.buildNeedsYou(leads);
-  check("needsYou: 'replied ' surfaces as reply", ny.some((i) => i.kind === "reply"));
+  check("needsYou: replies NOT listed per-item (now a consolidated pointer)", ny.every((i) => i.kind !== "reply"));
   check("needsYou: ' interested ' surfaces", ny.some((i) => i.kind === "interested"));
 }
 

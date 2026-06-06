@@ -16,8 +16,9 @@ import type { QueueDraft } from "./queue.ts";
 
 export interface DeckNumbers {
   newLeads: number;
-  withEmail: number;
-  repliesToday: number;
+  sentToday: number;     // mails actually sent today (real — from emailSentAt date)
+  repliesPending: number; // leads with a reply awaiting follow-up (Sheets has no
+                          // reply timestamp, so this is NOT "today" — labelled honestly)
   wonThisWeek: number;
 }
 
@@ -106,17 +107,10 @@ export function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
   const items: NeedsYouItem[] = [];
 
   for (const l of leads) {
-    // A reply landed — highest urgency.
-    if (norm(l.emailStatus) === "replied") {
-      items.push({
-        leadId: l.id,
-        name: l.name,
-        branch: l.branch,
-        kind: "reply",
-        why: "Svar modtaget — vil have et personligt svar",
-      });
-      continue;
-    }
+    // NB: replies are deliberately NOT listed per-lead here anymore — they
+    // flooded Morning Coffee with the same row 15×. They're surfaced as ONE
+    // consolidated pointer ("X svar at besvare → /replies") in the UI instead.
+    // This list is only the genuinely individual, date-specific actions.
     // Callback due today (column U).
     if (l.callbackDate && l.callbackDate.slice(0, 10) <= today) {
       items.push({
@@ -225,10 +219,14 @@ export function buildRevenue(clients: Client[], goalMonthlyDKK = 10000): Revenue
 }
 
 export function buildNumbers(leads: Lead[]): DeckNumbers {
+  const today = todayISO();
   return {
     newLeads: leads.filter((l) => norm(l.status) === "new").length,
-    withEmail: leads.filter((l) => l.email).length,
-    repliesToday: leads.filter((l) => norm(l.emailStatus) === "replied").length,
+    // Real "today": count mails whose emailSentAt falls on today's date. (Was
+    // "emails fundet" = all-time withEmail ~937, which is stale old-batch data.)
+    sentToday: leads.filter((l) => (l.emailSentAt || "").slice(0, 10) === today).length,
+    // Total replies awaiting a follow-up — NOT "today" (no reply ts in Sheets).
+    repliesPending: leads.filter((l) => norm(l.emailStatus) === "replied").length,
     wonThisWeek: leads.filter((l) => norm(l.status) === "client" && isWithinDays(l.lastUpdated, 7)).length,
   };
 }

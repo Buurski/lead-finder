@@ -142,7 +142,7 @@ function TodayTab({ s }: { s: DeckSummary }) {
       </div>
       <NumbersStrip s={s} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
-        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} />
+        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
         <div style={{ display: "grid", gap: 18 }}>
           <QueueCard s={s} />
           <PipelineMini s={s} />
@@ -155,9 +155,9 @@ function TodayTab({ s }: { s: DeckSummary }) {
 
 // The single most important number, big — what needs attention today.
 function HeroNumber({ s }: { s: DeckSummary }) {
-  const replies = s.numbers.repliesToday;
+  const replies = s.numbers.repliesPending;
   const lead = replies > 0
-    ? { value: replies, label: replies === 1 ? "svar i dag — åbn det" : "svar i dag — kig på dem", href: "/replies", tone: "var(--accent)" }
+    ? { value: replies, label: replies === 1 ? "svar at besvare — åbn det" : "svar at besvare — kig på dem", href: "/replies", tone: "var(--accent)" }
     : s.queue.pending > 0
       ? { value: s.queue.pending, label: "udkast venter på dig", href: "/approve", tone: "var(--accent)" }
       : { value: s.numbers.newLeads, label: "nye leads i pipelinen", href: "/leads", tone: "var(--text)" };
@@ -173,8 +173,8 @@ function NumbersStrip({ s }: { s: DeckSummary }) {
   const n = s.numbers;
   const items = [
     { label: "nye leads", value: n.newLeads },
-    { label: "emails fundet", value: n.withEmail },
-    { label: "svar i dag", value: n.repliesToday },
+    { label: "sendt i dag", value: n.sentToday },
+    { label: "svar at følge op", value: n.repliesPending },
     { label: "vundet i ugen", value: n.wonThisWeek },
   ];
   return (
@@ -203,7 +203,7 @@ function hrefForKind(kind?: NeedsYouItem["kind"]): string {
   return "/leads";
 }
 
-function NeedsYouCard({ items, sel, onSelect, queuePending }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void; queuePending: number }) {
+function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { items: NeedsYouItem[]; sel: number; onSelect: (i: number) => void; queuePending: number; repliesPending: number }) {
   return (
     <section className="cc-card" aria-label="Kræver dig nu">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
@@ -233,12 +233,29 @@ function NeedsYouCard({ items, sel, onSelect, queuePending }: { items: NeedsYouI
         </Link>
       )}
 
+      {/* One consolidated pointer for replies — NOT a row per reply (they used to
+          flood this card 15×). Per-reply triage lives on /replies. */}
+      {repliesPending > 0 && (
+        <Link href="/replies" style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)", textDecoration: "none", color: "inherit" }}>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--bg-3)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Icon name="Mail" style={{ width: 15, height: 15, color: "var(--accent-ink)" }} />
+          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{repliesPending} svar at besvare</div>
+            <div className="cc-dim" style={{ fontSize: 12.5 }}>skriv personlige svar i indbakken</div>
+          </div>
+          <span className="cc-link" style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+            Åbn <Icon name="ChevronRight" style={{ width: 13, height: 13 }} />
+          </span>
+        </Link>
+      )}
+
       {items.length === 0 ? (
-        queuePending === 0 ? (
+        queuePending === 0 && repliesPending === 0 ? (
           <div className="cc-empty">
             <Icon name="Coffee" />
             <div>Ingen ildebrande. Drik kaffen i ro.</div>
-            <div className="cc-dim" style={{ fontSize: 12 }}>Svar, opkald i dag og varme leads dukker op her.</div>
+            <div className="cc-dim" style={{ fontSize: 12 }}>Opkald i dag og varme leads dukker op her.</div>
           </div>
         ) : null
       ) : (
@@ -407,7 +424,7 @@ function GoalsTab({ s }: { s: DeckSummary }) {
   const goals = [
     { label: "5 betalende kunder", current: rev.payingClientCount, target: 5, unit: "kunder" },
     { label: `${kr(rev.goalMonthlyDKK)} / md i abonnement`, current: rev.monthlyDKK, target: rev.goalMonthlyDKK, unit: "kr" },
-    { label: "30 varme svar", current: s.numbers.repliesToday, target: 30, unit: "svar" },
+    { label: "30 varme svar", current: s.numbers.repliesPending, target: 30, unit: "svar" },
   ];
   const revPct = Math.min(100, Math.round((rev.monthlyDKK / Math.max(1, rev.goalMonthlyDKK)) * 100));
   return (

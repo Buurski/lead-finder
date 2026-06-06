@@ -41,8 +41,12 @@ function ghHeaders(): Record<string, string> {
 }
 
 export function parseFrontmatter(md: string): { frontmatter: Record<string, string>; body: string } {
-  const m = md.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!m) return { frontmatter: {}, body: md };
+  // Normalize CRLF/CR → LF first. On Windows the vault notes get CRLF endings
+  // (git autocrlf), and a `^---\n` match would otherwise fail → frontmatter
+  // silently lost (titles, dates). This is also what makes journal notes parse.
+  const src = (md || "").replace(/\r\n?/g, "\n");
+  const m = src.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return { frontmatter: {}, body: src };
   const fm: Record<string, string> = {};
   for (const line of m[1].split("\n")) {
     const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
