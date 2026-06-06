@@ -82,6 +82,12 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
         <div className="cc-tabs-header"><TabNav tab={tab} setTab={setTab} /></div>
       </header>
 
+      {/* On mobile the header tabs are hidden — show the view switcher at the TOP,
+          right under the greeting (not at the bottom of the page). */}
+      <div className="cc-tabs-secondary">
+        <TabNav tab={tab} setTab={setTab} secondary />
+      </div>
+
       {!summary.ok && (
         <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
           <Icon name="Activity" style={{ width: 17, height: 17, color: "var(--amber)" }} />
@@ -102,12 +108,6 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
       {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} />}
-
-      {/* Secondary nav — only shown on mobile (header tabs hide there). */}
-      <div className="cc-tabs-secondary">
-        <span className="cc-kicker" style={{ display: "block", textAlign: "center", marginBottom: 8 }}>Skift visning</span>
-        <TabNav tab={tab} setTab={setTab} secondary />
-      </div>
     </div>
   );
 }
