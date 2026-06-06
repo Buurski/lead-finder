@@ -19,11 +19,27 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
 
   let client;
+  let sheetsOk = true;
   try {
     const clients = await getClients();
     client = clients.find((c) => c.id === id);
   } catch {
-    client = undefined;
+    // A Sheets failure must NOT render as 404 — that makes a real client look
+    // deleted. Show an error state and let genuine not-found 404 below.
+    sheetsOk = false;
+  }
+  if (!sheetsOk) {
+    return (
+      <div className="cc-fade">
+        <PageHeader icon="Briefcase" title="Klient" subtitle="kunne ikke hentes" action={<Link href="/clients" className="cc-btn">← Klienter</Link>} />
+        <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
+          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
+          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
+            Kunne ikke nå Google Sheets lige nu — klienten er der stadig. Genindlæs om et øjeblik.
+          </span>
+        </div>
+      </div>
+    );
   }
   if (!client) notFound();
 
