@@ -42,12 +42,16 @@ export async function GET(req: Request) {
     }
   }
 
+  // Claim the day BEFORE running so a Vercel retry (e.g. after a long run times
+  // out) can't fire runEngine a second time and double-fill the queue. If the run
+  // itself fails we revert the stamp so a later legitimate retry can still run.
+  const prevStamp = s.lastAutoRunDate ?? "";
+  await writeSettings({ lastAutoRunDate: date });
   try {
     const summary = await runEngine({ limit: s.dailyLimit, persist: true });
-    // Stamp the run so a retry the same day/hour won't run again.
-    await writeSettings({ lastAutoRunDate: date });
     return NextResponse.json({ ok: true, ran: true, drafted: summary.drafted, written: summary.written, note: "kø fyldt — ingen mail sendt" });
   } catch (err) {
+    await writeSettings({ lastAutoRunDate: prevStamp }).catch(() => {});
     return NextResponse.json({ ok: false, ran: false, error: String(err) }, { status: 500 });
   }
 }
