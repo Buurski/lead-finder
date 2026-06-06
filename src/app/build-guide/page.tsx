@@ -17,12 +17,17 @@ const DOCS = [
   { file: "NIGHT_BUILD_REPORT_v4.md", label: "Nat-rapport v4 (Del 4)" },
 ];
 
+// Try repo root first, then docs/archive/ — the night-report + plan docs were
+// moved to docs/archive/ in the 2026-06-06 cleanup (1de07ec) but stay viewable here.
 function readDoc(file: string): string | null {
-  try {
-    return fs.readFileSync(path.join(process.cwd(), file), "utf-8");
-  } catch {
-    return null;
+  for (const rel of [file, path.join("docs", "archive", file)]) {
+    try {
+      return fs.readFileSync(path.join(process.cwd(), rel), "utf-8");
+    } catch {
+      /* try next location */
+    }
   }
+  return null;
 }
 
 export default function BuildGuidePage() {
