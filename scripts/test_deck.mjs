@@ -39,18 +39,19 @@ function client(over = {}) {
     projectFolder: "", websiteStatus: "live", monthlyFee: "", setupFee: "", ...over };
 }
 
-// ---- buildNeedsYou: callbacks + interested only (replies are consolidated) ---
+// ---- buildNeedsYou: only callbacks surface (replies consolidated; interested/sent
+//      leads deliberately NOT listed — they cluttered Dagens opgaver) ---
 {
   const leads = [
-    lead({ id: "a", status: "interested" }),
+    lead({ id: "a", status: "interested" }),     // sent/waiting — must NOT surface
     lead({ id: "b", emailStatus: "replied" }),   // replies no longer surface here
     lead({ id: "c", callbackDate: yesterday }),
   ];
   const n = deck.buildNeedsYou(leads);
   check("needsYou: replies NOT listed per-item", n.every((i) => i.kind !== "reply"));
-  check("needsYou: overdue callback ranks before interested", n[0].kind === "callback");
+  check("needsYou: interested NOT listed (declutter)", n.every((i) => i.kind !== "interested"));
+  check("needsYou: only the callback surfaces", n.length === 1 && n[0].kind === "callback");
   check("needsYou: overdue callback labelled forsinket", n[0].why.includes("forsinket"));
-  check("needsYou: only callback + interested surface (2)", n.length === 2);
 }
 {
   // a replied-only lead produces no per-item row (it's counted in repliesPending)
@@ -58,7 +59,7 @@ function client(over = {}) {
   check("needsYou: replied-only lead is not a row", n.length === 0);
 }
 {
-  const many = Array.from({ length: 12 }, (_, i) => lead({ id: "x" + i, status: "interested" }));
+  const many = Array.from({ length: 12 }, (_, i) => lead({ id: "x" + i, callbackDate: yesterday }));
   check("needsYou: capped at 8", deck.buildNeedsYou(many).length === 8);
 }
 {
@@ -170,7 +171,7 @@ function client(over = {}) {
   check("numbers: mixed-case 'Replied' counts as won client", n.wonThisWeek === 1);
   const ny = deck.buildNeedsYou(leads);
   check("needsYou: replies NOT listed per-item (now a consolidated pointer)", ny.every((i) => i.kind !== "reply"));
-  check("needsYou: ' interested ' surfaces", ny.some((i) => i.kind === "interested"));
+  check("needsYou: ' interested ' no longer surfaces (declutter)", ny.every((i) => i.kind !== "interested"));
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all deck checks ok");
