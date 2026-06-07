@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQueue, updateDraft } from "@/lib/queue";
+import { readQueue, updateDraft, writeQueue } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved } from "@/lib/datalayer";
@@ -33,6 +33,20 @@ export async function POST(req: Request) {
   }
 
   const { id, action } = payload;
+
+  // One-time cleanup (no id needed): the old test-mode marked drafts "sent" without
+  // really mailing. Flip those back to "approved" so they show under Godkendt + can
+  // be sent for real.
+  if (action === "reset-sent") {
+    const drafts = await readQueue();
+    let reset = 0;
+    for (const d of drafts) {
+      if (d.status === "sent") { d.status = "approved"; d.updatedAt = new Date().toISOString(); reset++; }
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, reset });
+  }
+
   if (!id || !action) {
     return NextResponse.json({ error: "id and action are required" }, { status: 400 });
   }
