@@ -100,9 +100,9 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
     return sorted.filter(l => {
       if (q) {
         const match =
-          l.name.toLowerCase().includes(q) ||
-          l.phone.toLowerCase().includes(q) ||
-          l.email.toLowerCase().includes(q);
+          (l.name ?? "").toLowerCase().includes(q) ||
+          (l.phone ?? "").toLowerCase().includes(q) ||
+          (l.email ?? "").toLowerCase().includes(q);
         if (!match) return false;
       }
       if (filterStatus !== "all" && l.status !== filterStatus) return false;
