@@ -37,7 +37,11 @@ const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
   /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
 
-export async function POST() {
+export async function POST(req: Request) {
+  // ?force=1 overrides ONLY the never-re-contact guard (emailSentAt) — used for the
+  // May limit-hit batch where emailSentAt was stamped optimistically but the mail
+  // never actually went out (verified via Gmail). pause + canSendTo still apply.
+  const force = new URL(req.url).searchParams.get("force") === "1";
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     return NextResponse.json({ ok: false, error: "Ingen mail-creds." }, { status: 200 });
   }
@@ -80,8 +84,8 @@ export async function POST() {
       leads.find((l) => l.name.trim().toLowerCase() === d.name.trim().toLowerCase());
     if (!lead) { skipped.push({ name: d.name, reason: "lead ikke fundet" }); continue; }
 
-    // 2. NEVER re-contact.
-    if (alreadyEmailed(lead)) { skipped.push({ name: d.name, reason: "allerede kontaktet" }); continue; }
+    // 2. NEVER re-contact (unless force-overriding a known-false stamp).
+    if (!force && alreadyEmailed(lead)) { skipped.push({ name: d.name, reason: "allerede kontaktet" }); continue; }
     const decision = canSendTo({ name: lead.name, branch: lead.branch, email: lead.email, emailStatus: lead.emailStatus, status: lead.status });
     if (!decision.ok) { skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" }); continue; }
 
