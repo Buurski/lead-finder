@@ -40,7 +40,10 @@ export function canSendTo(lead: SendCandidate, opts: { seenEmails?: Set<string> 
   // ("Skip", "skip "), so trim+lowercase before the equality gate — otherwise a
   // skip-marked lead slips through and gets mailed.
   if ((lead.status || "").trim().toLowerCase() === "skip") return { ok: false, reason: "skip" };
-  if (isChain(lead.name, lead.branch ? [lead.branch] : undefined)) return { ok: false, reason: "chain" };
+  // Chain check on the NAME only. (Do NOT pass branch as `extra` — isChain treats
+  // extra entries as chain-name substrings, so a branch like "Frisør"/"café" would
+  // false-flag every salon/café as a chain. The original bug behind 0-sent.)
+  if (isChain(lead.name)) return { ok: false, reason: "chain" };
   if (isPublicEntity(lead)) return { ok: false, reason: "public" };
 
   const email = (lead.email || "").trim().toLowerCase();
