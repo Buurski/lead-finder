@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { appendLeads, getLeadNames } from "@/lib/sheets";
+import { appendLeads, getLeadNames, getLeads } from "@/lib/sheets";
 import { detectWebsiteStatus } from "@/lib/apify";
 import { normalizeIngest, dedupeByName, saveRun, loadRun } from "@/lib/leadgen";
 import type { IngestLead, LeadgenRun } from "@/lib/leadgen";
 import { readVaultJson } from "@/lib/vault";
+import { suppressedNameSet } from "@/lib/leads/contactable";
 
 // /api/leads/ingest — the lead-gen artifact endpoint.
 //   POST { leads: IngestLead[], source? }  append fresh leads to Sheets + save run.
@@ -34,10 +35,13 @@ function checkAuth(req: NextRequest): boolean {
 
 export async function GET() {
   // Obsidian channel: prefer a fresher data/leadgen.json from the vault if a Cowork
-  // task pushed one; else the KV run from the last in-app ingest.
-  const [kv, vault] = await Promise.all([
+  // task pushed one; else the KV run from the last in-app ingest. Load Sheets too so
+  // we can suppress any business we've already contacted (Cowork sources fresh and
+  // doesn't know our contacted-state).
+  const [kv, vault, leads] = await Promise.all([
     loadRun(),
     readVaultJson<LeadgenRun>("data/leadgen.json").catch(() => null),
+    getLeads().catch(() => null),
   ]);
   const valid = (r: LeadgenRun | null): number | null => {
     const t = r?.at ? Date.parse(r.at) : NaN;
@@ -48,7 +52,17 @@ export async function GET() {
   // Prefer the vault run only when it has items AND is genuinely newer (or KV has
   // no valid run). GET doesn't persist, so this only chooses what to display.
   const useVault = vault && Array.isArray(vault.items) && vault.items.length > 0 && (kt == null || (vt != null && vt >= kt));
-  return NextResponse.json({ ok: true, run: useVault ? vault : kv });
+  let run = useVault ? vault : kv;
+  // Hard rule: never re-surface an already-contacted lead. Filter the served items
+  // by name against Sheets suppression. On a Sheets read failure, serve unfiltered
+  // (the feed is review-only, never sends) rather than blanking it.
+  if (run && Array.isArray(run.items) && leads) {
+    const suppressed = suppressedNameSet(leads);
+    if (suppressed.size) {
+      run = { ...run, items: run.items.filter((it) => !suppressed.has((it.name || "").trim().toLowerCase())) };
+    }
+  }
+  return NextResponse.json({ ok: true, run });
 }
 
 export async function POST(req: NextRequest) {

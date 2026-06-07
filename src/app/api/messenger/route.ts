@@ -4,6 +4,7 @@ import { selectMessengerCandidates, isMessengerEligible } from "@/lib/messenger/
 import type { MessengerCandidate } from "@/lib/messenger/select";
 import { loadMessengerState, handledIds } from "@/lib/messenger/state";
 import { readVaultJson } from "@/lib/vault";
+import { suppressedNameSet } from "@/lib/leads/contactable";
 
 interface VaultMessenger { at?: string; candidates?: MessengerCandidate[] }
 
@@ -30,10 +31,15 @@ export async function GET(req: Request) {
   const handled = handledIds(state);
 
   // Obsidian channel: if a Cowork task curated data/messenger.json, prefer those
-  // (already deep-rated FB-leads with drafts), minus the ones already sent/skipped.
+  // (already deep-rated FB-leads with drafts), minus the ones already sent/skipped
+  // AND minus anyone we've already contacted on any channel (Cowork doesn't know
+  // our Sheets contacted-state). Match by name against Sheets suppression.
+  const suppressed = suppressedNameSet(leads);
   const vault = await readVaultJson<VaultMessenger>("data/messenger.json").catch(() => null);
   if (vault && Array.isArray(vault.candidates) && vault.candidates.length > 0) {
-    const fresh = vault.candidates.filter((c) => c && c.id && !handled.has(c.id)).slice(0, limit);
+    const fresh = vault.candidates
+      .filter((c) => c && c.id && !handled.has(c.id) && !suppressed.has((c.name || "").trim().toLowerCase()))
+      .slice(0, limit);
     if (fresh.length > 0) {
       return NextResponse.json({
         ok: true,

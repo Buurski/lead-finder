@@ -37,3 +37,20 @@ export function isContactable(lead: Lead): boolean {
   if (lead.callbackDate && lead.callbackDate.trim()) return false;
   return true;
 }
+
+/**
+ * Lowercased names of every lead we must NOT re-surface (i.e. !isContactable).
+ * Used to filter the Cowork vault feeds (data/leadgen.json, data/messenger.json)
+ * against the live Sheets contacted-state — a Cowork task sources businesses fresh
+ * and doesn't know we've already emailed/messaged some of them. Match by name.
+ */
+export function suppressedNameSet(leads: Lead[]): Set<string> {
+  const s = new Set<string>();
+  for (const l of leads) {
+    if (!isContactable(l)) {
+      const n = norm(l.name);
+      if (n) s.add(n);
+    }
+  }
+  return s;
+}

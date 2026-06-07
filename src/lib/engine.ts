@@ -32,6 +32,7 @@ import { compositeScore } from "./leads/composite-score.ts";
 import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
+import { isContactable } from "./leads/contactable.ts";
 import type { Lead } from "./sheets.ts";
 
 // Progress events emitted during a run so a UI can show the engine working
@@ -233,8 +234,10 @@ async function pickLeads(
         .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
         // Un-worked = blank or "new" status (Sheets returns "" for a blank cell
         // when a later column is filled, so a strict === "new" wrongly dropped
-        // real un-worked leads). Normalized in isUnworkedStatus.
-        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status))
+        // real un-worked leads). Normalized in isUnworkedStatus. PLUS isContactable —
+        // status alone misses a lead that was emailed (emailSentAt/emailStatus set)
+        // but whose status cell stayed "new"; that must never be re-drafted.
+        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead))
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
