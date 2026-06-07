@@ -258,10 +258,127 @@ async function pageSpeedFallback(url: string, cacheKey: string): Promise<Lightho
 }
 
 // ---- orchestrator ------------------------------------------------------
+// ---- CrUX (real-user field Core Web Vitals; same PAGESPEED_API_KEY) -------
+export interface CruxResult {
+  available: boolean;
+  lcpMs: number | null;   // p75 mobile
+  inpMs: number | null;
+  cls: number | null;
+  overall: "good" | "needs-improvement" | "poor" | null;
+  note: string;
+}
+const numOrNull = (v: unknown): number | null => {
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+};
+function cwvVerdict(lcp: number | null, inp: number | null, cls: number | null): CruxResult["overall"] {
+  const ranks = [
+    lcp == null ? null : lcp <= 2500 ? 0 : lcp <= 4000 ? 1 : 2,
+    inp == null ? null : inp <= 200 ? 0 : inp <= 500 ? 1 : 2,
+    cls == null ? null : cls <= 0.1 ? 0 : cls <= 0.25 ? 1 : 2,
+  ].filter((r): r is number => r != null);
+  if (!ranks.length) return null;
+  const worst = Math.max(...ranks);
+  return worst === 0 ? "good" : worst === 1 ? "needs-improvement" : "poor";
+}
+export async function runCrux(url: string): Promise<CruxResult> {
+  const empty = (note: string): CruxResult => ({ available: false, lcpMs: null, inpMs: null, cls: null, overall: null, note });
+  const key = process.env.PAGESPEED_API_KEY;
+  if (!key) return empty("Ingen PAGESPEED_API_KEY — CrUX springet over.");
+  try {
+    const res = await fetch(`https://chromeuxreport.googleapis.com/v1/records:queryRecord?key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, formFactor: "PHONE" }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (res.status === 404) return empty("Ikke nok trafik-data i CrUX (normalt for nye/små sites).");
+    if (!res.ok) return empty(`CrUX svarede ${res.status} — er "Chrome UX Report API" aktiveret i Cloud-projektet?`);
+    const data = (await res.json()) as { record?: { metrics?: Record<string, { percentiles?: { p75?: number | string } }> } };
+    const m = data.record?.metrics ?? {};
+    const lcp = numOrNull(m.largest_contentful_paint?.percentiles?.p75);
+    const inp = numOrNull(m.interaction_to_next_paint?.percentiles?.p75);
+    const cls = numOrNull(m.cumulative_layout_shift?.percentiles?.p75);
+    if (lcp == null && inp == null && cls == null) return empty("CrUX gav ingen metrics for siden.");
+    return { available: true, lcpMs: lcp, inpMs: inp, cls, overall: cwvVerdict(lcp, inp, cls), note: "feltdata fra rigtige brugere (CrUX, p75 mobil)" };
+  } catch (err) {
+    return empty(`CrUX fejl: ${String(err).slice(0, 80)}`);
+  }
+}
+
+// ---- GEO / AI-search readiness (the "new SEO") ---------------------------
+export interface GeoResult {
+  llmsTxt: boolean;
+  aiCrawlersAllowed: boolean | null; // null = no robots.txt found
+  blockedBots: string[];
+  citabilityNote: string;
+  note: string;
+}
+const AI_BOTS = ["GPTBot", "ChatGPT-User", "OAI-SearchBot", "PerplexityBot", "ClaudeBot", "Claude-Web", "Google-Extended", "CCBot"];
+export async function runGeo(url: string, html: string | null): Promise<GeoResult> {
+  const grab = async (path: string): Promise<string | null> => {
+    try {
+      const res = await fetch(new URL(path, url).toString(), { signal: AbortSignal.timeout(6000) });
+      return res.ok ? await res.text() : null;
+    } catch { return null; }
+  };
+  const [llms, robots] = await Promise.all([grab("/llms.txt"), grab("/robots.txt")]);
+  // Robots groups are separated by blank lines. A bot is blocked if ITS OWN stanza
+  // (or the `*` fallback when it has none) contains `Disallow: /`. Checking the whole
+  // file with one lazy regex wrongly spans stanza boundaries (false positives).
+  const botBlocked = (bot: string): boolean => {
+    const blocks = robots!.split(/\n\s*\n/);
+    const own = blocks.find((bl) => new RegExp(`user-agent:\\s*${bot}\\b`, "i").test(bl));
+    const star = blocks.find((bl) => /user-agent:\s*\*/i.test(bl));
+    const block = own || star;
+    return block ? /disallow:\s*\/\s*($|\n)/i.test(block) : false;
+  };
+  const blocked = robots ? AI_BOTS.filter(botBlocked) : [];
+  const aiCrawlersAllowed = robots ? blocked.length === 0 : null;
+  const h = html || "";
+  const headings = (h.match(/<h[1-3][\s>]/gi) || []).length;
+  const hasLists = /<ul|<ol/i.test(h);
+  const citabilityNote = headings >= 3 && hasLists
+    ? "god struktur — klare overskrifter + lister, nemt for AI at citere."
+    : "svag struktur — tilføj klare H2/H3-overskrifter + punktlister så AI kan citere siden.";
+  return { llmsTxt: Boolean(llms), aiCrawlersAllowed, blockedBots: blocked, citabilityNote, note: "GEO = synlighed i AI-søgning (ChatGPT/Perplexity/AI Overviews)" };
+}
+
+// ---- Schema GENERATOR — turn "no schema" into a paste-ready snippet -------
+const SCHEMA_TYPE_BY_BRANCH: Array<[RegExp, string]> = [
+  [/frisør|frisor|salon|barber|hår|hair/i, "HairSalon"],
+  [/skønhed|skonhed|hud|negle|kosmet|spa|wellness|beauty|klinik/i, "BeautySalon"],
+  [/restaurant|café|cafe|pizz|\bbar\b|grill|kro|bistro|spise|food|køkken/i, "Restaurant"],
+  [/bager|konditori/i, "Bakery"],
+  [/tømrer|maler|murer|vvs|elektr|håndværk|tag|snedker|smed/i, "HomeAndConstructionBusiness"],
+  [/foto|photo/i, "ProfessionalService"],
+];
+function schemaTypeFor(branch?: string): string {
+  const b = branch || "";
+  for (const [re, t] of SCHEMA_TYPE_BY_BRANCH) if (re.test(b)) return t;
+  return "LocalBusiness";
+}
+export function buildLocalBusinessJsonLd(input: { name: string; city?: string; domain: string; branch?: string }): string {
+  const url = normUrl(input.domain) || `https://${input.domain}`;
+  const obj: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": schemaTypeFor(input.branch),
+    name: input.name,
+    url,
+    ...(input.city ? { address: { "@type": "PostalAddress", addressLocality: input.city, addressCountry: "DK" } } : {}),
+    // Lucas fills these in for the real client:
+    telephone: "+45 ",
+    image: `${url}/og.jpg`,
+    priceRange: "$$",
+  };
+  return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
+}
+
 export interface SeoCheckInput {
   name: string;
   city?: string;
   domain: string;
+  branch?: string;
 }
 export interface SeoResult {
   name: string;
@@ -269,6 +386,9 @@ export interface SeoResult {
   tier: Tier;
   ranAt: string;
   schema: SchemaResult | null;
+  schemaSuggestion: string | null; // paste-ready JSON-LD when schema is missing
+  crux: CruxResult | null;
+  geo: GeoResult | null;
   index: IndexResult | null;
   aiVisibility: AiVisibilityResult | null;
   lighthouse: LighthouseResult | null;
@@ -281,15 +401,25 @@ export async function runSeoChecks(input: SeoCheckInput): Promise<SeoResult> {
   const url = normUrl(input.domain);
 
   let schema: SchemaResult | null = null;
+  let html: string | null = null;
   if (url) {
-    const html = await fetchHtml(url);
+    html = await fetchHtml(url);
     if (html) schema = scanSchema(html);
     else notes.push("Kunne ikke hente siden til schema-scan.");
   } else {
     notes.push("Ingen domæne registreret for klienten.");
   }
 
-  const lighthouse = url ? await runLighthouse(url) : null;
+  // Schema generator: when no schema is present, hand Lucas a paste-ready snippet.
+  const schemaSuggestion = url && schema && !schema.found
+    ? buildLocalBusinessJsonLd({ name: input.name, city: input.city, domain: input.domain, branch: input.branch })
+    : null;
+
+  // CrUX (real field CWV) + GEO (AI-search readiness) run on every tier — cheap,
+  // serverless, and the most useful "is this site actually findable" signals.
+  const [lighthouse, crux, geo] = url
+    ? await Promise.all([runLighthouse(url), runCrux(url), runGeo(url, html)])
+    : [null, null, null];
 
   // Full tier adds the monthly index + AI-visibility checks.
   let index: IndexResult | null = null;
@@ -305,6 +435,9 @@ export async function runSeoChecks(input: SeoCheckInput): Promise<SeoResult> {
     tier,
     ranAt: new Date().toISOString(),
     schema,
+    schemaSuggestion,
+    crux,
+    geo,
     index,
     aiVisibility,
     lighthouse,

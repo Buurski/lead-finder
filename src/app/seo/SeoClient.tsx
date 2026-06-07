@@ -10,9 +10,14 @@ interface ClientRow {
 }
 
 interface LhScores { performance: number; accessibility: number; bestPractices: number; seo: number }
+interface CruxResult { available: boolean; lcpMs: number | null; inpMs: number | null; cls: number | null; overall: string | null; note: string }
+interface GeoResult { llmsTxt: boolean; aiCrawlersAllowed: boolean | null; blockedBots: string[]; citabilityNote: string; note: string }
 interface SeoResult {
   tier: string;
   schema: { found: boolean; types: string[]; count: number } | null;
+  schemaSuggestion: string | null;
+  crux: CruxResult | null;
+  geo: GeoResult | null;
   index: { indexed: number | null; note: string } | null;
   aiVisibility: { mentioned: boolean | null; detail: string } | null;
   lighthouse: { available: boolean; note: string; scores: LhScores | null; cached?: boolean } | null;
@@ -59,7 +64,7 @@ function SeoCard({ client }: { client: ClientRow }) {
       const res = await fetch("/api/seo/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: client.name, domain }),
+        body: JSON.stringify({ name: client.name, domain, branch: client.branch }),
       });
       const d = await res.json();
       if (!res.ok || d.ok === false) { setErr(d.error ?? "fejl"); setState("error"); return; }
@@ -101,8 +106,35 @@ function SeoCard({ client }: { client: ClientRow }) {
           ) : (
             <Metric label="Lighthouse" value={result.lighthouse?.note ?? "n/a"} />
           )}
+          {result.crux && (
+            result.crux.available
+              ? <Metric label="Core Web Vitals (felt)" value={`${cwvLabel(result.crux.overall)} · LCP ${fmtMs(result.crux.lcpMs)} · INP ${fmtMs(result.crux.inpMs)} · CLS ${result.crux.cls != null ? result.crux.cls.toFixed(2) : "–"}`} good={result.crux.overall === "good"} />
+              : <Metric label="Core Web Vitals (felt)" value={result.crux.note} />
+          )}
+          {result.geo && (
+            <Metric
+              label="GEO / AI-søgning"
+              value={`${result.geo.aiCrawlersAllowed === false ? `⚠ blokerer ${result.geo.blockedBots.join(", ")}` : result.geo.aiCrawlersAllowed ? "AI-crawlere tilladt" : "ingen robots.txt"} · llms.txt ${result.geo.llmsTxt ? "✓" : "mangler"} · ${result.geo.citabilityNote}`}
+              good={result.geo.aiCrawlersAllowed !== false}
+            />
+          )}
           {result.index && <Metric label="Google-index" value={result.index.indexed != null ? `~${result.index.indexed} sider` : result.index.note} />}
           {result.aiVisibility && <Metric label="AI-synlighed" value={result.aiVisibility.mentioned == null ? result.aiVisibility.detail : result.aiVisibility.mentioned ? "kendt ✓" : "ukendt"} good={result.aiVisibility.mentioned === true} />}
+          {result.schemaSuggestion && (
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12.5, color: "var(--accent-ink)", fontWeight: 600 }}>
+                Mangler schema — kopiér færdigt LocalBusiness-snippet ↓
+              </summary>
+              <div style={{ position: "relative", marginTop: 8 }}>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(result.schemaSuggestion ?? "")}
+                  style={{ position: "absolute", top: 6, right: 6, fontSize: 11, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", color: "var(--text-dim)" }}
+                >Kopiér</button>
+                <pre style={{ padding: 12, background: "var(--bg-3)", borderRadius: 8, fontSize: 11, lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap" }}>{result.schemaSuggestion}</pre>
+              </div>
+              <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 4 }}>Indsæt i {"<head>"} på kundens side. Udfyld telefon/billede.</div>
+            </details>
+          )}
           {report && (
             <details style={{ marginTop: 6 }}>
               <summary style={{ cursor: "pointer", fontSize: 12.5, color: "var(--accent-ink)" }}>Vis månedsrapport (markdown)</summary>
@@ -119,6 +151,14 @@ function scoreColor(n: number): string {
   if (n >= 90) return "var(--accent-ink)";
   if (n >= 50) return "var(--amber)";
   return "var(--red)";
+}
+
+function cwvLabel(overall: string | null): string {
+  return overall === "good" ? "god ✓" : overall === "needs-improvement" ? "kan forbedres" : overall === "poor" ? "dårlig" : "–";
+}
+function fmtMs(ms: number | null): string {
+  if (ms == null) return "–";
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 }
 
 function LighthouseRow({ s, cached }: { s: LhScores; cached?: boolean }) {

@@ -9,19 +9,20 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  let name = "", city = "", domain = "";
+  let name = "", city = "", domain = "", branch = "";
   try {
     const b = await req.json();
     name = String(b.name ?? "").trim();
     city = String(b.city ?? "").trim();
     domain = String(b.domain ?? "").trim();
+    branch = String(b.branch ?? "").trim();
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
 
   try {
-    const result = await runSeoChecks({ name, city, domain });
+    const result = await runSeoChecks({ name, city, domain, branch });
     return NextResponse.json({ ok: true, result, report: generateSeoReport(result) });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
