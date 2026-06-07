@@ -89,10 +89,11 @@ process.stdin.on("end", () => {
     deny("Editing secrets / service-account / .git is blocked: " + path);
   }
 
-  // 6. Block any command that touches PauseSchedule (cold-email must stay paused).
-  if (/PauseSchedule/i.test(cmd)) {
-    deny("PauseSchedule must not be modified — cold-email stays paused.");
-  }
+  // 6. (Removed 2026-06-07) Lucas explicitly authorized going live with real cold
+  //    mail via the /approve "Send godkendte" flow, so the PauseSchedule guard is
+  //    lifted. The in-app send route still enforces the real safety: pause-status,
+  //    canSendTo, never-re-contact (emailSentAt/emailStatus), a per-run cap, and
+  //    spacing between sends.
 
   process.exit(0); // allow everything else
 });

@@ -110,13 +110,18 @@ export default function ApprovePage() {
   const [sendBusy, setSendBusy] = useState(false);
   const sendApproved = useCallback(async () => {
     if (counts.approved === 0) return;
-    if (!window.confirm(`Send ${counts.approved} godkendte udkast? (TEST → kun din egen indbakke buur.aigro — intet går til kunderne endnu.)`)) return;
+    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. (Blokeres automatisk hvis pause/halt-flag er aktiv.)`)) return;
     setSendBusy(true);
     setSendMsg("");
     try {
       const res = await fetch("/api/approve/send", { method: "POST" });
       const d = await res.json();
-      setSendMsg(res.ok ? `${d.sent ?? 0} sendt (test → buur.aigro)${d.failed ? ` · ${d.failed} fejlede` : ""}.` : (d.error ?? "Kunne ikke sende."));
+      const msg = d.paused
+        ? (d.error ?? "Afsendelse er på pause.")
+        : res.ok
+          ? `${d.sent ?? 0} sendt${d.failed ? ` · ${d.failed} fejlede` : ""}${Array.isArray(d.skipped) && d.skipped.length ? ` · ${d.skipped.length} sprunget over (${d.skipped.slice(0, 3).map((s: { name: string; reason: string }) => `${s.name}: ${s.reason}`).join("; ")}${d.skipped.length > 3 ? "…" : ""})` : ""}.`
+          : (d.error ?? "Kunne ikke sende.");
+      setSendMsg(msg);
       await load();
     } catch {
       setSendMsg("Netværksfejl ved afsendelse.");
@@ -206,7 +211,7 @@ export default function ApprovePage() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse</div>
             <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
-              Godkendt = markeret. Tryk Send for at sende. <strong>TEST-mode:</strong> går kun til din egen indbakke (buur.aigro) — intet rammer kunderne endnu.
+              Godkendt = markeret. Tryk Send for at sende <strong>rigtige mails</strong> til virksomhederne. Pause/halt-flag + kontaktet-tjek blokerer automatisk.
               {sendMsg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
             </div>
           </div>

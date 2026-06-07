@@ -130,19 +130,13 @@ export function buildNeedsYou(leads: Lead[]): NeedsYouItem[] {
       });
       continue;
     }
-    // Marked interested but no reply yet — warm, needs a nudge.
-    if (norm(l.status) === "interested") {
-      items.push({
-        leadId: l.id,
-        name: l.name,
-        branch: l.branch,
-        kind: "interested",
-        why: "Interesseret — følg op mens det er varmt",
-      });
-    }
+    // NB: "interested" leads (a draft was approved + sent, now waiting) are
+    // deliberately NOT listed here — they cluttered Dagens opgaver with
+    // "følg op mens det er varmt" for every sent lead. They resurface only when
+    // they REPLY (via the consolidated "X svar at besvare → /replies" pointer).
   }
 
-  // Replies first, then overdue callbacks, then warm leads. Cap for calm.
+  // Overdue callbacks first, then due. Cap for calm.
   const rank = { reply: 0, callback: 1, interested: 2 } as const;
   items.sort((a, b) => rank[a.kind] - rank[b.kind]);
   return items.slice(0, 8);
