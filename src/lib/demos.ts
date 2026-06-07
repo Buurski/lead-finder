@@ -54,7 +54,10 @@ export const DEMO_CATALOG: DemoEntry[] = [
 
 const FOOD_INTL =
   /pizza|pizzeria|italia|sushi|kebab|shawarma|falafel|tapas|libanon|tyrk|grill|mexicansk|wok|asia|thai|indisk|kinesisk/i;
-const FOOD = /café|cafe|restaurant|bager|konditori|spise|køkken|bistro|brasserie|kro|smørrebrød|frokost/i;
+// \bbar\b / \bpub\b are word-bounded so they don't match "barber" / "republic" —
+// and BARBER/BEAUTY are tested before FOOD anyway. Covers bars, grills, pubs,
+// bodegas etc. that previously fell through to the service default demo.
+const FOOD = /café|cafe|restaurant|bager|konditori|spise|køkken|bistro|brasserie|kro|smørrebrød|frokost|\bbar\b|\bpub\b|grill|bodega|vinbar|diner|steakhouse|burger|pølse|fastfood|takeaway|cafeteria|værtshus|spisested/i;
 const BARBER = /barber|herrefrisør|herre ?frisør|herreklip/i;
 // Skønhedsklinik (hud/kosmetolog/spa/laser/botox) → Vida-demoen (klinik-look),
 // adskilt fra frisør/salon → Salon Artec. Tjekkes FØR BEAUTY.

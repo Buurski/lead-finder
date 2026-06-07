@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 const factory = await import(pathToFileURL(path.join(REPO_ROOT, "src", "lib", "demo-factory.ts")).href);
+const demos = await import(pathToFileURL(path.join(REPO_ROOT, "src", "lib", "demos.ts")).href);
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -58,6 +59,18 @@ for (const [label, r] of [["full", full], ["medium", medium], ["low", low]]) {
   check("requireMinData refuses thin fetched recon (null)", refused === null);
   const templateOnly = await factory.buildDemo("NoUrl Co", "salon", low, { persist: false, requireMinData: true });
   check("requireMinData still allows no-URL template build", templateOnly !== null);
+}
+
+// ---- pickDemoPair routing: bar/grill/pub → food demos, not service default ----
+{
+  const isFood = (pair) => pair.every((d) => /zaytoon|under-klippen/.test(d.url));
+  check("Bar → food demos (not vestfjends)", isFood(demos.pickDemoPair("Bar", "Andy's")) && !demos.pickDemoPair("Bar", "Andy's").some((d) => /vestfjends/.test(d.url)));
+  check("Grill → food demos", isFood(demos.pickDemoPair("Grill", "Byens Grill")));
+  check("Pub → food demos", isFood(demos.pickDemoPair("Pub", "The Old Pub")));
+  check("Bodega → food demos", isFood(demos.pickDemoPair("Bodega", "Hjørnets Bodega")));
+  // regressions: barber still barber, beauty still beauty (word-boundary \bbar\b)
+  check("Barber still → streetcut (not food)", demos.pickDemoPair("Barber", "Tony's Barbershop").some((d) => /streetcut/.test(d.url)));
+  check("Frisør still → salon", demos.pickDemoPair("Frisør", "Salon X").some((d) => /salon-artec/.test(d.url)));
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all demo-render checks ok");
