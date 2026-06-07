@@ -173,7 +173,7 @@ export default function LeadgenPanel() {
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leads.length} kontaktbare leads klar</div>
               <div className="cc-dim" style={{ fontSize: 12 }}>
-                {lastRun?.at
+                {lastRun?.at && lastRun.source !== "placeholder"
                   ? <>sidste hentning{ageMin != null && ageMin >= 0 ? ` ${ageMin} min siden` : ""}{lastRun.ingested ? ` · ${lastRun.ingested} tilføjet` : ""}{lastRun.source ? ` · kilde ${lastRun.source}` : ""}</>
                   : "rangeret efter composite-score · kontaktede leads er sorteret fra"}
               </div>
