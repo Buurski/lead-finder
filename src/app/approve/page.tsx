@@ -9,7 +9,7 @@ interface Demo {
   label: string;
   url: string;
 }
-type DraftStatus = "pending" | "approved" | "edited" | "rejected";
+type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
 interface QueueDraft {
   id: string;
   leadId: string;
@@ -41,9 +41,10 @@ const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
 
 const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: string }> = {
   pending: { label: "afventer", fg: "var(--amber)", bg: "var(--amber-dim)" },
-  approved: { label: "godkendt", fg: "var(--green)", bg: "var(--green-dim)" },
+  approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--green-dim)" },
   edited: { label: "redigeret · godkendt", fg: "var(--blue)", bg: "var(--blue-dim)" },
   rejected: { label: "afvist", fg: "var(--red)", bg: "#dc26261a" },
+  sent: { label: "sendt (test)", fg: "var(--blue)", bg: "var(--blue-dim)" },
 };
 
 export default function ApprovePage() {
@@ -99,9 +100,30 @@ export default function ApprovePage() {
 
   const counts = useMemo(() => {
     const pending = drafts.filter((d) => d.status === "pending").length;
+    const approved = drafts.filter((d) => d.status === "approved").length;
     const decided = drafts.length - pending;
-    return { pending, decided, all: drafts.length };
+    return { pending, approved, decided, all: drafts.length };
   }, [drafts]);
+
+  // Send the approved drafts (TEST-mode → buur.aigro; nothing reaches a lead).
+  const [sendMsg, setSendMsg] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
+  const sendApproved = useCallback(async () => {
+    if (counts.approved === 0) return;
+    if (!window.confirm(`Send ${counts.approved} godkendte udkast? (TEST → kun din egen indbakke buur.aigro — intet går til kunderne endnu.)`)) return;
+    setSendBusy(true);
+    setSendMsg("");
+    try {
+      const res = await fetch("/api/approve/send", { method: "POST" });
+      const d = await res.json();
+      setSendMsg(res.ok ? `${d.sent ?? 0} sendt (test → buur.aigro)${d.failed ? ` · ${d.failed} fejlede` : ""}.` : (d.error ?? "Kunne ikke sende."));
+      await load();
+    } catch {
+      setSendMsg("Netværksfejl ved afsendelse.");
+    } finally {
+      setSendBusy(false);
+    }
+  }, [counts.approved, load]);
 
   const visible = useMemo(() => {
     if (filter === "pending") return drafts.filter((d) => d.status === "pending");
@@ -177,6 +199,22 @@ export default function ApprovePage() {
         onBulkApprove={bulkApprove}
         bulkBusy={bulkBusy}
       />
+
+      {/* Send step — the missing piece. Approved = ready; this actually sends. */}
+      {counts.approved > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--green-dim)", border: "1px solid var(--green)" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
+              Godkendt = markeret. Tryk Send for at sende. <strong>TEST-mode:</strong> går kun til din egen indbakke (buur.aigro) — intet rammer kunderne endnu.
+              {sendMsg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
+            </div>
+          </div>
+          <button onClick={sendApproved} disabled={sendBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
+            {sendBusy ? "Sender…" : `Send godkendte (${counts.approved})`}
+          </button>
+        </div>
+      )}
 
       {error && (
         <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>

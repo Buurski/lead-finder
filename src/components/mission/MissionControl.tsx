@@ -268,6 +268,9 @@ const KIND_META: Record<NeedsYouItem["kind"], { icon: string; tone: string }> = 
 // queue, surfaced as a single banner, not per-item "godkend nu".)
 function hrefForKind(kind?: NeedsYouItem["kind"]): string {
   if (kind === "reply") return "/replies";
+  // An approved/interested lead's next step is the approval queue (review + Send),
+  // not the raw Leads pipeline — that's where the action lives.
+  if (kind === "interested") return "/approve";
   return "/leads";
 }
 

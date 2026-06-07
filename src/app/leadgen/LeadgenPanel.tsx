@@ -212,7 +212,16 @@ export default function LeadgenPanel() {
                     <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
                     <div className="cc-dim" style={{ fontSize: 12.5 }}>{[it.branch, it.city].filter(Boolean).join(" · ")}{it.reviews ? ` · ${it.reviews} anmeldelser` : ""}{it.gap ? ` · gap: ${it.gap}` : ""}</div>
                   </div>
-                  {it.website && <a className="cc-link" href={it.website.startsWith("http") ? it.website : `https://${it.website}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600 }}>Åbn →</a>}
+                  {/* Always clickable: open the website if there is one, else Google the business. */}
+                  <a
+                    className="cc-link"
+                    href={it.website
+                      ? (it.website.startsWith("http") ? it.website : `https://${it.website}`)
+                      : `https://www.google.com/search?q=${encodeURIComponent([it.name, it.city].filter(Boolean).join(" "))}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                  >{it.website ? "Åbn →" : "Google →"}</a>
                 </li>
               ))}
             </ul>

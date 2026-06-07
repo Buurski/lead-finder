@@ -13,7 +13,7 @@ import { store } from "./store.ts";
 
 import type { Demo } from "./demos.ts";
 
-export type DraftStatus = "pending" | "approved" | "edited" | "rejected";
+export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
 
 export interface QueueDraft {
   id: string;
