@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DEMO_CATALOG } from "@/lib/demos";
 
 // Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
 // has no server-only imports.
@@ -27,6 +28,16 @@ interface QueueDraft {
 }
 
 type Filter = "pending" | "decided" | "all";
+
+// Demo catalog grouped by branch family, for the per-draft demo picker.
+const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
+  const m = new Map<string, { label: string; url: string }[]>();
+  for (const d of DEMO_CATALOG) {
+    if (!m.has(d.branch)) m.set(d.branch, []);
+    m.get(d.branch)!.push({ label: d.label, url: d.url });
+  }
+  return [...m.entries()];
+})();
 
 const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: string }> = {
   pending: { label: "afventer", fg: "var(--amber)", bg: "var(--amber-dim)" },
@@ -100,11 +111,11 @@ export default function ApprovePage() {
 
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
-    async (id: string, action: "approve" | "edit" | "reject", payload?: { subject: string; body: string }): Promise<{ ok: boolean; violations?: string[] }> => {
+    async (id: string, action: "approve" | "edit" | "reject" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }): Promise<{ ok: boolean; violations?: string[] }> => {
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "edit" && payload ? { id, action, ...payload } : { id, action }),
+        body: JSON.stringify((action === "edit" || action === "set-demos") && payload ? { id, action, ...payload } : { id, action }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -346,16 +357,41 @@ function DraftLetter({
   onFocusRequest,
 }: {
   draft: QueueDraft;
-  onAct: (id: string, action: "approve" | "edit" | "reject", payload?: { subject: string; body: string }) => Promise<{ ok: boolean; violations?: string[] }>;
+  onAct: (id: string, action: "approve" | "edit" | "reject" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
-  const [busy, setBusy] = useState<null | "approve" | "edit" | "reject">(null);
+  const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
+  const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "set-demos">(null);
   const [violations, setViolations] = useState<string[]>([]);
 
   const dirty = subject !== draft.subject || body !== draft.body;
+  const demosDirty = JSON.stringify(demos.map((d) => d.url)) !== JSON.stringify(draft.demoPair.map((d) => d.url));
+
+  // Swap one demo slot: pick from the catalog, and rewrite that URL inside the body
+  // so the letter stays in sync. Lucas saves with "Gem demoer".
+  function changeDemo(i: number, url: string) {
+    const entry = DEMO_CATALOG.find((d) => d.url === url);
+    if (!entry) return;
+    const old = demos[i];
+    setDemos((prev) => prev.map((d, j) => (j === i ? { label: entry.label, url: entry.url } : d)));
+    if (old?.url && old.url !== entry.url) setBody((b) => b.split(old.url).join(entry.url));
+  }
+
+  async function saveDemos() {
+    setBusy("set-demos");
+    setViolations([]);
+    try {
+      const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
+  }
   const decided = draft.status !== "pending";
   const meta = STATUS_META[draft.status];
 
@@ -480,32 +516,43 @@ function DraftLetter({
         </Field>
       </div>
 
-      {/* demos */}
-      {draft.demoPair.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
-          {draft.demoPair.map((d, i) => (
-            <a
-              key={i}
-              href={d.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 12.5,
-                color: "var(--text)",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                padding: "7px 12px",
-                borderRadius: 9,
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-              }}
-            >
-              <span style={{ color: "var(--text-dim)", fontSize: 11 }}>{d.label}</span>
-              <span style={{ color: "var(--green)", fontWeight: 600 }}>{prettyUrl(d.url)} ↗</span>
-            </a>
-          ))}
+      {/* demos — read-only once decided, editable picker while pending */}
+      {decided ? (
+        draft.demoPair.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+            {draft.demoPair.map((d, i) => (
+              <a key={i} href={d.url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12.5, color: "var(--text)", background: "var(--bg-2)", border: "1px solid var(--border)", padding: "7px 12px", borderRadius: 9, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                <span style={{ color: "var(--text-dim)", fontSize: 11 }}>{d.label}</span>
+                <span style={{ color: "var(--green)", fontWeight: 600 }}>{prettyUrl(d.url)} ↗</span>
+              </a>
+            ))}
+          </div>
+        )
+      ) : (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+            Demoer i mailen — vælg de to du vil sende
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {demos.map((d, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 190 }}>
+                <select value={d.url} onChange={(e) => changeDemo(i, e.target.value)} style={{ ...inputStyle(false), padding: "8px 9px", cursor: "pointer" }}>
+                  {CATALOG_GROUPS.map(([branch, items]) => (
+                    <optgroup key={branch} label={branch}>
+                      {items.map((it) => <option key={it.url} value={it.url}>{it.label}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, color: "var(--green)", fontWeight: 600, textDecoration: "none" }}>{prettyUrl(d.url)} ↗</a>
+              </div>
+            ))}
+          </div>
+          {demosDirty && (
+            <button onClick={saveDemos} disabled={busy !== null} style={{ ...btnSecondary, marginTop: 12, padding: "8px 14px", fontSize: 12.5 }}>
+              {busy === "set-demos" ? "Gemmer…" : "Gem demoer"}
+            </button>
+          )}
         </div>
       )}
 
@@ -533,7 +580,7 @@ function DraftLetter({
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>
-          {dirty && (
+          {dirty && !demosDirty && (
             <button onClick={() => act("edit")} disabled={busy !== null} style={btnSecondary}>
               {busy === "edit" ? "Gemmer…" : "Gem rettelse + godkend"}
             </button>
@@ -543,7 +590,7 @@ function DraftLetter({
           </button>
           {dirty && (
             <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-              Rettet — gem for at godkende
+              {demosDirty ? "Demo skiftet — tryk “Gem demoer”" : "Rettet — gem for at godkende"}
             </span>
           )}
         </div>

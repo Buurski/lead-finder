@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
+import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved } from "@/lib/datalayer";
 
@@ -15,9 +16,10 @@ export async function GET() {
 
 interface ActionBody {
   id?: string;
-  action?: "approve" | "edit" | "reject";
+  action?: "approve" | "edit" | "reject" | "set-demos";
   subject?: string;
   body?: string;
+  demoPair?: Demo[];
 }
 
 // POST /api/approve/queue — approve | edit | reject a draft.
@@ -57,6 +59,22 @@ export async function POST(req: Request) {
       subject: payload.subject,
       body: payload.body,
     });
+    if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    return NextResponse.json({ draft: updated });
+  }
+
+  if (action === "set-demos") {
+    // Lucas picked different demos for this draft. The client sends the new pair
+    // (2 from the catalog) + the body with the URLs already swapped. We validate
+    // the body and persist demoPair + body WITHOUT changing status (still pending).
+    const pair = Array.isArray(payload.demoPair) ? payload.demoPair.filter((d) => d && typeof d.url === "string" && d.url) : [];
+    if (pair.length === 0) return NextResponse.json({ error: "demoPair required" }, { status: 400 });
+    const candidate = payload.body ?? "";
+    const check = validateDraft(candidate);
+    if (!check.ok) {
+      return NextResponse.json({ error: "voice-guide violation", violations: check.errors }, { status: 422 });
+    }
+    const updated = await updateDraft(id, { demoPair: pair, body: payload.body });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }

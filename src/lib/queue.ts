@@ -74,7 +74,7 @@ export async function appendDrafts(newDrafts: QueueDraft[]): Promise<QueueDraft[
 // "approve" only marks the draft approved; real sending is a later layer.
 export async function updateDraft(
   id: string,
-  patch: { status?: DraftStatus; subject?: string; body?: string }
+  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[] }
 ): Promise<QueueDraft | null> {
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
@@ -84,6 +84,7 @@ export async function updateDraft(
     ...(patch.status ? { status: patch.status } : {}),
     ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
     ...(patch.body !== undefined ? { body: patch.body } : {}),
+    ...(patch.demoPair !== undefined ? { demoPair: patch.demoPair } : {}),
     updatedAt: new Date().toISOString(),
   };
   drafts[idx] = next;
