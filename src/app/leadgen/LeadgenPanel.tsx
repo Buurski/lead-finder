@@ -39,6 +39,24 @@ export default function LeadgenPanel() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [msg, setMsg] = useState("");
   const [budget, setBudget] = useState<{ used: number; cap: number; remaining: number } | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftMsg, setDraftMsg] = useState("");
+
+  // Bridge the Sheets pool → /approve: run the engine on the top-N contactable leads
+  // and append the drafts to the approval queue. Never sends mail.
+  async function makeDrafts() {
+    setDrafting(true);
+    setDraftMsg("");
+    try {
+      const r = await fetch("/api/leads/draft-batch?limit=12", { method: "POST" });
+      const d = await r.json().catch(() => ({}));
+      setDraftMsg(r.ok ? `${d.drafted ?? 0} udkast lagt i godkendelse.` : (d.error ?? "Kunne ikke lave udkast."));
+    } catch (e) {
+      setDraftMsg(String(e));
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   function load() {
     fetch("/api/leads/ingest")
@@ -178,8 +196,12 @@ export default function LeadgenPanel() {
                 {lastRun?.at && lastRun.source !== "placeholder"
                   ? <>sidste hentning{ageMin != null && ageMin >= 0 ? ` ${ageMin} min siden` : ""}{lastRun.ingested ? ` · ${lastRun.ingested} tilføjet` : ""}{lastRun.source ? ` · kilde ${lastRun.source}` : ""}</>
                   : "rangeret efter composite-score · kontaktede leads er sorteret fra"}
+                {draftMsg && <> · {draftMsg} <a className="cc-link" href="/approve" style={{ fontWeight: 600 }}>Åbn godkendelse →</a></>}
               </div>
             </div>
+            <button className="cc-btn cc-btn-accent" onClick={makeDrafts} disabled={drafting || totalContactable === 0} title="Kør motoren på de bedste leads og læg personlige udkast i godkendelse — sender ingenting">
+              {drafting ? "Laver udkast…" : "Lav udkast → godkendelse (top 12)"}
+            </button>
           </div>
           <div className="cc-card" style={{ overflow: "hidden" }}>
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
