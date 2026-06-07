@@ -12,8 +12,12 @@ interface ClientRow {
 interface LhScores { performance: number; accessibility: number; bestPractices: number; seo: number }
 interface CruxResult { available: boolean; lcpMs: number | null; inpMs: number | null; cls: number | null; overall: string | null; note: string }
 interface GeoResult { llmsTxt: boolean; aiCrawlersAllowed: boolean | null; blockedBots: string[]; citabilityNote: string; note: string }
+interface OnPageCheck { label: string; ok: boolean; detail: string; weight: number }
 interface SeoResult {
   tier: string;
+  healthScore: number | null;
+  topIssues: string[];
+  onPage: { checks: OnPageCheck[]; score: number } | null;
   schema: { found: boolean; types: string[]; count: number } | null;
   schemaSuggestion: string | null;
   crux: CruxResult | null;
@@ -99,6 +103,26 @@ function SeoCard({ client }: { client: ClientRow }) {
 
       {state === "done" && result && (
         <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
+          {/* Quick overview: one health score + what to fix first */}
+          {result.healthScore != null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", borderRadius: 10, background: "var(--bg-2)", border: "1px solid var(--border)" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 30, lineHeight: 1, color: scoreColor(result.healthScore) }}>{result.healthScore}</div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>SEO-sundhed</div>
+                {result.topIssues.length > 0
+                  ? <div className="cc-dim" style={{ fontSize: 12, marginTop: 2 }}>Forbedr først: {result.topIssues.slice(0, 3).join(" · ")}</div>
+                  : <div className="cc-dim" style={{ fontSize: 12, marginTop: 2 }}>Ingen kritiske mangler ✓</div>}
+              </div>
+            </div>
+          )}
+          {result.topIssues.length > 0 && (
+            <div style={{ display: "grid", gap: 4, padding: "10px 14px", borderRadius: 10, background: "var(--amber-dim)", border: "1px solid var(--amber)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--amber)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Hvad skal forbedres</div>
+              {result.topIssues.map((it, i) => (
+                <div key={i} style={{ fontSize: 12.5, color: "var(--text)" }}>• {it}</div>
+              ))}
+            </div>
+          )}
           <span className="cc-chip" style={{ width: "fit-content" }}>{result.tier === "tier_full" ? "fuld" : "basis"}-niveau</span>
           <Metric label="Schema.org" value={result.schema ? (result.schema.found ? result.schema.types.join(", ") : "ingen fundet") : "ikke tjekket"} good={!!result.schema?.found} />
           {result.lighthouse?.scores ? (
@@ -133,6 +157,20 @@ function SeoCard({ client }: { client: ClientRow }) {
                 <pre style={{ padding: 12, background: "var(--bg-3)", borderRadius: 8, fontSize: 11, lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap" }}>{result.schemaSuggestion}</pre>
               </div>
               <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 4 }}>Indsæt i {"<head>"} på kundens side. Udfyld telefon/billede.</div>
+            </details>
+          )}
+          {result.onPage && (
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12.5, color: "var(--accent-ink)", fontWeight: 600 }}>On-page tjekliste ({result.onPage.score}/100) ↓</summary>
+              <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
+                {result.onPage.checks.map((c, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, fontSize: 12.5, alignItems: "center" }}>
+                    <span style={{ color: c.ok ? "var(--green)" : "var(--amber)", width: 14, flexShrink: 0 }}>{c.ok ? "✓" : "✗"}</span>
+                    <span style={{ flex: 1 }}>{c.label}</span>
+                    <span className="cc-dim">{c.detail}</span>
+                  </div>
+                ))}
+              </div>
             </details>
           )}
           {report && (

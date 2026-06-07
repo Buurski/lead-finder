@@ -374,6 +374,70 @@ export function buildLocalBusinessJsonLd(input: { name: string; city?: string; d
   return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
 }
 
+// ---- on-page audit (cheap, from HTML — the quick "what to fix" overview) -
+export interface OnPageCheck { label: string; ok: boolean; detail: string; weight: number }
+export interface OnPageResult { checks: OnPageCheck[]; score: number }
+
+const rxText = (html: string, re: RegExp): string | null => {
+  const m = html.match(re);
+  return m ? m[1].trim() : null;
+};
+export async function auditOnPage(html: string, url: string): Promise<OnPageResult> {
+  const title = rxText(html, /<title[^>]*>([\s\S]*?)<\/title>/i);
+  // Handle both attribute orders + optional/missing quotes + casing on `name`.
+  const desc = rxText(html, /<meta[^>]+name\s*=\s*["']?description["']?[^>]+content\s*=\s*["']([^"']*)["']/i)
+    ?? rxText(html, /<meta[^>]+content\s*=\s*["']([^"']*)["'][^>]+name\s*=\s*["']?description["']?/i);
+  const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+  const hasCanonical = /<link[^>]+rel=["']canonical["']/i.test(html);
+  const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(html);
+  const hasLang = /<html[^>]+\blang=/i.test(html);
+  const hasOgTitle = /<meta[^>]+property=["']og:(title|image)["']/i.test(html);
+  const imgs = (html.match(/<img\b/gi) || []).length;
+  const imgsAlt = (html.match(/<img\b[^>]*\balt=/gi) || []).length;
+  const altCov = imgs === 0 ? 1 : imgsAlt / imgs;
+  const isHttps = /^https:\/\//i.test(url);
+  let hasSitemap = false;
+  try {
+    const r = await fetch(new URL("/sitemap.xml", url).toString(), { signal: AbortSignal.timeout(6000) });
+    hasSitemap = r.ok;
+  } catch { /* none */ }
+
+  const checks: OnPageCheck[] = [
+    { label: "HTTPS", ok: isHttps, detail: isHttps ? "sikker" : "ingen HTTPS", weight: 2 },
+    { label: "Sidetitel", ok: !!title && title.length >= 15 && title.length <= 70, detail: title ? `${title.length} tegn` : "mangler", weight: 3 },
+    { label: "Meta-beskrivelse", ok: !!desc && desc.length >= 50 && desc.length <= 170, detail: desc ? `${desc.length} tegn` : "mangler", weight: 3 },
+    { label: "Præcis én H1", ok: h1Count === 1, detail: `${h1Count} fundet`, weight: 2 },
+    { label: "Mobil-viewport", ok: hasViewport, detail: hasViewport ? "ok" : "mangler", weight: 2 },
+    { label: "Canonical-tag", ok: hasCanonical, detail: hasCanonical ? "ok" : "mangler", weight: 1 },
+    { label: "Sprog (lang)", ok: hasLang, detail: hasLang ? "ok" : "mangler", weight: 1 },
+    { label: "Social-preview (og:)", ok: hasOgTitle, detail: hasOgTitle ? "ok" : "mangler og:title/image", weight: 1 },
+    { label: "Billed-alt-tekst", ok: altCov >= 0.8, detail: imgs ? `${Math.round(altCov * 100)}% har alt` : "ingen billeder", weight: 1 },
+    { label: "Sitemap.xml", ok: hasSitemap, detail: hasSitemap ? "fundet" : "mangler", weight: 1 },
+  ];
+  const wTotal = checks.reduce((a, c) => a + c.weight, 0);
+  const wOk = checks.reduce((a, c) => a + (c.ok ? c.weight : 0), 0);
+  return { checks, score: Math.round((wOk / wTotal) * 100) };
+}
+
+// Blend the cheap signals into ONE health score + a prioritized "fix these" list.
+function buildHealth(r: { onPage: OnPageResult | null; schema: SchemaResult | null; lighthouse: LighthouseResult | null; geo: GeoResult | null }): { score: number; topIssues: string[] } {
+  const parts: Array<{ s: number; w: number }> = [];
+  if (r.onPage) parts.push({ s: r.onPage.score, w: 3 });
+  if (r.lighthouse?.scores) parts.push({ s: r.lighthouse.scores.seo, w: 2 });
+  if (r.schema) parts.push({ s: r.schema.found ? 100 : 30, w: 1 });
+  if (r.geo) parts.push({ s: r.geo.aiCrawlersAllowed === false ? 30 : 80, w: 1 });
+  const wTotal = parts.reduce((a, p) => a + p.w, 0) || 1;
+  const score = Math.round(parts.reduce((a, p) => a + p.s * p.w, 0) / wTotal);
+
+  const issues: { text: string; w: number }[] = [];
+  for (const c of r.onPage?.checks ?? []) if (!c.ok) issues.push({ text: `${c.label}: ${c.detail}`, w: c.weight });
+  if (r.schema && !r.schema.found) issues.push({ text: "Schema.org mangler — brug det færdige snippet nedenfor", w: 2 });
+  if (r.geo?.aiCrawlersAllowed === false) issues.push({ text: `Robots.txt blokerer AI-crawlere (${r.geo.blockedBots.join(", ")})`, w: 2 });
+  if (r.lighthouse?.scores && r.lighthouse.scores.performance < 50) issues.push({ text: `Lav performance-score (${r.lighthouse.scores.performance})`, w: 2 });
+  const topIssues = issues.sort((a, b) => b.w - a.w).slice(0, 6).map((i) => i.text);
+  return { score, topIssues };
+}
+
 export interface SeoCheckInput {
   name: string;
   city?: string;
@@ -387,6 +451,9 @@ export interface SeoResult {
   ranAt: string;
   schema: SchemaResult | null;
   schemaSuggestion: string | null; // paste-ready JSON-LD when schema is missing
+  onPage: OnPageResult | null;
+  healthScore: number | null;      // 0–100 quick overview
+  topIssues: string[];             // prioritized "fix these"
   crux: CruxResult | null;
   geo: GeoResult | null;
   index: IndexResult | null;
@@ -415,11 +482,12 @@ export async function runSeoChecks(input: SeoCheckInput): Promise<SeoResult> {
     ? buildLocalBusinessJsonLd({ name: input.name, city: input.city, domain: input.domain, branch: input.branch })
     : null;
 
-  // CrUX (real field CWV) + GEO (AI-search readiness) run on every tier — cheap,
-  // serverless, and the most useful "is this site actually findable" signals.
-  const [lighthouse, crux, geo] = url
-    ? await Promise.all([runLighthouse(url), runCrux(url), runGeo(url, html)])
-    : [null, null, null];
+  // CrUX (real field CWV) + GEO (AI-search readiness) + on-page audit run on every
+  // tier — cheap, serverless, the quick "is this findable / what to fix" overview.
+  const [lighthouse, crux, geo, onPage] = url
+    ? await Promise.all([runLighthouse(url), runCrux(url), runGeo(url, html), html != null ? auditOnPage(html, url) : Promise.resolve(null)])
+    : [null, null, null, null];
+  const { score: healthScore, topIssues } = buildHealth({ onPage, schema, lighthouse, geo });
 
   // Full tier adds the monthly index + AI-visibility checks.
   let index: IndexResult | null = null;
@@ -436,6 +504,9 @@ export async function runSeoChecks(input: SeoCheckInput): Promise<SeoResult> {
     ranAt: new Date().toISOString(),
     schema,
     schemaSuggestion,
+    onPage,
+    healthScore: url ? healthScore : null,
+    topIssues,
     crux,
     geo,
     index,
