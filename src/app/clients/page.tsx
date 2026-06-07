@@ -1,5 +1,6 @@
 import { getClients } from "@/lib/sheets";
 import ClientCard from "@/components/ClientCard";
+import AddClientForm from "@/components/AddClientForm";
 import PageHeader from "@/components/shell/PageHeader";
 
 export const revalidate = 0;
@@ -33,6 +34,8 @@ export default async function ClientsPage() {
           </>
         }
       />
+
+      <AddClientForm />
 
       {!sheetsOk ? (
         <div

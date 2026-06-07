@@ -166,6 +166,42 @@ export async function addClient(lead: Lead): Promise<void> {
   });
 }
 
+// Manual add from the Klienter page form (name + a few optional fields).
+export async function addClientManual(f: {
+  name: string; branch?: string; phone?: string; monthlyFee?: string; setupFee?: string;
+}): Promise<void> {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Clients!A:I",
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[f.name, f.branch ?? "", f.phone ?? "", "No", "", "demo", f.monthlyFee ?? "", f.setupFee ?? ""]],
+    },
+  });
+}
+
+// Remove a client by NAME (robust to row-shift between read + delete). Deletes the
+// whole Clients row via deleteDimension. Returns whether a matching row was found.
+export async function removeClient(name: string): Promise<{ removed: boolean }> {
+  const target = name.trim().toLowerCase();
+  if (!target) return { removed: false };
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: CLIENTS_RANGE });
+  const rows = res.data.values ?? [];
+  const idx = rows.findIndex((r) => (r[0] ?? "").trim().toLowerCase() === target);
+  if (idx === -1) return { removed: false };
+  const sheetRow = idx + 2; // CLIENTS_RANGE starts at row 2
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: "sheets.properties(sheetId,title)" });
+  const sheetId = meta.data.sheets?.find((s) => s.properties?.title === "Clients")?.properties?.sheetId;
+  if (sheetId == null) throw new Error("Clients-fanen ikke fundet");
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ deleteDimension: { range: { sheetId, dimension: "ROWS", startIndex: sheetRow - 1, endIndex: sheetRow } } }] },
+  });
+  return { removed: true };
+}
+
 // Manual revenue entry. `clientId` is the sheet row number (getClients sets
 // id = sheet row), so we write straight to that row's fee columns G (monthly)
 // and H (setup). Lucas types these in himself from the Klienter page so the

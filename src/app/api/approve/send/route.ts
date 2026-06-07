@@ -19,6 +19,12 @@ export async function POST() {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     return NextResponse.json({ ok: false, error: "Ingen mail-creds." }, { status: 200 });
   }
+  // Go-live is a deliberate, separate change. Until the real lead-email lookup is
+  // wired, refuse non-test sends rather than ever mailing an empty/bad recipient.
+  if (!TEST_MODE) {
+    return NextResponse.json({ ok: false, error: "Go-live ikke aktiveret — lead-email-opslag mangler. Sender ikke." }, { status: 501 });
+  }
+
   const drafts = await readQueue();
   const approved = drafts.filter((d) => d.status === "approved");
   if (approved.length === 0) {

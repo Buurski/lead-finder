@@ -19,7 +19,24 @@ export default function ClientCard({ client }: { client: Client }) {
   const [setup, setSetup] = useState(client.setupFee || "");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [removing, setRemoving] = useState(false);
   const isPaying = (parseFloat(client.monthlyFee) || 0) > 0;
+
+  async function remove() {
+    if (!window.confirm(`Fjern "${client.name}" som klient? (sletter rækken i CRM — kan ikke fortrydes)`)) return;
+    setRemoving(true);
+    try {
+      const res = await fetch("/api/clients/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: client.name }),
+      });
+      if (!res.ok) throw new Error("kunne ikke fjerne");
+      router.refresh();
+    } catch {
+      setRemoving(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -62,15 +79,21 @@ export default function ClientCard({ client }: { client: Client }) {
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 2 }}>{client.branch}</p>
         </div>
-        <span style={{
-          background: ws.bg,
-          color: ws.color,
-          borderRadius: 6,
-          padding: "2px 8px",
-          fontSize: 11,
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-        }}>{ws.label}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <span style={{
+            background: ws.bg,
+            color: ws.color,
+            borderRadius: 6,
+            padding: "2px 8px",
+            fontSize: 11,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}>{ws.label}</span>
+          <button onClick={remove} disabled={removing} title="Fjern denne klient fra CRM"
+            style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: 11, cursor: "pointer", padding: 0 }}>
+            {removing ? "Fjerner…" : "Fjern"}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
