@@ -216,6 +216,13 @@ export default function ApprovePage() {
         </div>
       )}
 
+      {/* Lingering send confirmation (the approved banner disappears once count hits 0). */}
+      {sendMsg && counts.approved === 0 && (
+        <div style={{ padding: "10px 16px", borderRadius: 10, background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: 13, color: "var(--text-muted)" }}>
+          ✓ {sendMsg}
+        </div>
+      )}
+
       {error && (
         <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>
       )}
