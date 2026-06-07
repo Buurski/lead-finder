@@ -7,6 +7,7 @@ import type { IngestLead, LeadgenRun, LeadgenItem } from "@/lib/leadgen";
 import { readVaultJson } from "@/lib/vault";
 import { isContactable } from "@/lib/leads/contactable";
 import { isUnworkedStatus } from "@/lib/leads/pick-filter";
+import { placesBudget } from "@/lib/places-budget";
 
 // /api/leads/ingest — the lead-gen artifact endpoint.
 //   POST { leads: IngestLead[], source? }  append fresh leads to Sheets + save run.
@@ -64,10 +65,11 @@ export async function GET() {
   // there, so reading Sheets reflects every source immediately (no decoupled artifact
   // that can claim "2300 nye" while showing nothing). The run artifact (KV or vault,
   // fresher-of) is kept only as "last fetch" metadata for the sublabel.
-  const [kv, vault, leads] = await Promise.all([
+  const [kv, vault, leads, budget] = await Promise.all([
     loadRun(),
     readVaultJson<LeadgenRun>("data/leadgen.json").catch(() => null),
     getLeads().catch(() => null),
+    placesBudget().catch(() => null),
   ]);
   const valid = (r: LeadgenRun | null): number | null => {
     const t = r?.at ? Date.parse(r.at) : NaN;
@@ -94,6 +96,7 @@ export async function GET() {
     ok: true,
     leads: feed,
     count: feed.length,
+    placesBudget: budget,
     lastRun: lastRun ? { at: lastRun.at, source: lastRun.source, ingested: lastRun.ingested, skipped: lastRun.skipped } : null,
     // Back-compat: keep a `run`-shaped object so any old caller still parses.
     run: lastRun ? { ...lastRun, items: feed } : (feed.length ? { at: "", source: "sheets", ingested: 0, skipped: 0, items: feed } : null),

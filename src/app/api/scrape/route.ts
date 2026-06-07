@@ -4,6 +4,7 @@ import { appendLeads, getLeadNames, getLeadPhones } from "@/lib/sheets";
 import type { Lead } from "@/lib/sheets";
 import { compositeScore } from "@/lib/leads/composite-score";
 import { saveRun } from "@/lib/leadgen";
+import { getPlacesUsed, addPlacesCalls, PLACES_DAILY_CAP } from "@/lib/places-budget";
 
 export const maxDuration = 300;
 
@@ -31,7 +32,18 @@ export async function POST(req: Request) {
     const cities = region && REGION_PRESETS[region] ? REGION_PRESETS[region] : CITIES;
     const branches = branch && BRANCH_PRESETS[branch] ? BRANCH_PRESETS[branch] : BRANCHES;
     const queries = buildQueries(branches, cities);
+
+    // Daily Places budget-guard: don't let the sweep run up an unbounded bill/quota.
+    const used = await getPlacesUsed();
+    if (used + queries.length > PLACES_DAILY_CAP) {
+      return NextResponse.json(
+        { error: "daily_places_budget_reached", used, cap: PLACES_DAILY_CAP, remaining: Math.max(0, PLACES_DAILY_CAP - used) },
+        { status: 429 },
+      );
+    }
+
     const places = await runScraper(queries);
+    await addPlacesCalls(queries.length);
 
     // Skip duplicates already in sheet (by name or phone)
     const [existing, existingPhones] = await Promise.all([getLeadNames(), getLeadPhones()]);

@@ -37,6 +37,7 @@ export default function LeadgenPanel() {
   const [scraping, setScraping] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [msg, setMsg] = useState("");
+  const [budget, setBudget] = useState<{ used: number; cap: number; remaining: number } | null>(null);
 
   function load() {
     fetch("/api/leads/ingest")
@@ -44,6 +45,7 @@ export default function LeadgenPanel() {
       .then((d) => {
         setLeads(Array.isArray(d.leads) ? d.leads : []);
         setLastRun(d.lastRun ?? null);
+        setBudget(d.placesBudget ?? null);
         setAgeMin(d.lastRun?.at ? Math.round((Date.now() - Date.parse(d.lastRun.at)) / 60000) : null);
         setState("ok");
       })
@@ -51,10 +53,14 @@ export default function LeadgenPanel() {
   }
   useEffect(() => { load(); }, []);
 
+  // Throws a budget-tagged error on a 429 so the sweep can stop cleanly.
   async function scrapeOne(r: string, b: string): Promise<number> {
     const res = await fetch(`/api/scrape?region=${r}&branch=${b}`, { method: "POST" });
     const d = await res.json().catch(() => ({}));
     if (res.ok && typeof d.added === "number") return d.added;
+    if (res.status === 429 || d.error === "daily_places_budget_reached") {
+      throw Object.assign(new Error("Places-dagsbudget nået"), { budget: true });
+    }
     if (!res.ok) throw new Error(d.error ?? "scrape fejlede");
     return 0;
   }
@@ -72,13 +78,23 @@ export default function LeadgenPanel() {
         i++;
         setProgress({ done: i, total: totalChunks });
         setMsg(`Skraber hele DK… ${i}/${totalChunks} (${total} nye)`);
-        try { total += await scrapeOne(r, b); } catch { /* skip chunk, keep sweeping */ }
+        try {
+          total += await scrapeOne(r, b);
+        } catch (e) {
+          // Budget exhausted mid-sweep → stop the whole sweep, not just this chunk.
+          if (e && typeof e === "object" && "budget" in e) throw e;
+          /* otherwise skip this chunk, keep sweeping */
+        }
       }
     }
     return total;
   }
 
   async function scrapeNow() {
+    if (budget && budget.remaining <= 0) {
+      setMsg(`Places-dagsbudget nået (${budget.used}/${budget.cap}). Prøv igen i morgen.`);
+      return;
+    }
     setScraping(true);
     setMsg("");
     try {
@@ -130,10 +146,11 @@ export default function LeadgenPanel() {
               </select>
             </>
           )}
-          <button className="cc-btn cc-btn-accent" onClick={scrapeNow} disabled={scraping}>
+          <button className="cc-btn cc-btn-accent" onClick={scrapeNow} disabled={scraping || (budget != null && budget.remaining <= 0)}>
             {scraping
               ? (mode === "auto" && progress.total ? `Skraber… ${progress.done}/${progress.total}` : "Scraper…")
-              : (mode === "auto" ? "Kør nu (hele DK)" : "Kør nu")}
+              : (budget != null && budget.remaining <= 0 ? "Dagsbudget nået"
+              : mode === "auto" ? "Kør nu (hele DK)" : "Kør nu")}
           </button>
           <button className="cc-btn" onClick={load} disabled={scraping}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater feed</button>
         </div>
@@ -141,6 +158,7 @@ export default function LeadgenPanel() {
           {mode === "auto"
             ? "Skraber alle brancher i alle regioner (beauty først), composite-scorer, springer kendte over. Ingen valg nødvendigt."
             : "Vælg én region + branche for en hurtig målrettet scrape."}
+          {budget != null && ` · Places-budget: ${budget.remaining}/${budget.cap} søgninger tilbage i dag`}
         </div>
         {msg && <div className="cc-dim" style={{ fontSize: 12.5 }}>{msg}</div>}
       </div>
