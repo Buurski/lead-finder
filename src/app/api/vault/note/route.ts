@@ -7,9 +7,12 @@ import { readVaultNote } from "@/lib/vault";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const path = new URL(req.url).searchParams.get("path") ?? "";
+  const url = new URL(req.url);
+  const path = url.searchParams.get("path") ?? "";
   if (!path) return NextResponse.json({ ok: false, reason: "path required" }, { status: 400 });
-  const preferRemote = path.startsWith("daily/");
+  // daily/ notes are always remote (live brief); other surfaces (e.g. /memory) opt in
+  // with ?remote=1 so they read the live vault instead of the committed snapshot.
+  const preferRemote = path.startsWith("daily/") || url.searchParams.get("remote") === "1";
   const note = await readVaultNote(path, { preferRemote });
   return NextResponse.json(note);
 }

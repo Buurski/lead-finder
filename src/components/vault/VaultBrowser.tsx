@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 
@@ -24,12 +25,15 @@ export default function VaultBrowser({
   source,
   emptyHint,
   groupByDir = true,
+  preferRemote = false,
 }: {
   entries: VaultEntry[];
   source: "local" | "remote" | "none";
   emptyHint: string;
   groupByDir?: boolean;
+  preferRemote?: boolean;
 }) {
+  const router = useRouter();
   const first = entries[0]?.pathRel ?? null;
   const [active, setActive] = useState<string | null>(first);
   const [q, setQ] = useState("");
@@ -39,7 +43,9 @@ export default function VaultBrowser({
 
   async function fetchNote(pathRel: string): Promise<NoteState> {
     try {
-      const res = await fetch(`/api/vault/note?path=${encodeURIComponent(pathRel)}`);
+      // remote=1 → read the live vault (memory), not the committed snapshot.
+      const rq = preferRemote ? "&remote=1" : "";
+      const res = await fetch(`/api/vault/note?path=${encodeURIComponent(pathRel)}${rq}`);
       const d = await res.json();
       if (!d.ok) return { loading: false, body: "", source: "", error: d.reason ?? "ikke fundet" };
       return { loading: false, body: d.body || d.raw || "", source: d.source, error: "" };
@@ -94,14 +100,24 @@ export default function VaultBrowser({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 16, alignItems: "start" }} className="cc-vault-grid">
       <aside className="cc-card" style={{ overflow: "hidden" }}>
-        <div style={{ padding: 12, borderBottom: "1px solid var(--border)" }}>
+        <div style={{ padding: 12, borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Søg noter…"
             aria-label="Søg i vaulten"
-            style={{ width: "100%", height: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-2)", padding: "0 10px", fontSize: 13, color: "var(--text)" }}
+            style={{ flex: 1, height: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-2)", padding: "0 10px", fontSize: 13, color: "var(--text)" }}
           />
+          {preferRemote && (
+            <button
+              onClick={() => { router.refresh(); if (active) open(active); }}
+              title="Hent friske noter fra GitHub"
+              aria-label="Opdater fra vault"
+              style={{ height: 34, width: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", display: "grid", placeItems: "center", color: "var(--text-dim)", flexShrink: 0 }}
+            >
+              <Icon name="Activity" style={{ width: 15, height: 15 }} />
+            </button>
+          )}
         </div>
         <div style={{ maxHeight: "62dvh", overflowY: "auto", padding: 6 }}>
           {filtered.length === 0 && <div className="cc-dim" style={{ padding: 14, fontSize: 13 }}>Ingen match.</div>}

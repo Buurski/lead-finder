@@ -6,8 +6,10 @@ export const metadata = { title: "Memory · Command Center" };
 export const dynamic = "force-dynamic";
 
 export default async function MemoryPage() {
+  // Remote-first: read the live Buurski/KnowledgeOS vault, not the committed snapshot
+  // (which only refreshes on redeploy). Falls back to the local mirror offline.
   const [{ source, entries }, status, live] = await Promise.all([
-    listVault(""),
+    listVault("", { preferRemote: true }),
     Promise.resolve(vaultStatus()),
     vaultLiveCheck(),
   ]);
@@ -34,6 +36,7 @@ export default async function MemoryPage() {
       <VaultBrowser
         entries={entries}
         source={source}
+        preferRemote
         emptyHint={`Læg noter i KnowledgeOS/ (lokalt) eller giv adgang til ${status.repo}. Design-templates og roadmap ligger allerede her.`}
       />
     </div>
