@@ -190,12 +190,21 @@ export function deepResearchSignals(enrichedInfo: string): { signals: CompositeS
   const num = (v: unknown): number | undefined => (typeof v === "number" && isFinite(v) ? v : undefined);
   const tier = typeof dr.emailQualityTier === "string" ? dr.emailQualityTier : undefined;
   const vel90 = num(dr.reviewVelocity90d);
+  // New deep-research signals (optional). Cowork writes these into enrichedInfo.deepResearch:
+  //   websiteTechAge: "modern" | "dated" | "legacy"
+  //   socialRecencyDays: number (days since last FB/IG post)
+  //   competitorGap: number 0–1 (opportunity vs local same-branch competitors)
+  const techAge = dr.websiteTechAge === "modern" || dr.websiteTechAge === "dated" || dr.websiteTechAge === "legacy"
+    ? dr.websiteTechAge : undefined;
 
   const signals: CompositeSignals = {
     madeByBureau: Boolean(dr.madeByBureau),
     emailQuality: tier ? EMAIL_TIER_QUALITY[tier] : undefined,
     reviewVelocity: typeof vel90 === "number" ? vel90 / 3 : undefined, // 90d → per-month
     mobileScore: num(dr.lighthouseScoreMobile),
+    websiteTechAge: techAge,
+    socialRecencyDays: num(dr.socialRecencyDays),
+    competitorGap: num(dr.competitorGap),
   };
   const delta = num(dr.compositeScoreDelta) ?? 0;
   return { signals, delta };

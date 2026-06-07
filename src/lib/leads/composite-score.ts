@@ -43,6 +43,14 @@ export interface CompositeSignals {
   madeByBureau?: boolean;
   /** Override branch (e.g. research re-classified it). */
   branch?: string;
+  // --- Deep-research signals (Cowork supplies these in enrichedInfo; optional,
+  //     neutral when absent so existing scores are unchanged). ---
+  /** Website tech generation. legacy/dated platform = clear upgrade opportunity. */
+  websiteTechAge?: "modern" | "dated" | "legacy";
+  /** Days since last social (FB/IG) post. Fresh = active business missing a site. */
+  socialRecencyDays?: number;
+  /** 0–1: opportunity gap vs local same-branch competitors (1 = big gap). */
+  competitorGap?: number;
 }
 
 export interface CompositeBreakdown {
@@ -51,6 +59,9 @@ export interface CompositeBreakdown {
   emailQuality: number;
   mobile: number;
   sleepingBeautyBonus: number;
+  techAgeBonus: number;
+  socialRecencyBonus: number;
+  competitorGapBonus: number;
   branchMultiplier: number;
   bureauPenalty: number;
   positivesBeforeMultiplier: number;
@@ -149,12 +160,30 @@ function emailTerm(email: string, emailQuality?: number): number {
   return role ? 0.4 : 0.6;
 }
 
+// Deep-research bonuses (all neutral/0 when the signal is absent).
+//   tech-age:        legacy +6, dated +3, modern 0  (older platform = upgrade pitch)
+//   social-recency:  ≤30d +4, ≤120d +1, else −2     (active social = engaged target)
+//   competitor-gap:  0–1 × 6                          (bigger gap = bigger opportunity)
+function techAgeBonus(t?: "modern" | "dated" | "legacy"): number {
+  return t === "legacy" ? 6 : t === "dated" ? 3 : 0;
+}
+function socialRecencyBonus(days?: number): number {
+  if (typeof days !== "number" || days < 0) return 0;
+  if (days <= 30) return 4;
+  if (days <= 120) return 1;
+  return -2;
+}
+function competitorGapBonus(gap?: number): number {
+  if (typeof gap !== "number") return 0;
+  return clamp01(gap) * 6;
+}
+
 /**
  * Compute the composite score for a lead.
  *
  * @param lead     The lead row (provides base score, reviews, website status, email, branch).
  * @param research Optional research result (may re-classify branch).
- * @param signals  Optional live signals (rating, velocity, mobile, bureau flag).
+ * @param signals  Optional live signals (rating, velocity, mobile, bureau flag, deep-research).
  */
 export function compositeScore(
   lead: Lead,
@@ -188,6 +217,12 @@ export function compositeScore(
   const sleepingBeautyBonus = sleeping ? 15 : 0;
   positives += sleepingBeautyBonus;
 
+  // --- deep-research bonuses (0 unless Cowork supplied the signal) ---
+  const techBonus = techAgeBonus(signals.websiteTechAge);
+  const socialBonus = socialRecencyBonus(signals.socialRecencyDays);
+  const compBonus = competitorGapBonus(signals.competitorGap);
+  positives += techBonus + socialBonus + compBonus;
+
   // --- branch-relevance multiplier (0.5–1.2) ---
   const branchMultiplier = branchRelevanceMultiplier(branch);
   let final = positives * branchMultiplier;
@@ -206,6 +241,9 @@ export function compositeScore(
       emailQuality: 10 * email01,
       mobile: 10 * mobile01,
       sleepingBeautyBonus,
+      techAgeBonus: techBonus,
+      socialRecencyBonus: socialBonus,
+      competitorGapBonus: compBonus,
       branchMultiplier,
       bureauPenalty,
       positivesBeforeMultiplier: positives,

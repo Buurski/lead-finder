@@ -68,6 +68,18 @@ const personal = compositeScore(makeLead({ email: "anna@salon.dk" }));
 const role = compositeScore(makeLead({ email: "info@salon.dk" }));
 check("personal inbox >= role inbox term", personal.breakdown.emailQuality > role.breakdown.emailQuality);
 
+// ---- deep-research signals (P1c): neutral when absent, lift when present ----
+const baseDR = compositeScore(makeLead({ branch: "frisør", score: 70, reviewsCount: 50 }));
+check("no deep-research signal → bonuses are 0", baseDR.breakdown.techAgeBonus === 0 && baseDR.breakdown.socialRecencyBonus === 0 && baseDR.breakdown.competitorGapBonus === 0);
+const legacy = compositeScore(makeLead({ branch: "frisør", score: 70, reviewsCount: 50 }), undefined, { websiteTechAge: "legacy" });
+check("legacy tech-age lifts score", legacy.score > baseDR.score && legacy.breakdown.techAgeBonus === 6);
+const active = compositeScore(makeLead({ branch: "frisør", score: 70, reviewsCount: 50 }), undefined, { socialRecencyDays: 10 });
+check("fresh social adds +4", active.breakdown.socialRecencyBonus === 4);
+const stale = compositeScore(makeLead({ branch: "frisør", score: 70, reviewsCount: 50 }), undefined, { socialRecencyDays: 400 });
+check("dead social penalizes (−2)", stale.breakdown.socialRecencyBonus === -2);
+const gap = compositeScore(makeLead({ branch: "frisør", score: 70, reviewsCount: 50 }), undefined, { competitorGap: 1 });
+check("full competitor-gap adds 6", gap.breakdown.competitorGapBonus === 6);
+
 console.log(`test_composite — ${pass} passed, ${fail} failed`);
 if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 process.exit(fail ? 1 : 0);
