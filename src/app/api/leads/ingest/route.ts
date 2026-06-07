@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendLeads, getLeadNames, getLeads } from "@/lib/sheets";
+import type { Lead } from "@/lib/sheets";
 import { detectWebsiteStatus } from "@/lib/apify";
 import { normalizeIngest, dedupeByName, saveRun, loadRun } from "@/lib/leadgen";
-import type { IngestLead, LeadgenRun } from "@/lib/leadgen";
+import type { IngestLead, LeadgenRun, LeadgenItem } from "@/lib/leadgen";
 import { readVaultJson } from "@/lib/vault";
-import { suppressedNameSet } from "@/lib/leads/contactable";
+import { isContactable } from "@/lib/leads/contactable";
+import { isUnworkedStatus } from "@/lib/leads/pick-filter";
 
 // /api/leads/ingest — the lead-gen artifact endpoint.
 //   POST { leads: IngestLead[], source? }  append fresh leads to Sheets + save run.
@@ -33,11 +35,35 @@ function checkAuth(req: NextRequest): boolean {
   return Boolean(m && ctEqual(m[1], expected));
 }
 
+// A Sheets lead → the feed item shape. fitScore = the stored composite score; gap +
+// rating come from the deep-research slice (enrichedInfo.leadgen) when present.
+function leadToItem(l: Lead): LeadgenItem {
+  let gap = "";
+  let rating = 0;
+  try {
+    const e = l.enrichedInfo ? (JSON.parse(l.enrichedInfo) as { leadgen?: { gap?: unknown; rating?: unknown } }) : null;
+    if (e?.leadgen) {
+      gap = e.leadgen.gap ? String(e.leadgen.gap) : "";
+      rating = Number(e.leadgen.rating) || 0;
+    }
+  } catch { /* enrichedInfo isn't valid JSON — leave defaults */ }
+  return {
+    name: l.name,
+    branch: l.branch || "",
+    city: l.city || "",
+    fitScore: Math.round(l.score || 0),
+    gap,
+    website: l.website || "",
+    rating,
+    reviews: l.reviewsCount || 0,
+  };
+}
+
 export async function GET() {
-  // Obsidian channel: prefer a fresher data/leadgen.json from the vault if a Cowork
-  // task pushed one; else the KV run from the last in-app ingest. Load Sheets too so
-  // we can suppress any business we've already contacted (Cowork sources fresh and
-  // doesn't know our contacted-state).
+  // The feed's TRUTH is Sheets — both the in-app scrape and the Cowork ingest append
+  // there, so reading Sheets reflects every source immediately (no decoupled artifact
+  // that can claim "2300 nye" while showing nothing). The run artifact (KV or vault,
+  // fresher-of) is kept only as "last fetch" metadata for the sublabel.
   const [kv, vault, leads] = await Promise.all([
     loadRun(),
     readVaultJson<LeadgenRun>("data/leadgen.json").catch(() => null),
@@ -49,20 +75,29 @@ export async function GET() {
   };
   const vt = valid(vault);
   const kt = valid(kv);
-  // Prefer the vault run only when it has items AND is genuinely newer (or KV has
-  // no valid run). GET doesn't persist, so this only chooses what to display.
-  const useVault = vault && Array.isArray(vault.items) && vault.items.length > 0 && (kt == null || (vt != null && vt >= kt));
-  let run = useVault ? vault : kv;
-  // Hard rule: never re-surface an already-contacted lead. Filter the served items
-  // by name against Sheets suppression. On a Sheets read failure, serve unfiltered
-  // (the feed is review-only, never sends) rather than blanking it.
-  if (run && Array.isArray(run.items) && leads) {
-    const suppressed = suppressedNameSet(leads);
-    if (suppressed.size) {
-      run = { ...run, items: run.items.filter((it) => !suppressed.has((it.name || "").trim().toLowerCase())) };
-    }
+  // Pick the genuinely-newer run for the "last fetch" metadata only.
+  const useVault = vault && (kt == null || (vt != null && vt >= kt));
+  const lastRun = (useVault ? vault : kv) ?? null;
+
+  // Feed = top contactable, un-worked leads from Sheets, ranked by composite score.
+  // isContactable enforces the never-contact-twice rule directly (no name-set needed).
+  let feed: LeadgenItem[] = [];
+  if (leads) {
+    feed = leads
+      .filter((l) => l.name && isUnworkedStatus(l.status) && isContactable(l))
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 40)
+      .map(leadToItem);
   }
-  return NextResponse.json({ ok: true, run });
+
+  return NextResponse.json({
+    ok: true,
+    leads: feed,
+    count: feed.length,
+    lastRun: lastRun ? { at: lastRun.at, source: lastRun.source, ingested: lastRun.ingested, skipped: lastRun.skipped } : null,
+    // Back-compat: keep a `run`-shaped object so any old caller still parses.
+    run: lastRun ? { ...lastRun, items: feed } : (feed.length ? { at: "", source: "sheets", ingested: 0, skipped: 0, items: feed } : null),
+  });
 }
 
 export async function POST(req: NextRequest) {

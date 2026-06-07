@@ -1,11 +1,13 @@
 // leadgen.ts — the ingest model + last-run store for the lead-gen feed.
 //
 // The daily Cowork "daily ops" task sources NEW leads (Google Places base +
-// self-search on FB/Google/Instagram/web), Opus deep-rates each (visits website +
-// Facebook), keeps the best ~30-40, and POSTs them to /api/leads/ingest. The app
-// appends them to Sheets and shows the batch in a /leadgen live-feed. The in-app
-// "kør nu" button (Places scrape) fills the SAME pipe. Pure helpers here; the route
-// does the Sheets/KV I/O. Strip-safe.
+// self-search on FB/Google/Instagram/web), Opus deep-rates each, keeps the best
+// ~30-40, and POSTs them to /api/leads/ingest, which appends them to Sheets. The
+// in-app "kør nu" button (Places scrape) ALSO appends to Sheets via /api/scrape.
+// SHEETS IS THE FEED'S TRUTH: /api/leads/ingest GET reads Sheets (top contactable
+// un-worked leads, composite-ranked) so every source shows up immediately. The
+// LeadgenRun stored here is now just "last fetch" metadata for the sublabel — not
+// the feed contents. Pure helpers; the route does the Sheets/KV I/O. Strip-safe.
 
 import { store } from "./store.ts";
 

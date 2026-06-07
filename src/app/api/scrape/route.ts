@@ -3,6 +3,7 @@ import { runScraper, scoreLead, detectWebsiteStatus, BRANCHES, CITIES, REGION_PR
 import { appendLeads, getLeadNames, getLeadPhones } from "@/lib/sheets";
 import type { Lead } from "@/lib/sheets";
 import { compositeScore } from "@/lib/leads/composite-score";
+import { saveRun } from "@/lib/leadgen";
 
 export const maxDuration = 300;
 
@@ -10,6 +11,21 @@ export async function POST(req: Request) {
   try {
     // Support ?region=aarhus&branch=craft for targeted scraping (avoids Vercel timeout)
     const url = new URL(req.url);
+
+    // Finalize branch: the panel calls this once after a full sweep to record the
+    // "last fetch" metadata (total added across all chunks). No scraping here — the
+    // feed itself reads Sheets, this only powers the "sidste hentning" sublabel.
+    if (url.searchParams.get("finalize") === "1") {
+      const added = parseInt(url.searchParams.get("added") || "0", 10) || 0;
+      await saveRun({
+        at: new Date().toISOString(),
+        source: url.searchParams.get("source") || "places",
+        ingested: added,
+        skipped: 0,
+        items: [],
+      });
+      return NextResponse.json({ ok: true, finalized: true, added });
+    }
     const region = url.searchParams.get("region")?.toLowerCase();
     const branch = url.searchParams.get("branch")?.toLowerCase();
     const cities = region && REGION_PRESETS[region] ? REGION_PRESETS[region] : CITIES;

@@ -12,12 +12,11 @@ interface Item {
   rating: number;
   reviews: number;
 }
-interface Run {
+interface LastRun {
   at: string;
   source: string;
   ingested: number;
   skipped: number;
-  items: Item[];
 }
 
 // Valid presets ONLY (mirror REGION_PRESETS / BRANCH_PRESETS in apify.ts). Anything
@@ -27,7 +26,8 @@ const REGIONS = ["aarhus", "odense", "esbjerg", "aalborg", "midt"];
 const BRANCHES = ["beauty", "food", "craft", "professional"];
 
 export default function LeadgenPanel() {
-  const [run, setRun] = useState<Run | null>(null);
+  const [leads, setLeads] = useState<Item[]>([]);
+  const [lastRun, setLastRun] = useState<LastRun | null>(null);
   const [ageMin, setAgeMin] = useState<number | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   // DEFAULT = auto (whole DK, all branches). Specific narrows via the dropdowns.
@@ -42,8 +42,9 @@ export default function LeadgenPanel() {
     fetch("/api/leads/ingest")
       .then((r) => r.json())
       .then((d) => {
-        setRun(d.run ?? null);
-        setAgeMin(d.run?.at ? Math.round((Date.now() - Date.parse(d.run.at)) / 60000) : null);
+        setLeads(Array.isArray(d.leads) ? d.leads : []);
+        setLastRun(d.lastRun ?? null);
+        setAgeMin(d.lastRun?.at ? Math.round((Date.now() - Date.parse(d.lastRun.at)) / 60000) : null);
         setState("ok");
       })
       .catch(() => setState("error"));
@@ -88,7 +89,10 @@ export default function LeadgenPanel() {
         setMsg(`Skraber ${branch} i ${region}…`);
         added = await scrapeOne(region, branch);
       }
-      setMsg(`Places-scrape færdig: ${added} nye leads i Sheets.`);
+      // Record "last fetch" metadata (total added across all chunks), then reload —
+      // the feed reads Sheets so the new leads show up immediately.
+      try { await fetch(`/api/scrape?finalize=1&added=${added}&source=places`, { method: "POST" }); } catch { /* metadata only */ }
+      setMsg(`Places-scrape færdig: ${added} nye leads tilføjet.`);
       load();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -143,19 +147,23 @@ export default function LeadgenPanel() {
 
       {state === "loading" ? (
         <div style={{ display: "grid", gap: 10 }}>{[0, 1, 2].map((i) => <div key={i} className="cc-skel" style={{ height: 56 }} />)}</div>
-      ) : !run || run.items.length === 0 ? (
-        <div className="cc-card"><div className="cc-empty"><Icon name="Search" /><div>Ingen lead-gen-kørsel endnu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Den daglige Cowork-task fylder de bedste leads ind her — eller kør en Places-scrape ovenfor.</div></div></div>
+      ) : leads.length === 0 ? (
+        <div className="cc-card"><div className="cc-empty"><Icon name="Search" /><div>Ingen kontaktbare leads endnu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Kør en Places-scrape ovenfor, eller lad den daglige Cowork-task fylde nye leads ind — de dukker op her så snart de er i Sheets.</div></div></div>
       ) : (
         <>
           <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{run.ingested} nye · {run.items.length} i feed</div>
-              <div className="cc-dim" style={{ fontSize: 12 }}>kilde: {run.source}{run.skipped ? ` · ${run.skipped} dubletter sprunget` : ""}{ageMin != null && ageMin >= 0 ? ` · ${ageMin} min siden` : ""}</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leads.length} kontaktbare leads klar</div>
+              <div className="cc-dim" style={{ fontSize: 12 }}>
+                {lastRun?.at
+                  ? <>sidste hentning{ageMin != null && ageMin >= 0 ? ` ${ageMin} min siden` : ""}{lastRun.ingested ? ` · ${lastRun.ingested} tilføjet` : ""}{lastRun.source ? ` · kilde ${lastRun.source}` : ""}</>
+                  : "rangeret efter composite-score · kontaktede leads er sorteret fra"}
+              </div>
             </div>
           </div>
           <div className="cc-card" style={{ overflow: "hidden" }}>
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {run.items.map((it, i) => (
+              {leads.map((it, i) => (
                 <li key={it.name + i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderTop: i ? "1px solid var(--border)" : "none" }}>
                   <span style={{ width: 34, fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: it.fitScore >= 80 ? "var(--accent-ink)" : it.fitScore >= 60 ? "var(--amber)" : "var(--text-dim)" }}>{it.fitScore}</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
