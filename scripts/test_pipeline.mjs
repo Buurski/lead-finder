@@ -77,6 +77,26 @@ check("draft body ends Mvh, Lucas", /Mvh, Lucas\s*$/.test(draft.body));
 check("draft body includes both demo urls",
   draft.body.includes(research.demoPair[0].url) && draft.body.includes(research.demoPair[1].url));
 check("draft passes validateDraft (no price/robot)", validateDraft(draft.body).ok === true);
+// value-line: a beauty lead's draft must say something concrete (booking) + stay clean
+check("draft carries a concrete value line (booking for beauty)", /online booking/i.test(draft.body));
+
+// ---- value-line per branch passes validateDraft + is concrete -----------
+{
+  const branches = [
+    ["restaurant", /menukort|bordbestilling/i],
+    ["Bar", /menukort|bordbestilling/i],
+    ["tømrer", /galleri|forespørgsel/i],
+    ["fotograf", /portfolio/i],
+    ["advokat", /samle det vigtigste/i], // default value line
+  ];
+  for (const [branch, re] of branches) {
+    const l = { ...lead, name: `Test ${branch}`, branch };
+    const r = await research_lead(l);
+    const d = await draft_personal_message(l, r, voice, { useLLM: false });
+    check(`value-line[${branch}] concrete`, re.test(d.body));
+    check(`value-line[${branch}] passes validateDraft`, validateDraft(d.body).ok === true);
+  }
+}
 
 // ---- validateDraft catches violations -----------------------------------
 check("validateDraft rejects kr", validateDraft("Det koster 5000 kr").ok === false);

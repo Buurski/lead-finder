@@ -151,6 +151,22 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
   ]);
 }
 
+// Branch-specific "what a real site would DO for you" line — the concrete value
+// Lucas wants every draft to carry, instead of only "here are two demos". Pure +
+// validateDraft-safe (no price/kr/gratis/robot-CTA words).
+function branchValueLine(branch: string): string {
+  const b = (branch || "").toLowerCase();
+  if (/frisør|frisor|salon|skønhed|skonhed|hud|negle|vippe|barber|kosmet|\bspa\b|wellness|massage|klinik|beauty|hair/.test(b))
+    return `For en salon som jeres kunne sådan en side fx samle online booking ét sted og fremhæve jeres bedste anmeldelser, så nye kunder nemt finder vej.`;
+  if (/restaurant|café|cafe|pizz|\bbar\b|\bpub\b|grill|\bkro\b|bistro|brasseri|bager|spise|køkken|food|takeaway|sushi|kebab|burger|bodega/.test(b))
+    return `For et spisested kunne en rigtig side gøre menukort og bordbestilling nemt at finde — og lade stemningen og jeres anmeldelser sælge, før gæsten er kommet.`;
+  if (/tømrer|tomrer|maler|murer|vvs|elektr|håndværk|\btag\b|snedker|smed|anlæg|entrepren|blik|kloak/.test(b))
+    return `For et håndværksfirma kunne en side vise et galleri af jeres arbejde og gøre det nemt for kunder at sende en forespørgsel direkte — mens interessen er der.`;
+  if (/foto|photo/.test(b))
+    return `For en fotograf er en stærk portfolio næsten alt — et sted hvor jeres billeder får lov at sælge, og folk nemt kan booke jer.`;
+  return `En rigtig side ville samle det vigtigste ét sted — hvad I laver, jeres anmeldelser og en nem måde at række ud på — så I står stærkere når folk søger jer.`;
+}
+
 function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
   const [d1, d2] = research.demoPair;
   const name = firstName(lead.name);
@@ -179,6 +195,8 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult): Dra
     `Hej ${name},`,
     ``,
     `${opener} ${mix.disclosure}`,
+    ``,
+    branchValueLine(lead.branch),
     ``,
     mix.demoIntro,
     `→ ${d1.url}`,
@@ -224,6 +242,7 @@ async function composeWithLLM(
   const prompt = [
     `Skriv en kort, varm, personlig dansk besked fra Lucas til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
     research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet — hold åbningen ærlig og lokal.`,
+    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio) — ikke bare "her er to demoer".`,
     `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
     `→ ${d1.url}`,
     `→ ${d2.url}`,
