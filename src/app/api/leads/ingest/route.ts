@@ -84,18 +84,20 @@ export async function GET() {
   // Feed = top contactable, un-worked leads from Sheets, ranked by composite score.
   // isContactable enforces the never-contact-twice rule directly (no name-set needed).
   let feed: LeadgenItem[] = [];
+  let totalContactable = 0;
   if (leads) {
-    feed = leads
+    const contactable = leads
       .filter((l) => l.name && isUnworkedStatus(l.status) && isContactable(l))
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 40)
-      .map(leadToItem);
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
+    totalContactable = contactable.length;
+    feed = contactable.slice(0, 40).map(leadToItem);
   }
 
   return NextResponse.json({
     ok: true,
     leads: feed,
     count: feed.length,
+    totalContactable,
     placesBudget: budget,
     lastRun: lastRun ? { at: lastRun.at, source: lastRun.source, ingested: lastRun.ingested, skipped: lastRun.skipped } : null,
     // Back-compat: keep a `run`-shaped object so any old caller still parses.

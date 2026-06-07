@@ -15,9 +15,15 @@ import { readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { loadDigest, summarizeDigest } from "./inbox-digest.ts";
 import { getSuppressed, isSuppressed } from "./today-overrides.ts";
+import { isUnworkedStatus } from "./leads/pick-filter.ts";
+import { isContactable } from "./leads/contactable.ts";
 
 export interface DeckNumbers {
   newLeads: number;
+  // Leads we can actually approach now: un-worked status AND never contacted
+  // (isContactable). This is the meaningful "klar at kontakte" number — matches
+  // the /lead-gen feed's semantics, unlike raw newLeads (status==="new" only).
+  contactable: number;
   sentToday: number;     // mails actually sent today (real — from emailSentAt date)
   repliesPending: number; // leads with a reply awaiting follow-up (Sheets has no
                           // reply timestamp, so this is NOT "today" — labelled honestly)
@@ -224,6 +230,7 @@ export function buildNumbers(leads: Lead[]): DeckNumbers {
   const today = todayISO();
   return {
     newLeads: leads.filter((l) => norm(l.status) === "new").length,
+    contactable: leads.filter((l) => isUnworkedStatus(l.status) && isContactable(l)).length,
     // Real "today": count mails whose emailSentAt falls on today's date. (Was
     // "emails fundet" = all-time withEmail ~937, which is stale old-batch data.)
     sentToday: leads.filter((l) => (l.emailSentAt || "").slice(0, 10) === today).length,

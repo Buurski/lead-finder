@@ -27,6 +27,7 @@ const BRANCHES = ["beauty", "food", "craft", "professional"];
 
 export default function LeadgenPanel() {
   const [leads, setLeads] = useState<Item[]>([]);
+  const [totalContactable, setTotalContactable] = useState(0);
   const [lastRun, setLastRun] = useState<LastRun | null>(null);
   const [ageMin, setAgeMin] = useState<number | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
@@ -44,6 +45,7 @@ export default function LeadgenPanel() {
       .then((r) => r.json())
       .then((d) => {
         setLeads(Array.isArray(d.leads) ? d.leads : []);
+        setTotalContactable(typeof d.totalContactable === "number" ? d.totalContactable : (Array.isArray(d.leads) ? d.leads.length : 0));
         setLastRun(d.lastRun ?? null);
         setBudget(d.placesBudget ?? null);
         setAgeMin(d.lastRun?.at ? Math.round((Date.now() - Date.parse(d.lastRun.at)) / 60000) : null);
@@ -171,7 +173,7 @@ export default function LeadgenPanel() {
         <>
           <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leads.length} kontaktbare leads klar</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{totalContactable} kontaktbare leads klar{totalContactable > leads.length ? ` · viser top ${leads.length}` : ""}</div>
               <div className="cc-dim" style={{ fontSize: 12 }}>
                 {lastRun?.at && lastRun.source !== "placeholder"
                   ? <>sidste hentning{ageMin != null && ageMin >= 0 ? ` ${ageMin} min siden` : ""}{lastRun.ingested ? ` · ${lastRun.ingested} tilføjet` : ""}{lastRun.source ? ` · kilde ${lastRun.source}` : ""}</>

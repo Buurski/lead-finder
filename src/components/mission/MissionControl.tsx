@@ -52,11 +52,14 @@ function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void
 
 interface Vital { task: string; label: string; ageMin: number | null; detail: string; status: "fresh" | "stale" | "missing" }
 
-// Morgen-vitals — one-glance health of the 3 daily Cowork tasks (lead-gen, messenger,
-// inbox). Derived from each output's artifact via /api/ops/status. Green = ran < 8h,
-// amber = 8–26h, red = stale/never. Silent if the endpoint can't be reached.
+// Morgen-vitals — system-health of the 3 daily tasks (lead-gen/messenger/inbox),
+// kept visually SEPARATE from Lucas's own tasks. A slim one-line bar: when all 3 ran
+// recently it collapses to "✓ alle morgenkørsler friske"; when something's stale/red
+// it names the culprit and can expand for per-task detail. Derived from each output's
+// artifact via /api/ops/status. Silent if the endpoint can't be reached.
 function MorningVitals() {
   const [vitals, setVitals] = useState<Vital[] | null>(null);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     fetch("/api/ops/status")
       .then((r) => r.json())
@@ -64,20 +67,38 @@ function MorningVitals() {
       .catch(() => setVitals([]));
   }, []);
   if (!vitals || vitals.length === 0) return null;
-  const dot = (s: string) => (s === "fresh" ? "var(--accent)" : s === "stale" ? "var(--amber)" : "var(--border-strong)");
+
+  const dot = (s: string) => (s === "fresh" ? "var(--accent)" : s === "stale" ? "var(--amber)" : "var(--danger, #dc2626)");
   const age = (m: number | null) => (m == null ? "—" : m < 60 ? `${m}m` : `${Math.round(m / 60)}t`);
+  const bad = vitals.filter((v) => v.status !== "fresh");
+  const allFresh = bad.length === 0;
+  const overall = vitals.some((v) => v.status === "missing") ? "missing" : allFresh ? "fresh" : "stale";
+  const summary = allFresh ? "alle morgenkørsler friske" : `${bad.map((v) => v.label).join(" + ")} ikke kørt i dag`;
+
   return (
-    <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
-      <span className="cc-dim" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.02em" }}>MORGEN-VITALS</span>
-      {vitals.map((v) => (
-        <div key={v.task} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot(v.status), flexShrink: 0 }} />
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{v.label}</span>
-          <span className="cc-dim" style={{ fontSize: 12 }}>
-            {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
-          </span>
+    <div className="cc-card" style={{ padding: "9px 14px" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, font: "inherit", textAlign: "left" }}
+      >
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot(overall), flexShrink: 0 }} />
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: allFresh ? "var(--text-dim)" : "var(--text)" }}>{summary}</span>
+        <Icon name={open ? "ChevronUp" : "ChevronDown"} style={{ width: 14, height: 14, marginLeft: "auto", color: "var(--text-dim)" }} />
+      </button>
+      {open && (
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginTop: 9, paddingTop: 9, borderTop: "1px solid var(--border)" }}>
+          {vitals.map((v) => (
+            <div key={v.task} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot(v.status), flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600 }}>{v.label}</span>
+              <span className="cc-dim" style={{ fontSize: 12 }}>
+                {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -207,7 +228,7 @@ function HeroNumber({ s }: { s: DeckSummary }) {
     ? { value: replies, label: replies === 1 ? "svar at besvare — åbn det" : "svar at besvare — kig på dem", href: "/replies", tone: "var(--accent)" }
     : s.queue.pending > 0
       ? { value: s.queue.pending, label: "udkast venter på dig", href: "/approve", tone: "var(--accent)" }
-      : { value: s.numbers.newLeads, label: "nye leads i pipelinen", href: "/leads", tone: "var(--text)" };
+      : { value: s.numbers.contactable, label: "klar at kontakte i pipelinen", href: "/leadgen", tone: "var(--text)" };
   return (
     <Link href={lead.href} className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
       <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{lead.value}</div>
@@ -219,7 +240,7 @@ function HeroNumber({ s }: { s: DeckSummary }) {
 function NumbersStrip({ s }: { s: DeckSummary }) {
   const n = s.numbers;
   const items = [
-    { label: "nye leads", value: n.newLeads },
+    { label: "klar at kontakte", value: n.contactable },
     { label: "sendt i dag", value: n.sentToday },
     { label: "svar at følge op", value: n.repliesPending },
     { label: "vundet i ugen", value: n.wonThisWeek },
