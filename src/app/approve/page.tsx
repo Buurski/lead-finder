@@ -27,7 +27,7 @@ interface QueueDraft {
   updatedAt: string;
 }
 
-type Filter = "pending" | "decided" | "all";
+type Filter = "pending" | "approved" | "decided" | "all";
 
 // Demo catalog grouped by branch family, for the per-draft demo picker.
 const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
@@ -132,6 +132,7 @@ export default function ApprovePage() {
 
   const visible = useMemo(() => {
     if (filter === "pending") return drafts.filter((d) => d.status === "pending");
+    if (filter === "approved") return drafts.filter((d) => d.status === "approved");
     if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
     return drafts;
   }, [drafts, filter]);
@@ -254,7 +255,7 @@ function Header({
   onBulkApprove,
   bulkBusy,
 }: {
-  counts: { pending: number; decided: number; all: number };
+  counts: { pending: number; approved: number; decided: number; all: number };
   filter: Filter;
   setFilter: (f: Filter) => void;
   onRefresh: () => void;
@@ -264,6 +265,7 @@ function Header({
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
+    { key: "approved", label: "Godkendt", n: counts.approved },
     { key: "decided", label: "Besluttet", n: counts.decided },
     { key: "all", label: "Alle", n: counts.all },
   ];

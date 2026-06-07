@@ -29,9 +29,13 @@ const GAP_MAX_MS = 45_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const randGap = () => GAP_MIN_MS + Math.floor(Math.random() * (GAP_MAX_MS - GAP_MIN_MS));
+// "Already contacted" = a REAL send happened: emailSentAt is stamped, OR a real
+// outcome status (replied/bounced/unsubscribed). A bare emailStatus "sent" WITHOUT
+// emailSentAt is a stale/queued marker from the May limit-hit batch (mails were
+// queued, marked, but never actually went out) — those are still sendable.
 const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
-  /^(sent|opened|clicked|replied|followup|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
+  /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
 
 export async function POST() {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
