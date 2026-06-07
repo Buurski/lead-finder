@@ -50,6 +50,38 @@ function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void
   );
 }
 
+interface Vital { task: string; label: string; ageMin: number | null; detail: string; status: "fresh" | "stale" | "missing" }
+
+// Morgen-vitals — one-glance health of the 3 daily Cowork tasks (lead-gen, messenger,
+// inbox). Derived from each output's artifact via /api/ops/status. Green = ran < 8h,
+// amber = 8–26h, red = stale/never. Silent if the endpoint can't be reached.
+function MorningVitals() {
+  const [vitals, setVitals] = useState<Vital[] | null>(null);
+  useEffect(() => {
+    fetch("/api/ops/status")
+      .then((r) => r.json())
+      .then((d) => setVitals(Array.isArray(d.vitals) ? d.vitals : []))
+      .catch(() => setVitals([]));
+  }, []);
+  if (!vitals || vitals.length === 0) return null;
+  const dot = (s: string) => (s === "fresh" ? "var(--accent)" : s === "stale" ? "var(--amber)" : "var(--border-strong)");
+  const age = (m: number | null) => (m == null ? "—" : m < 60 ? `${m}m` : `${Math.round(m / 60)}t`);
+  return (
+    <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+      <span className="cc-dim" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.02em" }}>MORGEN-VITALS</span>
+      {vitals.map((v) => (
+        <div key={v.task} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot(v.status), flexShrink: 0 }} />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{v.label}</span>
+          <span className="cc-dim" style={{ fontSize: 12 }}>
+            {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function greeting(d: Date): string {
   const h = d.getHours();
   if (h < 5) return "Sent oppe";
@@ -103,6 +135,8 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
           <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Se AI Spend →</span>
         </Link>
       )}
+
+      <MorningVitals />
 
       {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
