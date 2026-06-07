@@ -16,7 +16,7 @@ export async function GET() {
 
 interface ActionBody {
   id?: string;
-  action?: "approve" | "edit" | "reject" | "set-demos";
+  action?: "approve" | "edit" | "reject" | "set-demos" | "reset-sent";
   subject?: string;
   body?: string;
   demoPair?: Demo[];
