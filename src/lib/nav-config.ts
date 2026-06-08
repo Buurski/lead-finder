@@ -27,6 +27,7 @@ export const NAV: NavGroup[] = [
       { href: "/approve", label: "Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Indbakke-triage" },
       { href: "/messenger", label: "Messenger", icon: "MessageSquare", hint: "FB-leads at skrive til" },
+      { href: "/sms", label: "SMS / Mobil", icon: "Smartphone", hint: "Mobil-leads (sms/ring)" },
       { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
     ],
   },

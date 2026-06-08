@@ -31,6 +31,37 @@ itself. So: **diversify the PICK** — restaurants + beauty/personal-care +
 service/trades/retail/professional, with beauty weighted up. The demo library is
 thin on non-food branches — note when a demo is a weak branch match.
 
+## Søsterprojekt: buur-cms (kunde-CMS — planlagt 2026-06-07)
+
+Et multi-tenant CMS hvor kunder selv retter deres site (tekst, billeder,
+dansk AI-chat, Udgiv/rollback, senere ægte SEO-tal). De to systemer
+arbejder SAMMEN, og dokumenterne findes BEVIDST begge steder:
+
+- **Projektmappen `Workflows/buur-cms/`** (eget repo/Vercel-projekt ved
+  byggestart): CLAUDE.md (byggeplan), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md,
+  CLIENT_CMS_BLUEPRINT.md, .env.local (Anthropic+Google-nøgler kopieret
+  herfra; Mongo/Vercel-placeholders).
+- **Kopier her i lead-system:** CMS_CLAUDE_CODE_PLAN.md (= buur-cms'
+  CLAUDE.md), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md, CLIENT_CMS_BLUEPRINT.md.
+
+**SYNK-REGEL:** ret du et CMS-dokument ét sted → kopiér det STRAKS til
+det andet sted. Agenter i buur-cms SKAL læse denne CLAUDE.md (denne
+sektion + arkitektur/mønstre); agenter her bør kende buur-cms/CLAUDE.md.
+
+**Obsidian er hovedhukommelsen:** vault-noten er
+`KnowledgeOS/wiki/os/buur-cms.md`; beslutninger i
+`alle-beslutninger-log.md`; kundeviden i `wiki/kunder/`; tone i
+`context/brand-og-tone.md`. CMS-arbejde skriver status TILBAGE til
+vaulten (jf. byggeplanens §E).
+
+Hvorfor separat mappe/repo: kundevendt app må aldrig dele deploy/kodebase
+med dette interne system (risiko + secrets). Eget Vercel-projekt.
+
+**Sammenhæng:** lead → kunde her → site tilkobles buur-cms → abonnement.
+Genbrug mønstre (ai.ts-gateway, approval-kø, basic auth, Google-creds) —
+aldrig delt deploy. Vault: `KnowledgeOS/wiki/os/buur-cms.md`; beslutninger
+i `alle-beslutninger-log.md` (2026-06-07).
+
 ## Commit / deploy discipline
 
 Commit-only on feature branches; **never push/merge to main or deploy** unless

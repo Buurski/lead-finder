@@ -33,6 +33,7 @@ import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import { isContactable } from "./leads/contactable.ts";
+import { leadChannel } from "./leads/channel.ts";
 import type { Lead } from "./sheets.ts";
 
 // Progress events emitted during a run so a UI can show the engine working
@@ -246,7 +247,10 @@ async function pickLeads(
         // real un-worked leads). Normalized in isUnworkedStatus. PLUS isContactable —
         // status alone misses a lead that was emailed (emailSentAt/emailStatus set)
         // but whose status cell stayed "new"; that must never be re-drafted.
-        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead))
+        // + email-channel only: the engine drafts EMAILS, so a lead must have a
+        // usable email. No-email leads (Facebook → Messenger, phone → SMS) are
+        // handled by their own channels and must never become an email draft.
+        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email")
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);

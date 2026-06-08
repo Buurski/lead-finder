@@ -7,6 +7,7 @@ import type { IngestLead, LeadgenRun, LeadgenItem } from "@/lib/leadgen";
 import { readVaultJson } from "@/lib/vault";
 import { isContactable } from "@/lib/leads/contactable";
 import { isUnworkedStatus } from "@/lib/leads/pick-filter";
+import { leadChannel } from "@/lib/leads/channel";
 import { placesBudget } from "@/lib/places-budget";
 
 // /api/leads/ingest — the lead-gen artifact endpoint.
@@ -57,6 +58,7 @@ function leadToItem(l: Lead): LeadgenItem {
     website: l.website || "",
     rating,
     reviews: l.reviewsCount || 0,
+    channel: leadChannel(l),
   };
 }
 

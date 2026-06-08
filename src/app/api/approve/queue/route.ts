@@ -3,6 +3,8 @@ import { readQueue, updateDraft, writeQueue } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved } from "@/lib/datalayer";
+import { getLeads } from "@/lib/sheets";
+import { leadChannel } from "@/lib/leads/channel";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -16,7 +18,7 @@ export async function GET() {
 
 interface ActionBody {
   id?: string;
-  action?: "approve" | "edit" | "reject" | "set-demos" | "reset-sent";
+  action?: "approve" | "edit" | "reject" | "set-demos" | "reset-sent" | "cleanup-no-email";
   subject?: string;
   body?: string;
   demoPair?: Demo[];
@@ -45,6 +47,24 @@ export async function POST(req: Request) {
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, reset });
+  }
+
+  // One-time cleanup (no id): reject any pending/approved draft whose lead has no
+  // usable email — those should never have been email-drafts (they're Messenger/SMS
+  // leads). Keeps godkendelse email-only.
+  if (action === "cleanup-no-email") {
+    const [drafts, leads] = await Promise.all([readQueue(), getLeads().catch(() => [])]);
+    const byId = new Map(leads.map((l) => [l.id, l]));
+    let rejected = 0;
+    for (const d of drafts) {
+      if (d.status !== "pending" && d.status !== "approved") continue;
+      // Resolve by leadId ONLY — a name fallback could reject a valid same-named
+      // lead's draft (duplicate names are common in Sheets).
+      const lead = d.leadId ? byId.get(d.leadId) : undefined;
+      if (lead && leadChannel(lead) !== "email") { d.status = "rejected"; d.updatedAt = new Date().toISOString(); rejected++; }
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, rejected });
   }
 
   if (!id || !action) {

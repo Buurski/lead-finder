@@ -33,6 +33,7 @@ export interface LeadgenItem {
   website: string;
   rating: number;
   reviews: number;
+  channel?: "email" | "messenger" | "sms" | "none";
 }
 
 export interface LeadgenRun {

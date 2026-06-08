@@ -11,7 +11,15 @@ interface Item {
   website: string;
   rating: number;
   reviews: number;
+  channel?: "email" | "messenger" | "sms" | "none";
 }
+
+const CHANNEL_BADGE: Record<string, { label: string; bg: string; fg: string }> = {
+  email: { label: "✉ Email", bg: "var(--accent-soft)", fg: "var(--accent-ink)" },
+  messenger: { label: "💬 Messenger", bg: "#e0e7ff", fg: "#4338ca" },
+  sms: { label: "📱 SMS", bg: "#fef3c7", fg: "#b45309" },
+  none: { label: "— ingen kanal", bg: "var(--bg-3)", fg: "var(--text-dim)" },
+};
 interface LastRun {
   at: string;
   source: string;
@@ -209,7 +217,12 @@ export default function LeadgenPanel() {
                 <li key={it.name + i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderTop: i ? "1px solid var(--border)" : "none" }}>
                   <span style={{ width: 34, fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: it.fitScore >= 80 ? "var(--accent-ink)" : it.fitScore >= 60 ? "var(--amber)" : "var(--text-dim)" }}>{it.fitScore}</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</span>
+                      {it.channel && (() => { const b = CHANNEL_BADGE[it.channel] ?? CHANNEL_BADGE.none; return (
+                        <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 600, padding: "1px 7px", borderRadius: 6, background: b.bg, color: b.fg }}>{b.label}</span>
+                      ); })()}
+                    </div>
                     <div className="cc-dim" style={{ fontSize: 12.5 }}>{[it.branch, it.city].filter(Boolean).join(" · ")}{it.reviews ? ` · ${it.reviews} anmeldelser` : ""}{it.gap ? ` · gap: ${it.gap}` : ""}</div>
                   </div>
                   {/* Always clickable: open the website if there is one, else Google the business. */}
