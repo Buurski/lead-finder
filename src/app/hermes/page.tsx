@@ -11,9 +11,11 @@ export const dynamic = "force-dynamic";
 async function latestDream(): Promise<{ path: string; body: string } | null> {
   try {
     const { entries } = await listVault("daily", { preferRemote: true });
+    // Hermes names night-run files daily/<date>-<suffix>.md (fx -dream,
+    // -lead-analyse). Plain daily/<date>.md is the morning brief — skip it.
     const dreams = entries
       .map((e) => e.pathRel)
-      .filter((p) => p.endsWith("-dream.md"))
+      .filter((p) => /daily\/\d{4}-\d{2}-\d{2}-[^/]+\.md$/.test(p))
       .sort()
       .reverse();
     if (!dreams.length) return null;

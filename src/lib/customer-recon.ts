@@ -25,7 +25,8 @@ export interface ReconResult {
   palette: string[]; // hex colors, most frequent first
   headings: string[];
   toneSample: string | null;
-  source: "website" | "jina" | "none";
+  images: string[]; // usable photos: og:image + inline <img> (or FB profile/cover)
+  source: "website" | "facebook" | "jina" | "none";
   notes: string[];
 }
 
@@ -84,6 +85,48 @@ function extractPalette(html: string, themeColor: string | null): string[] {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([h]) => h);
 }
 
+// Facebook page URL → page username/id ("facebook.com/mellowcafe" → "mellowcafe").
+// Handles m./www./da-dk. subdomains, profile.php?id=… and trailing junk.
+export function facebookPageId(rawUrl: string): string | null {
+  try {
+    const u = new URL(/^https?:\/\//i.test(rawUrl) ? rawUrl : "https://" + rawUrl.trim());
+    if (!/(^|\.)facebook\.com$/i.test(u.hostname)) return null;
+    const idParam = u.searchParams.get("id");
+    if (u.pathname.replace(/\/+$/, "").endsWith("profile.php") && idParam && /^\d+$/.test(idParam)) return idParam;
+    const seg = u.pathname.split("/").filter(Boolean)[0] ?? "";
+    if (!seg || ["pages", "people", "groups", "events", "watch", "marketplace", "login"].includes(seg.toLowerCase())) {
+      const second = u.pathname.split("/").filter(Boolean)[1];
+      return second && /^[\w.\-]{2,}$/.test(second) ? second : null;
+    }
+    return /^[\w.\-]{2,}$/.test(seg) ? seg : null;
+  } catch {
+    return null;
+  }
+}
+
+// Collect usable photo URLs from a page: og:image first, then inline <img>
+// sources. Skips data-URIs, svg, obvious sprites/pixels. Max 8, absolute.
+function extractImages(html: string, baseUrl: string, ogImage: string | null): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: string | null) => {
+    if (!raw) return;
+    const abs = absolutize(raw, baseUrl);
+    if (!/^https?:\/\//i.test(abs)) return;
+    if (/\.svg(\?|$)/i.test(abs) || /sprite|pixel|spacer|blank|tracking/i.test(abs)) return;
+    if (seen.has(abs)) return;
+    seen.add(abs);
+    out.push(abs);
+  };
+  push(ogImage);
+  for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
+    if (out.length >= 8) break;
+    if (m[1].startsWith("data:")) continue;
+    push(m[1]);
+  }
+  return out.slice(0, 8);
+}
+
 async function fetchText(url: string, timeoutMs = 9000): Promise<string | null> {
   // Routed through safe-fetch for SSRF guards (private IP block, cloud metadata,
   // response-size cap, DoH-resolution check). See src/lib/safe-fetch.ts.
@@ -102,11 +145,36 @@ export async function reconCustomer(inputUrl: string, name?: string): Promise<Re
   const base: ReconResult = {
     inputUrl, slug, resolvedUrl, title: null, description: null, ogImage: null,
     favicon: null, themeColor: null, palette: [], headings: [], toneSample: null,
-    source: "none", notes,
+    images: [], source: "none", notes,
   };
 
   if (!resolvedUrl) {
     notes.push("Ingen gyldig URL — demo bygges på branche-template alene.");
+    return base;
+  }
+
+  // Facebook page as source: FB serves a login wall to bots, but the <head>
+  // keeps og:title / og:description / og:image for crawlers, and the public
+  // Graph picture endpoint gives the profile photo without a token.
+  const fbId = facebookPageId(resolvedUrl);
+  if (fbId) {
+    const fbHtml = await fetchText(resolvedUrl, 10000);
+    base.source = "facebook";
+    if (fbHtml) {
+      base.title = metaContent(fbHtml, "property", "og:title") ?? null;
+      base.description = metaContent(fbHtml, "property", "og:description") ?? null;
+      const og = metaContent(fbHtml, "property", "og:image");
+      base.ogImage = og ? absolutize(og, resolvedUrl) : null;
+      base.toneSample = base.description;
+    }
+    const profilePic = `https://graph.facebook.com/${encodeURIComponent(fbId)}/picture?type=large`;
+    base.images = [...(base.ogImage ? [base.ogImage] : []), profilePic];
+    notes.push(
+      base.title
+        ? `Facebook-side aflæst (${fbId}): titel/beskrivelse/billede fra og-tags + profilbillede.`
+        : `Facebook-siden gav ikke og-tags — bruger kun profilbilledet (${fbId}).`,
+    );
+    if (!base.title) base.title = name ?? fbId;
     return base;
   }
 
@@ -151,12 +219,15 @@ export async function reconCustomer(inputUrl: string, name?: string): Promise<Re
   const firstP = html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
   const toneSample = description || (firstP ? stripTags(firstP[1]).slice(0, 400) : null);
 
+  const ogImage = ogImageRaw ? absolutize(ogImageRaw, resolvedUrl) : null;
   return {
     inputUrl, slug, resolvedUrl, title, description,
-    ogImage: ogImageRaw ? absolutize(ogImageRaw, resolvedUrl) : null,
+    ogImage,
     favicon, themeColor,
     palette: extractPalette(html, themeColor),
-    headings, toneSample, source, notes,
+    headings, toneSample,
+    images: extractImages(html, resolvedUrl, ogImage),
+    source, notes,
   };
 }
 

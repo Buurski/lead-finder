@@ -58,6 +58,9 @@ ${recon.themeColor ? `- Deklareret brand-farve (theme-color): ${recon.themeColor
 ${recon.headings.length ? recon.headings.map((h) => `- Overskrift: ${h}`).join("\n") : "- (ingen overskrifter fundet)"}
 ${recon.toneSample ? `\n**Tone-uddrag:** ${recon.toneSample}` : ""}
 
+## Billeder (fra ${recon.source === "facebook" ? "Facebook" : "kundens side"})
+${(recon.images ?? []).length ? (recon.images ?? []).map((u) => `- ${u}`).join("\n") : "- (ingen billeder fundet — brug branche-stock eller bed kunden)"}
+
 ## Sektion-rækkefølge
 ${t.sectionOrder.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
@@ -109,6 +112,8 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
   section.block h2{font-size:28px;font-weight:600;margin-bottom:10px}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:22px}
   .card{background:color-mix(in oklab,var(--ink),transparent 96%);border-radius:14px;padding:22px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:22px}
+  .gallery img{width:100%;height:180px;object-fit:cover;border-radius:12px}
   footer{padding:48px 0;color:color-mix(in oklab,var(--ink),transparent 45%);font-size:14px;border-top:1px solid color-mix(in oklab,var(--ink),transparent 90%)}
   .demo-badge{position:fixed;bottom:14px;right:14px;background:var(--ink);color:var(--bg);font-size:11px;padding:6px 12px;border-radius:999px;opacity:.85}
 </style>
@@ -127,6 +132,7 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
     ${hero ? `<img class="heroimg" src="${hero}" alt="${esc(name)}" />` : ""}
   </section>
 
+  ${renderGallery(name, recon, hero)}
   ${renderSections(name, t, recon, sections.slice(1))}
 </main>
 
@@ -140,6 +146,17 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Photo gallery from recon.images (Facebook profile/og photos or inline <img>
+// from the customer's site). The hero image is excluded so it isn't repeated.
+function renderGallery(name: string, recon: ReconResult, heroUrl: string | null): string {
+  const imgs = (recon.images ?? []).filter((u) => u !== (heroUrl ? heroUrl.replace(/&amp;/g, "&") : null)).slice(0, 6);
+  if (!imgs.length) return "";
+  return `<section class="block">
+    <h2>Galleri</h2>
+    <div class="gallery">${imgs.map((u) => `<img src="${esc(u)}" alt="${esc(name)}" loading="lazy" />`).join("")}</div>
+  </section>`;
 }
 
 // Real section content — never the old literal "Personligt indhold..." card.

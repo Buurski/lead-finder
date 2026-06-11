@@ -4,6 +4,7 @@ import MarkdownLite from "@/components/shell/MarkdownLite";
 import Icon from "@/components/shell/Icon";
 import { readVaultNote } from "@/lib/vault";
 import { buildDeckSummary } from "@/lib/deck";
+import GoalsClient from "./GoalsClient";
 
 export const metadata = { title: "Goals · Command Center" };
 export const dynamic = "force-dynamic";
@@ -21,14 +22,14 @@ function parseCheckboxes(md: string): Checkbox[] {
 
 export default async function GoalsPage() {
   const [roadmap, priser, summary] = await Promise.all([
-    readVaultNote("wiki/os/roadmap-naeste-skridt"),
+    // remote-first: edits commit to the live vault, so the stale in-repo
+    // mirror must not shadow them
+    readVaultNote("wiki/os/roadmap-naeste-skridt", { preferRemote: true }),
     readVaultNote("context/priser"),
     buildDeckSummary(),
   ]);
 
   const goals = roadmap.ok ? parseCheckboxes(roadmap.body) : [];
-  const done = goals.filter((g) => g.done).length;
-  const pct = goals.length ? Math.round((done / goals.length) * 100) : 0;
 
   return (
     <div className="cc-fade">
@@ -40,25 +41,7 @@ export default async function GoalsPage() {
 
       <div style={{ display: "grid", gap: 18 }}>
         {roadmap.ok && goals.length > 0 ? (
-          <section className="cc-card cc-card-pad">
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>90-dages mål</h2>
-              <span className="cc-dim" style={{ fontSize: 13 }}>{done} / {goals.length} klaret</span>
-            </div>
-            <div style={{ height: 8, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden", marginBottom: 18 }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", borderRadius: 999, transition: "width 400ms cubic-bezier(0.22,1,0.36,1)" }} />
-            </div>
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 9 }}>
-              {goals.map((g, i) => (
-                <li key={i} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
-                  <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, display: "grid", placeItems: "center", background: g.done ? "var(--accent)" : "var(--bg-3)", border: g.done ? "none" : "1px solid var(--border-strong)" }}>
-                    {g.done && <Icon name="CheckCheck" style={{ width: 12, height: 12, color: "#fff" }} />}
-                  </span>
-                  <span style={{ color: g.done ? "var(--text-dim)" : "var(--text)", textDecoration: g.done ? "line-through" : "none" }}>{g.text}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <GoalsClient initialGoals={goals} />
         ) : (
           <FaseNote phase="vault" title="Mål fra vaulten" points={["Læg en note i KnowledgeOS/wiki/os/roadmap-naeste-skridt.md med checkbokse, så vises de her med fremdrift.", roadmap.reason ?? ""]} />
         )}

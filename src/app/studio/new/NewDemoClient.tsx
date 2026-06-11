@@ -14,6 +14,7 @@ interface Recon {
   palette: string[];
   headings: string[];
   toneSample: string | null;
+  images?: string[];
   source: string;
   notes: string[];
 }
@@ -85,7 +86,7 @@ export default function NewDemoClient() {
           </Labeled>
         </div>
         <Labeled label="Eksisterende side / FB / IG (valgfrit)">
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="fx salonlumiere.dk" style={inp} />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="fx salonlumiere.dk eller facebook.com/salonlumiere" style={inp} />
         </Labeled>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="cc-btn" onClick={runRecon} disabled={phase === "recon" || (!url && !name)}>
@@ -111,6 +112,15 @@ export default function NewDemoClient() {
                 <span key={c} title={c} style={{ width: 22, height: 22, borderRadius: 6, background: c, border: "1px solid var(--border)" }} />
               )) : <span className="cc-dim">ingen fundet — bruger template-palet</span>}
             </div>
+            {(recon.images ?? []).length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span className="cc-dim" style={{ width: 110, flexShrink: 0 }}>Billeder</span>
+                {(recon.images ?? []).slice(0, 6).map((u) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={u} src={u} alt="" loading="lazy" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+                ))}
+              </div>
+            )}
             {recon.notes.length > 0 && <div className="cc-dim" style={{ fontSize: 12 }}>{recon.notes.join(" · ")}</div>}
           </div>
         </section>

@@ -82,6 +82,9 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
       const argName = (action.args as { leadName?: unknown }).leadName;
       payload = { id: typeof argId === "string" ? argId : "", action: "unapprove" };
       okMsg = `Fjernet "${typeof argName === "string" ? argName : "lead"}" fra godkendt-listen. Blokeret i 14 dage.`;
+    } else if (action.type === "goal") {
+      url = "/api/goals";
+      okMsg = "Målet er opdateret i vaulten — se /goals.";
     } else if (action.type === "note") {
       url = "/api/actions/note";
     } else if (action.type === "suppress") {
