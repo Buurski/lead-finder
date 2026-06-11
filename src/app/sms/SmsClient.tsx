@@ -21,14 +21,18 @@ export default function SmsClient() {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [copied, setCopied] = useState<string | null>(null);
 
-  function load() {
-    setState("loading");
+  // initial=true skips the synchronous setState("loading") — state already
+  // starts as "loading", and sync setState in an effect body trips the
+  // react-compiler lint (cascading renders).
+  function load(initial = false) {
+    if (!initial) setState("loading");
     fetch("/api/sms")
       .then((r) => r.json())
       .then((d) => { setItems(Array.isArray(d.candidates) ? d.candidates : []); setPool(d.pool ?? null); setState("ok"); })
       .catch(() => setState("error"));
   }
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load; state starts as "loading", no sync setState happens (initial=true)
+  useEffect(() => { load(true); }, []);
 
   async function mark(id: string, action: "sent" | "skipped") {
     setItems((prev) => prev.filter((c) => c.id !== id)); // optimistic

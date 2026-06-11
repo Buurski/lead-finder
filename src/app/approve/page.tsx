@@ -55,6 +55,7 @@ export default function ApprovePage() {
 
   const fetchQueue = useCallback(async (): Promise<QueueDraft[]> => {
     const res = await fetch("/api/approve/queue", { cache: "no-store" });
+    if (!res.ok) throw new Error(`køen svarede ${res.status}`);
     const data = await res.json();
     return Array.isArray(data.drafts) ? (data.drafts as QueueDraft[]) : [];
   }, []);
@@ -190,11 +191,14 @@ export default function ApprovePage() {
     if (pendings.length === 0) return;
     if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
+    let failed = 0;
     for (const d of pendings) {
       // sequential keeps the queue file writes ordered + avoids a write race
-      await actOn(d.id, "approve");
+      const r = await actOn(d.id, "approve");
+      if (!r.ok) failed++;
     }
     setBulkBusy(false);
+    if (failed > 0) window.alert(`${failed} af ${pendings.length} udkast kunne ikke godkendes — de står stadig som afventende.`);
   }, [drafts, actOn]);
 
   return (
@@ -682,7 +686,7 @@ function DraftLetter({
             {busy === "unapprove" ? "Fjerner…" : "Fjern fra godkendt"}
           </button>
           <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-            Markeres som afvist + lead'en blokeres i 14 dage så motoren ikke re-vælger.
+            Markeres som afvist + lead&apos;en blokeres i 14 dage så motoren ikke re-vælger.
           </span>
         </div>
       )}

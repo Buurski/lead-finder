@@ -15,6 +15,8 @@ interface RadarItem {
 export default function RadarClient() {
   const [items, setItems] = useState<RadarItem[]>([]);
   const [at, setAt] = useState<string | null>(null);
+  // "now" frozen at data-arrival: Date.now() in render is impure (react-compiler)
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [source, setSource] = useState<string>("alle");
 
@@ -24,6 +26,7 @@ export default function RadarClient() {
       .then((d) => {
         setItems(Array.isArray(d.items) ? d.items : []);
         setAt(d.at ?? null);
+        setLoadedAt(Date.now());
         setState("ok");
       })
       .catch(() => setState("error"));
@@ -31,7 +34,7 @@ export default function RadarClient() {
 
   const sources = useMemo(() => ["alle", ...Array.from(new Set(items.map((i) => i.source)))], [items]);
   const visible = source === "alle" ? items : items.filter((i) => i.source === source);
-  const ageMin = at ? Math.round((Date.now() - Date.parse(at)) / 60000) : null;
+  const ageMin = at && loadedAt ? Math.round((loadedAt - Date.parse(at)) / 60000) : null;
 
   if (state === "loading") {
     return <div style={{ display: "grid", gap: 10 }}>{[0, 1, 2].map((i) => <div key={i} className="cc-skel" style={{ height: 72 }} />)}</div>;

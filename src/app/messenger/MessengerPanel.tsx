@@ -96,11 +96,12 @@ export default function MessengerPanel() {
     // Optimistic: drop the card immediately.
     setCandidates((cs) => cs.filter((c) => c.id !== id));
     try {
-      await fetch("/api/messenger/mark", {
+      const res = await fetch("/api/messenger/mark", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action }),
       });
+      if (!res.ok) load(); // 4xx/5xx: server didn't register it — resync
     } catch {
       load(); // resync on failure
     }
