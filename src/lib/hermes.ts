@@ -49,12 +49,20 @@ export interface HermesMessage {
   ts: string;
 }
 
+// Vercel env-værdier kan få usynlige tegn med fra copy-paste (BOM, zero-width
+// space, newline). Det knækkede prod 2026-06-11: URL'en startede med U+FEFF
+// (ugyldig URL → fetch døde → "offline") og secret var 65 tegn i stedet for 64
+// (HMAC-mismatch). Strip altid.
+export function cleanEnv(value: string | undefined): string {
+  return (value ?? "").replace(/[\u{FEFF}\u{200B}-\u{200D}]/gu, "").trim();
+}
+
 export function hermesConfigured(): boolean {
-  return Boolean(process.env.HERMES_API_URL && process.env.HERMES_API_SECRET);
+  return Boolean(cleanEnv(process.env.HERMES_API_URL) && cleanEnv(process.env.HERMES_API_SECRET));
 }
 
 function sign(method: string, path: string, body: string): { ts: string; sig: string } {
-  const secret = process.env.HERMES_API_SECRET ?? "";
+  const secret = cleanEnv(process.env.HERMES_API_SECRET);
   const ts = String(Math.floor(Date.now() / 1000));
   const sig = crypto
     .createHmac("sha256", secret)
@@ -70,7 +78,7 @@ async function hermesFetch<T>(
   timeoutMs = 20_000,
 ): Promise<{ status: number; data: T | null }> {
   if (!hermesConfigured()) return { status: 0, data: null };
-  const base = (process.env.HERMES_API_URL ?? "").replace(/\/$/, "");
+  const base = cleanEnv(process.env.HERMES_API_URL).replace(/\/$/, "");
   const raw = body == null ? "" : JSON.stringify(body);
   const { ts, sig } = sign(method, path, raw);
   const ctrl = new AbortController();
