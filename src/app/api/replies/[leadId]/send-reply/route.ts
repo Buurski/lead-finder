@@ -23,8 +23,8 @@ interface Body {
   confirm?: boolean;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function POST(req: Request, { params }: { params: Promise<{ leadId: string }> }) {
+  const { leadId: id } = await params;
   let body: Body;
   try {
     body = (await req.json()) as Body;
