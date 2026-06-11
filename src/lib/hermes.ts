@@ -101,8 +101,10 @@ export async function hermesHealth(): Promise<{
   reachable: boolean;
   gatewayRunning: boolean;
   cronJobs: number;
+  shimStatus: number;
 }> {
-  if (!hermesConfigured()) return { configured: false, reachable: false, gatewayRunning: false, cronJobs: 0 };
+  if (!hermesConfigured())
+    return { configured: false, reachable: false, gatewayRunning: false, cronJobs: 0, shimStatus: 0 };
   const { status, data } = await hermesFetch<{ ok: boolean; gateway_running: boolean; cron_jobs: number }>(
     "GET",
     "/api/health",
@@ -114,6 +116,8 @@ export async function hermesHealth(): Promise<{
     reachable: status === 200 && Boolean(data?.ok),
     gatewayRunning: Boolean(data?.gateway_running),
     cronJobs: data?.cron_jobs ?? 0,
+    // 0 = ingen forbindelse (URL/netværk), 401 = nået frem men forkert secret.
+    shimStatus: status,
   };
 }
 

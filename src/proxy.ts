@@ -16,7 +16,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export const config = {
   // Run on everything except Next internals, the health check, and static files.
-  matcher: ["/((?!_next/|api/health|api/cron/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  // api/hermes/status er også undtaget: ren health-info (ingen hemmeligheder),
+  // og den SKAL kunne tjekkes udefra når VPS-forbindelsen fejlsøges.
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 const SESSION_COOKIE = "cc_sess";
