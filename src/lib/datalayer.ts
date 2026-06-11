@@ -63,6 +63,22 @@ export async function registerDraftApproved(draft: QueueDraft): Promise<SyncResu
   }
 }
 
+// Lucas fortrød en godkendelse (fx "No Scandinavia" 2026-06-11): vi fjerner
+// drafted-status og markerer lead'en som "skip" så engine'en aldrig re-picker
+// den. Kombineret med queue.ts's 14-dages reject-blok skaber det varig
+// beskyttelse — selv hvis Sheets-skiftet fejler, blokker queue-laget i 2 uger.
+export async function unregisterDraftApproved(draft: QueueDraft): Promise<SyncResult> {
+  const rowIndex = rowIndexFromLeadId(draft.leadId);
+  if (rowIndex == null) return { ok: false, action: "unapproved", leadId: draft.leadId, error: "no-sheets-row" };
+  try {
+    const { updateLeadStatus } = await sheets();
+    await updateLeadStatus(rowIndex, "skip", "draft unapproved in /approve");
+    return { ok: true, action: "unapproved", leadId: draft.leadId, rowIndex };
+  } catch (e) {
+    return { ok: false, action: "unapproved", leadId: draft.leadId, rowIndex, error: String(e) };
+  }
+}
+
 // Register the outcome of an inbound reply. This is the VIDA fix: an explicit
 // yes flips the lead to "client"; a hard stop flips it to "skip"; interest
 // moves it to "interested". Everything else is left untouched.

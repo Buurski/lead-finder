@@ -109,18 +109,21 @@ export default function ApprovePage() {
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const sendApproved = useCallback(async () => {
+    if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
     if (counts.approved === 0) return;
-    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. (Blokeres automatisk hvis pause/halt-flag er aktiv.)`)) return;
+    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
     setSendBusy(true);
-    setSendMsg("");
+    setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
     try {
       const res = await fetch("/api/approve/send", { method: "POST" });
       const d = await res.json();
       const msg = d.paused
         ? (d.error ?? "Afsendelse er på pause.")
-        : res.ok
-          ? `${d.sent ?? 0} sendt${d.failed ? ` · ${d.failed} fejlede` : ""}${Array.isArray(d.skipped) && d.skipped.length ? ` · ${d.skipped.length} sprunget over (${d.skipped.slice(0, 3).map((s: { name: string; reason: string }) => `${s.name}: ${s.reason}`).join("; ")}${d.skipped.length > 3 ? "…" : ""})` : ""}.`
-          : (d.error ?? "Kunne ikke sende.");
+        : d.busy
+          ? (d.error ?? "Afsendelse kører allerede — vent til den er færdig.")
+          : res.ok
+            ? `${d.sent ?? 0} sendt${d.failed ? ` · ${d.failed} fejlede` : ""}${d.remaining ? ` · ${d.remaining} venter — tryk Send igen for næste hold` : ""}${Array.isArray(d.skipped) && d.skipped.length ? ` · ${d.skipped.length} sprunget over (${d.skipped.slice(0, 3).map((s: { name: string; reason: string }) => `${s.name}: ${s.reason}`).join("; ")}${d.skipped.length > 3 ? "…" : ""})` : ""}.`
+            : (d.error ?? "Kunne ikke sende.");
       setSendMsg(msg);
       await load();
     } catch {
@@ -128,7 +131,7 @@ export default function ApprovePage() {
     } finally {
       setSendBusy(false);
     }
-  }, [counts.approved, load]);
+  }, [sendBusy, counts.approved, load]);
 
   const visible = useMemo(() => {
     if (filter === "pending") return drafts.filter((d) => d.status === "pending");
@@ -139,7 +142,7 @@ export default function ApprovePage() {
 
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
-    async (id: string, action: "approve" | "edit" | "reject" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }): Promise<{ ok: boolean; violations?: string[] }> => {
+    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }): Promise<{ ok: boolean; violations?: string[] }> => {
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -409,15 +412,39 @@ function DraftLetter({
   onFocusRequest,
 }: {
   draft: QueueDraft;
-  onAct: (id: string, action: "approve" | "edit" | "reject" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }) => Promise<{ ok: boolean; violations?: string[] }>;
+  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
-  const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "set-demos">(null);
+  const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "unapprove" | "set-demos">(null);
   const [violations, setViolations] = useState<string[]>([]);
+
+  // Lucas can remove a draft from the "godkendt" list (e.g. "No Scandinavia"
+  // that he approved earlier and then regretted). This is the un-approve flow.
+  // "Sent" drafts are NOT removable from here — we can't un-send a mail.
+  const isRemovable =
+    draft.status === "approved" || draft.status === "edited";
+
+  async function unapprove() {
+    if (
+      !window.confirm(
+        `Fjern "${draft.name}" fra godkendt-listen?\n\nDen flyttes til afviste, og lead'en bliver markeret 'skip' i Sheets så motoren ikke vælger den igen. Den blokeres også i 14 dage på queue-niveau som ekstra sikkerhed.`,
+      )
+    ) return;
+    setBusy("unapprove");
+    setViolations([]);
+    try {
+      const r = await onAct(draft.id, "unapprove");
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const dirty = subject !== draft.subject || body !== draft.body;
   const demosDirty = JSON.stringify(demos.map((d) => d.url)) !== JSON.stringify(draft.demoPair.map((d) => d.url));
@@ -645,6 +672,18 @@ function DraftLetter({
               {demosDirty ? "Demo skiftet — tryk “Gem demoer”" : "Rettet — gem for at godkende"}
             </span>
           )}
+        </div>
+      )}
+
+      {/* unapprove — only for already-approved/edited drafts (not pending, not sent, not rejected) */}
+      {isRemovable && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
+          <button onClick={unapprove} disabled={busy !== null} style={btnGhost} title="Fjern fra godkendt-listen — lead'en blokeres i 14 dage">
+            {busy === "unapprove" ? "Fjerner…" : "Fjern fra godkendt"}
+          </button>
+          <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+            Markeres som afvist + lead'en blokeres i 14 dage så motoren ikke re-vælger.
+          </span>
         </div>
       )}
     </article>

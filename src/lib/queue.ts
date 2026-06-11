@@ -49,19 +49,44 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
   await store.put("queue", drafts);
 }
 
+// How long a recently rejected lead is blocked from re-appearing in the queue.
+// Lucas's krav (2026-06-11): når jeg afviser en lead, må den IKKE dukke op igen
+// på næste engine-run — 14 dage giver tid til at lead'en evt. forandrer sig
+// (ny hjemmeside, nye anmeldelser) før vi prøver igen.
+export const REJECT_BLOCK_MS = 14 * 24 * 60 * 60 * 1000;
+
+function rejectedAt(d: QueueDraft): number {
+  const t = d.updatedAt ?? d.createdAt;
+  if (!t) return 0;
+  const n = new Date(t).getTime();
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Append new drafts (used by the engine COLLECT step). Returns the full queue.
-// Dedupes by leadId: a lead that already has a PENDING draft is skipped, so a
-// re-run of the engine never stacks duplicate cards for the same lead in the
-// approval queue. (Approved/edited/rejected drafts don't block a fresh draft.)
-export async function appendDrafts(newDrafts: QueueDraft[]): Promise<QueueDraft[]> {
+// Dedupes by leadId:
+// - Lead med en PENDING draft → spring over (engine'en stable ikke dubletter).
+// - Lead afvist inden for REJECT_BLOCK_MS → spring over (Lucas's afvis-respekt).
+// - Lead approved/edited/sent → tillad nyt draft (måske ny follow-up runde).
+// - Lead afvist for længe siden → tillad igen (verden ændrer sig).
+export async function appendDrafts(
+  newDrafts: QueueDraft[],
+  now: number = Date.now(),
+): Promise<QueueDraft[]> {
   const existing = await readQueue();
-  const pendingLeadIds = new Set(
-    existing.filter((d) => d.status === "pending" && d.leadId).map((d) => d.leadId)
-  );
+  const cutoff = now - REJECT_BLOCK_MS;
+  const blockedLeadIds = new Set<string>();
+  for (const d of existing) {
+    if (!d.leadId) continue;
+    if (d.status === "pending") {
+      blockedLeadIds.add(d.leadId);
+    } else if (d.status === "rejected" && rejectedAt(d) > cutoff) {
+      blockedLeadIds.add(d.leadId);
+    }
+  }
   const seen = new Set<string>();
   const deduped = newDrafts.filter((d) => {
     if (!d.leadId) return true; // no leadId ⇒ can't dedupe, keep it
-    if (pendingLeadIds.has(d.leadId) || seen.has(d.leadId)) return false;
+    if (blockedLeadIds.has(d.leadId) || seen.has(d.leadId)) return false;
     seen.add(d.leadId);
     return true;
   });

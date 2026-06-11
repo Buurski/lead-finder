@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readQueue, updateDraft, writeQueue } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
-import { registerDraftApproved } from "@/lib/datalayer";
+import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
 import { leadChannel } from "@/lib/leads/channel";
 
@@ -18,7 +18,14 @@ export async function GET() {
 
 interface ActionBody {
   id?: string;
-  action?: "approve" | "edit" | "reject" | "set-demos" | "reset-sent" | "cleanup-no-email";
+  action?:
+    | "approve"
+    | "edit"
+    | "reject"
+    | "unapprove"
+    | "set-demos"
+    | "reset-sent"
+    | "cleanup-no-email";
   subject?: string;
   body?: string;
   demoPair?: Demo[];
@@ -75,6 +82,41 @@ export async function POST(req: Request) {
     const updated = await updateDraft(id, { status: "rejected" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
+  }
+
+  // Lucas fortrød en godkendelse — fjern den. Vi flytter draften til
+  // "rejected" (så queue.ts's 14-dages reject-blok kicker ind), og sætter
+  // lead-status i Sheets til "skip" så engine'en aldrig re-picker.
+  // Bevidste valg:
+  // - status="sent" kan IKKE unapproves: vi kan ikke un-sende en mail.
+  // - kun approved/edited drafts kan unapproves (det er dem der vises som
+  //   "godkendt" i UI'en). Pending/rejected → 400.
+  if (action === "unapprove") {
+    const existing = await readQueue();
+    const target = existing.find((d) => d.id === id);
+    if (!target) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    if (target.status === "sent") {
+      return NextResponse.json(
+        { error: "draft is already sent — cannot un-send", status: target.status },
+        { status: 409 },
+      );
+    }
+    if (target.status !== "approved" && target.status !== "edited") {
+      return NextResponse.json(
+        { error: `cannot unapprove from status "${target.status}"`, status: target.status },
+        { status: 400 },
+      );
+    }
+    const updated = await updateDraft(id, { status: "rejected" });
+    if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    // Sheets-cleanup: best-effort. En Sheets-fejl må aldrig blokere unapprove
+    // — queue-laget er stadig sandheden, og 14-dages-blokken virker uanset.
+    const sync = await unregisterDraftApproved(updated);
+    return NextResponse.json({
+      draft: updated,
+      sync,
+      note: "moved to rejected — lead blocked from engine for 14 days",
+    });
   }
 
   if (action === "edit") {

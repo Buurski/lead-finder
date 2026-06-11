@@ -71,11 +71,30 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   // Confirmed an action proposal → call the matching endpoint, replace the bubble.
   async function confirmAction(idx: number, action: ChatAction) {
     setMsgs((m) => m.map((mm, i) => (i === idx ? { ...mm, resolved: true } : mm)));
-    const url = action.type === "note" ? "/api/actions/note" : action.type === "suppress" ? "/api/actions/suppress" : "/api/actions/mark-lead";
+    // Unapprove-draft routes til den eksisterende godkendelse-API (anden form
+    // end actions/*). Alt andet bruger /api/actions/<type>.
+    let url: string;
+    let payload: Record<string, unknown> = action.args;
+    let okMsg: string | null = null;
+    if (action.type === "unapprove-draft") {
+      url = "/api/approve/queue";
+      const argId = (action.args as { draftId?: unknown }).draftId;
+      const argName = (action.args as { leadName?: unknown }).leadName;
+      payload = { id: typeof argId === "string" ? argId : "", action: "unapprove" };
+      okMsg = `Fjernet "${typeof argName === "string" ? argName : "lead"}" fra godkendt-listen. Blokeret i 14 dage.`;
+    } else if (action.type === "note") {
+      url = "/api/actions/note";
+    } else if (action.type === "suppress") {
+      url = "/api/actions/suppress";
+    } else {
+      url = "/api/actions/mark-lead";
+    }
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action.args) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const d = await res.json().catch(() => ({}));
-      setMsgs((m) => [...m, { role: "claude", text: d.ok ? `✓ ${d.message || "Udført."}` : `Kunne ikke: ${d.error || "fejl"}` }]);
+      const ok = res.ok && (d.ok !== false);
+      const successText = okMsg ?? d.message ?? "Udført.";
+      setMsgs((m) => [...m, { role: "claude", text: ok ? `✓ ${successText}` : `Kunne ikke: ${d.error || "fejl"}` }]);
     } catch {
       setMsgs((m) => [...m, { role: "claude", text: "Kunne ikke nå serveren — prøv igen." }]);
     }

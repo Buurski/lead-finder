@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generate, isAiEnabled } from "@/lib/ai";
 import { getLeads, getClients } from "@/lib/sheets";
+import { readQueue } from "@/lib/queue";
 
 // POST /api/chat — the in-app Claude assistant (ChatDock + /claude).
 //
@@ -24,6 +25,7 @@ type Status = "interested" | "not-interested" | "maybe-later";
 function detectIntent(text: string):
   | { kind: "status"; status: Status }
   | { kind: "note"; bucket: string; note: string }
+  | { kind: "unapprove-draft" }
   | { kind: "suppress" }
   | null {
   const t = text.toLowerCase();
@@ -33,6 +35,12 @@ function detectIntent(text: string):
     const bucket = /sagde nej|ikke interesseret/i.test(note) ? "said-no" : /senere|fremtid/i.test(note) ? "maybe-later" : "general";
     return { kind: "note", bucket, note };
   }
+  // "fjern X fra godkendt", "fortryd godkendelse af X", "tag X ud af godkendt"
+  // — explicit approval-queue revert. Tjekkes FØR generel "suppress" så vi ikke
+  // forveksler en queue-fortryden med i-dag-skjul.
+  if (
+    /\b(fra godkendt|godkendt-listen|fortryd godkendelse|af-?godkend|unapprove|tag ud af godkendt)\b/.test(t)
+  ) return { kind: "unapprove-draft" };
   if (/\b(ikke interesseret|ikke interesserede|sagde nej|nej tak|frasort\w+|afvis)\b/.test(t)) return { kind: "status", status: "not-interested" };
   if (/\b(måske senere|maaske senere|om en måned|følg op senere|senere hen|ikke nu men)\b/.test(t)) return { kind: "status", status: "maybe-later" };
   if (/\b(er interesseret|interesseret nu|sagde ja|vil gerne|positiv|varm lead)\b/.test(t)) return { kind: "status", status: "interested" };
@@ -81,6 +89,38 @@ export async function POST(req: Request) {
       action: { type: "note", args: { text: intent.note, bucket: intent.bucket }, label: `Gem note (${intent.bucket}): "${intent.note.slice(0, 80)}"` },
       humanText: "Vil du gemme den note? (spejles til Obsidian af din Cowork-task)",
     });
+  }
+
+  // UNAPPROVE-DRAFT — Lucas fortrød en godkendelse ("fjern No Scandinavia fra
+  // godkendt"). Vi slår navnet op i kø-snapshottet (approved/edited drafts),
+  // og foreslår handlingen. Selve mutationen sker først efter Bekræft via
+  // /api/approve/queue { action: "unapprove" }.
+  if (intent && intent.kind === "unapprove-draft") {
+    try {
+      const drafts = await readQueue();
+      const candidates = drafts.filter((d) => d.status === "approved" || d.status === "edited");
+      const lower = message.toLowerCase();
+      let best: typeof candidates[number] | null = null;
+      for (const d of candidates) {
+        const name = (d.name || "").trim();
+        if (name.length >= 3 && lower.includes(name.toLowerCase())) {
+          if (!best || name.length > (best.name || "").length) best = d;
+        }
+      }
+      if (best) {
+        return NextResponse.json({
+          action: {
+            type: "unapprove-draft",
+            args: { draftId: best.id, leadName: best.name },
+            label: `Fjern "${best.name}" fra godkendt-listen`,
+          },
+          humanText: `Skal jeg fjerne ${best.name} fra godkendt-listen? Den flyttes til afviste, lead'en markeres "skip" i Sheets, og blokeres i 14 dage så motoren ikke re-vælger.`,
+        });
+      }
+      // Ingen kandidat fundet — fall through til advisory så modellen kan spørge "hvilken?"
+    } catch {
+      /* queue unreachable → fall through to advisory */
+    }
   }
 
   // STATUS / SUPPRESS — resolve which known lead OR client is mentioned.
