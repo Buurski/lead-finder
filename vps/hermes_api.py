@@ -26,7 +26,7 @@ import re
 import subprocess
 import threading
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERMES_BIN = os.environ.get("HERMES_BIN", "/usr/local/bin/hermes")
@@ -41,30 +41,37 @@ SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 CRON_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
-_session_locks: dict = {}
+_session_locks: "OrderedDict[str, threading.Lock]" = OrderedDict()
 _locks_guard = threading.Lock()
-_rate: deque = deque()
+_rate: dict = {}
 _rate_guard = threading.Lock()
 
 
 def session_lock(key: str) -> threading.Lock:
+    # LRU-eviction i stedet for clear(): clear() smed ALLE aktive locks ud,
+    # så to CLI-processer kunne køre parallelt for samme session.
     with _locks_guard:
-        if key not in _session_locks:
-            _session_locks[key] = threading.Lock()
-            if len(_session_locks) > 500:
-                _session_locks.clear()
-                _session_locks[key] = threading.Lock()
-        return _session_locks[key]
+        lock = _session_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _session_locks[key] = lock
+        _session_locks.move_to_end(key)
+        while len(_session_locks) > 500:
+            _session_locks.popitem(last=False)
+        return lock
 
 
-def rate_ok() -> bool:
+def rate_ok(bucket: str = "global") -> bool:
+    # Per-bucket (chat: per profil) så et langt cron-run eller én flittig
+    # profil ikke blokerer de andre.
     now = time.time()
     with _rate_guard:
-        while _rate and _rate[0] < now - 60:
-            _rate.popleft()
-        if len(_rate) >= 30:
+        q = _rate.setdefault(bucket, deque())
+        while q and q[0] < now - 60:
+            q.popleft()
+        if len(q) >= 30:
             return False
-        _rate.append(now)
+        q.append(now)
         return True
 
 
@@ -205,14 +212,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(413, {"error": "body for stor"})
         if not verify(method, self.path.split("?")[0], body, self.headers):
             return self._send(401, {"error": "unauthorized"})
-        if not rate_ok():
-            return self._send(429, {"error": "for mange requests — vent et øjeblik"})
 
         path = self.path.split("?")[0]
         try:
             payload = json.loads(body or b"{}")
         except ValueError:
             return self._send(400, {"error": "ugyldig JSON"})
+
+        bucket = f"chat:{payload.get('profile', 'default')}" if path == "/api/chat" else "global"
+        if not rate_ok(bucket):
+            return self._send(429, {"error": "for mange requests — vent et øjeblik"})
 
         if method == "GET" and path == "/api/health":
             return self._send(*handle_health())

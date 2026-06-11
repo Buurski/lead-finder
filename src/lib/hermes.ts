@@ -176,9 +176,13 @@ export async function appendHermesExchange(
   userText: string,
   replyText: string,
 ): Promise<void> {
-  const now = new Date().toISOString();
+  const t = Date.now();
+  const now = new Date(t).toISOString();
+  // Reply gets +1ms so two messages never share an identical timestamp
+  // (keeps sortering/dedup deterministisk).
+  const replyTs = new Date(t + 1).toISOString();
   const msgs = await getHermesMessages(sessionId);
-  msgs.push({ role: "you", text: userText, ts: now }, { role: "hermes", text: replyText, ts: now });
+  msgs.push({ role: "you", text: userText, ts: now }, { role: "hermes", text: replyText, ts: replyTs });
   await store.put(messagesKey(sessionId), msgs.slice(-200));
 
   const all = (await store.get<HermesSessionMeta[]>(SESSIONS_KEY)) ?? [];
@@ -195,7 +199,9 @@ export async function appendHermesExchange(
       messageCount: msgs.length,
     });
   }
-  // keep the newest 60 sessions overall
-  const trimmed = all.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, 60);
+  // Per-profil loft (30 nyeste) i stedet for globalt — ellers kan én flittig
+  // profil skubbe de andres historik ud af KV.
+  const sorted = all.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  const trimmed = HERMES_PROFILES.flatMap((p) => sorted.filter((s) => s.profile === p).slice(0, 30));
   await store.put(SESSIONS_KEY, trimmed);
 }

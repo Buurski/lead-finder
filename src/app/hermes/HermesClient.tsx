@@ -19,9 +19,10 @@ const PROFILES: { id: HermesProfile; label: string; hint: string }[] = [
 
 const QUICK: string[] = [
   "Hvad skal jeg fokusere på i dag?",
-  "Hvad fandt du i nattens dream?",
   "Status på systemet?",
 ];
+
+const DREAM_QUICK = "Hvad er det vigtigste fund fra nattens dream? Giv mig 3 konkrete næste skridt.";
 
 function newSessionId(): string {
   return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -57,6 +58,8 @@ export default function HermesClient({
   const [dreamOpen, setDreamOpen] = useState(false);
   const [health, setHealth] = useState<Health>(initialHealth);
   const [healthChecking, setHealthChecking] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const offline = !health.configured || !health.reachable;
@@ -97,6 +100,26 @@ export default function HermesClient({
     if (p) setProfile(p);
     setSessionId(newSessionId());
     setMsgs([]);
+    setExportMsg(null);
+  }
+
+  async function exportSession() {
+    if (exporting || msgs.length === 0) return;
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const res = await fetch("/api/hermes/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setExportMsg(d.ok ? `Gemt i vaulten: ${d.path}` : `⚠ ${d.error ?? "kunne ikke gemme"}`);
+    } catch {
+      setExportMsg("⚠ Kunne ikke nå serveren.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function openSession(meta: HermesSessionMeta) {
@@ -178,7 +201,22 @@ export default function HermesClient({
               {p.label}
             </button>
           ))}
-          <button className="cc-btn hermes-new-btn" onClick={() => startNewSession()}>
+          {msgs.length > 0 && (
+            <button
+              className="cc-btn hermes-new-btn"
+              style={{ marginLeft: "auto" }}
+              disabled={exporting}
+              onClick={exportSession}
+              title="Gem hele samtalen som note i KnowledgeOS-vaulten"
+            >
+              {exporting ? "Gemmer…" : "Gem i vault"}
+            </button>
+          )}
+          <button
+            className="cc-btn hermes-new-btn"
+            style={msgs.length > 0 ? { marginLeft: 0 } : undefined}
+            onClick={() => startNewSession()}
+          >
             + Ny samtale
           </button>
         </div>
@@ -230,13 +268,16 @@ export default function HermesClient({
               Hermes tænker… (kan tage op til et minut)
             </div>
           )}
+          {exportMsg && (
+            <div style={{ alignSelf: "center", color: "var(--text-dim)", fontSize: 12 }}>{exportMsg}</div>
+          )}
         </div>
 
         {!offline && (
           <div className="hermes-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 14px 10px" }}>
-            {QUICK.map((s) => (
+            {(dream ? [DREAM_QUICK, ...QUICK] : QUICK).map((s) => (
               <button key={s} className="cc-chip" style={{ cursor: "pointer", border: "none" }} onClick={() => send(s)} disabled={sending}>
-                {s}
+                {s === DREAM_QUICK ? "🌙 Nattens vigtigste fund?" : s}
               </button>
             ))}
           </div>
@@ -279,6 +320,8 @@ export default function HermesClient({
           <SideRow label="Gateway (Telegram)" value={health.gatewayRunning ? "kører" : "stoppet"} ok={health.gatewayRunning} />
           <SideRow label="Cron jobs" value={String(health.cronJobs)} ok={health.cronJobs > 0} />
         </section>
+
+        <PipelineSnapshot />
 
         <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
           <div className="cc-kicker">Cron jobs</div>
@@ -360,6 +403,34 @@ export default function HermesClient({
         )}
       </div>
     </div>
+  );
+}
+
+// Lille pipeline-puls så morgenrutinen kan klares fra Hermes-siden alene.
+function PipelineSnapshot() {
+  const [nums, setNums] = useState<{ queue?: number; replies?: number; sent?: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/deck/summary")
+      .then((r) => r.json())
+      .then((d) =>
+        setNums({
+          queue: d?.queue?.pending,
+          replies: d?.numbers?.repliesPending,
+          sent: d?.numbers?.sentToday,
+        }),
+      )
+      .catch(() => {});
+  }, []);
+
+  if (!nums) return null;
+  return (
+    <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 8 }}>
+      <div className="cc-kicker">Pipeline lige nu</div>
+      <SideRow label="I godkendelseskøen" value={String(nums.queue ?? "–")} ok={(nums.queue ?? 0) > 0} />
+      <SideRow label="Svar der venter" value={String(nums.replies ?? "–")} ok={false} />
+      <SideRow label="Sendt i dag" value={String(nums.sent ?? "–")} ok={(nums.sent ?? 0) > 0} />
+    </section>
   );
 }
 
