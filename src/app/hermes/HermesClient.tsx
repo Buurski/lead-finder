@@ -27,6 +27,15 @@ function newSessionId(): string {
   return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Klip ved sidste afsnitsgrænse inden max, så markdown ikke knækker midt i
+// en tabel/kodeblok.
+function trimAtParagraph(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const brk = cut.lastIndexOf("\n\n");
+  return (brk > max * 0.5 ? cut.slice(0, brk) : cut) + "\n\n*… (afkortet)*";
+}
+
 export default function HermesClient({
   initialHealth,
   initialJobs,
@@ -44,29 +53,54 @@ export default function HermesClient({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [cronBusy, setCronBusy] = useState<string | null>(null);
+  const [cronError, setCronError] = useState<string | null>(null);
   const [dreamOpen, setDreamOpen] = useState(false);
+  const [health, setHealth] = useState<Health>(initialHealth);
+  const [healthChecking, setHealthChecking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const offline = !initialHealth.configured || !initialHealth.reachable;
+  const offline = !health.configured || !health.reachable;
 
   useEffect(() => {
+    // Guard mod dobbelt-fetch: effekten kører både når sending → true og
+    // → false; vi vil kun refetche når sendingen er FÆRDIG (ny titel klar).
+    if (sending) return;
     fetch(`/api/hermes/sessions?profile=${profile}`)
       .then((r) => r.json())
       .then((d) => setSessions(d.sessions ?? []))
       .catch(() => {});
   }, [profile, sending]);
 
+  async function recheckHealth() {
+    setHealthChecking(true);
+    try {
+      const d = await fetch("/api/hermes/status").then((r) => r.json());
+      setHealth({
+        configured: Boolean(d.configured),
+        reachable: Boolean(d.reachable),
+        gatewayRunning: Boolean(d.gatewayRunning),
+        cronJobs: d.cronJobs ?? 0,
+      });
+    } catch {
+      /* behold gammel status */
+    } finally {
+      setHealthChecking(false);
+    }
+  }
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [msgs, sending]);
 
   function startNewSession(p?: HermesProfile) {
+    if (sending) return; // skift ikke profil/session midt i et svar
     if (p) setProfile(p);
     setSessionId(newSessionId());
     setMsgs([]);
   }
 
   async function openSession(meta: HermesSessionMeta) {
+    if (sending) return;
     setProfile(meta.profile);
     setSessionId(meta.id);
     try {
@@ -102,26 +136,31 @@ export default function HermesClient({
 
   async function cronAction(id: string, action: "run" | "pause" | "resume") {
     setCronBusy(id);
+    setCronError(null);
     try {
-      await fetch("/api/hermes/cron", {
+      const res = await fetch("/api/hermes/cron", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action }),
       });
-      const d = await fetch("/api/hermes/cron").then((r) => r.json());
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok || r?.ok === false) {
+        setCronError(r?.error ?? `Handlingen fejlede (${res.status})`);
+      }
+      const d = await fetch("/api/hermes/cron").then((r2) => r2.json());
       setJobs(d.jobs ?? []);
     } catch {
-      /* keep old list */
+      setCronError("Kunne ikke nå serveren — prøv igen.");
     } finally {
       setCronBusy(null);
     }
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: 18, alignItems: "start" }}>
+    <div className="hermes-grid">
       {/* ---- left: chat ---- */}
-      <section className="cc-card" style={{ display: "flex", flexDirection: "column", minHeight: 540 }}>
-        <div style={{ display: "flex", gap: 6, padding: "12px 14px", borderBottom: "1px solid var(--border)", alignItems: "center", flexWrap: "wrap" }}>
+      <section className="cc-card hermes-chat">
+        <div className="hermes-chips" style={{ display: "flex", gap: 6, padding: "12px 14px", borderBottom: "1px solid var(--border)", alignItems: "center", flexWrap: "wrap" }}>
           {PROFILES.map((p) => (
             <button
               key={p.id}
@@ -139,21 +178,27 @@ export default function HermesClient({
               {p.label}
             </button>
           ))}
-          <button
-            className="cc-btn"
-            style={{ marginLeft: "auto", fontSize: 12, padding: "4px 10px" }}
-            onClick={() => startNewSession()}
-          >
+          <button className="cc-btn hermes-new-btn" onClick={() => startNewSession()}>
             + Ny samtale
           </button>
         </div>
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 9, minHeight: 0 }}>
           {offline && (
-            <div className="cc-card-pad" style={{ background: "var(--bg-3)", borderRadius: 10, fontSize: 13, color: "var(--text-muted)" }}>
-              {initialHealth.configured
-                ? "Hermes svarer ikke lige nu — tjek at VPS'en kører (hermes-api på port 8787)."
-                : "HERMES_API_URL + HERMES_API_SECRET mangler i miljøet. Sæt dem, så er chatten live."}
+            <div className="cc-card-pad" style={{ background: "var(--bg-3)", borderRadius: 10, fontSize: 13, color: "var(--text-muted)", display: "grid", gap: 8 }}>
+              <span>
+                {health.configured
+                  ? "Hermes svarer ikke lige nu — tjek at VPS'en kører (hermes-api på port 8787)."
+                  : "HERMES_API_URL + HERMES_API_SECRET mangler i miljøet. Sæt dem, så er chatten live."}
+              </span>
+              <button
+                className="cc-btn hermes-mini-btn"
+                style={{ justifySelf: "start" }}
+                disabled={healthChecking}
+                onClick={recheckHealth}
+              >
+                {healthChecking ? "Tjekker…" : "Tjek igen"}
+              </button>
             </div>
           )}
           {msgs.length === 0 && !offline && (
@@ -164,7 +209,7 @@ export default function HermesClient({
           )}
           {msgs.map((m, i) => (
             <div
-              key={i}
+              key={`${i}-${m.role}`}
               style={{
                 alignSelf: m.role === "you" ? "flex-end" : "flex-start",
                 maxWidth: "85%",
@@ -187,8 +232,8 @@ export default function HermesClient({
           )}
         </div>
 
-        {msgs.length === 0 && !offline && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 14px 10px" }}>
+        {!offline && (
+          <div className="hermes-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 14px 10px" }}>
             {QUICK.map((s) => (
               <button key={s} className="cc-chip" style={{ cursor: "pointer", border: "none" }} onClick={() => send(s)} disabled={sending}>
                 {s}
@@ -216,19 +261,9 @@ export default function HermesClient({
             placeholder={offline ? "Hermes er offline…" : "Skriv til Hermes… (Enter sender, Shift+Enter ny linje)"}
             disabled={sending || offline}
             rows={2}
+            maxLength={8000}
             aria-label="Skriv til Hermes"
-            style={{
-              flex: 1,
-              minWidth: 0,
-              resize: "none",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              padding: "9px 12px",
-              fontSize: 13.5,
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontFamily: "var(--font-body)",
-            }}
+            className="hermes-input"
           />
           <button type="submit" disabled={sending || offline || !input.trim()} className="cc-btn cc-btn-accent" style={{ padding: "0 16px" }}>
             Send
@@ -237,16 +272,17 @@ export default function HermesClient({
       </section>
 
       {/* ---- right: status, cron, sessions, dream ---- */}
-      <div style={{ display: "grid", gap: 14 }}>
+      <div className="hermes-side">
         <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 8 }}>
           <div className="cc-kicker">Status</div>
-          <SideRow label="hermes-api" value={initialHealth.reachable ? "online" : "offline"} ok={initialHealth.reachable} />
-          <SideRow label="Gateway (Telegram)" value={initialHealth.gatewayRunning ? "kører" : "stoppet"} ok={initialHealth.gatewayRunning} />
-          <SideRow label="Cron jobs" value={String(initialHealth.cronJobs)} ok={initialHealth.cronJobs > 0} />
+          <SideRow label="hermes-api" value={health.reachable ? "online" : "offline"} ok={health.reachable} />
+          <SideRow label="Gateway (Telegram)" value={health.gatewayRunning ? "kører" : "stoppet"} ok={health.gatewayRunning} />
+          <SideRow label="Cron jobs" value={String(health.cronJobs)} ok={health.cronJobs > 0} />
         </section>
 
         <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
           <div className="cc-kicker">Cron jobs</div>
+          {cronError && <div style={{ fontSize: 12, color: "var(--danger, #b4453a)" }}>{cronError}</div>}
           {jobs.length === 0 && <div className="cc-dim" style={{ fontSize: 12.5 }}>Ingen jobs (eller Hermes offline).</div>}
           {jobs.map((j) => (
             <div key={j.id} style={{ display: "grid", gap: 4, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
@@ -264,12 +300,11 @@ export default function HermesClient({
                 <div className="cc-dim" style={{ fontSize: 11.5 }}>Sidst kørt OK · {j.last_run_at.slice(0, 16).replace("T", " ")}</div>
               )}
               <div style={{ display: "flex", gap: 6 }}>
-                <button className="cc-btn" style={{ fontSize: 11.5, padding: "3px 9px" }} disabled={cronBusy === j.id} onClick={() => cronAction(j.id, "run")}>
+                <button className="cc-btn hermes-mini-btn" disabled={cronBusy === j.id} onClick={() => cronAction(j.id, "run")}>
                   Kør nu
                 </button>
                 <button
-                  className="cc-btn"
-                  style={{ fontSize: 11.5, padding: "3px 9px" }}
+                  className="cc-btn hermes-mini-btn"
                   disabled={cronBusy === j.id}
                   onClick={() => cronAction(j.id, j.state === "paused" ? "resume" : "pause")}
                 >
@@ -287,12 +322,12 @@ export default function HermesClient({
             <button
               key={s.id}
               onClick={() => openSession(s)}
+              className="hermes-session-btn"
               style={{
                 textAlign: "left",
                 background: s.id === sessionId ? "var(--accent-soft)" : "none",
                 border: "none",
                 borderRadius: 7,
-                padding: "6px 8px",
                 cursor: "pointer",
                 color: "var(--text)",
                 fontSize: 12.5,
@@ -318,7 +353,7 @@ export default function HermesClient({
             </button>
             {dreamOpen && (
               <div style={{ marginTop: 10, fontSize: 13 }}>
-                <MarkdownLite source={dream.body.slice(0, 4000)} />
+                <MarkdownLite source={trimAtParagraph(dream.body, 4000)} />
               </div>
             )}
           </section>

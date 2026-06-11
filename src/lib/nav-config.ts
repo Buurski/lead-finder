@@ -37,7 +37,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/claude", label: "Claude", icon: "Sparkles", hint: "Hjernen / byggeren" },
       { href: "/radar", label: "AI-Radar", icon: "Radar", hint: "Nyt AI vi kan bruge" },
-      { href: "/hermes", label: "Hermes", icon: "Radio", hint: "24/7 — kommer snart", soon: true },
+      { href: "/hermes", label: "Hermes", icon: "Radio", hint: "Buur Agent — 24/7 på VPS'en" },
       { href: "/spend", label: "AI Spend", icon: "CircleDollarSign", hint: "Forbrug pr. model" },
     ],
   },

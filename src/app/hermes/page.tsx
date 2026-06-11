@@ -22,7 +22,8 @@ async function latestDream(): Promise<{ path: string; body: string } | null> {
     const note = await readVaultNote(dreams[0], { preferRemote: true });
     if (!note?.body) return null;
     return { path: dreams[0], body: note.body };
-  } catch {
+  } catch (err) {
+    console.error("hermes: latestDream fejlede", err);
     return null;
   }
 }
