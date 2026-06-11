@@ -38,6 +38,13 @@ scp vps/hermes_api.py hermes-vps:/opt/hermes-api/hermes_api.py
 ssh hermes-vps "systemctl restart hermes-api"
 ```
 
+## Hærdning 2026-06-11 (aften, council-review)
+
+- Rate limit er nu **per chat-profil** (før: globalt 30/min — Lucas og Charlie
+  kunne blokere hinanden).
+- Session-locks bruger **LRU-eviction** (før: `clear()` ved 500, som smed
+  aktive locks ud og åbnede for parallelle CLI-kørsler på samme session).
+
 ## Fixes lavet 2026-06-11
 
 1. **Dreaming-cron fejlede 02:00 med 401** — gateway-processen var startet manuelt
