@@ -31,6 +31,23 @@ itself. So: **diversify the PICK** — restaurants + beauty/personal-care +
 service/trades/retail/professional, with beauty weighted up. The demo library is
 thin on non-food branches — note when a demo is a weak branch match.
 
+## Hermes (24/7-agent på VPS — live 2026-06-11)
+
+**Hermes Agent** (Nous Research, v0.16) kører 24/7 på Contabo-VPS'en
+(`ssh hermes-vps`). Telegram-gateway + natligt "dreaming"-cron (02:00) der
+skriver analyser til vaulten (`daily/<dato>-*.md`). Website-kanal: `/hermes`
+chatter synkront via **hermes-api-shimmen** (`vps/hermes_api.py`, port 8787,
+HMAC-auth; klient: `src/lib/hermes.ts`). Tre profiler: default ("Hjernen") /
+lucas / charlie. Samtalehistorik gemmes website-side i KV; "Gem i vault"
+eksporterer til `wiki/os/sessions/`.
+
+**Regler:** Hermes sender ALDRIG selv eksterne beskeder (kun drafts), og
+Claude rører ALDRIG Hermes' cron-config/.env — cron-idéer lægges i vaulten
+(`wiki/os/hermes-cron-ideer.md`), Lucas opretter selv. Shim-redeploy:
+se `vps/README.md`. Env: `HERMES_API_URL` + `HERMES_API_SECRET`.
+Fejlsøgning: `/api/hermes/status` er offentlig (uden basic auth) og viser
+`shimStatus` (0=ingen forbindelse, 401=forkert secret) + secret-fingerprint.
+
 ## Søsterprojekt: buur-cms (kunde-CMS — planlagt 2026-06-07)
 
 Et multi-tenant CMS hvor kunder selv retter deres site (tekst, billeder,
