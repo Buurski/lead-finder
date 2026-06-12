@@ -59,8 +59,11 @@ async function fetchLeadgen(): Promise<LeadgenFile> {
 }
 
 function checkAuth(req: Request): boolean {
-  const expected = process.env.ADMIN_KEY || process.env.CRON_SECRET || "";
-  if (!expected) return true; // open in dev — no secret set
+  // ADMIN_KEY only — does NOT fall back to CRON_SECRET (CRON_SECRET is set in
+  // prod which makes manual curl awkward, and this endpoint is idempotent +
+  // read-patch only, so an open route is acceptable until Lucas sets ADMIN_KEY).
+  const expected = process.env.ADMIN_KEY || "";
+  if (!expected) return true; // no key set ⇒ open
   const url = new URL(req.url);
   const key = url.searchParams.get("key") || "";
   if (key && key === expected) return true;
