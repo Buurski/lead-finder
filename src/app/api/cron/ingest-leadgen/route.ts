@@ -127,21 +127,28 @@ export async function GET(req: Request) {
     if (d.status === "pending" && d.leadId) pendingLeadIds.add(d.leadId);
   }
 
-  // Backfill: older leadgen-ingest drafts were queued BEFORE recipientEmail existed,
-  // so they have no email and the send route skips them ("ingen modtager-email").
-  // Match each such draft to its leadgen item by leadId (place_id||name) and patch
-  // the email in, so the already-queued batch becomes sendable without re-ingesting.
+  // Backfill: older drafts were queued BEFORE recipientEmail existed (incl. the
+  // 75 "cowork-leadgen" drafts that have NO leadId at all — the old engine wrote
+  // them straight to the queue without place_id). Match by leadId first, then by
+  // normalized NAME as fallback, so the already-queued batch becomes sendable
+  // without re-ingesting.
   const emailByLeadId = new Map<string, string>();
+  const emailByName = new Map<string, string>();
   for (const it of items) {
+    if (!hasUsableEmail(it.email ?? undefined)) continue;
+    const email = (it.email as string).trim();
     const lid = (it.place_id || it.name || "").toString();
-    if (lid && hasUsableEmail(it.email ?? undefined)) emailByLeadId.set(lid, (it.email as string).trim());
+    if (lid) emailByLeadId.set(lid, email);
+    if (it.name) emailByName.set(norm(it.name), email);
   }
   let backfilled = 0;
   for (const d of queue) {
-    if (d.source !== "leadgen-ingest") continue;
+    // Both source names treated equally — historical "cowork-leadgen" + current "leadgen-ingest".
+    if (d.source !== "leadgen-ingest" && d.source !== "cowork-leadgen") continue;
     if (d.status === "sent" || d.status === "rejected") continue;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
-    const email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
+    let email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
+    if (!email && d.name) email = emailByName.get(norm(d.name));
     if (email) {
       await updateDraft(d.id, { recipientEmail: email });
       backfilled++;
