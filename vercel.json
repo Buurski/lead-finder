@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/inbox-triage",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/ingest-leadgen",
+      "schedule": "30 6 * * *"
     }
   ]
 }
