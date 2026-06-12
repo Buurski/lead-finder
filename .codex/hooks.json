@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\Buur\\Documents\\Workflows\\lead-system\\.codex\\hooks\\block-dangerous.mjs'"
+          }
+        ]
+      }
+    ]
+  }
+}

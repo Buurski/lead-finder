@@ -462,3 +462,18 @@ ligger i council-rapporten (gem dem til outreach/brand-og-tone).
   2024, arxiv 2311.09735) · Search Engine Land (GEO) · SERoundtable
   (llms.txt afkræftet) · PSI API-docs/kvoter · Google Site Verification +
   GSC API docs · DataForSEO pricing · DebugBear (CWV-vægt).
+
+---
+
+## Opdatering 2026-06-10 — Nordic Minimal redesign + device preview
+
+Se `CMS_DEV_LOG.md` i `Workflows/buur-cms/` for komplet oversigt.
+
+**Hovedændringer:**
+- Nordic Minimal farvepalette (varm lysegrå + kobber, OKLCH)
+- Sidebar 380px → 300px (bredere preview)
+- Grå/glass baggrunde → solid `--surface` overalt
+- AI input formindsket til smal sidebar
+- Preview device toggle: viewport=1440/768/375, display:flex tvang fjernet
+- Drag-resize split pane forsøgt → afvist (for mange fejl)
+- Commit `bc877b7` (latest)

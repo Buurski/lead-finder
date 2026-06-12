@@ -192,6 +192,14 @@ class ACPPool:
             return
         with self.buf_lock:
             buf = self.buffers.setdefault(sid, {"text": "", "done": False, "result": None})
+            if not buf["text"]:
+                # Minimax lækker af og til et hængende tænke-tag som første
+                # chunk(s) ("\n</think>\n", tomme linjer) — drop dem indtil
+                # rigtigt indhold starter.
+                lead = chunk.strip()
+                if lead in ("", "<think>", "</think>"):
+                    return
+                chunk = chunk.lstrip("\n")
             buf["text"] += chunk
 
     def _send_msg(self, msg: dict) -> bool:
