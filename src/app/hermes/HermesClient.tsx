@@ -134,6 +134,20 @@ export default function HermesClient({
     }
   }
 
+  // Opdatér den sidste hermes-besked (bruges af streaming-deltas).
+  function patchLastHermes(updater: (prev: string) => string) {
+    setMsgs((m) => {
+      const next = [...m];
+      for (let i = next.length - 1; i >= 0; i--) {
+        if (next[i].role === "hermes") {
+          next[i] = { ...next[i], text: updater(next[i].text) };
+          break;
+        }
+      }
+      return next;
+    });
+  }
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || sending) return;
@@ -142,11 +156,49 @@ export default function HermesClient({
     setMsgs((m) => [...m, { role: "you", text: q, ts: now }]);
     setSending(true);
     try {
-      const res = await fetch("/api/hermes/chat", {
+      // Streaming først — første token efter ~3s i stedet for 14-18s.
+      const res = await fetch("/api/hermes/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: q, profile, sessionId }),
       });
+      if (res.ok && res.body && (res.headers.get("content-type") ?? "").includes("event-stream")) {
+        setMsgs((m) => [...m, { role: "hermes", text: "", ts: new Date().toISOString() }]);
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let got = false;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.indexOf("\n\n")) >= 0) {
+            const event = buf.slice(0, idx).trim();
+            buf = buf.slice(idx + 2);
+            if (!event.startsWith("data: ")) continue;
+            let obj: { text?: string; error?: string; done?: boolean };
+            try {
+              obj = JSON.parse(event.slice(6));
+            } catch {
+              continue;
+            }
+            if (typeof obj.text === "string" && obj.text) {
+              got = true;
+              const delta = obj.text;
+              patchLastHermes((prev) => prev + delta);
+            }
+            if (obj.error) {
+              got = true;
+              const err = obj.error;
+              patchLastHermes((prev) => prev || `⚠ ${err}`);
+            }
+          }
+        }
+        if (!got) patchLastHermes((prev) => prev || "⚠ Hermes svarede ikke — prøv igen.");
+        return;
+      }
+      // Fallback: gammel blocking JSON-rute.
       const d = await res.json().catch(() => ({}));
       const reply = d.ok ? d.reply : `⚠ ${d.error ?? "Hermes svarede ikke"}`;
       setMsgs((m) => [...m, { role: "hermes", text: reply, ts: new Date().toISOString() }]);

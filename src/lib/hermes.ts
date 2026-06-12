@@ -149,6 +149,38 @@ export async function hermesCronAction(
   return { ok: false, error: data?.error ?? `hermes-api svarede ${status || "ikke"}` };
 }
 
+// Streaming-variant: returnerer rå Response (SSE) fra shimmens
+// /api/chat/stream, eller null hvis ikke konfigureret / ingen forbindelse.
+// Events: {"status":...} → {"text":"<delta>"}* → {"done":true,"full_text":...}
+export async function hermesChatStreamRaw(
+  message: string,
+  profile: HermesProfile,
+  sessionId: string,
+): Promise<Response | null> {
+  if (!hermesConfigured()) return null;
+  const base = cleanEnv(process.env.HERMES_API_URL).replace(/\/$/, "");
+  const path = "/api/chat/stream";
+  const raw = JSON.stringify({ message, profile, session_id: sessionId });
+  const { ts, sig } = sign("POST", path, raw);
+  try {
+    const res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: {
+        "X-Timestamp": ts,
+        Authorization: `Bearer ${sig}`,
+        "Content-Type": "application/json",
+      },
+      body: raw,
+      cache: "no-store",
+      signal: AbortSignal.timeout(185_000),
+    });
+    if (!res.ok || !res.body) return null;
+    return res;
+  } catch {
+    return null;
+  }
+}
+
 export async function hermesChat(
   message: string,
   profile: HermesProfile,
