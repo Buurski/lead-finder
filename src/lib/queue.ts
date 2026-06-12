@@ -26,6 +26,11 @@ export interface QueueDraft {
   professionalism: string; // verdict reason, for context on the card
   subject: string;
   body: string;
+  // Direct recipient email, set when the draft's lead has NO Sheets row (e.g. the
+  // Cowork/leadgen ingest — those candidates never hit Sheets). The send route
+  // prefers this over a Sheets lookup, so an ingest lead can actually be mailed
+  // instead of being skipped with "lead ikke fundet"/"no email".
+  recipientEmail?: string;
   status: DraftStatus;
   source: string; // "daily-engine" | "write-to-x"
   createdAt: string;
@@ -99,7 +104,7 @@ export async function appendDrafts(
 // "approve" only marks the draft approved; real sending is a later layer.
 export async function updateDraft(
   id: string,
-  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[] }
+  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string }
 ): Promise<QueueDraft | null> {
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
@@ -110,6 +115,7 @@ export async function updateDraft(
     ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
     ...(patch.body !== undefined ? { body: patch.body } : {}),
     ...(patch.demoPair !== undefined ? { demoPair: patch.demoPair } : {}),
+    ...(patch.recipientEmail !== undefined ? { recipientEmail: patch.recipientEmail } : {}),
     updatedAt: new Date().toISOString(),
   };
   drafts[idx] = next;

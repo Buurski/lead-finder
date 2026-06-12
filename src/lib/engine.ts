@@ -54,6 +54,10 @@ export interface EngineOptions {
   limit?: number;
   dryRun?: boolean;
   leadName?: string;
+  // Restrict the daily-batch PICK to these exact lead names (lower-cased match).
+  // Used by /leadgen's "Lav udkast på valgte" — Lucas hand-picks rows in the feed
+  // and only those become drafts. Still email-channel only (the engine drafts emails).
+  allowNames?: string[];
   // When false, run the full loop but DO NOT write to the approval queue. Used by
   // the web "preview" action so Lucas can see what the engine would produce before
   // an explicit confirm. Defaults to true so the CLI keeps filling the queue.
@@ -222,8 +226,13 @@ export function enrichedComposite(lead: Lead): number {
 
 // PICK — get candidate leads. Tries Sheets; falls back to fixture on any error.
 async function pickLeads(
-  leadName: string | undefined
+  leadName: string | undefined,
+  allowNames?: string[]
 ): Promise<{ leads: Array<ResearchLead & { id?: string }>; source: "sheets" | "fixture" }> {
+  // Exact-name allowlist (lower-cased) for the "draft selected" path.
+  const allow = allowNames && allowNames.length
+    ? new Set(allowNames.map((n) => n.trim().toLowerCase()))
+    : null;
   try {
     const { getLeads } = await import("./sheets.ts");
     const all = await getLeads();
@@ -250,13 +259,15 @@ async function pickLeads(
         // + email-channel only: the engine drafts EMAILS, so a lead must have a
         // usable email. No-email leads (Facebook → Messenger, phone → SMS) are
         // handled by their own channels and must never become an email draft.
-        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email")
+        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email"
+          && (!allow || allow.has(lead.name.trim().toLowerCase())))
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
       // Spread the batch across branch families so it's a MIX, not all one
       // branch — the single best lead still leads, then picks rotate branches.
-      candidates = diversifyByFamily(candidates, (c) => c.branch);
+      // Skip the family spread for an explicit allowlist: Lucas already chose the rows.
+      if (!allow) candidates = diversifyByFamily(candidates, (c) => c.branch);
     }
     return { leads: candidates, source: "sheets" };
   } catch {
@@ -275,7 +286,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   const useLLM = !dryRun; // LLM lift only on real runs (and only if a key is set; see ai.ts)
   const voice = loadVoiceGuide();
 
-  const { leads, source } = await pickLeads(opts.leadName);
+  const { leads, source } = await pickLeads(opts.leadName, opts.allowNames);
 
   // Safe progress emitter — never let an observer throw break a run.
   const emit = (ev: EngineProgress) => {

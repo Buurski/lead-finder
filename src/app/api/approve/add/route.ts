@@ -41,8 +41,11 @@ interface InDraft {
   professionalism?: string;
   subject?: string;
   body?: string;
+  recipientEmail?: string;
   source?: string;
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
       professionalism: d.professionalism || "",
       subject: (d.subject || `En idé til ${name}`).trim(),
       body,
+      recipientEmail: d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : undefined,
       status: "pending",
       source: d.source || "cowork-leadgen",
       createdAt: now,

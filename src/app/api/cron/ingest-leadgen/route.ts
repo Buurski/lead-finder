@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { appendDrafts, newDraftId, readQueue } from "@/lib/queue";
+import { appendDrafts, newDraftId, readQueue, updateDraft } from "@/lib/queue";
 import type { QueueDraft } from "@/lib/queue";
 import { composeColdEmail } from "@/lib/compose";
 import type { ComposeLead } from "@/lib/compose";
 import { getLeads } from "@/lib/sheets";
+import { hasUsableEmail } from "@/lib/leads/channel";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -126,6 +127,27 @@ export async function GET(req: Request) {
     if (d.status === "pending" && d.leadId) pendingLeadIds.add(d.leadId);
   }
 
+  // Backfill: older leadgen-ingest drafts were queued BEFORE recipientEmail existed,
+  // so they have no email and the send route skips them ("ingen modtager-email").
+  // Match each such draft to its leadgen item by leadId (place_id||name) and patch
+  // the email in, so the already-queued batch becomes sendable without re-ingesting.
+  const emailByLeadId = new Map<string, string>();
+  for (const it of items) {
+    const lid = (it.place_id || it.name || "").toString();
+    if (lid && hasUsableEmail(it.email ?? undefined)) emailByLeadId.set(lid, (it.email as string).trim());
+  }
+  let backfilled = 0;
+  for (const d of queue) {
+    if (d.source !== "leadgen-ingest") continue;
+    if (d.status === "sent" || d.status === "rejected") continue;
+    if (d.recipientEmail && d.recipientEmail.trim()) continue;
+    const email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
+    if (email) {
+      await updateDraft(d.id, { recipientEmail: email });
+      backfilled++;
+    }
+  }
+
   // Gate 2: names already CONTACTED in Sheets. Sandbox couldn't dedup against the
   // ~5000 Sheets rows, so we do it here. "Contacted" = status moved off "new", or
   // an email was sent / a reply tracked. Best-effort: no Sheets creds ⇒ skip gate.
@@ -196,6 +218,8 @@ export async function GET(req: Request) {
       professionalism: `leadgen fitScore ${it.fitScore ?? "?"} — ${it.gap || ""}`.trim(),
       subject: composed.subject,
       body: composed.text,
+      // Carry the email so the send route can reach this lead (no Sheets row exists).
+      recipientEmail: hasUsableEmail(it.email ?? undefined) ? (it.email as string).trim() : undefined,
       status: "pending",
       source: "leadgen-ingest",
       createdAt: nowIso,
@@ -212,6 +236,7 @@ export async function GET(req: Request) {
     fetchedAt: file.at ?? null,
     candidates: items.length,
     added: drafts.length,
+    backfilled,
     skippedPending,
     skippedContacted,
     skippedVoice,

@@ -106,26 +106,83 @@ export default function ApprovePage() {
     return { pending, approved, decided, all: drafts.length };
   }, [drafts]);
 
-  // Send the approved drafts (TEST-mode → buur.aigro; nothing reaches a lead).
+  // Send the approved drafts. The route streams SSE progress, so the UI shows a
+  // live "i/N · sender…" line while it works (a run takes minutes — paced sends).
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
+  const [sendProg, setSendProg] = useState<{ processed: number; total: number; sent: number; failed: number; line: string } | null>(null);
   const sendApproved = useCallback(async () => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
     if (counts.approved === 0) return;
     if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
     setSendBusy(true);
+    setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
     try {
       const res = await fetch("/api/approve/send", { method: "POST" });
-      const d = await res.json();
-      const msg = d.paused
-        ? (d.error ?? "Afsendelse er på pause.")
-        : d.busy
-          ? (d.error ?? "Afsendelse kører allerede — vent til den er færdig.")
-          : res.ok
-            ? `${d.sent ?? 0} sendt${d.failed ? ` · ${d.failed} fejlede` : ""}${d.remaining ? ` · ${d.remaining} venter — tryk Send igen for næste hold` : ""}${Array.isArray(d.skipped) && d.skipped.length ? ` · ${d.skipped.length} sprunget over (${d.skipped.slice(0, 3).map((s: { name: string; reason: string }) => `${s.name}: ${s.reason}`).join("; ")}${d.skipped.length > 3 ? "…" : ""})` : ""}.`
-            : (d.error ?? "Kunne ikke sende.");
-      setSendMsg(msg);
+      const ct = res.headers.get("content-type") || "";
+
+      // Pre-flight guards (pause / busy / no-creds / nothing-to-send) return JSON.
+      if (ct.includes("application/json") || !res.body) {
+        const d = await res.json().catch(() => ({}));
+        const msg = d.paused
+          ? (d.error ?? "Afsendelse er på pause.")
+          : d.busy
+            ? (d.error ?? "Afsendelse kører allerede — vent til den er færdig.")
+            : res.ok
+              ? `${d.sent ?? 0} sendt${d.note ? ` — ${d.note}` : ""}.`
+              : (d.error ?? "Kunne ikke sende.");
+        setSendMsg(msg);
+        await load();
+        return;
+      }
+
+      // SSE stream — parse "data: {...}" frames and update the progress line live.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let sent = 0, failed = 0, processed = 0, total = 0;
+      const skippedNames: { name: string; reason: string }[] = [];
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split("\n\n");
+        buf = frames.pop() ?? "";
+        for (const frame of frames) {
+          const line = frame.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          let ev: Record<string, unknown>;
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          const t = ev.type as string;
+          if (t === "start") {
+            total = Number(ev.total) || 0;
+            setSendProg({ processed: 0, total, sent: 0, failed: 0, line: `0/${total} · starter…` });
+          } else if (t === "sending") {
+            processed = Number(ev.index) || processed;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · sender til ${ev.name}…` });
+          } else if (t === "sent") {
+            processed = Number(ev.index) || processed; sent = Number(ev.n) || sent + 1;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} sendt ✓` });
+          } else if (t === "failed") {
+            processed = Number(ev.index) || processed; failed++;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} fejlede ✗` });
+          } else if (t === "skipped" || t === "capped") {
+            processed = Number(ev.index) || processed;
+            if (t === "skipped") skippedNames.push({ name: String(ev.name), reason: String(ev.reason ?? "") });
+            const tail = t === "capped" ? "venter (næste hold)" : `sprunget over (${ev.reason})`;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} ${tail}` });
+          } else if (t === "done") {
+            const dSent = Number(ev.sent) || sent;
+            const dFailed = Number(ev.failed) || failed;
+            const dRemaining = Number(ev.remaining) || 0;
+            const sk = Array.isArray(ev.skipped) ? (ev.skipped as { name: string; reason: string }[]) : skippedNames;
+            const msg = `${dSent} sendt${dFailed ? ` · ${dFailed} fejlede` : ""}${dRemaining ? ` · ${dRemaining} venter — tryk Send igen for næste hold` : ""}${sk.length ? ` · ${sk.length} sprunget over (${sk.slice(0, 3).map((s) => `${s.name}: ${s.reason}`).join("; ")}${sk.length > 3 ? "…" : ""})` : ""}.`;
+            setSendMsg(msg);
+            setSendProg({ processed: total, total, sent: dSent, failed: dFailed, line: `${total}/${total} · færdig` });
+          }
+        }
+      }
       await load();
     } catch {
       setSendMsg("Netværksfejl ved afsendelse.");
@@ -220,8 +277,19 @@ export default function ApprovePage() {
             <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse</div>
             <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
               Godkendt = markeret. Tryk Send for at sende <strong>rigtige mails</strong> til virksomhederne. Pause/halt-flag + kontaktet-tjek blokerer automatisk.
-              {sendMsg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
+              {sendMsg && !sendProg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
             </div>
+            {sendProg && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ height: 7, borderRadius: 99, background: "var(--bg-2)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${sendProg.total ? Math.round((sendProg.processed / sendProg.total) * 100) : 0}%`, background: "var(--green)", transition: "width .3s ease" }} />
+                </div>
+                <div style={{ display: "flex", gap: 10, fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                  <span style={{ color: "var(--text)", fontWeight: 600 }}>{sendProg.line}</span>
+                  <span>· {sendProg.sent} sendt{sendProg.failed ? ` · ${sendProg.failed} fejlede` : ""}</span>
+                </div>
+              </div>
+            )}
           </div>
           <button onClick={sendApproved} disabled={sendBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
             {sendBusy ? "Sender…" : `Send godkendte (${counts.approved})`}
