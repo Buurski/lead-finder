@@ -60,14 +60,18 @@ export default function CronHealth() {
     try {
       const r = await fetch(`/api/cron/run/${name}`, { method: "POST" });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+      if (!r.ok || j.ok === false) const errMsg = j.error || `HTTP ${r.status}`;
+      if (r.status === 401) {
+        throw new Error("Vercel Auth blokerer (401). Slå Standard Protection fra i Vercel Settings → Deployment Protection, eller test fra main-prod URL.");
+      }
+      throw new Error(errMsg);
       setToast({ kind: "ok", text: `${name} kørt ✓` });
       await load();
     } catch (e) {
       setToast({ kind: "err", text: `${name} fejlede: ${e instanceof Error ? e.message : "ukendt"}` });
     } finally {
       setRunning(null);
-      setTimeout(() => setToast(null), 4000);
+      setTimeout(() => setToast(null), 15000);
     }
   };
 
@@ -84,7 +88,7 @@ export default function CronHealth() {
 
       {err && <div className="cc-dim" style={{ fontSize: 12.5, color: "var(--amber)" }}>Kunne ikke hente /api/cron/health: {err}</div>}
       {toast && (
-        <div style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: toast.kind === "ok" ? "var(--accent-ink)" : "var(--amber)", color: toast.kind === "ok" ? "var(--bg)" : "var(--text)" }}>
+        <div style={{ position: "sticky", top: 0, padding: "10px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 600, textAlign: "center", background: toast.kind === "ok" ? "var(--accent-ink)" : "var(--amber)", color: toast.kind === "ok" ? "var(--bg)" : "var(--text)", boxShadow: "var(--shadow-soft)" }}>
           {toast.text}
         </div>
       )}
