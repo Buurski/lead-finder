@@ -1,21 +1,11 @@
 // GET /api/cron/health — last-run status for every registered Vercel cron.
-// Reads the JSONL log each cron route appends on success/failure and returns
-// the latest entry per cron, plus a top-level "ok" (false if any failed).
+// Reads the persistent cron-log (Vercel KV in prod, .send_queue/cron-log.jsonl
+// locally) and returns the latest entry per cron plus a top-level ok flag.
 // No auth: cheap polling endpoint for the Mission Control widget.
-import fs from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
+import { readCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
-
-interface CronLogEntry {
-  cron: string;
-  at: string;
-  ok: boolean;
-  durationMs: number;
-  note?: string;
-  error?: string;
-}
 
 interface CronStatus {
   cron: string;
@@ -29,33 +19,15 @@ interface CronStatus {
 }
 
 const SCHEDULE: Record<string, string> = {
-  "pre-cleanup": "30 04 * * *",
-  "sync-replies": "45 04 * * *",
-  "engine": "00 05 * * *",
+  "pre-cleanup":    "30 04 * * *",
+  "sync-replies":   "30 04 * * *",
+  "engine":         "00 * * * *",
+  "inbox-triage":   "00 * * * *",
+  "ingest-leadgen": "30 06 * * *",
 };
 
-function logPath(): string {
-  return path.join(process.cwd(), ".send_queue", "cron-log.jsonl");
-}
-
-function readTail(max = 500): CronLogEntry[] {
-  const p = logPath();
-  if (!fs.existsSync(p)) return [];
-  let raw: string;
-  try { raw = fs.readFileSync(p, "utf8"); } catch { return []; }
-  const lines = raw.split("\n").filter(Boolean);
-  const out: CronLogEntry[] = [];
-  for (let i = Math.max(0, lines.length - max); i < lines.length; i++) {
-    try {
-      const e = JSON.parse(lines[i]);
-      if (e && typeof e.cron === "string" && typeof e.at === "string") out.push(e);
-    } catch { /* skip malformed */ }
-  }
-  return out;
-}
-
-function summarize(entries: CronLogEntry[]): { overallOk: boolean; crons: CronStatus[] } {
-  const latest = new Map<string, CronLogEntry>();
+function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {
+  const latest = new Map<string, typeof entries[number]>();
   for (const e of entries) {
     const prev = latest.get(e.cron);
     if (!prev || e.at > prev.at) latest.set(e.cron, e);
@@ -78,7 +50,7 @@ function summarize(entries: CronLogEntry[]): { overallOk: boolean; crons: CronSt
 }
 
 export async function GET() {
-  const entries = readTail();
+  const entries = await readCronLog();
   const { overallOk, crons } = summarize(entries);
   return NextResponse.json({ ok: overallOk, generatedAt: new Date().toISOString(), crons });
 }
