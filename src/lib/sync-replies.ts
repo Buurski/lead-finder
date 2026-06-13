@@ -86,7 +86,7 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
     ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
     auth: { user: process.env.GMAIL_USER!, pass: process.env.GMAIL_APP_PASSWORD! },
     logger: false,
-    connectTimeout: CONNECT_TIMEOUT_MS,
+    connectionTimeout: CONNECT_TIMEOUT_MS,
     socketTimeout: SOCKET_TIMEOUT_MS,
   });
 

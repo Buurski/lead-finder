@@ -4,27 +4,28 @@
 // (optional) — same gate as the scheduled caller.
 import { NextResponse } from "next/server";
 import { withCronLog } from "@/lib/cron-log";
+import * as preCleanupRoute from "@/app/api/cron/pre-cleanup/route";
+import * as engineRoute from "@/app/api/cron/engine/route";
+import { syncReplies } from "@/lib/sync-replies";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const KNOWN: Record<string, () => Promise<unknown>> = {
   "pre-cleanup": async () => {
-    const mod = await import("../pre-cleanup/route");
-    const r = await mod.GET();
+    const r = await preCleanupRoute.GET();
     const j = await r.json().catch(() => ({}));
     return { checked: j.checked ?? 0, recovered: j.recovered ?? 0 };
   },
   "sync-replies": async () => {
-    const { syncReplies } = await import("@/lib/sync-replies");
     const r = await syncReplies();
     return { synced: r.synced, checked: r.checked };
   },
   "engine": async () => {
-    const mod = await import("../engine/route");
-    // Build a Request so the route's own secret/force logic still runs.
-    const fakeReq = new Request("http://x/api/cron/engine?force=1", { headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` } });
-    const r = await mod.GET(fakeReq);
+    const fakeReq = new Request("http://x/api/cron/engine?force=1", {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
+    });
+    const r = await engineRoute.GET(fakeReq);
     return await r.json().catch(() => ({}));
   },
 };
