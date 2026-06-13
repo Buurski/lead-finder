@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { syncReplies } from "@/lib/sync-replies";
+import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/sync-replies — the automatic reply-sync hook for Vercel Cron.
-//
-// Runs every morning (see vercel.json) so inbound replies land in the CRM by
-// themselves — no need to open the dashboard and press the button. Like the
-// engine cron it shares an optional CRON_SECRET guard. It only reads the inbox
-// and flips matching leads to "replied"; it never sends mail.
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -18,9 +14,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
   }
-
   try {
-    const { synced, checked, names } = await syncReplies();
+    const { synced, checked, names } = await withCronLog("sync-replies", async () => {
+      const r = await syncReplies();
+      return { result: r, note: `tjekket ${r.checked} · ${r.synced} nye svar`, meta: { synced: r.synced, checked: r.checked } };
+    });
     return NextResponse.json({ ok: true, synced, checked, names, note: "svar synket — ingen mail sendt" });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });

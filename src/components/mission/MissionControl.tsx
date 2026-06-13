@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
+import CronHealth from "./CronHealth";
 import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
@@ -148,6 +149,7 @@ function TodayTab({ s }: { s: DeckSummary }) {
           <PipelineMini s={s} />
         </div>
       </div>
+      <CronHealth />
       <PulseCard s={s} />
     </div>
   );
