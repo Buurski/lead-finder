@@ -1,59 +1,73 @@
 // sync-replies.ts — shared inbound-reply sync (Del 4.x).
 //
 // Scans the Gmail INBOX over IMAP and marks any lead who has written to us as
-// "replied" in the Sheet. This is the single source of truth used by BOTH the
-// manual dashboard button (POST /api/email/sync-replies) AND the Vercel cron
-// (GET /api/cron/sync-replies), so the behaviour can never drift between them.
+// "replied" in the Sheet. Single source of truth for the manual dashboard
+// button AND the Vercel cron, so behaviour can never drift between them.
 //
-// Coverage note (the RR Studio fix): we no longer require emailSentAt. ANY lead
-// that has an email address is a candidate — so a prospect we contacted manually
-// from Gmail (and later added as a lead) gets their reply caught too, not just
-// leads the engine emailed. We still skip leads already marked "replied".
-//
-// Strip-safe: no Next.js imports, so node CLIs / cron can import it directly.
+// IMAP robustness (Vercel cron fix, 2026-06-13):
+//   - explicit connect + socket timeouts so a hung Gmail never runs past
+//     Vercel's maxDuration. Serverless can kill unhandled hangs at the platform
+//     level but the runtime may return an empty body, so cron-log would show
+//     "ok" while the inbox was never read. Hard timeouts close that gap.
+//   - one automatic retry on transient network failures (ECONNRESET, ETIMEDOUT,
+//     EAI_AGAIN, socket hang up).
+//   - guaranteed logout in finally so we never leak sockets between runs.
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadEmailStatus } from "./sheets.ts";
 
 export interface SyncRepliesResult {
-  synced: number;   // number of leads newly flipped to "replied"
-  checked: number;  // number of candidate leads scanned against
-  names?: string[]; // names of the newly-replied leads (for journaling / brief)
+  synced: number;
+  checked: number;
+  names?: string[];
 }
 
-// How far back to scan when we have no send-date to anchor on, and the hard
-// ceiling so a stray old lead can never make us scan years of INBOX.
 const FALLBACK_DAYS = 30;
 const MAX_LOOKBACK_DAYS = 60;
+const CONNECT_TIMEOUT_MS = 15_000;
+const SOCKET_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 1;
+
+function isTransient(err: unknown): boolean {
+  const m = err instanceof Error ? err.message : String(err);
+  return /ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|ENOTFOUND/i.test(m);
+}
+
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try { return await fn(); }
+    catch (err) {
+      lastErr = err;
+      if (attempt < MAX_RETRIES && isTransient(err)) {
+        console.warn(`[sync-replies] ${label} transient (${(err as Error).message}) — retrying in 2s`);
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
 
 export async function syncReplies(): Promise<SyncRepliesResult> {
   const leads = await getLeads();
-
-  // Candidates: any lead with an email that isn't already marked replied.
   const candidates = leads
     .map((lead, rowIndex) => ({ lead, rowIndex }))
     .filter(({ lead }) => lead.email && lead.emailStatus !== "replied");
-
-  if (candidates.length === 0) {
-    return { synced: 0, checked: 0, names: [] };
-  }
+  if (candidates.length === 0) return { synced: 0, checked: 0, names: [] };
 
   const emailToRow = new Map(
-    candidates.map(({ lead, rowIndex }) => [lead.email.toLowerCase().trim(), rowIndex])
+    candidates.map(({ lead, rowIndex }) => [lead.email.toLowerCase().trim(), rowIndex]),
   );
   const rowToName = new Map(candidates.map(({ lead, rowIndex }) => [rowIndex, lead.name]));
 
-  // Anchor the scan window on the earliest real send date when we have one,
-  // otherwise fall back to a bounded recent window.
   const sendDates = candidates
-    .map(({ lead }) => lead.emailSentAt)
-    .filter(Boolean)
-    .map((d) => new Date(d))
-    .filter((d) => !Number.isNaN(d.getTime()));
+    .map(({ lead }) => lead.emailSentAt).filter(Boolean)
+    .map((d) => new Date(d)).filter((d) => !Number.isNaN(d.getTime()));
 
   const now = new Date();
   const floor = new Date(now);
   floor.setDate(floor.getDate() - MAX_LOOKBACK_DAYS);
-
   let since: Date;
   if (sendDates.length > 0) {
     since = new Date(sendDates.reduce((a, b) => (a < b ? a : b)));
@@ -64,39 +78,37 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
   }
   if (since < floor) since = floor;
 
+  const repliedRows = new Set<number>();
   const client = new ImapFlow({
     host: "imap.gmail.com",
     port: 993,
     secure: true,
-    // Local-dev escape hatch: machines behind a TLS-intercepting AV/proxy see a
-    // self-signed cert in the chain. Opt-in only (default stays fully verified).
     ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
-    auth: {
-      user: process.env.GMAIL_USER!,
-      pass: process.env.GMAIL_APP_PASSWORD!,
-    },
+    auth: { user: process.env.GMAIL_USER!, pass: process.env.GMAIL_APP_PASSWORD! },
     logger: false,
+    connectTimeout: CONNECT_TIMEOUT_MS,
+    socketTimeout: SOCKET_TIMEOUT_MS,
   });
 
-  const repliedRows = new Set<number>();
-
-  await client.connect();
   try {
-    await client.mailboxOpen("INBOX");
-    for await (const msg of client.fetch({ since }, { envelope: true })) {
-      const from = msg.envelope?.from?.[0]?.address?.toLowerCase().trim();
-      if (from && emailToRow.has(from)) {
-        repliedRows.add(emailToRow.get(from)!);
+    await withRetry(() => client.connect(), "imap-connect");
+    try {
+      await client.mailboxOpen("INBOX");
+      for await (const msg of client.fetch({ since }, { envelope: true })) {
+        const from = msg.envelope?.from?.[0]?.address?.toLowerCase().trim();
+        if (from && emailToRow.has(from)) repliedRows.add(emailToRow.get(from)!);
       }
+    } finally {
+      try { await client.logout(); } catch { /* already closed */ }
     }
-  } finally {
-    await client.logout();
+  } catch (err) {
+    try { await client.logout(); } catch { /* ignore */ }
+    throw err;
   }
 
   for (const rowIndex of repliedRows) {
     await updateLeadEmailStatus(rowIndex, { emailStatus: "replied" });
   }
-
   return {
     synced: repliedRows.size,
     checked: candidates.length,
