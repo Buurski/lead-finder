@@ -5,6 +5,8 @@ import { store } from "@/lib/store";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
+import { bizKey } from "@/lib/leads/suppress";
+import { isExcludedBranch } from "@/lib/leads/branch-policy";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -93,6 +95,20 @@ export async function POST(req: Request) {
   const candidates = force
     ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
     : drafts.filter((d) => d.status === "approved");
+
+  // Already-sent ledger from the queue itself: a business with a "sent" draft must
+  // never be mailed again, even via a different draft. Covers ingest/leadgen leads
+  // that have NO Sheets row (so the emailSentAt guard below can't see them) and the
+  // place_id↔Sheets-row leadId mismatch. Keyed by leadId + normalized name+city.
+  const sentIds = new Set<string>();
+  const sentKeys = new Set<string>();
+  for (const d of drafts) {
+    if (d.status !== "sent") continue;
+    if (d.leadId) sentIds.add(d.leadId);
+    const k = bizKey(d.name, d.city);
+    if (k) sentKeys.add(k);
+  }
+
   if (candidates.length === 0) {
     await store.delete(LOCK_KEY).catch(() => {});
     return NextResponse.json({ ok: true, sent: 0, failed: 0, skipped: [], note: "Ingen udkast at sende." });
@@ -153,6 +169,20 @@ export async function POST(req: Request) {
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet" });
             continue;
           }
+          // 2a. Hard branch exclude — medical/health (tandlæge/læge/…). Catches drafts
+          // already queued BEFORE the ingress gate existed, so they can never go out.
+          if (isExcludedBranch(d.branch, d.name)) {
+            skipped.push({ name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
+            continue;
+          }
+          // 2b. Already-sent ledger — a sibling draft for this business already went
+          // out (catches ingest leads with no Sheets row + place_id mismatch).
+          if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+            skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede sendt (kø-historik)" });
+            continue;
+          }
           const decision = canSendTo({
             name: lead?.name ?? d.name,
             branch: lead?.branch ?? d.branch,
@@ -185,6 +215,10 @@ export async function POST(req: Request) {
               text: d.body,
             });
             await updateDraft(d.id, { status: "sent" });
+            // Add to the in-run ledger so a same-business sibling later in this run skips.
+            if (d.leadId) sentIds.add(d.leadId);
+            const sk = bizKey(d.name, d.city);
+            if (sk) sentKeys.add(sk);
             // Stamp Sheets only when there IS a row (ingest leads have none).
             if (lead) {
               const rowIndex = parseInt(lead.id, 10) - 2;
