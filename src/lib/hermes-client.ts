@@ -26,6 +26,7 @@ export interface HermesCronRun {
   size: number;
   status: "ok" | "error";
   error: string;
+  key_points?: string[];
 }
 
 export interface HermesCronJobWithRuns extends HermesCronJob {

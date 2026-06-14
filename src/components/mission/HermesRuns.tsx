@@ -113,23 +113,31 @@ export default function HermesRuns() {
               </button>
               {isOpen && j.runs.length > 0 && (
                 <div style={{ borderTop: "1px solid var(--border)", padding: "6px 10px", display: "grid", gap: 4 }}>
-                  {j.runs.map((r) => (
-                    <button
-                      key={r.file}
-                      onClick={() => setOpenRun(r)}
-                      style={{
-                        display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, alignItems: "center",
-                        background: "none", border: "none", padding: "4px 6px", borderRadius: 6, cursor: "pointer",
-                        textAlign: "left", color: "inherit", fontSize: 11.5,
-                      }}
-                    >
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{fmtRunTs(r.timestamp)}</span>
-                      <span style={{ color: r.status === "ok" ? "var(--accent-ink)" : "var(--amber)", fontWeight: 600 }}>
-                        {r.status === "ok" ? "✓" : "✗"}
-                      </span>
-                      <span className="cc-dim">{r.size}b</span>
-                    </button>
-                  ))}
+                  {j.runs.map((r) => {
+                    return (
+                    <div key={r.file} style={{ borderBottom: "1px solid var(--border-soft)", padding: "4px 6px" }}>
+                      <button
+                        onClick={() => setOpenRun(r)}
+                        style={{
+                          display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, alignItems: "center",
+                          background: "none", border: "none", padding: "4px 0", cursor: "pointer",
+                          textAlign: "left", color: "inherit", fontSize: 11.5, width: "100%",
+                        }}
+                      >
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{fmtRunTs(r.timestamp)}</span>
+                        <span style={{ color: r.status === "ok" ? "var(--accent-ink)" : "var(--amber)", fontWeight: 600 }}>
+                          {r.status === "ok" ? "✓" : "✗"}
+                        </span>
+                        <span className="cc-dim">{r.size}b</span>
+                      </button>
+                      {r.key_points && r.key_points.length > 0 && (
+                        <ul style={{ margin: "2px 0 4px 18px", padding: 0, fontSize: 11, lineHeight: 1.4, color: "var(--text-muted)" }}>
+                          {r.key_points.map((kp, i) => <li key={i} style={{ marginBottom: 2 }}>{kp}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
