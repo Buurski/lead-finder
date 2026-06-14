@@ -31,6 +31,10 @@ for (const t of DESIGN_TEMPLATES) {
 - ink \`${t.palette.ink}\`
 - accent \`${t.palette.accent}\` (ink: \`${t.palette.accentInk}\`)
 - ${t.palette.note}
+${t.hexPalette ? `
+**Hex-palet (real site):** bg \`${t.hexPalette.bg}\` · ink \`${t.hexPalette.ink}\` · accent \`${t.hexPalette.accent}\`` : ""}
+
+**Layout-arketype:** ${t.layout}
 
 ## Sektion-rækkefølge
 ${t.sectionOrder.map((s, i) => `${i + 1}. ${s}`).join("\n")}

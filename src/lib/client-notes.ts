@@ -60,6 +60,19 @@ ${c.branch ? `**Branche:** ${c.branch}` : ""}
 
 ## Noter
 (skriv løbende her — status, ønsker, vedligehold)
+
+## Design
+${c.branch ? `Branche-design: [[design-${c.branch.toLowerCase().replace(/[^a-zæøå0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")}]]` : "Branche-design: (branch ikke registreret)"}
+Site-design: [[sites/${clientSlug(c.name)}]] (når demo bygget)
+
+## Kontaktlog
+- ${today}: (første kontakt / status)
+
+## Ønsker
+(kundens ønsker til sitet — farver, sider, funktioner)
+
+## Vedligehold
+(historik: hvad er lavet hvornår)
 `;
 }
 
