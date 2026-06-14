@@ -7,6 +7,7 @@ import MarkdownLite from "@/components/shell/MarkdownLite";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
 import CronHealth from "./CronHealth";
+import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
@@ -218,6 +219,7 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
         </div>
       </div>
       <CronHealth />
+      <HermesRuns />
       <PulseCard s={s} />
     </div>
   );

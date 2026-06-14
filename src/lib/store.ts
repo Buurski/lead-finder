@@ -6,6 +6,7 @@
 // Strip-safe: @vercel/kv and @vercel/blob are LAZY dynamic imports, so the
 // node engine CLI and the offline tests (FSStore default) never load them.
 
+import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 

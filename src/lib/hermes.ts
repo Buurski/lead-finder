@@ -71,7 +71,7 @@ function sign(method: string, path: string, body: string): { ts: string; sig: st
   return { ts, sig };
 }
 
-async function hermesFetch<T>(
+export async function hermesFetch<T>(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
@@ -131,6 +131,26 @@ export async function hermesHealth(): Promise<{
 
 export async function hermesCronList(): Promise<HermesCronJob[]> {
   const { status, data } = await hermesFetch<{ jobs: HermesCronJob[] }>("GET", "/api/cron", undefined, 10_000);
+  if (status !== 200 || !data) return [];
+  return data.jobs ?? [];
+}
+
+export interface HermesCronRun {
+  file: string;
+  timestamp: string;
+  size: number;
+  status: "ok" | "error";
+  error: string;
+}
+
+export interface HermesCronJobWithRuns extends HermesCronJob {
+  runs: HermesCronRun[];
+}
+
+export async function hermesCronRuns(limit = 5): Promise<HermesCronJobWithRuns[]> {
+  const { status, data } = await hermesFetch<{ jobs: HermesCronJobWithRuns[] }>(
+    "GET", `/api/cron/runs?limit=${limit}`, undefined, 10_000,
+  );
   if (status !== 200 || !data) return [];
   return data.jobs ?? [];
 }
