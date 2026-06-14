@@ -715,9 +715,11 @@ export async function buildDemo(name: string, branchOrSlug: string, recon: Recon
   let demoPath: string | null = null;
   if (opts.persist ?? true) {
     // Asset -> Blob on Vercel (served URL), dist/ locally. design.md -> doc store.
-    const asset = await store.putAsset(`demos/${slug}/index.html`, html, "text/html; charset=utf-8");
+    // Always expose the stable /demo/[slug] route (resolves to Blob URL on Vercel,
+    // reads dist/ locally) — never the raw /_assets pseudo-URL, which has no route.
+    await store.putAsset(`demos/${slug}/index.html`, html, "text/html; charset=utf-8");
     await store.put(`demos/${slug}/design.md`, designMd);
-    demoPath = asset.url;
+    demoPath = `/demo/${slug}`;
   }
 
   return { slug, template, designMd, html, demoPath };
