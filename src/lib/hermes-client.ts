@@ -47,11 +47,16 @@ export interface HermesMessage {
   ts: string;
 }
 
-// Client-safe fetch: kalder lead-system's egen route (som håndterer HMAC server-side).
+// Client-safe fetch: kalder lead-systemets egen route (som håndterer HMAC server-side).
+// Sender Basic Auth credentials hvis vi er i browseren (Vercel Password Protection).
 // Brug IKKE denne fra server-context (brug lib/hermes.ts i stedet).
 export async function fetchHermesCronRuns(limit = 5): Promise<HermesCronJobWithRuns[]> {
   try {
-    const r = await fetch(`/api/hermes/cron/runs?limit=${limit}`, { cache: "no-store" });
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (typeof window !== "undefined") {
+      headers["Authorization"] = "Basic " + btoa("LucasCharlie:BuurNielsen");
+    }
+    const r = await fetch(`/api/hermes/cron/runs?limit=${limit}`, { cache: "no-store", headers });
     if (!r.ok) return [];
     const d = await r.json();
     if (!d?.ok || !Array.isArray(d.jobs)) return [];
