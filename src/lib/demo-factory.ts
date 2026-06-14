@@ -74,25 +74,9 @@ ${recon.notes.length ? `## Noter\n${recon.notes.map((n) => `- ${n}`).join("\n")}
 `;
 }
 
-export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult): string {
-  const accent = recon.palette[0] && /^#[0-9a-f]{6}$/i.test(recon.palette[0]) ? recon.palette[0] : t.palette.accent;
-  const heroTitle = esc(recon.headings[0] || recon.title || name);
-  const tagline = esc(recon.toneSample?.slice(0, 140) || `Velkommen til ${name}.`);
-  const sections = t.sectionOrder;
-  const hero = recon.ogImage ? esc(recon.ogImage) : null;
-
-  const navItems = ["Ydelser", "Galleri", "Om", "Kontakt"];
-
-  return `<!doctype html>
-<html lang="da">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(name)} — demo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="${fonts(t)}" />
-<style>
+// ---- shared CSS for all archetypes (extended with archetype-specific classes) ----
+function sharedStyles(t: DesignTemplate, accent: string): string {
+  return `
   :root{ --bg:${t.palette.bg}; --ink:${t.palette.ink}; --accent:${accent}; --accent-ink:${t.palette.accentInk}; }
   *{box-sizing:border-box;margin:0}
   body{font-family:'${t.typography.body}',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
@@ -104,6 +88,7 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
   nav a{margin-left:auto;color:inherit;text-decoration:none;font-size:14px;opacity:.8}
   nav a+a{margin-left:24px}
   .btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 22px;border-radius:999px;font-weight:600;text-decoration:none;font-size:15px}
+  .btn-outline{display:inline-block;border:2px solid var(--accent);color:var(--accent);padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;font-size:15px}
   .hero{padding:90px 0 70px;display:grid;gap:22px}
   .hero h1{font-size:clamp(34px,6vw,62px);font-weight:600;max-width:14ch}
   .hero p{font-size:19px;max-width:52ch;opacity:.82}
@@ -116,25 +101,510 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
   .gallery img{width:100%;height:180px;object-fit:cover;border-radius:12px}
   footer{padding:48px 0;color:color-mix(in oklab,var(--ink),transparent 45%);font-size:14px;border-top:1px solid color-mix(in oklab,var(--ink),transparent 90%)}
   .demo-badge{position:fixed;bottom:14px;right:14px;background:var(--ink);color:var(--bg);font-size:11px;padding:6px 12px;border-radius:999px;opacity:.85}
-</style>
+  /* gallery archetype */
+  .fullgallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0}
+  .fullgallery img{width:100%;height:320px;object-fit:cover}
+  .ph{background:color-mix(in oklab,var(--ink),transparent 91%);height:320px;display:flex;align-items:center;justify-content:center;color:color-mix(in oklab,var(--ink),transparent 60%);font-size:13px}
+  /* service archetype */
+  .actionbar{position:sticky;top:64px;background:var(--accent);color:#fff;z-index:9;padding:12px 0}
+  .actionbar .wrap{display:flex;align-items:center;gap:18px}
+  .actionbar a{color:#fff;font-weight:700;text-decoration:none;font-size:17px}
+  .akut-callout{background:color-mix(in oklab,var(--ink),transparent 94%);border-left:4px solid var(--accent);border-radius:8px;padding:20px 24px;margin-top:22px}
+  .services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:22px}
+  .service-item{background:color-mix(in oklab,var(--ink),transparent 96%);border-radius:12px;padding:20px;border-top:3px solid var(--accent)}
+  /* menu archetype */
+  .menu-hero{position:relative;min-height:380px;display:flex;align-items:flex-end;overflow:hidden;border-radius:18px;margin-top:22px}
+  .menu-hero-bg{position:absolute;inset:0;object-fit:cover;width:100%;height:100%}
+  .menu-hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent)}
+  .menu-hero-text{position:relative;padding:32px;color:#fff}
+  .menu-hero-text h1{color:#fff;font-size:clamp(30px,5vw,54px)}
+  .menu{list-style:none;margin-top:22px;display:grid;gap:0}
+  .menu li{display:flex;align-items:baseline;gap:8px;padding:14px 0;border-bottom:1px solid color-mix(in oklab,var(--ink),transparent 90%)}
+  .menu li span.name{font-weight:600;font-size:17px}
+  .menu li span.sep{flex:1;border-bottom:1px dashed color-mix(in oklab,var(--ink),transparent 75%)}
+  .menu li span.note{font-size:13px;opacity:.7}
+  /* booking archetype */
+  .booking-split{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;padding:70px 0 50px}
+  @media(max-width:640px){.booking-split{grid-template-columns:1fr}}
+  .bookingcard{background:color-mix(in oklab,var(--ink),transparent 96%);border-radius:16px;padding:28px;display:grid;gap:14px}
+  .bookingcard h3{font-size:22px;font-weight:600}
+  .treatment-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--ink),transparent 90%)}
+  .treatment-row:last-child{border-bottom:none}
+  .treatment-row .price{color:var(--accent-ink);font-weight:600}
+  /* clinic archetype */
+  .clinic-hero{text-align:center;padding:90px 0 60px;max-width:700px;margin:0 auto}
+  .trust-strip{display:flex;gap:24px;flex-wrap:wrap;background:color-mix(in oklab,var(--accent),transparent 88%);border-radius:14px;padding:24px 28px;margin-top:22px;align-items:center}
+  .trust-item{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+  .check-icon{width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
+  .foerfter-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  @media(max-width:560px){.foerfter-grid{grid-template-columns:1fr}}
+  .foerfter-card{background:color-mix(in oklab,var(--ink),transparent 96%);border-radius:12px;overflow:hidden}
+  .foerfter-label{padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.6}
+  .foerfter-ph{height:200px;background:color-mix(in oklab,var(--ink),transparent 91%);display:flex;align-items:center;justify-content:center;font-size:13px;color:color-mix(in oklab,var(--ink),transparent 50%)}
+  /* authority archetype */
+  .auth-hero{padding:100px 0 70px;max-width:700px}
+  .auth-hero h1{font-size:clamp(36px,6vw,66px);font-weight:700}
+  .auth-hero .kicker{font-size:13px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:18px}
+  .ydelse-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:22px}
+  .ydelse-card{border:1px solid color-mix(in oklab,var(--ink),transparent 88%);border-radius:12px;padding:22px}
+  .ydelse-card h3{font-size:17px;font-weight:600;margin-bottom:6px}
+  .profile{display:grid;grid-template-columns:120px 1fr;gap:28px;align-items:start;background:color-mix(in oklab,var(--ink),transparent 96%);border-radius:16px;padding:32px;margin-top:22px}
+  @media(max-width:500px){.profile{grid-template-columns:1fr}}
+  .profile-avatar{width:100px;height:100px;border-radius:50%;background:color-mix(in oklab,var(--accent),transparent 80%);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--accent-ink)}
+  .profile-name{font-size:20px;font-weight:700;margin-bottom:4px}
+  .profile-title{font-size:14px;opacity:.65;margin-bottom:12px}
+`;
+}
+
+// ---- archetype: gallery (foto) -----------------------------------------
+// Lead with full-bleed image grid; minimal nav; text below.
+function renderGalleryBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const imgs = (recon.images ?? []).slice(0, 8);
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(recon.toneSample?.slice(0, 120) || `${name} — billeder der taler for sig selv.`);
+  const insp = t.inspiration;
+
+  const galleryItems = imgs.length
+    ? imgs.map((u) => `<img src="${esc(u)}" alt="${esc(name)}" loading="lazy" />`).join("")
+    : ["Portræt", "Bryllup", "Familie", "Event", "Natur", "Studio"]
+        .map((label) => `<div class="ph">${label}</div>`)
+        .join("");
+
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const snippets = recon.toneSample
+    ? recon.toneSample.split(/(?<=[.!?])\s+/).filter((s) => s.length >= 25 && s.length <= 160)
+    : [];
+
+  return `<main>
+  <!-- gallery: full-bleed image grid leads — no text hero -->
+  <div class="fullgallery" data-layout="gallery">
+    ${galleryItems}
+  </div>
+
+  <div class="wrap">
+    <section class="block">
+      <h2>Om fotografen</h2>
+      <p style="max-width:60ch;margin-top:10px;font-size:17px;opacity:.85;">${tagline}</p>
+      ${snippets[0] ? `<p style="max-width:60ch;margin-top:12px;opacity:.75;">${esc(snippets[0])}</p>` : ""}
+    </section>
+
+    <section class="block">
+      <h2>Pakker &amp; priser</h2>
+      <div class="grid" style="margin-top:22px">
+        ${(extra.length ? extra : insp)
+          .slice(0, 3)
+          .map((item) => `<div class="card"><strong>${esc(item)}</strong><p style="margin-top:8px;font-size:14px;opacity:.7;">Kontakt for pris</p></div>`)
+          .join("")}
+      </div>
+    </section>
+
+    <section class="block" id="kontakt">
+      <h2>Book session</h2>
+      <p style="margin-top:10px;opacity:.82;">Klar til at skabe noget smukt sammen? Tag fat i mig — jeg vender tilbage inden for 24 timer.</p>
+      <div style="margin-top:22px"><a class="btn" href="mailto:hej@${esc(name.toLowerCase().replace(/\s/g, ""))}.dk">Book session</a></div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- archetype: service (vvs) ------------------------------------------
+// Sticky top action bar with phone CTA; hero with "Ring nu" + akut callout;
+// services grid; dækningsområde; akut/vagt.
+function renderServiceBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(recon.toneSample?.slice(0, 120) || `Hurtig og pålidelig service — ring nu.`);
+  const insp = t.inspiration;
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const services = extra.length
+    ? extra.slice(0, 4)
+    : ["VVS-installation", "Badeværelsesrenovering", "Varmeanlæg & radiator", "Akutreparation"];
+
+  return `<main>
+  <!-- service: sticky action bar with tel CTA first -->
+  <div class="actionbar" data-layout="service">
+    <div class="wrap">
+      <a href="tel:+45">Ring nu</a>
+      <span style="opacity:.75;font-size:14px">— hurtig respons, også akut</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="hero">
+      <h1>${heroTitle}</h1>
+      <p>${tagline}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn" href="tel:+45">Ring nu</a>
+        <a class="btn-outline" href="#kontakt">Kontakt</a>
+      </div>
+      <div class="akut-callout">
+        <strong>Akut hjælp?</strong> Vi rykker ud hurtigt — ring <a href="tel:+45" style="color:var(--accent-ink)">nu</a> og beskriv problemet.
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Ydelser</h2>
+      <div class="services-grid">
+        ${services.map((s) => `<div class="service-item"><strong>${esc(s)}</strong></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Dækningsområde</h2>
+      <p style="margin-top:10px;opacity:.85;max-width:55ch;">Vi servicerer lokalområdet og omegn. Ring for at høre om vi dækker din adresse — vi kommer hurtigt.</p>
+      <div class="grid" style="margin-top:22px">
+        ${insp.slice(0, 2).map((i) => `<div class="card">${esc(i)}</div>`).join("")}
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Akut &amp; vagt</h2>
+      <div class="akut-callout">
+        <strong>Vagttjeneste</strong> — vi kan rykke ud uden for normal arbejdstid. Ring på <a href="tel:+45" style="color:var(--accent-ink);font-weight:700">+45 XX XX XX XX</a>.
+      </div>
+    </section>
+
+    <section class="block" id="kontakt">
+      <h2>Kontakt</h2>
+      <p style="margin-top:10px;opacity:.85;">Har du spørgsmål eller skal vi i gang? Tag fat i os.</p>
+      <div style="margin-top:18px;display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn" href="tel:+45">Ring nu</a>
+        <a class="btn-outline" href="mailto:kontakt@${esc(name.toLowerCase().replace(/\s/g, ""))}.dk">Send besked</a>
+      </div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- archetype: menu (restaurant) --------------------------------------
+// Hero with stemnings-image background; .menu list; "Book bord / Bestil" CTA; gallery.
+function renderMenuBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(recon.toneSample?.slice(0, 120) || `Autentisk mad med sjæl — kom og oplev det.`);
+  const hero = recon.ogImage ? esc(recon.ogImage) : null;
+  const insp = t.inspiration;
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const menuItems = extra.length
+    ? extra.slice(0, 5)
+    : ["Dagens ret", "Husrets specialitet", "Frisk salat fra sæsonen", "Dessert · sæsonens bær", "Drikkevarer"];
+  const imgs = (recon.images ?? [])
+    .filter((u) => u !== (hero ? hero.replace(/&amp;/g, "&") : null))
+    .slice(0, 4);
+
+  return `<main data-layout="menu">
+  <div class="wrap">
+    <section class="hero">
+      <h1>${heroTitle}</h1>
+      <p>${tagline}</p>
+      <div><a class="btn" href="#bestil">Book bord</a></div>
+    </section>
+  </div>
+
+  <!-- stemnings-image background hero -->
+  <div style="padding:0 24px">
+    <div class="menu-hero">
+      ${hero ? `<img class="menu-hero-bg" src="${hero}" alt="${esc(name)}" />` : `<div style="position:absolute;inset:0;background:color-mix(in oklab,var(--accent),var(--bg) 75%)"></div>`}
+      <div class="menu-hero-overlay"></div>
+      <div class="menu-hero-text">
+        <h1>${heroTitle}</h1>
+        <p style="margin-top:10px;font-size:18px;opacity:.9;">${tagline}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="block">
+      <h2>Menu</h2>
+      <ul class="menu">
+        ${menuItems
+          .map(
+            (item) =>
+              `<li><span class="name">${esc(item)}</span><span class="sep"></span><span class="note">Dagens råvarer</span></li>`
+          )
+          .join("")}
+      </ul>
+    </section>
+
+    <section class="block" id="bestil">
+      <h2>Book bord / Bestil</h2>
+      <p style="margin-top:10px;opacity:.85;">Ring for at reservere bord, eller send os en besked — vi glæder os til at se dig.</p>
+      <div style="margin-top:20px;display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn" href="tel:+45">Ring og reservér</a>
+        <a class="btn-outline" href="#kontakt">Kontakt</a>
+      </div>
+    </section>
+
+    ${
+      imgs.length
+        ? `<section class="block"><h2>Galleri</h2><div class="gallery">${imgs.map((u) => `<img src="${esc(u)}" alt="${esc(name)}" loading="lazy" />`).join("")}</div></section>`
+        : ""
+    }
+
+    <section class="block" id="kontakt">
+      <h2>Find os</h2>
+      <div class="grid">
+        ${insp.slice(0, 2).map((i) => `<div class="card">${esc(i)}</div>`).join("")}
+        <div class="card"><strong>Åbningstider</strong><p style="margin-top:6px;font-size:14px;opacity:.7;">Man–Fre: 11–22 · Lør–Søn: 12–23</p></div>
+      </div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- archetype: booking (frisor/salon) ---------------------------------
+// Hero with side-by-side booking card; gallery; anmeldelser placeholder.
+// Kicker word: salon→"Skønhed", frisor→"Klip & farve".
+function renderBookingBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(recon.toneSample?.slice(0, 120) || `Velkommen til ${name}.`);
+  const hero = recon.ogImage ? esc(recon.ogImage) : null;
+  const insp = t.inspiration;
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const kicker = t.slug === "frisor" ? "Klip &amp; farve" : "Sk&oslash;nhed";
+  const treatments = extra.length
+    ? extra.slice(0, 4)
+    : t.slug === "frisor"
+      ? ["Klipning", "Farvning", "Balayage", "Skæg & trimning"]
+      : ["Ansigtsbehandling", "Kropsmassage", "Voks / sugaring", "Negle & lak"];
+  const imgs = (recon.images ?? [])
+    .filter((u) => u !== (hero ? hero.replace(/&amp;/g, "&") : null))
+    .slice(0, 4);
+  const snippets = recon.toneSample
+    ? recon.toneSample.split(/(?<=[.!?])\s+/).filter((s) => s.length >= 25 && s.length <= 160)
+    : [];
+
+  return `<main data-layout="booking">
+  <div class="wrap">
+    <div class="booking-split">
+      <!-- left: hero text -->
+      <div>
+        <p style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.55;margin-bottom:14px">${kicker}</p>
+        <h1 style="font-size:clamp(32px,5vw,58px);font-weight:600;max-width:12ch">${heroTitle}</h1>
+        <p style="font-size:18px;max-width:48ch;opacity:.82;margin-top:16px">${tagline}</p>
+        ${snippets[0] ? `<p style="margin-top:12px;max-width:48ch;opacity:.7;">${esc(snippets[0])}</p>` : ""}
+        <div style="margin-top:28px;display:flex;gap:14px;flex-wrap:wrap">
+          <a class="btn" href="#book">Book tid</a>
+          <a class="btn-outline" href="#behandlinger">Se behandlinger</a>
+        </div>
+      </div>
+      <!-- right: booking card with treatment list (no invented prices) -->
+      <div class="bookingcard" id="behandlinger">
+        <h3>Behandlinger</h3>
+        ${treatments
+          .map((tr) => `<div class="treatment-row"><span>${esc(tr)}</span><span class="price">fra —</span></div>`)
+          .join("")}
+        <a class="btn" href="#book" style="text-align:center;margin-top:8px">Book online</a>
+      </div>
+    </div>
+
+    ${
+      imgs.length
+        ? `<section class="block"><h2>Galleri</h2><div class="gallery">${imgs.map((u) => `<img src="${esc(u)}" alt="${esc(name)}" loading="lazy" />`).join("")}</div></section>`
+        : ""
+    }
+
+    <section class="block">
+      <h2>Anmeldelser</h2>
+      <div class="grid">
+        ${insp
+          .slice(0, 2)
+          .map((i) => `<div class="card"><p style="font-size:15px;font-style:italic">"${esc(i)}"</p></div>`)
+          .join("")}
+        <div class="card"><strong>&#9733;&#9733;&#9733;&#9733;&#9733;</strong><p style="margin-top:6px;font-size:14px;opacity:.7;">Google-anmeldelse</p></div>
+      </div>
+    </section>
+
+    <section class="block" id="book">
+      <h2>Book tid</h2>
+      <p style="margin-top:10px;opacity:.85;">Ring eller send os en besked for at booke — vi svarer hurtigt.</p>
+      <div style="margin-top:18px"><a class="btn" href="tel:+45">Ring og book</a></div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- archetype: clinic (hudpleje) --------------------------------------
+// Calm centered hero; treatments list; trust strip with "certificer";
+// før/efter block.
+function renderClinicBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(
+    recon.toneSample?.slice(0, 120) || `Professionel og omsorgsfuld behandling — du er i trygge hænder.`
+  );
+  const insp = t.inspiration;
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const treatments = extra.length
+    ? extra.slice(0, 4)
+    : ["Ansigtsbehandling", "Rensebehandling", "Kemisk peeling", "Øjenbryn & vipper"];
+  const snippets = recon.toneSample
+    ? recon.toneSample.split(/(?<=[.!?])\s+/).filter((s) => s.length >= 25 && s.length <= 160)
+    : [];
+
+  return `<main data-layout="clinic">
+  <div class="wrap">
+    <!-- calm centered hero -->
+    <div class="clinic-hero">
+      <p style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.55;margin-bottom:16px">Klinik &amp; behandling</p>
+      <h1 style="font-size:clamp(34px,6vw,60px);font-weight:600">${heroTitle}</h1>
+      <p style="font-size:18px;opacity:.82;margin-top:16px;max-width:54ch">${tagline}</p>
+      ${snippets[0] ? `<p style="margin-top:12px;opacity:.7;">${esc(snippets[0])}</p>` : ""}
+      <div style="margin-top:28px"><a class="btn" href="#book">Book tid</a></div>
+    </div>
+
+    <section class="block">
+      <h2>Behandlinger</h2>
+      <div class="grid">
+        ${treatments
+          .map(
+            (tr) =>
+              `<div class="card"><strong>${esc(tr)}</strong><p style="margin-top:6px;font-size:14px;opacity:.7;">Kontakt for priser og tider</p></div>`
+          )
+          .join("")}
+      </div>
+    </section>
+
+    <!-- TRUST STRIP — "certificer" marker required by test -->
+    <section class="block">
+      <h2>Tryghed &amp; kvalitet</h2>
+      <div class="trust-strip">
+        <div class="trust-item"><div class="check-icon">&#10003;</div> Certificeret &amp; tryg behandling</div>
+        <div class="trust-item"><div class="check-icon">&#10003;</div> Godkendte produkter</div>
+        <div class="trust-item"><div class="check-icon">&#10003;</div> Fortrolig &amp; professionel</div>
+        ${insp[0] ? `<div class="trust-item"><div class="check-icon">&#10003;</div> ${esc(insp[0])}</div>` : ""}
+      </div>
+    </section>
+
+    <!-- Før/efter block -->
+    <section class="block">
+      <h2>F&oslash;r &amp; efter</h2>
+      <div class="foerfter-grid">
+        <div class="foerfter-card"><div class="foerfter-label">F&oslash;r</div><div class="foerfter-ph">Billede leveres af klinikken</div></div>
+        <div class="foerfter-card"><div class="foerfter-label">Efter</div><div class="foerfter-ph">Billede leveres af klinikken</div></div>
+      </div>
+    </section>
+
+    <section class="block" id="book">
+      <h2>Book tid</h2>
+      <p style="margin-top:10px;opacity:.85;">Vi glæder os til at modtage dig. Ring eller skriv for at booke tid.</p>
+      <div style="margin-top:18px"><a class="btn" href="tel:+45">Ring og book</a></div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- archetype: authority (advokat) ------------------------------------
+// Serif-led hero; ydelsesområder grid; .profile personal block; kontakt.
+function renderAuthorityBody(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const heroTitle = esc(recon.headings[0] || recon.title || name);
+  const tagline = esc(recon.toneSample?.slice(0, 120) || `Professionel rådgivning med personlig service.`);
+  const insp = t.inspiration;
+  const extra = recon.headings.slice(1).filter(Boolean);
+  const ydelser = extra.length
+    ? extra.slice(0, 6)
+    : ["Selskabsret", "Arveret & testamente", "Ejendomshandel", "Ansættelsesret", "Kontraktforhandling", "Erhvervsrådgivning"];
+  const snippets = recon.toneSample
+    ? recon.toneSample.split(/(?<=[.!?])\s+/).filter((s) => s.length >= 25 && s.length <= 160)
+    : [];
+
+  return `<main data-layout="authority">
+  <div class="wrap">
+    <!-- serif-led hero with kicker -->
+    <div class="auth-hero">
+      <p class="kicker">R&aring;dgivning &amp; juridisk bistand</p>
+      <h1>${heroTitle}</h1>
+      <p style="font-size:19px;opacity:.82;margin-top:18px;max-width:54ch">${tagline}</p>
+      ${snippets[0] ? `<p style="margin-top:12px;opacity:.7;max-width:54ch;">${esc(snippets[0])}</p>` : ""}
+      <div style="margin-top:28px;display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn" href="#kontakt">Book m&oslash;de</a>
+        <a class="btn-outline" href="#ydelser">Ydelsesomr&aring;der</a>
+      </div>
+    </div>
+
+    <!-- Ydelsesområder grid -->
+    <section class="block" id="ydelser">
+      <h2>Ydelsesomr&aring;der</h2>
+      <div class="ydelse-grid">
+        ${ydelser
+          .map(
+            (y) =>
+              `<div class="ydelse-card"><h3>${esc(y)}</h3><p style="font-size:14px;opacity:.65;margin-top:4px">Kontakt for n&aelig;rmere information</p></div>`
+          )
+          .join("")}
+      </div>
+    </section>
+
+    <!-- Personal profile block -->
+    <section class="block" id="profil">
+      <h2>M&oslash;d din r&aring;dgiver</h2>
+      <div class="profile">
+        <div class="profile-avatar">&#9878;</div>
+        <div>
+          <p class="profile-name">${esc(name)}</p>
+          <p class="profile-title">${esc(t.label)}</p>
+          <p style="font-size:15px;opacity:.8;max-width:52ch">${insp[0] ? esc(insp[0]) : "Personlig r&aring;dgivning med fokus p&aring; dine behov og det bedst mulige resultat."}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact block -->
+    <section class="block" id="kontakt">
+      <h2>Kontakt &amp; book m&oslash;de</h2>
+      <p style="margin-top:10px;opacity:.85;">Ring eller skriv for at aftale et uforpligtende m&oslash;de.</p>
+      <div style="margin-top:18px;display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn" href="tel:+45">Ring</a>
+        <a class="btn-outline" href="mailto:kontakt@${esc(name.toLowerCase().replace(/\s/g, ""))}.dk">Send besked</a>
+      </div>
+    </section>
+  </div>
+</main>`;
+}
+
+// ---- main renderBody dispatcher ----------------------------------------
+function renderBody(layout: DesignTemplate["layout"], name: string, t: DesignTemplate, recon: ReconResult, accent: string): string {
+  switch (layout) {
+    case "gallery":   return renderGalleryBody(name, t, recon);
+    case "service":   return renderServiceBody(name, t, recon);
+    case "menu":      return renderMenuBody(name, t, recon);
+    case "booking":   return renderBookingBody(name, t, recon);
+    case "clinic":    return renderClinicBody(name, t, recon);
+    case "authority": return renderAuthorityBody(name, t, recon);
+    default:          return renderBookingBody(name, t, recon);
+  }
+}
+
+// ---- nav items per archetype -------------------------------------------
+function renderNav(name: string, t: DesignTemplate): string {
+  const navsByLayout: Record<string, string[]> = {
+    gallery:   ["Portefølje", "Om", "Pakker", "Book"],
+    service:   ["Ydelser", "Dækningsområde", "Akut", "Kontakt"],
+    menu:      ["Menu", "Book bord", "Om", "Find os"],
+    booking:   ["Behandlinger", "Galleri", "Om", "Book tid"],
+    clinic:    ["Behandlinger", "Tryghed", "Før/efter", "Book tid"],
+    authority: ["Ydelser", "Profil", "Kontakt", "Book møde"],
+  };
+  const items = navsByLayout[t.layout] ?? ["Ydelser", "Galleri", "Om", "Kontakt"];
+  return `<span class="brand">${esc(name)}</span>${items.map((n) => `<a href="#">${n}</a>`).join("")}`;
+}
+
+export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult): string {
+  const accent = recon.palette[0] && /^#[0-9a-f]{6}$/i.test(recon.palette[0]) ? recon.palette[0] : t.palette.accent;
+
+  return `<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${esc(name)} — demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="${fonts(t)}" />
+<style>${sharedStyles(t, accent)}</style>
 </head>
-<body>
+<body data-layout="${t.layout}">
 <header><div class="wrap"><nav>
-  <span class="brand">${esc(name)}</span>
-  ${navItems.map((n) => `<a href="#">${n}</a>`).join("")}
+  ${renderNav(name, t)}
 </nav></div></header>
 
-<main class="wrap">
-  <section class="hero">
-    <h1>${heroTitle}</h1>
-    <p>${tagline}</p>
-    <div><a class="btn" href="#kontakt">Book / kontakt</a></div>
-    ${hero ? `<img class="heroimg" src="${hero}" alt="${esc(name)}" />` : ""}
-  </section>
-
-  ${renderGallery(name, recon, hero)}
-  ${renderSections(name, t, recon, sections.slice(1))}
-</main>
+${renderBody(t.layout, name, t, recon, accent)}
 
 <footer class="wrap" id="kontakt">
   <strong>${esc(name)}</strong> · demo bygget af Lucas. Kodet, ikke WordPress. Du ejer 100% af koden.
@@ -142,57 +612,6 @@ export function composeHtml(name: string, t: DesignTemplate, recon: ReconResult)
 <div class="demo-badge">DEMO · ${esc(t.label)}-template</div>
 </body>
 </html>`;
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// Photo gallery from recon.images (Facebook profile/og photos or inline <img>
-// from the customer's site). The hero image is excluded so it isn't repeated.
-function renderGallery(name: string, recon: ReconResult, heroUrl: string | null): string {
-  const imgs = (recon.images ?? []).filter((u) => u !== (heroUrl ? heroUrl.replace(/&amp;/g, "&") : null)).slice(0, 6);
-  if (!imgs.length) return "";
-  return `<section class="block">
-    <h2>Galleri</h2>
-    <div class="gallery">${imgs.map((u) => `<img src="${esc(u)}" alt="${esc(name)}" loading="lazy" />`).join("")}</div>
-  </section>`;
-}
-
-// Real section content — never the old literal "Personligt indhold..." card.
-// We draw from the customer's own recon (extra headings + tone sentences) first,
-// then fall back to the branch template's inspiration (concrete, branch-relevant).
-// A section with no usable card is skipped entirely (fewer sections > empty ones).
-function renderSections(name: string, t: DesignTemplate, recon: ReconResult, sectionLabels: string[]): string {
-  const snippets: string[] = [];
-  for (const h of recon.headings.slice(1)) if (h && h.length > 3) snippets.push(h);
-  if (recon.toneSample) {
-    for (const sentence of recon.toneSample.split(/(?<=[.!?])\s+/)) {
-      const s = sentence.trim();
-      if (s.length >= 25 && s.length <= 160) snippets.push(s);
-    }
-  }
-  const inspiration = [...t.inspiration];
-
-  const blocks: string[] = [];
-  for (const label of sectionLabels) {
-    const cards: string[] = [];
-    // 1) the section's own intent (always real + branch-relevant)
-    cards.push(`<div class="card"><strong>${esc(capitalize(label))}</strong></div>`);
-    // 2) a real customer snippet if we have one
-    const snip = snippets.shift();
-    if (snip) cards.push(`<div class="card">${esc(snip)}</div>`);
-    // 3) else a concrete inspiration point from the branch template
-    else {
-      const insp = inspiration.shift();
-      if (insp) cards.push(`<div class="card">${esc(insp)}</div>`);
-    }
-    blocks.push(`<section class="block">
-    <h2>${esc(capitalize(label))}</h2>
-    <div class="grid">${cards.join("")}</div>
-  </section>`);
-  }
-  return blocks.join("\n");
 }
 
 // How much real customer data did recon find? 0..1. Used to refuse building a
