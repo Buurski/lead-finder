@@ -142,4 +142,12 @@
 
 ## Progress Log
 
-(Executor appends dated entries here after each WP: what passed, what was restarted, screenshots path.)
+### 2026-06-15 (overnight, autonomous) — ALL WPs COMPLETE
+- **WP-A** (`11cb36e`): added `/demo/[slug]` serve route + `/api/studio/list` + `store.listAssets` across all drivers; demo-factory returns `/demo/{slug}`; StudioGrid shows a "Byggede demoer" section. Root cause confirmed: `/_assets/` had no route. e2e: build→200→listed. Follow-up `cc616a0`: gitignore `demos/` (design.md litter).
+- **WP-B** (`1ceba28`): `composeHtml` split into a `renderBody(layout)` switch with 6 archetypes; `layout` field on `DesignTemplate`. 14 layout assertions green.
+- **WP-C** (`342a1a2`): `scripts/gen-site-design-docs.mjs` recons all 10 real DEMO_SITES (+ local LawyerSite, Sting Studio, Vida CMS content) → 11 distinct per-site Design MDs in `KnowledgeOS/wiki/design/sites/` + `_skabelon.md`. `_sting_recon` identified as Sting Studio (Lucas+Charlie's own consultancy).
+- **WP-B2** (`0836501`): tuned every template's fonts+palette to the REAL site (salon=teal#0c2a27+gold Cormorant/DM Sans; vida/clinic=sand+brown Cormorant/Manrope + oversized gallery + storytelling pause; kt-vvs=navy+coral Bricolage; advokat=navy+amber Playfair; etc.). 62 assertions + 624 test_all checks green.
+- **WP-D** (`a21e1bc`): branche MDs now show hex-palette + layout archetype; client-note template enriched (Design / Kontaktlog / Ønsker / Vedligehold).
+- **WP-E** (`de92550`): caught + fixed a regression — B2's refactor reverted `demoPath` to `/_assets`; restored `/demo/{slug}`. Built 3 REAL leads via the Studio API (Viet Nails&Beauty→salon, Annet Massage→clinic, Pro Vinduespolering→service); all served 200 with visibly DISTINCT layouts/palettes/fonts matching their real sites. Screenshots: `/tmp/demo-{viet-nails-beauty,annet-massage-og-sukker-voks,pro-vinduespolering}.png`.
+- **Final state:** `npm run build` exit 0; `node scripts/test_all.mjs` all green. Branch `feat/studio-overnight`, commit-only, NOT pushed/deployed.
+- **NOTE for Lucas:** a concurrent session committed unrelated cron/sheets work onto the same branch overnight (`5dcf69c`, `c2c9a76`, `84380f9`) — harmless (no file overlap with this work) but worth knowing before you merge.
