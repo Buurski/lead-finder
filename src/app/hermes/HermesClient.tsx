@@ -394,9 +394,14 @@ export default function HermesClient({
               {j.last_status === "success" && j.last_run_at && (
                 <div className="cc-dim" style={{ fontSize: 11.5 }}>Sidst kørt OK · {j.last_run_at.slice(0, 16).replace("T", " ")}</div>
               )}
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className="cc-btn hermes-mini-btn" disabled={cronBusy === j.id} onClick={() => cronAction(j.id, "run")}>
-                  Kør nu
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <button
+                  className="cc-btn hermes-mini-btn"
+                  disabled={cronBusy === j.id || j.last_status === "running"}
+                  onClick={() => cronAction(j.id, "run")}
+                  style={cronBusy === j.id || j.last_status === "running" ? { opacity: 0.6, cursor: "wait" } : undefined}
+                >
+                  {cronBusy === j.id || j.last_status === "running" ? "kører…" : "Kør nu"}
                 </button>
                 <button
                   className="cc-btn hermes-mini-btn"
@@ -405,6 +410,9 @@ export default function HermesClient({
                 >
                   {j.state === "paused" ? "Genoptag" : "Pause"}
                 </button>
+                {(cronBusy === j.id || j.last_status === "running") && (
+                  <Icon name="Loader2" style={{ width: 13, height: 13, color: "var(--accent-ink)", animation: "spin 1s linear infinite" }} />
+                )}
               </div>
             </div>
           ))}
