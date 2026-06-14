@@ -37,6 +37,32 @@ const LEADGEN_PATH = "data/leadgen.json";
 const DEFAULT_LIMIT = 30; // no-email drafts processed per call (fits maxDuration with the pool)
 const POOL = 5;           // concurrent website scrapes
 
+// A leadgen draft's leadId is the Google place_id (place_id || name in the ingest
+// route). A real place_id is a long token with no spaces; a name has spaces.
+function looksLikePlaceId(leadId: string | undefined): boolean {
+  return !!leadId && /^[A-Za-z0-9_-]{20,}$/.test(leadId);
+}
+
+// Resolve a lead's website from Google Places Details by place_id. This is the
+// fallback when the lead is gone from Sheets (e.g. the no-email cleanup deleted
+// it) and absent from the latest leadgen.json — exactly the case for older
+// approved drafts. Returns "" on any failure.
+async function placeWebsite(placeId: string): Promise<string> {
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "websiteUri" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return "";
+    const j = (await res.json()) as { websiteUri?: string };
+    return (j.websiteUri || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 interface LeadgenItem {
   name?: string;
   email?: string | null;
@@ -157,7 +183,12 @@ export async function GET(req: Request) {
     }
 
     // 2. Live discovery from the lead's website (homepage → /kontakt → CVR).
-    const website = (lead?.website || siteByName.get(norm(d.name)) || "").trim();
+    // Website source order: Sheets → latest leadgen.json → Google Places (by
+    // place_id) for leads no longer in Sheets (cleanup) or in the latest run.
+    let website = (lead?.website || siteByName.get(norm(d.name)) || "").trim();
+    if (!website && looksLikePlaceId(d.leadId)) {
+      website = await placeWebsite(d.leadId as string);
+    }
     if (!website) return { draft: d, email: null, via: "no-website" };
 
     const websiteStatus = lead?.websiteStatus || "ok";
