@@ -68,3 +68,31 @@ Varm, klar, rolig. Ingen juridisk jargon. Skrevet til folk der googler "advokat 
 ## Genbrug
 
 Arketypen er den **personlige lokale advokat med historisk forankring**. Brug til: advokater, revisorer, notarer, lokale professionelle servicevirksomheder der sælger via tillid og kontinuitet.
+
+## Effekter & animationer
+
+Kilde: lokal `LawyerSite/` (Next.js + Framer Motion via `motion/react`). Live-site kan være placeholder; kildekoden er autoritativ.
+
+- **Hero entrance (on mount):** `motion.p/span` — `opacity: 0, y: 24` → `opacity: 1, y: 0`. Varighed 600–650ms, `ease: "easeOut"`. Stagger via `delay`: 0ms / 100ms / 220ms / 400ms / 550ms. Scroll-indikator (`animate-bounce`) — Tailwind bounce på ned-pil SVG.
+- **Ken Burns (hero baggrundsbillede):** `@keyframes kenBurns` — `scale(1) translate(0,0)` → `scale(1.08) translate(-2%, -1%)` → tilbage. Varighed **14s**, `ease-in-out infinite`. Kun på compositor-thread (`transform`).
+- **whileInView scroll-reveal:** Alle sektionsoverskrifter + `.pop-up`-teamkort — `opacity: 0, y: 24` → `opacity: 1, y: 0`. 500ms `easeOut`. `viewport: once: true`.
+- **Team card stagger:** `staggerChildren: 0.12s`. Hvert kort: `y: 32` → `0`, 500ms easeOut.
+- **pop-up (globals.css):** `@keyframes popUp` — `opacity:0, translateY(80px) scale(0.97)` → `opacity:1, translateY(0) scale(1)`. Varighed **1.1s**, `cubic-bezier(0.16, 1, 0.3, 1)` (spring). Delay 0.4s.
+- **BuildingSection parallax:** `useScroll` + `useTransform` — billedet bevæger sig `y: [60px, -60px]` mens sektionen scrolles igennem. Overlay-opacity fader fra `0.75 → 0.45`. Subtil `scale: [1.04, 1]` ved entry.
+- **Hover (teamkort):** `grayscale(100%) → grayscale(0%)`, `transition-[filter] duration-300`. Ingen transform-lift.
+- **Hover (knapper):** `hover:bg-amber/90 transition-colors` — 150ms. Ingen skala-ændring.
+- **Testimonial-sektion:** Intentionelt statisk — ingen animation (design-beslutning: ro og ro).
+- **Ingen:** marquee, 3D tilt, custom cursor, counter-animation, clip-path.
+- Samlet tone: **bevægelse som respekt-signal** — lidt langsommere end gennemsnittet (600–1100ms vs typiske 300ms). Spring-kurven bruges sparsomt. Stilhed i testimonial er bevidst.
+
+## Typografi (detaljeret)
+
+- **Display + body + alt (ét font):** Plus Jakarta Sans — weights 300 / 400 / 500 / 600 / 700 / 800. Indlæst via `next/font/google`, CSS-variabel `--font-jakarta`. Ingen serif, ingen mono.
+- **CSS-theme (globals.css):** `--font-heading` og `--font-body` peger begge på `var(--font-jakarta)` — det er altså én font der løfter begge roller. Designbriefen nævner Playfair/Cormorant som alternativ; implementeringen valgte Plus Jakarta Sans til begge.
+- **Hero H1:** `font-light (300)` på "Juridisk" + `font-bold (700)` på "rådgivning." — to linjer, forskellig vægt, `clamp(3.2rem, 7vw, 5.75rem)`, `leading-none`.
+- **Sektionsoverskrifter:** `text-3xl md:text-5xl`, font-heading (Jakarta), `text-navy`.
+- **Kickers:** `text-xs uppercase tracking-[0.2em] text-amber` — 10px, stor spacing, amber-farve.
+- **Brødtekst:** `text-base font-light text-white/65` i hero; `text-lg text-text/80 leading-relaxed` i body-sektioner.
+- **Skillelinje:** `w-16 h-px bg-amber mx-auto` — dekorativ amber-linje mellem kicker og overskrift. Signaturmove.
+- **Testimonial-citat:** `font-heading text-7xl text-amber` på åbningscitationstegn (dekorativt); `text-2xl md:text-3xl text-off-white leading-relaxed` på tekst.
+- **letter-spacing særtræk:** Ingen negativ tracking på overskrifter. Kickers har `tracking-[0.2–0.38em]` — meget åbent. Brødtekst: standard.

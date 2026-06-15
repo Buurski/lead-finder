@@ -61,3 +61,21 @@ Direkte og nærværende. Ingen sproglig kreativitet — det er en fordel her. Te
 ## Genbrug
 
 Arketypen er den **trygge lokale håndværker**. Bruges til service-virksomheder der ikke søger "premium" men søger "trofast nabo": lokale gartnere, servicefirmaer, håndværksmestre på et sted, rengøringsfirmaer. Default-demo for service-branchen.
+
+## Effekter & animationer
+
+- **Hero-enter stagger:** `.hero-enter > *` — `opacity: 0` → `translateY(24px)` → `translateY(0)`. Varighed `720ms`, easing `cubic-bezier(0.16, 1, 0.3, 1)` (spring-agtig). Delays: 60ms / 200ms / 360ms / 520ms / 640ms for hvert barn.
+- **Scroll-reveal (moderne browsers):** `.reveal` — `animation-timeline: view()` + `animation-range: entry entry 38%`. Same 600ms spring-easing. Fallback: `.io-reveal` via IntersectionObserver — `opacity 550ms + transform 550ms cubic-bezier(0.16, 1, 0.3, 1)`, start-state `scale(0.93) translateY(18px)`.
+- **Video-parallax:** `@keyframes video-parallax` — `translateY(0)` → `translateY(-14%)`, linear, via `animation-timeline: view()`.
+- **Hover:** `hover:opacity-75/80/90/100` (Tailwind-klasser) — standard `0.15s ease` via `transition-opacity`. Ingen transform-lift, ingen box-shadow-effekt, ingen farve-ændring på hover. Fuldstændig flat hover-model.
+- **Ingen:** `backdrop-filter`, `clip-path`, custom cursor, marquee, parallax på hero-mockups, counter-animation, 3D tilt.
+- Samlet tone: **én bevægelsessprog** — en enkelt spring-kurve (`cubic-bezier(0.16, 1, 0.3, 1)`) brugt på alt. Statisk baseline, fade-up reveal. Intet animeret dekorativt element.
+
+## Typografi (detaljeret)
+
+- **Display / headings:** Barlow Condensed — weight 700 + 800. Stor, kompakt, smal. `letter-spacing: tracking-tighter (−0.05em)` på hero-overskrift. Uppercase på kickers.
+- **Brødtekst:** Barlow — weight 400 / 500 / 600 / 700. Self-hosted via Next.js `@font-face`. `font-size: 1rem`, `line-height: 1.6`.
+- **Ingen serif, ingen mono-accent.** Én fontfamilie med én kondenseret display-variant.
+- **Headings line-height:** `1.15` (sat globalt på h1–h4). `text-wrap: balance`.
+- **p:** `text-wrap: pretty`, `max-width: 68ch`.
+- **Kicker-stil:** Uppercase + `tracking-widest (0.1em)`, lille skriftstørrelse (text-xs/sm), amber-farve.
