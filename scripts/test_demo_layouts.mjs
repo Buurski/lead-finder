@@ -198,6 +198,155 @@ async function html(branch) {
   );
 }
 
+// ── motion kit: shared animation primitives present in ALL demos ─────────────
+// These must appear in every archetype's HTML output.
+{
+  for (const branch of ["salon", "frisor", "hudpleje", "vvs", "foto", "advokat", "restaurant"]) {
+    const h = await html(branch);
+
+    // Shared easing var
+    check(`${branch}: --ease cubic-bezier`,
+      h.includes("--ease:cubic-bezier(.2,.7,.2,1)") || h.includes("--ease: cubic-bezier(.2,.7,.2,1)"),
+      "missing --ease:cubic-bezier(.2,.7,.2,1)"
+    );
+
+    // Scroll-reveal class
+    check(`${branch}: .reveal class defined`,
+      h.includes(".reveal{") || h.includes(".reveal {"),
+      "missing .reveal CSS class"
+    );
+
+    // IntersectionObserver wiring
+    check(`${branch}: IntersectionObserver`,
+      h.includes("IntersectionObserver"),
+      "missing IntersectionObserver"
+    );
+
+    // Reduced-motion guard
+    check(`${branch}: prefers-reduced-motion`,
+      h.includes("prefers-reduced-motion"),
+      "missing prefers-reduced-motion guard"
+    );
+
+    // Frosted nav on scroll
+    check(`${branch}: frosted nav / backdrop-filter`,
+      h.includes("backdrop-filter") && h.includes(".scrolled"),
+      "missing frosted nav or .scrolled class"
+    );
+
+    // Hover-lift cards
+    check(`${branch}: .lift hover cards`,
+      h.includes(".lift{") || h.includes(".lift {"),
+      "missing .lift class"
+    );
+
+    // CTA arrow nudge
+    check(`${branch}: .arr CTA nudge`,
+      h.includes(".arr") && h.includes("translateX(4px)"),
+      "missing .arr CTA nudge"
+    );
+
+    // Hero rise keyframe
+    check(`${branch}: @keyframes rise`,
+      h.includes("@keyframes rise"),
+      "missing @keyframes rise"
+    );
+
+    // Slow hover-zoom on images
+    check(`${branch}: .zoom slow image hover`,
+      h.includes(".zoom") && (h.includes("scale(1.05)") || h.includes("scale(1.04") || h.includes("scale(1.06")),
+      "missing .zoom slow image hover"
+    );
+  }
+}
+
+// ── per-archetype motion budget markers ──────────────────────────────────────
+// salon: art-deco frame + gallery-rail (HIGH/cinematic)
+{
+  const h = await html("salon");
+  check("salon: art-deco frame marker",
+    h.includes("art-deco") || h.includes("artdeco") || h.includes("drawLine") || h.includes("gallery-rail") || h.includes("gal-rail"),
+    "missing art-deco frame or gallery-rail marker"
+  );
+  check("salon: gallery-rail present",
+    h.includes("gallery-rail") || h.includes("gal-rail") || h.includes("scroll-snap"),
+    "missing gallery-rail/scroll-snap"
+  );
+  check("salon: gold pulse CTA icon",
+    h.includes("pulse") || h.includes("gold-pulse"),
+    "missing gold pulse animation"
+  );
+}
+
+// clinic (hudpleje/vida): Ken Burns on lead image (HIGH/calm-luxury)
+{
+  const h = await html("hudpleje");
+  check("clinic: kenburns animation",
+    h.includes("kenburns") || h.includes("kenBurns") || h.includes("ken-burns"),
+    "missing kenburns animation"
+  );
+}
+
+// foto (gallery): word-by-word H1 reveal (MEDIUM-HIGH/crafted)
+{
+  const h = await html("foto");
+  check("foto: word-span h1 reveal",
+    h.includes("word-span") || h.includes("word-reveal") || (h.includes(".word") && h.includes("translateY")),
+    "missing word-span/word reveal on H1"
+  );
+  check("foto: polaroid / rotated frame images",
+    h.includes("polaroid") || h.includes("rotate") || h.includes("rotate("),
+    "missing polaroid or rotated frames"
+  );
+}
+
+// frisor (booking+frisor): masked translateY(110%) line-reveal
+{
+  const h = await html("frisor");
+  check("frisor: masked line-reveal translateY(110%)",
+    h.includes("translateY(110%)") || h.includes("translateY(115%)"),
+    "missing translateY(110%/115%) masked line-reveal"
+  );
+  // frisor: grayscale->color hover on cards
+  check("frisor: grayscale hover on cards",
+    h.includes("grayscale"),
+    "missing grayscale-to-color card hover"
+  );
+}
+
+// advokat: restrained — NO kenburns scale on treatment cards, NO scale(1.05) on cards
+// (only fade-up, portraits grayscale->color, Ken Burns on hero bg only is OK)
+{
+  const h = await html("advokat");
+  // advokat MUST have grayscale portrait hover
+  check("advokat: grayscale portrait hover",
+    h.includes("grayscale"),
+    "missing grayscale portrait hover"
+  );
+  // advokat should NOT have the cinematic gallery-rail (that's salon's signature)
+  check("advokat: no gallery-rail (restrained)",
+    !(h.includes("gallery-rail") || h.includes("gal-rail")),
+    "advokat should not have gallery-rail (that's salon's cinematic signature)"
+  );
+}
+
+// ── frisor ≠ salon: different motion signatures ───────────────────────────────
+{
+  const salonH = await html("salon");
+  const frisorH = await html("frisor");
+
+  // salon has art-deco/gallery-rail; frisor does NOT
+  check("frisor≠salon: frisor lacks salon gallery-rail",
+    !(frisorH.includes("gallery-rail") || frisorH.includes("gal-rail")),
+    "frisor should not have salon's gallery-rail"
+  );
+  // frisor has masked line reveal; salon does NOT
+  check("frisor≠salon: salon lacks frisor line-reveal",
+    !(salonH.includes("translateY(110%)") || salonH.includes("translateY(115%)")),
+    "salon should not have frisor's masked line-reveal"
+  );
+}
+
 // ── all templates: no Geist, no JetBrains Mono ───────────────────────────────
 {
   for (const branch of ["salon", "frisor", "hudpleje", "vvs", "foto", "advokat", "restaurant"]) {
