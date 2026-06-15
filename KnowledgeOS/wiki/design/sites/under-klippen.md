@@ -64,3 +64,27 @@ Dansk, langsomt, sensorisk. Sproget handler om at ankomme et sted — ikke om at
 ## Genbrug
 
 Arketypen er den **poetiske café**. Passer til: hyggerestauranter, vinbarer, lokale kroer, natcaféer. Kombiner med Zaytoon for "mad"-branchen — Under Klippen er den danske pendant.
+
+## Effekter & animationer
+
+- **Hero-entry (`heroIn`):** `@keyframes heroIn { to { transform: translateY(0); opacity: 1; } }` — logo-badge entrerer fra `translateY(20px) opacity:0` over `1.2s cubic-bezier(0.33,1,0.68,1)` med `0.45s` delay; tagline følger med `0.9s` delay. Klassisk reveal-up med staggered entrance.
+- **Scroll-reveal (`.reveal`):** IntersectionObserver-drevet — `opacity:0 → 1` + `translateY(20px) → 0` over `0.7s var(--ease)`. Stagger via `data-delay="1/2/3/4"` (0.08s pr. trin). Bruges på næsten alle sektioner.
+- **Scroll-arrow (`scrollArrow`):** `@keyframes scrollArrow { 0% { opacity:0; translateY(-20px) } 40% { opacity:1 } 100% { opacity:0; translateY(20px) } }` — 2.4s uendelig loop. Subtil ned-pegende animation.
+- **Parallax-hero:** `requestAnimationFrame`-loop i `site.js` — `.parallax-inner` forskydes på `scrollY` for hero-foto. Ingen lib, ren rAF.
+- **Nav-drop-in:** Nav starter `opacity:0; transform:translateY(-12px)` → `is-loaded`-klasse tilføjes; `0.7s var(--ease)`. Skifter til dark-mode (rgba-baggrund) ved scroll ind i hero-sektionen.
+- **Billedpar hover-zoom:** `.pair-frame:hover img { transform: scale(1.03) }` over `1.2s var(--ease)` — langsomt og roligt.
+- **Ingen gradienter til dekorativt brug** udover radial-gradient i hero-left (subtil guldglød, `rgba(200,168,122,0.10)`), og `linear-gradient` overlay på hero-foto (top+bund-udtoning `rgba(26,18,8,0.18/0.42)`).
+- **Backdrop-filter nav:** `blur(14px)` + sand-baggrund `rgba(240,237,232,0.92)` — frosted glass-effekt.
+- **Ghost-knap pil:** `.btn-ghost .arrow` udvider fra `28px → 44px` bredde ved hover (`0.3s`), intet transform.
+- Ingen GSAP, Framer Motion eller eksternt animationsbibliotek. Alt er native CSS + rAF.
+
+## Typografi (detaljeret)
+
+- **Display:** Cormorant Garamond · italic 300 (primær) / 400 / 500 · `letter-spacing: -0.005em` · `line-height: 1.02`
+- **Body:** Outfit · 300 (light body) / 400 / 500 · `line-height: 1.65`
+- **Eyebrow-labels:** Outfit 400 · `font-size: 11px` · `letter-spacing: 0.22em` · `text-transform: uppercase` · accent-guld farve
+- **Nav-wordmark:** Cormorant Garamond 400 · `font-size: 18px` · `letter-spacing: 0.32em` · uppercase
+- **Body-lg (intro):** Outfit 300 · `font-size: 18px` · `line-height: 1.7`
+- **Caption:** Outfit 300 · `font-size: 12px` · `letter-spacing: 0.04em`
+- Ingen tight negative letter-spacing på display — Cormorant trives med minimal kerning. Italic er primær display-stil, ikke sekundær accent.
+- Footer-mark: Cormorant 300 · `letter-spacing: 0.18em` · `font-size: 28px`

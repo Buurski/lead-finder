@@ -61,3 +61,28 @@ Saglig, kompetent, klar. Ingen bløde vendinger. "Autoriseret" bruges som kvalit
 ## Genbrug
 
 Arketypen er den **teknisk autoritative installatør**. Den hårde pol af håndværk-branchen. Bruges til autoriserede VVS, elektrikere, kloakmestre. Sæt mod Den Lille Maler for den mere personlige håndværksvariant.
+
+## Effekter & animationer
+
+- **Scroll-reveal (`.reveal`):** `opacity:0; transform:translateY(28px)` → `opacity:1; transform:none` over `0.9s cubic-bezier(0.2,0.7,0.2,1)` — langsommere og med en blødere "ease out back"-kurve end de andre tre sites (de bruger `0.7s cubic-bezier(0.33,1,0.68,1)`). Den tungeste reveal-easing i sættet.
+- **Scroll-locked video-animation (`scrollanim`):** Den mest avancerede effekt på tværs af alle 4 sites. En pinned sektion (`position: sticky`) mapper `video.currentTime` til scroll-progress (JS, `scrollY`). Blueprint-SVG (tegning) fader til foto-lag til heatflow-gradient. Separate `opacity`-transitions på `.sa-svg .photo` og `.sa-svg .heatflow` — `0.15s linear`. Callout-tekst fader ind (`sa-callout`) når video når slutrammen.
+- **Scroll-reveal fade-in for scrollanim-sektion:** Sektionen entrerer via `opacity:0; transform:translateY(18px)` → `0` over `1.4s cubic-bezier(0.2,0.7,0.2,1)` — den langsomste overgang i hele systemet.
+- **Scroll-cue (`cue`):** `@keyframes cue { 0% { top:-50% } 60% { top:100% } 100% { top:100% } }` — et lysbånd løber ned langs en lodret bar `2.4s ease-in-out infinite`. Forskelligt fra de andres pilanimation.
+- **Nav scroll-shrink:** Logoet krymper til `62%` ved scroll (`is-scrolled`-klasse) via `height: calc(var(--logo-h,64px) * 0.62)`, `0.45s cubic-bezier(0.2,0.7,0.2,1)`. Backdrop-filter aktiveres: `saturate(140%) blur(14px)`.
+- **Pil i knapper:** `.btn:hover .arrow { transform: translateX(3px) }` — `0.25s`. Pilen rykker vandret frem.
+- **Service hover:** `.svc:hover { background: var(--paper) }` + `.svc-media img { transform: scale(1.04) }` over `0.7s`. Pil-ikon rykker `translateX(4px)`. Minimal løft.
+- **Referencer hover:** `.ref:hover { transform: translateY(-3px) }` over `0.3s`. Supportkort: `translateY(-2px)`.
+- **Blueprint grid-baggrund:** `repeating-linear-gradient` krydsmønster (0.06 opacity navy-linjer) + `radial-gradient` rød og blå tonespot i scroll-anim-sektionen. Stærkt tech/tegning-udtryk.
+- **Grøn live-dot (nav):** `box-shadow: 0 0 0 4px rgba(34,160,107,.18)` + grøn `#22a06b` prik ved telefonnummeret i nav. Pulserende ring-effekt via box-shadow (statisk, ingen animation).
+- **Photo-tag badge:** `backdrop-filter: blur(6px)` på foto-labels — glasmorphism til tag-chips.
+- Ingen GSAP, Framer Motion. Ren CSS + IntersectionObserver + `scrollY`-mapping i main.js.
+
+## Typografi (detaljeret)
+
+- **Display:** Bricolage Grotesque · opsz 12–96 · weight 600–700 · `letter-spacing: -0.025em` til `-0.045em` (tight negative) · `line-height: 0.95` for hero-h1 (ekstremt tæt) / `1.25` for sub-headings
+- **UI / body:** Geist · 300 / 400 / 500 / 600 · `font-size: 16px` · `line-height: 1.55` — ren, neutral tech-font
+- **Mono detaljer:** JetBrains Mono · 400 / 500 / 600 · bruges til kickers (`font-size: 12px`, `letter-spacing: 0.14–0.18em`, uppercase), frame-readout i scroll-anim, foto-tags, specs
+- **Kicker-mønster:** JetBrains Mono + `::before { content:""; width:24px; height:1px; background:var(--ink) }` — en 24px vandrette streg præfikser alle kickers (linjestump + tekst = tech-signatur)
+- **Hero h1:** Bricolage 700 · `line-height: 0.95` · `letter-spacing: -0.04em` — næsten blokeret tæt. Teksten "VVS i / Herning / siden / 1963." sættes som lodret stabel med rød "1963."
+- **Statistik-tal:** Bricolage 600 · `letter-spacing: -0.02em` — store tal i hero-stats (63, 6, 50+, A)
+- JetBrains Mono som UI-kicker er unik i biblioteket — ingen andre sites bruger monospace som synlig designelement. Det forstærker teknik/præcisions-identiteten markant.
