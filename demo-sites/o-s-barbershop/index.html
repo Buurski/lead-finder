@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O's Barbershop — Dit look, vores håndværk</title>
+<meta name="description" content="O's Barbershop på Kongensgade. Klassisk barberhåndværk — klip, skæg og fade — udført med skarp hånd og rolig stemning. Book din tid.">
+
+<!-- Preconnect: fonts + image proxy -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin>
+
+<!-- Hero preload (matches srcset 900w variant) -->
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=900&h=600&fit=cover&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=900&h=600&fit=cover&output=webp&q=75 900w"
+  imagesizes="(max-width:600px) 600px, 900px">
+
+<!-- Non-render-blocking fonts: Oswald (display, condensed grotesk) + Inter Tight (body) -->
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter+Tight:wght@300;400;500;600&display=swap"
+  onload="this.onload=null;this.rel='stylesheet'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter+Tight:wght@300;400;500;600&display=swap">
+</noscript>
+
+<style>
+:root{
+  /* Brand read off O's Barbershop's own crest logo (monochrome vintage
+     barber-pole, "CUT / SHAVE") + classic barbershop feel. Recon hex were
+     WordPress default swatches (noise) and were discarded.
+     Direction: warm bone paper + deep charcoal-navy ink + one warm brass metal. */
+  --bone:#efe8da;          /* warm bone background */
+  --paper:#f5f0e6;         /* lighter card paper */
+  --ink:#181b22;           /* deep charcoal-navy text — 14:1 on bone */
+  --ink-soft:#3a3f49;      /* muted body text — 8.6:1 on bone */
+  --charcoal:#1a1d24;      /* near-black panels */
+  --charcoal-deep:#121419;
+  --cream:#f3ecdd;         /* text on charcoal */
+  --cream-mute:#c2b79f;    /* muted text on charcoal — 8.4:1 */
+  --brass:#7a5d33;         /* deep brass — small accent text on bone (AA 5:1) */
+  --brass-bright:#b08a52;  /* brighter brass — accent on dark only */
+  --line:rgba(122,93,51,.30);
+  --line-dark:rgba(176,138,82,.28);
+  --shadow:0 20px 54px -30px rgba(20,16,8,.6);
+  --radius:2px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter Tight',system-ui,sans-serif;
+  background:var(--bone);
+  color:var(--ink);
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  font-weight:400;
+}
+h1,h2,h3,.display{font-family:'Oswald',Impact,sans-serif;font-weight:600;line-height:1.02;letter-spacing:.005em;text-transform:uppercase}
+img{display:block;max-width:100%;height:auto}
+a{color:var(--brass);text-underline-offset:3px}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+.eyebrow{
+  font-family:'Oswald',sans-serif;font-weight:500;font-size:.74rem;
+  letter-spacing:.34em;text-transform:uppercase;color:var(--brass);
+  display:inline-block;
+}
+.section-pad{padding:80px 0}
+
+/* ---------- NAV ---------- */
+header.site{
+  position:sticky;top:0;z-index:40;
+  background:rgba(245,240,230,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav{display:flex;align-items:center;justify-content:space-between;height:66px;gap:16px}
+.nav .brand{display:flex;align-items:center;gap:11px;text-decoration:none}
+.nav .brand img{width:40px;height:40px;object-fit:contain}
+.nav .brand b{font-family:'Oswald',sans-serif;font-size:1.18rem;font-weight:700;letter-spacing:.05em;color:var(--ink);text-transform:uppercase}
+.nav ul{display:none;list-style:none;gap:30px}
+.nav ul a{color:var(--ink-soft);text-decoration:none;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;font-family:'Oswald',sans-serif;font-weight:500;transition:color .2s}
+.nav ul a:hover{color:var(--brass)}
+.nav .book{
+  display:inline-block;background:var(--ink);color:var(--cream);
+  padding:11px 20px;border-radius:var(--radius);text-decoration:none;
+  font-family:'Oswald',sans-serif;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+  white-space:nowrap;transition:background .2s,transform .2s;
+}
+.nav .book:hover{background:var(--charcoal-deep);transform:translateY(-1px)}
+@media(min-width:880px){.nav ul{display:flex}}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;min-height:88vh;display:flex;align-items:flex-end;overflow:hidden;background:var(--charcoal-deep)}
+.hero img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;z-index:0;opacity:.9}
+.hero::after{content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(18,20,25,.55) 0%,rgba(18,20,25,.35) 38%,rgba(18,20,25,.9) 100%)}
+.hero .inner{position:relative;z-index:2;color:var(--cream);padding:0 0 70px;max-width:680px}
+.hero .eyebrow{color:var(--brass-bright)}
+.hero h1{font-size:clamp(3rem,11vw,6rem);color:#fff;margin:16px 0 18px;font-weight:700;text-shadow:0 2px 30px rgba(0,0,0,.5)}
+.hero h1 span{display:block;color:var(--brass-bright)}
+.hero p{font-family:'Inter Tight',sans-serif;font-size:1.1rem;font-weight:300;color:#ece5d7;max-width:500px;margin-bottom:30px;text-transform:none;letter-spacing:0}
+.cta-row{display:flex;flex-wrap:wrap;gap:14px}
+.btn{display:inline-block;padding:15px 30px;border-radius:var(--radius);text-decoration:none;
+  font-family:'Oswald',sans-serif;font-size:.84rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;transition:transform .2s,background .2s,color .2s}
+.btn-primary{background:var(--brass-bright);color:#181b22}
+.btn-primary:hover{background:#c49c5f;transform:translateY(-2px)}
+.btn-ghost{border:1px solid rgba(243,236,221,.55);color:var(--cream)}
+.btn-ghost:hover{background:rgba(243,236,221,.12)}
+
+/* ---------- TRUST STRIP ---------- */
+.trust{background:var(--charcoal);color:var(--cream);text-align:center}
+.trust .wrap{padding:30px 22px;display:flex;flex-wrap:wrap;gap:14px 38px;align-items:center;justify-content:center}
+.trust .stars{display:inline-flex;gap:3px;color:var(--brass-bright);font-size:1.05rem;letter-spacing:1px}
+.trust b{font-family:'Oswald',sans-serif;font-weight:500;letter-spacing:.04em}
+.trust .sep{width:1px;height:22px;background:var(--line-dark);display:none}
+.trust .item{font-size:.86rem;color:var(--cream-mute);letter-spacing:.02em}
+.trust .item b{color:var(--cream)}
+@media(min-width:680px){.trust .sep{display:block}}
+
+/* ---------- INTRO QUOTE ---------- */
+.intro{background:var(--bone);text-align:center}
+.intro .wrap{padding:70px 22px;max-width:780px}
+.intro p{font-family:'Oswald',sans-serif;font-weight:400;font-size:clamp(1.5rem,4vw,2.3rem);line-height:1.22;color:var(--ink);text-transform:uppercase;letter-spacing:.01em}
+.intro p em{font-style:normal;color:var(--brass)}
+.intro .sig{margin-top:22px;font-family:'Inter Tight',sans-serif;font-size:.74rem;letter-spacing:.28em;text-transform:uppercase;color:var(--brass)}
+
+/* ---------- YDELSER ---------- */
+.svc-head{text-align:center;margin-bottom:50px}
+.svc-head h2{font-size:clamp(2.3rem,6vw,3.4rem);color:var(--ink);margin-top:10px}
+.svc-head p{font-size:1.02rem;color:var(--ink-soft);max-width:560px;margin:14px auto 0}
+.svc-grid{display:grid;gap:18px;grid-template-columns:1fr}
+@media(min-width:640px){.svc-grid{grid-template-columns:1fr 1fr}}
+.svc{
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  padding:26px 26px 28px;box-shadow:var(--shadow);position:relative;
+  display:flex;flex-direction:column;
+}
+.svc .num{font-family:'Oswald',sans-serif;font-size:.72rem;letter-spacing:.2em;color:var(--brass);font-weight:600}
+.svc h3{font-size:1.5rem;color:var(--ink);margin:6px 0 8px}
+.svc p{color:var(--ink-soft);font-size:.95rem;flex:1}
+.svc .lvl{margin-top:16px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);border-top:1px solid var(--line);padding-top:14px}
+.svc-note{text-align:center;margin-top:38px;color:var(--ink-soft);font-size:.92rem}
+.svc-note a{font-weight:500}
+
+/* ---------- SHOWCASE (barber + storefront, distinct real photos) ---------- */
+.show{background:var(--charcoal);color:var(--cream)}
+.show .grid{display:grid;gap:0;grid-template-columns:1fr}
+@media(min-width:860px){.show .grid{grid-template-columns:1.1fr .9fr;align-items:stretch}}
+.show .copy{padding:64px 22px}
+@media(min-width:860px){.show .copy{padding:78px 50px 78px 22px}}
+.show .eyebrow{color:var(--brass-bright)}
+.show h2{font-size:clamp(2.2rem,5.5vw,3.2rem);color:#fff;margin:10px 0 20px}
+.show p{color:var(--cream-mute);margin-bottom:16px;font-size:1.02rem}
+.show .pics{position:relative;min-height:340px;display:grid;grid-template-columns:1fr;gap:0}
+.show .pics img{width:100%;height:100%;object-fit:cover;min-height:300px}
+@media(min-width:860px){.show .pics{min-height:100%}}
+
+/* ---------- OM ---------- */
+.about{background:var(--bone)}
+.about .grid{display:grid;gap:46px;grid-template-columns:1fr;align-items:center}
+@media(min-width:860px){.about .grid{grid-template-columns:.95fr 1.05fr}}
+.about h2{font-size:clamp(2.2rem,5.5vw,3.2rem);color:var(--ink);margin:10px 0 18px}
+.about p{margin-bottom:16px;color:var(--ink-soft);font-size:1.02rem}
+.about .figure{position:relative;order:-1}
+@media(min-width:860px){.about .figure{order:0}}
+.about .figure img{border-radius:var(--radius);box-shadow:var(--shadow);width:100%;height:460px;object-fit:cover;object-position:center 28%}
+.about .figure::before{content:"";position:absolute;inset:auto auto -14px -14px;width:58%;height:58%;border:1px solid var(--brass);border-radius:var(--radius);z-index:-1}
+.about .pole{display:inline-flex;align-items:center;gap:10px;margin-top:8px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brass)}
+
+/* ---------- FIND VEJ ---------- */
+.find{background:var(--charcoal-deep);color:var(--cream)}
+.find .grid{display:grid;gap:46px;grid-template-columns:1fr}
+@media(min-width:840px){.find .grid{grid-template-columns:1fr 1fr}}
+.find h2{font-size:clamp(2.2rem,5.5vw,3.2rem);color:#fff;margin:10px 0 22px}
+.find .eyebrow{color:var(--brass-bright)}
+.info-row{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line-dark)}
+.info-row .k{min-width:118px;font-family:'Oswald',sans-serif;font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--brass-bright);padding-top:3px}
+.info-row .v{color:var(--cream)}
+.info-row .v small{display:block;color:var(--cream-mute);font-size:.84rem;margin-top:3px}
+.hours-note{font-size:.82rem;color:var(--cream-mute);margin-top:18px;font-style:italic}
+.map-card{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);min-height:330px;border:1px solid var(--line-dark)}
+.map-card iframe{width:100%;height:100%;min-height:330px;border:0;display:block;filter:grayscale(.35) contrast(1.05)}
+.find .btn-primary{margin-top:26px}
+
+/* ---------- BOOK CTA ---------- */
+.book-cta{background:var(--brass);color:#fff;text-align:center}
+.book-cta .wrap{padding:66px 22px}
+.book-cta h2{font-size:clamp(2.2rem,6vw,3.4rem);color:#fff;margin-bottom:14px}
+.book-cta p{color:#f3ecdd;max-width:520px;margin:0 auto 28px;font-size:1.05rem}
+.book-cta .btn{background:var(--charcoal-deep);color:var(--cream)}
+.book-cta .btn:hover{background:#000;transform:translateY(-2px)}
+
+/* ---------- FOOTER ---------- */
+footer.site{background:#101218;color:#8a8f99;text-align:center;padding:48px 22px}
+footer.site img{width:62px;height:62px;object-fit:contain;margin:0 auto 14px;filter:brightness(0) invert(1) opacity(.85)}
+footer.site .brand{font-family:'Oswald',sans-serif;font-size:1.5rem;color:var(--cream);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+footer.site p{font-size:.86rem;margin-top:8px}
+footer.site .demo{margin-top:24px;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#5a5f68}
+
+/* ---------- REVEAL ---------- */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <nav class="nav" aria-label="Hovedmenu">
+      <a class="brand" href="#top" aria-label="O's Barbershop forside">
+        <img src="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2Fimage-removebg-preview-3-1-1.png&w=80&h=80&fit=inside&output=webp&q=85"
+          width="40" height="40" alt="O's Barbershop logo — barber-pole crest">
+        <b>O's Barbershop</b>
+      </a>
+      <ul>
+        <li><a href="#ydelser">Ydelser</a></li>
+        <li><a href="#om">Shoppen</a></li>
+        <li><a href="#find-vej">Find vej</a></li>
+        <li><a href="#book">Book</a></li>
+      </ul>
+      <a class="book" href="#book">Book en tid</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <img class="bg"
+    src="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=900&h=600&fit=cover&output=webp&q=75"
+    srcset="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=900&h=600&fit=cover&output=webp&q=75 900w"
+    sizes="(max-width:600px) 600px, 900px"
+    width="900" height="600" fetchpriority="high"
+    alt="Barber hos O's Barbershop med kam og saks i fuld gang med en klipning">
+  <div class="wrap">
+    <div class="inner">
+      <span class="eyebrow">Kongensgade · Barbershop</span>
+      <h1>Dit look,<span>vores håndværk</span></h1>
+      <p>Klassisk barberhåndværk med skarp hånd og rolig stemning. Klip, skæg og fade — gjort ordentligt, hver gang.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#book">Book en tid</a>
+        <a class="btn btn-ghost" href="#ydelser">Se ydelser</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section class="trust" aria-label="Anmeldelser og kendetegn">
+  <div class="wrap">
+    <span class="stars" aria-hidden="true">★★★★★</span>
+    <b>Højt anbefalet af kunderne</b>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="item"><b>Walk-in</b> &amp; booking</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="item">Klip · skæg · <b>fade</b></span>
+  </div>
+</section>
+
+<!-- INTRO QUOTE -->
+<section class="intro">
+  <div class="wrap">
+    <p>“En god klipning er ikke held — det er <em>håndværk</em>. Du sætter dig i stolen, vi tager os af resten.”</p>
+    <div class="sig">O's Barbershop · Kongensgade</div>
+  </div>
+</section>
+
+<!-- YDELSER -->
+<section class="section-pad" id="ydelser">
+  <div class="wrap">
+    <div class="svc-head reveal">
+      <span class="eyebrow">Ydelser</span>
+      <h2>Det vi kan</h2>
+      <p>Klassisk barberarbejde uden genveje. Vælg det, du kommer efter — eller spørg os, hvad der klæder dig.</p>
+    </div>
+    <div class="svc-grid">
+      <article class="svc reveal">
+        <span class="num">01</span>
+        <h3>Herreklip</h3>
+        <p>Skarp, frisk klipning tilpasset din hårtype og dit ansigt. Saks, maskine og finish — afsluttet, så det sidder, til du kommer igen.</p>
+        <span class="lvl">Klassiker · book tid</span>
+      </article>
+      <article class="svc reveal">
+        <span class="num">02</span>
+        <h3>Skæg &amp; trim</h3>
+        <p>Formet og linet skæg med skarpe kanter og varm finish. Vi former det efter ansigtet — ikke efter en skabelon.</p>
+        <span class="lvl">Skæg · book tid</span>
+      </article>
+      <article class="svc reveal">
+        <span class="num">03</span>
+        <h3>Fade &amp; skin fade</h3>
+        <p>Den rene overgang fra hud til top, blendet uden trin. Vores håndværksmærke — det vi laver allermest af.</p>
+        <span class="lvl">Fade · book tid</span>
+      </article>
+      <article class="svc reveal">
+        <span class="num">04</span>
+        <h3>Klip &amp; skæg samlet</h3>
+        <p>Hele pakken på én stol: frisk klip og formet skæg, så look og linjer spiller sammen. Gå ud klar til alt.</p>
+        <span class="lvl">Komplet · book tid</span>
+      </article>
+    </div>
+    <p class="svc-note reveal">Priser oplyses i shoppen og ved booking — vi finder det, der passer til dig. <a href="#book">Book en tid</a></p>
+  </div>
+</section>
+
+<!-- SHOWCASE -->
+<section class="show">
+  <div class="grid">
+    <div class="copy reveal">
+      <span class="eyebrow">Inde i shoppen</span>
+      <h2>Stolen, kammen og en god snak</h2>
+      <p>Hos O's er der ikke noget hastværk. Du sætter dig, vi tager den fra toppen — klip, kanter og finish — mens snakken går.</p>
+      <p>Det er den slags sted, du kommer tilbage til. Ikke fordi du skal, men fordi det bare sidder, hver gang.</p>
+      <a class="btn btn-primary" href="#book" style="margin-top:10px">Book din stol</a>
+    </div>
+    <div class="pics">
+      <img loading="lazy" decoding="async" width="500" height="600"
+        src="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2Fimage-4385.png&w=500&h=600&fit=cover&output=webp&q=78"
+        alt="O's Barbershops butiksfacade på Kongensgade med skilt over vinduet">
+    </div>
+  </div>
+</section>
+
+<!-- OM -->
+<section class="about section-pad" id="om">
+  <div class="wrap">
+    <div class="grid">
+      <div class="figure reveal">
+        <img loading="lazy" decoding="async" width="500" height="460"
+          src="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2FRectangle-42341.png&w=500&h=600&fit=cover&output=webp&q=78"
+          alt="Barber hos O's Barbershop i gang med en klipning, smilende med kam i hånden">
+      </div>
+      <div class="reveal">
+        <span class="eyebrow">Om O's</span>
+        <h2>Et barbershop med hånd om detaljen</h2>
+        <p>O's Barbershop ligger på Kongensgade — et klassisk barbershop, hvor håndværket er i centrum og stemningen er rolig. Vi tror på, at en klipning skal gøres ordentligt, ikke hurtigt.</p>
+        <p>Klip, skæg og fade er vores hverdag, og vi former hvert look efter manden i stolen. Kom forbi som walk-in, eller book din tid — du er i gode hænder.</p>
+        <span class="pole">✂ Cut · Shave · siden første stol</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FIND VEJ -->
+<section class="find section-pad" id="find-vej">
+  <div class="wrap">
+    <div class="grid">
+      <div class="reveal">
+        <span class="eyebrow">Find vej &amp; åbningstider</span>
+        <h2>Vi ses på Kongensgade</h2>
+        <div class="info-row">
+          <span class="k">Adresse</span>
+          <span class="v">Kongensgade<br><small>Find vejen med kortet ved siden af</small></span>
+        </div>
+        <div class="info-row">
+          <span class="k">Åbningstider</span>
+          <span class="v">Mandag – lørdag<br><small>ca. kl. 9 til 18 · ring gerne og hør</small></span>
+        </div>
+        <div class="info-row">
+          <span class="k">Booking</span>
+          <span class="v">Book online eller ring 52 58 83 17<br><small>Walk-ins er velkomne, når der er en ledig stol</small></span>
+        </div>
+        <div class="info-row">
+          <span class="k">Mail</span>
+          <span class="v"><a href="mailto:kontakt@osbarbershop.dk" style="color:var(--brass-bright)">kontakt@osbarbershop.dk</a></span>
+        </div>
+        <p class="hours-note">Åbningstider er vejledende (“ca.”) — tjek de aktuelle tider, eller ring inden besøg.</p>
+        <a class="btn btn-primary" href="tel:+4552588317">Ring 52 58 83 17</a>
+      </div>
+      <div class="map-card reveal">
+        <iframe title="Kort over O's Barbershop på Kongensgade"
+          loading="lazy"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=9.5300%2C55.7050%2C9.5420%2C55.7110&layer=mapnik&marker=55.7080%2C9.5360"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOOK CTA -->
+<section class="book-cta" id="book">
+  <div class="wrap reveal">
+    <h2>Klar til en frisk klipning?</h2>
+    <p>Book din tid online eller ring — så har vi stolen klar, når du kommer.</p>
+    <a class="btn" href="tel:+4552588317">Book en tid</a>
+  </div>
+</section>
+
+<footer class="site">
+  <img src="https://images.weserv.nl/?url=osbarbershop.dk%2Fwp-content%2Fuploads%2F2025%2F10%2Fimage-removebg-preview-3-1-1.png&w=124&h=124&fit=inside&output=webp&q=85"
+    width="62" height="62" alt="">
+  <div class="brand">O's Barbershop</div>
+  <p>Kongensgade · kontakt@osbarbershop.dk · 52 58 83 17</p>
+  <p>Dit look, vores håndværk.</p>
+  <div class="demo">Demo-udkast · uforpligtende forslag</div>
+</footer>
+
+<script>
+(function(){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var els=document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver'in window)){els.forEach(function(e){e.classList.add('in')});return;}
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+  },{threshold:.14,rootMargin:'0px 0px -8% 0px'});
+  els.forEach(function(e){io.observe(e);});
+})();
+</script>
+</body>
+</html>
