@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Restaurant Pipers Hus — Smagen af Roskilde, midt i Bypark og fjord</title>
+<meta name="description" content="Restaurant Pipers Hus ligger midt i naturskønne Roskilde Bypark med udsigt til fjorden. Nyd brunch, frokost, aftensmad eller kaffe og kage i grønne omgivelser." />
+
+<!-- Preconnect: fonts + image host -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin />
+
+<!-- Hero preload (LCP) -->
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=900&h=600&fit=cover&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=900&h=600&fit=cover&output=webp&q=75 900w"
+  imagesizes="(max-width:600px) 600px, 900px" />
+
+<!-- Non-render-blocking Google Fonts -->
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@300;400;500;600&display=swap"
+  onload="this.onload=null;this.rel='stylesheet'" />
+<noscript>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@300;400;500;600&display=swap" />
+</noscript>
+
+<style>
+  :root {
+    /* Pipers Hus brand — deep green/teal anchors + gold accent */
+    --green-900: #104443;   /* darkest — deep anchor */
+    --green-800: #19524c;   /* primary deep green */
+    --green-700: #1f6159;
+    --gold:      #d4af37;    /* accent / CTA fill */
+    --gold-deep: #a8842a;    /* darker gold for large display accents */
+    --gold-text: #7a5d18;    /* AA-safe gold for small text on cream (>=4.5:1) */
+    --cream:     #f6f1e7;    /* page bg */
+    --cream-2:   #efe7d6;    /* panel bg */
+    --ink:       #15302d;    /* body text on cream — AA on cream */
+    --ink-soft:  #3a544f;    /* muted body */
+    --on-dark:   #f3ecdd;    /* text on green */
+    --on-dark-soft: #cdd9d3;
+
+    --display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --body: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --maxw: 1080px;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    font-family: var(--body);
+    color: var(--ink);
+    background: var(--cream);
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--green-800); }
+  img { display: block; max-width: 100%; height: auto; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.08; margin: 0; letter-spacing: .2px; }
+  h2 { font-size: clamp(2rem, 5vw, 3rem); color: var(--green-900); }
+  .eyebrow {
+    font-family: var(--body);
+    text-transform: uppercase;
+    letter-spacing: .22em;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--gold-text);
+    margin: 0 0 .6rem;
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-block;
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: .98rem;
+    letter-spacing: .02em;
+    padding: .85rem 1.6rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+  }
+  .btn-gold { background: var(--gold); color: var(--green-900); box-shadow: 0 6px 20px rgba(212,175,55,.32); }
+  .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(212,175,55,.42); }
+  .btn-ghost { border: 1.5px solid var(--on-dark); color: var(--on-dark); }
+  .btn-ghost:hover { background: rgba(255,255,255,.12); }
+  @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
+
+  /* ---- Header ---- */
+  header.site {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(16,68,67,.94);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(212,175,55,.25);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: .85rem 22px; max-width: var(--maxw); margin: 0 auto; }
+  .brand { font-family: var(--display); font-size: 1.5rem; font-weight: 600; color: var(--gold); text-decoration: none; letter-spacing: .5px; }
+  .brand span { color: var(--on-dark); }
+  .nav-links { display: none; gap: 1.6rem; align-items: center; }
+  .nav-links a { color: var(--on-dark); text-decoration: none; font-size: .92rem; font-weight: 500; }
+  .nav-links a:hover { color: var(--gold); }
+  .nav .btn { padding: .6rem 1.2rem; font-size: .88rem; }
+  @media (min-width: 820px) { .nav-links { display: flex; } }
+
+  /* ---- Hero ---- */
+  .hero { position: relative; }
+  .hero-media { position: relative; }
+  .hero-media img { width: 100%; aspect-ratio: 900 / 600; object-fit: cover; min-height: 420px; }
+  .hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(16,68,67,.30) 0%, rgba(16,68,67,.62) 60%, rgba(16,68,67,.86) 100%);
+    display: flex; align-items: flex-end;
+  }
+  .hero-inner { color: var(--on-dark); padding: 0 22px 3.2rem; max-width: var(--maxw); margin: 0 auto; width: 100%; }
+  .hero h1 { font-size: clamp(2.6rem, 8vw, 4.6rem); color: #fff; max-width: 14ch; }
+  .hero .eyebrow { color: var(--gold); }
+  .hero p.lead { font-size: clamp(1.05rem, 2.4vw, 1.3rem); max-width: 46ch; color: var(--on-dark); margin: 1rem 0 1.8rem; font-weight: 300; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: .9rem; }
+
+  /* ---- Section base ---- */
+  section { padding: clamp(3.4rem, 8vw, 5.6rem) 0; }
+  .section-head { max-width: 56ch; margin-bottom: 2.6rem; }
+  .section-head p { color: var(--ink-soft); font-size: 1.06rem; margin: .8rem 0 0; }
+
+  /* ---- Menu highlights ---- */
+  .menu { background: var(--cream-2); }
+  .menu-grid { display: grid; gap: 1.6rem; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
+  .menu-card {
+    background: var(--cream); border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 8px 30px rgba(16,68,67,.10);
+    border: 1px solid rgba(16,68,67,.07);
+  }
+  .menu-card img { width: 100%; aspect-ratio: 500 / 333; object-fit: cover; }
+  .menu-card .body { padding: 1.3rem 1.4rem 1.6rem; }
+  .menu-card h3 { font-size: 1.7rem; color: var(--green-900); margin-bottom: .4rem; }
+  .menu-card p { margin: 0; color: var(--ink-soft); font-size: .98rem; }
+  .menu-card .tag { display:inline-block; font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color: var(--gold-text); font-weight:600; margin-bottom:.5rem; }
+
+  /* ---- About ---- */
+  .about-grid { display: grid; gap: 2.4rem; grid-template-columns: 1fr; align-items: center; }
+  @media (min-width: 860px) { .about-grid { grid-template-columns: 1.05fr .95fr; } }
+  .about-text p { color: var(--ink-soft); font-size: 1.08rem; }
+  .about-text p + p { margin-top: 1rem; }
+  .about-media img { border-radius: var(--radius); width: 100%; aspect-ratio: 500 / 333; object-fit: cover; box-shadow: 0 14px 40px rgba(16,68,67,.18); }
+  .pull { font-family: var(--display); font-size: 1.55rem; color: var(--green-800); font-style: italic; line-height: 1.3; margin: 1.4rem 0 0; }
+
+  /* ---- Events / Skt Hans ---- */
+  .events { background: var(--green-900); color: var(--on-dark); }
+  .events h2 { color: #fff; }
+  .events .eyebrow { color: var(--gold); }
+  .events-grid { display: grid; gap: 2.4rem; grid-template-columns: 1fr; align-items: center; }
+  @media (min-width: 820px) { .events-grid { grid-template-columns: .95fr 1.05fr; } }
+  .events p { color: var(--on-dark-soft); font-size: 1.08rem; }
+  .events-media img { border-radius: var(--radius); width: 100%; object-fit: contain; background: var(--cream); box-shadow: 0 14px 40px rgba(0,0,0,.3); }
+
+  /* ---- Gallery ---- */
+  .gallery-grid { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+  @media (min-width: 720px) { .gallery-grid { grid-template-columns: repeat(4, 1fr); } }
+  .gallery-grid figure { margin: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 22px rgba(16,68,67,.12); }
+  .gallery-grid img { width: 100%; aspect-ratio: 500 / 333; object-fit: cover; transition: transform .5s ease; }
+  .gallery-grid figure:hover img { transform: scale(1.06); }
+  .gallery-grid .wide { grid-column: span 2; }
+  @media (prefers-reduced-motion: reduce) { .gallery-grid figure:hover img { transform: none; } }
+
+  /* ---- Find vej ---- */
+  .find { background: var(--cream-2); }
+  .find-grid { display: grid; gap: 2.2rem; grid-template-columns: 1fr; }
+  @media (min-width: 820px) { .find-grid { grid-template-columns: 1fr 1.1fr; } }
+  .info-card { background: var(--cream); border-radius: var(--radius); padding: 1.8rem 1.9rem; box-shadow: 0 8px 30px rgba(16,68,67,.10); }
+  .info-card h3 { font-size: 1.5rem; color: var(--green-900); margin-bottom: .6rem; }
+  .hours li { display: flex; justify-content: space-between; gap: 1rem; padding: .42rem 0; border-bottom: 1px dashed rgba(16,68,67,.18); list-style: none; }
+  .hours { padding: 0; margin: .4rem 0 0; }
+  .hours li span:last-child { color: var(--ink); font-weight: 500; }
+  .note-flag { font-size: .85rem; color: var(--ink-soft); margin-top: .9rem; font-style: italic; }
+  .map-embed { border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 30px rgba(16,68,67,.12); min-height: 320px; }
+  .map-embed iframe { width: 100%; height: 100%; min-height: 320px; border: 0; display: block; }
+  address { font-style: normal; color: var(--ink-soft); margin-top: .5rem; line-height: 1.7; }
+
+  /* ---- Footer ---- */
+  footer.site { background: var(--green-900); color: var(--on-dark-soft); padding: 2.6rem 0 2rem; }
+  footer.site .wrap { display: flex; flex-wrap: wrap; gap: 1.4rem; justify-content: space-between; align-items: center; }
+  footer .brand { font-size: 1.3rem; }
+  .demo-flag {
+    width: 100%; text-align: center; font-size: .8rem; color: var(--on-dark-soft);
+    margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid rgba(212,175,55,.22); letter-spacing: .04em;
+  }
+
+  /* ---- Reveal ---- */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <nav class="nav" aria-label="Hovedmenu">
+    <a class="brand" href="#top">Pipers <span>Hus</span></a>
+    <div class="nav-links">
+      <a href="#menu">Menu</a>
+      <a href="#om">Om stedet</a>
+      <a href="#events">Skt. Hans</a>
+      <a href="#galleri">Galleri</a>
+      <a href="#find-vej">Find vej</a>
+    </div>
+    <a class="btn btn-gold" href="#find-vej">Book bord</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero" aria-label="Velkommen">
+    <div class="hero-media">
+      <img
+        src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=900&h=600&fit=cover&output=webp&q=75"
+        srcset="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=900&h=600&fit=cover&output=webp&q=75 900w"
+        sizes="(max-width:600px) 600px, 900px"
+        width="900" height="600" fetchpriority="high"
+        alt="Restaurant Pipers Hus set fra oven, omgivet af grønne træer i Roskilde Bypark ned mod fjorden" />
+      <div class="hero-overlay">
+        <div class="hero-inner">
+          <p class="eyebrow">Restaurant i Roskilde Bypark</p>
+          <h1>Smagen af Roskilde</h1>
+          <p class="lead">Midt i de naturskønne omgivelser ved Roskilde Bypark — med grønt til alle sider og udsigt til fjorden. Kom til brunch, frokost, en sen aften eller bare kaffe og kage.</p>
+          <div class="hero-cta">
+            <a class="btn btn-gold" href="#find-vej">Book bord</a>
+            <a class="btn btn-ghost" href="#menu">Se menuen</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU HIGHLIGHTS -->
+  <section class="menu" id="menu">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">På bordet</p>
+        <h2>Mad og drikke i grønne omgivelser</h2>
+        <p>Fra rolige brunch-formiddage til lune aftener — alt nydt med naturen lige uden for vinduet. Her er nogle af de kategorier, du finder hos os.</p>
+      </div>
+      <div class="menu-grid">
+        <article class="menu-card reveal">
+          <img
+            src="https://images.weserv.nl/?url=www.pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Fbrunch-frokost-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Anrettet brunch og frokost på Restaurant Pipers Hus" />
+          <div class="body">
+            <span class="tag">Formiddag &amp; middag</span>
+            <h3>Brunch &amp; frokost</h3>
+            <p>Start dagen i ro med en god brunch, eller mød op til frokost midt i parken — lyse retter til en let stund ved fjorden.</p>
+          </div>
+        </article>
+        <article class="menu-card reveal">
+          <img
+            src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Faftensmad-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Aftensmad serveret på Restaurant Pipers Hus" />
+          <div class="body">
+            <span class="tag">Aften</span>
+            <h3>Aftensmad</h3>
+            <p>Bliv hængende, når solen går ned over Bypark og fjord. Aftenens retter, et glas vin og den ro, kun naturen kan give.</p>
+          </div>
+        </article>
+        <article class="menu-card reveal">
+          <img
+            src="https://images.weserv.nl/?url=www.pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Fdrikkevarer-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Kaffe, kage og drikkevarer på Restaurant Pipers Hus" />
+          <div class="body">
+            <span class="tag">Hele dagen</span>
+            <h3>Kaffe og kage</h3>
+            <p>En kop kaffe, et stykke kage og en pause i det grønne. Eller et glas vin til eftermiddagen — helt som du har lyst til.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="om">
+    <div class="wrap about-grid">
+      <div class="about-text reveal">
+        <p class="eyebrow">Om stedet</p>
+        <h2>Et hus midt i Roskilde Bypark</h2>
+        <p>Pipers Hus ligger, hvor byen møder naturen — midt i Roskilde Bypark, med grønne træer til alle sider og fjorden glitrende i baggrunden. Det er et sted at trække vejret, mødes og nyde noget godt.</p>
+        <p>Hos os er omgivelserne en del af måltidet. Tag familien med til brunch, mød vennerne til frokost, eller find roen til en stille aften, hvor lyset langsomt forsvinder ud over vandet.</p>
+        <p class="pull">«Besøg os midt i naturskønne omgivelser — og smag forskellen, naturen gør.»</p>
+      </div>
+      <div class="about-media reveal">
+        <img
+          src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+          width="500" height="333" loading="lazy" decoding="async"
+          alt="Luftfoto af Pipers Hus omgivet af parkens grønne træer ned mod Roskilde Fjord" />
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS / SKT HANS -->
+  <section class="events" id="events">
+    <div class="wrap events-grid">
+      <div class="events-media reveal">
+        <img
+          src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2026%2F05%2Frestaurant-pipershus-roskilde-skt-hans-2026-menu.png&w=560&output=webp&q=80"
+          width="560" height="795" loading="lazy" decoding="async"
+          alt="Menukort for Skt. Hans aften 2026 på Restaurant Pipers Hus" />
+      </div>
+      <div class="events-text reveal">
+        <p class="eyebrow">Events i parken</p>
+        <h2>Skt. Hans aften 2026</h2>
+        <p>Den længste aften fejres bedst tæt på vandet. Kom til Skt. Hans i Roskilde Bypark, hvor vi dækker op med en menu til lejligheden, mens bålet tændes og sommeren for alvor sættes i gang.</p>
+        <p>Vi holder også gerne dine egne mærkedage — fra den lille fejring til den store fest. Spørg os om mulighederne, så finder vi en ramme i det grønne, der passer jer.</p>
+        <a class="btn btn-gold" href="#find-vej" style="margin-top:1.2rem">Spørg om events</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="galleri">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">Galleri</p>
+        <h2>Et kig ind i huset og parken</h2>
+      </div>
+      <div class="gallery-grid">
+        <figure class="wide reveal">
+          <img
+            src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F08%2Fpipershus-fra-oven-1-1.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Pipers Hus set fra luften, indrammet af parkens træer ved fjorden" />
+        </figure>
+        <figure class="reveal">
+          <img
+            src="https://images.weserv.nl/?url=www.pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Fbrunch-frokost-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Brunch- og frokostanretning fra Pipers Hus" />
+        </figure>
+        <figure class="reveal">
+          <img
+            src="https://images.weserv.nl/?url=pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Faftensmad-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Aftenret serveret på Pipers Hus" />
+        </figure>
+        <figure class="reveal">
+          <img
+            src="https://images.weserv.nl/?url=www.pipershus.dk%2Fwp-content%2Fuploads%2F2018%2F11%2Fdrikkevarer-restaurant-pipers-hus-kategori-forside-640x427.jpg&w=500&h=333&fit=cover&output=webp&q=75"
+            width="500" height="333" loading="lazy" decoding="async"
+            alt="Drikkevarer, kaffe og kage på Pipers Hus" />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIND VEJ -->
+  <section class="find" id="find-vej">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">Find vej</p>
+        <h2>Besøg os i Bypark</h2>
+        <p>Vi ligger midt i Roskilde Bypark, lige ned mod fjorden. Ring gerne i forvejen for at booke bord — særligt til weekender og events.</p>
+      </div>
+      <div class="find-grid">
+        <div class="info-card reveal">
+          <h3>Kontakt &amp; adresse</h3>
+          <address>
+            Restaurant Pipers Hus<br />
+            Roskilde Bypark, 4000 Roskilde<br />
+            <a href="https://www.pipershus.dk" rel="noopener">pipershus.dk</a>
+          </address>
+          <h3 style="margin-top:1.6rem">Åbningstider</h3>
+          <ul class="hours">
+            <li><span>Mandag</span><span>Lukket</span></li>
+            <li><span>Tirsdag – fredag</span><span>ca. 11 – 21</span></li>
+            <li><span>Lørdag</span><span>ca. 10 – 21</span></li>
+            <li><span>Søndag</span><span>ca. 10 – 17</span></li>
+          </ul>
+          <p class="note-flag">Åbningstider er vejledende — bekræft altid aktuelle tider og helligdage direkte hos restauranten.</p>
+          <a class="btn btn-gold" href="https://www.pipershus.dk" rel="noopener" style="margin-top:1.4rem">Book bord</a>
+        </div>
+        <div class="map-embed reveal">
+          <iframe
+            title="Kort over Restaurant Pipers Hus i Roskilde Bypark"
+            src="https://www.google.com/maps?q=Pipers+Hus+Roskilde+Bypark&output=embed"
+            loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <a class="brand" href="#top">Pipers <span>Hus</span></a>
+    <p style="margin:0; max-width:34ch; color:var(--on-dark-soft);">Smagen af Roskilde — midt i naturskønne Bypark, med udsigt til fjorden.</p>
+    <p class="demo-flag">Dette er en uforpligtende demo-side lavet til Restaurant Pipers Hus — ikke den officielle hjemmeside. Indhold og åbningstider er vejledende.</p>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll — respects prefers-reduced-motion
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+
+</body>
+</html>
