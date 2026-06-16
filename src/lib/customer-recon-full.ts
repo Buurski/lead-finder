@@ -38,14 +38,27 @@ function cacheKey(slug: string): string {
   return `recon-full/${slug}`;
 }
 
+// WordPress Gutenberg + common page-builder DEFAULT palette swatches. These show
+// up in nearly every WP site's inline CSS and are NOT the brand's real colours —
+// they poisoned several E2E recons (barber/nail/frisør all surfaced #f78da7 etc).
+// Learned 2026-06-16 across 6 demo builds. Filtered at the source.
+const WP_DEFAULT_HEX = new Set([
+  "#abb8c3", "#f78da7", "#cf2e2e", "#00d084", "#ff6900", "#fcb900",
+  "#2ea3f2", "#0693e3", "#3897f0", "#9b51e0", "#7bdcb5", "#8ed1fc",
+  "#eeeeee", "#f4f4f4", "#f7f7f7", "#313131",
+]);
+
 // Merge a secondary recon (gmb) into the primary (website): primary wins on
-// scalar fields, images/palette are unioned, notes concatenated.
+// scalar fields, images/palette are unioned, notes concatenated. Drops the
+// WordPress-default swatches so the brand's real colours surface first.
 function merge(primary: ReconResult, gmb: ReconResult | null): {
   palette: string[];
   images: string[];
   notes: string[];
 } {
-  const palette = [...new Set([...primary.palette, ...(gmb?.palette ?? [])])].slice(0, 6);
+  const palette = [...new Set([...primary.palette, ...(gmb?.palette ?? [])])]
+    .filter((c) => !WP_DEFAULT_HEX.has(c.toLowerCase()))
+    .slice(0, 6);
   const images = [...new Set([...primary.images, ...(gmb?.images ?? [])])].slice(0, 10);
   const notes = [...primary.notes, ...(gmb?.notes ?? [])];
   return { palette, images, notes };

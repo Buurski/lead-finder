@@ -70,3 +70,30 @@ R3 fund + status:
 - MED: galleri har tomme felter → ÅBEN (Fase B)
 
 Verificeret Playwright 1280px: hero stærk, menu 3 kort + sprog-toggles, about m. ægte menu-PNG, find-vej m. ca.-tider (ingen opfundne tal). Eneste console-fejl = favicon 404 (harmløs). Café-ægte, ikke generisk. Screenshot: gudruns-demo-full.jpeg.
+
+## Fase B-D — overnight (6 E2E-demoer + produktions-lås)
+
+**6 demoer bygget via pipelinen, alle live (privat Vercel):**
+| Demo | Branche/template | Brand-kilde | Mobil Lighthouse |
+|------|------------------|-------------|------------------|
+| gudruns-goodies.vercel.app | café/restaurant | orange fra logo + islandsk (Velkomin) | perf 95 a11y 95 seo 100 |
+| cafe-wilder.vercel.app | café/restaurant | cream/flaskegrøn bistro + egne fotos | perf 95 a11y 95 seo 100 |
+| pipers-hus.vercel.app | café/restaurant | EGEN hex-palet (guld+grøn) + menu-kat. | perf 91 a11y 100 seo 100 |
+| o-s-barbershop.vercel.app | barber/frisor | logo-crest → bone+navy+brass | perf 93 a11y 95 seo 100 |
+| the-nail-studio.vercel.app | negle/hudpleje | rose #dd9696 + egne nail-fotos | perf 91 a11y 100 seo 100 |
+| frisoer-alex.vercel.app | frisør/frisor | navy/bone/brass + ægte 9.8/462 + tlf | perf 90 a11y 95 seo 100 |
+
+**Produktions-lås (Fase D):**
+- Bagt perf/a11y-kit ind i prompt-template (weserv WebP, async fonts, preload-hero,
+  WCAG-kontrast, width/height-match, lazy, heading-order) → alle demoer 90-95 mobil
+  out-of-the-box uden ekstra optimerings-runde.
+- WordPress-default-palette-filter i `customer-recon-full.ts` (Gutenberg-swatches som
+  #f78da7/#cf2e2e/#2ea3f2 poisoned barber/nail/frisør-recon → filtreret ved kilden).
+- `scripts/test_prompt_builder.mjs` (15 checks: sanitize-injektion, fence, scope,
+  perf-kit, brand-inline) tilføjet til `test_all.mjs`. Hele suiten grøn.
+- Brugerguide: [[studio-prompt-gen-brugerguide]].
+
+**Lighthouse-læring (Guðrun's, before→after):** mobil perf 81→95, a11y 92→95,
+LCP 4.1s→2.9s. Største løft: non-blocking Google Fonts (-1.9s) + weserv WebP-proxy
+på remote-billeder (-500 KiB). best-practices kan ramme 92 hvis kundens egne remote-
+billeder har skæve intrinsic-ratios (ægte kunde-site m. optimerede billeder undgår det).
