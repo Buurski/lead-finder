@@ -75,7 +75,9 @@ export async function reconFull(input: FullReconInput): Promise<FullReconResult>
     images,
     notes,
     gmb,
-    igNotes: input.igNotes?.trim() || null,
+    // R2 council HIGH: igNotes is user-pasted free text → fenced as data later,
+    // but strip the worst injection lead-ins here at the source too.
+    igNotes: input.igNotes ? input.igNotes.trim().replace(/```+/g, "ʼʼʼ").replace(/^=+\s*(BEGIN|END)/gim, "[stripped]").slice(0, 600) || null : null,
     sources,
   };
 

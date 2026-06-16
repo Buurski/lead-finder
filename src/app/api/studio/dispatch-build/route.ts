@@ -47,6 +47,11 @@ export async function POST(req: NextRequest) {
   }
 
   const slug = slugify(name);
+  // R2 council MED: belt-and-suspenders path-traversal guard. slugify already
+  // collapses to [a-z0-9-], but the slug names a build dir — assert it hard.
+  if (!/^[a-z0-9-]{1,60}$/.test(slug)) {
+    return NextResponse.json({ error: "ugyldigt slug fra navn" }, { status: 400 });
+  }
   let recon = await loadReconFull(slug);
   if (!recon) {
     recon = await reconFull({
@@ -57,8 +62,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Council R1: abort on empty recon rather than silently building generic.
-  if (recon.palette.length === 0 && recon.headings.length === 0 && !recon.toneSample) {
+  // Council R1+R2: abort on near-empty recon rather than silently building
+  // generic. Need ≥2 real signals (palette / headings / tone / title / desc).
+  const signals = [recon.palette.length > 0, recon.headings.length > 0, !!recon.toneSample, !!recon.title, !!recon.description].filter(Boolean).length;
+  if (signals < 2) {
     return NextResponse.json(
       { ok: false, error: "Recon kom tom tilbage — angiv en side/FB-URL med mere indhold eller indsæt IG-noter", recon },
       { status: 422 },
