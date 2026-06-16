@@ -7,7 +7,14 @@
 <meta name="description" content="Hyggelig islandsk café på Sankt Peders Stræde i København. Hjemmebag, brunch hele dagen og veganervenlige godter. Kom for smagen, bliv for varmen." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://www.gudrunsgoodies.dk" crossorigin />
+<link rel="preload" as="image" href="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75" fetchpriority="high" imagesrcset="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w" imagesizes="(max-width:600px) 600px, 900px" />
+<link rel="preconnect" href="https://gudrunsgoodies.odoo.com" crossorigin />
+<link rel="dns-prefetch" href="https://www.gudrunsgoodies.dk" />
+<link rel="dns-prefetch" href="https://gudrunsgoodies.odoo.com" />
+<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" /></noscript>
 <style>
   :root{
     /* --- Brand mapped FIRST (from GG logo orange + Icelandic warmth) --- */
@@ -52,8 +59,8 @@
     padding:.85rem 1.5rem;border-radius:999px;cursor:pointer;
     transition:transform .25s ease,box-shadow .25s ease,background .25s ease;
   }
-  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 10px 26px -10px rgba(232,119,46,.7)}
-  .btn-primary:hover{transform:translateY(-2px);background:var(--accent-deep);box-shadow:0 16px 32px -10px rgba(194,90,24,.75)}
+  .btn-primary{background:var(--accent-deep);color:#fff;box-shadow:0 10px 26px -10px rgba(232,119,46,.7)}
+  .btn-primary:hover{transform:translateY(-2px);background:#a84b12;box-shadow:0 16px 32px -10px rgba(194,90,24,.75)}
   .btn-ghost{border:1.5px solid var(--line);color:var(--ink)}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent-deep);transform:translateY(-2px)}
 
@@ -130,7 +137,7 @@
   .g-item img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
   .g-item:hover img{transform:scale(1.07)}
   .g-item.tall{grid-row:span 2;aspect-ratio:auto}
-  .g-quote{background:var(--accent);color:#fff;display:flex;align-items:center;padding:1.5rem;border-radius:16px}
+  .g-quote{background:var(--accent-deep);color:#fff;display:flex;align-items:center;padding:1.5rem;border-radius:16px}
   .g-quote p{font-family:var(--serif);font-style:italic;font-size:1.25rem;line-height:1.25}
 
   /* ---------- FIND VEJ ---------- */
@@ -154,10 +161,10 @@
   .foot-brand img{height:40px;filter:none}
   .foot-brand b{font-family:var(--serif);font-size:1.3rem}
   footer p{color:rgba(242,228,207,.7);font-size:.92rem;max-width:300px}
-  .foot-col h4{font-family:var(--sans);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-soft);margin-bottom:.9rem;font-weight:600}
+  .foot-col h3{font-family:var(--sans);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-soft);margin-bottom:.9rem;font-weight:600}
   .foot-col a,.foot-col p{display:block;color:rgba(242,228,207,.78);font-size:.95rem;margin-bottom:.5rem}
   .foot-col a:hover{color:#fff}
-  .foot-bottom{margin-top:2.6rem;padding-top:1.5rem;border-top:1px solid rgba(242,228,207,.14);font-size:.82rem;color:rgba(242,228,207,.55);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.6rem}
+  .foot-bottom{margin-top:2.6rem;padding-top:1.5rem;border-top:1px solid rgba(242,228,207,.14);font-size:.82rem;color:rgba(242,228,207,.78);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.6rem}
 
   /* ---------- reveal anim ---------- */
   .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
@@ -192,7 +199,7 @@
 <header>
   <div class="wrap nav">
     <a href="#top" class="brand" aria-label="Guðrun's Goodies forside">
-      <img src="https://gudrunsgoodies.odoo.com/web/image/409-4778285d/GG%20logo%20orange.png" alt="Guðrun's Goodies logo" />
+      <img src="https://images.weserv.nl/?url=gudrunsgoodies.odoo.com%2Fweb%2Fimage%2F409-4778285d%2FGG%2520logo%2520orange.png&w=120&h=28&fit=cover&a=attention&output=webp&q=70" alt="Guðrun's Goodies logo" width="120" height="28" fetchpriority="high" decoding="async" />
       <b>Guðrun's Goodies</b>
     </a>
     <nav class="nav-links" aria-label="Hovedmenu">
@@ -228,7 +235,7 @@
         </div>
       </div>
       <div class="hero-media">
-        <img src="https://www.gudrunsgoodies.dk/web/image/411-8246194b/295318954_598796748647168_8251588518835795647_n.jpg" alt="Hyggelig stemning og lækkerier hos Guðrun's Goodies" loading="eager" />
+        <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75" srcset="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w" sizes="(max-width:600px) 600px, 900px" alt="Hyggelig stemning og lækkerier hos Guðrun's Goodies" width="900" height="600" fetchpriority="high" decoding="async" loading="eager" />
       </div>
     </div>
   </section>
@@ -275,7 +282,7 @@
   <section id="om" class="about">
     <div class="wrap about-grid">
       <div class="about-media reveal">
-        <img src="https://www.gudrunsgoodies.dk/web/image/1161-b1810f11/Drink%20English.png" alt="Drikkekort hos Guðrun's Goodies" loading="lazy" style="object-fit:contain;background:#fff;padding:1.2rem" />
+        <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1161-b1810f11%2FDrink%2520English.png&w=500&h=625&fit=cover&a=attention&output=webp&q=70" alt="Drikkekort hos Guðrun's Goodies" width="600" height="750" loading="lazy" decoding="async" style="object-fit:contain;background:#fff;padding:1.2rem" />
       </div>
       <div class="reveal">
         <span class="eyebrow">Om stedet</span>
@@ -297,19 +304,19 @@
       </div>
       <div class="gallery-grid">
         <div class="g-item tall reveal">
-          <img src="https://www.gudrunsgoodies.dk/web/image/1160-2903088d/Food%20Englsih.png" alt="Madkort på engelsk hos Guðrun's Goodies" loading="lazy" style="object-fit:contain;background:#fff;padding:.6rem" />
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1160-2903088d%2FFood%2520Englsih.png&w=500&h=625&fit=cover&a=attention&output=webp&q=70" alt="Madkort på engelsk hos Guðrun's Goodies" width="600" height="750" loading="lazy" decoding="async" style="object-fit:contain;background:#fff;padding:.6rem" />
         </div>
         <div class="g-quote reveal">
           <p>"Kom for smagen, bliv for varmen."</p>
         </div>
         <div class="g-item reveal">
-          <img src="https://gudrunsgoodies.odoo.com/web/image/409-4778285d/GG%20logo%20orange.png" alt="Guðrun's Goodies logo" loading="lazy" style="object-fit:contain;padding:1.6rem;background:var(--bg-warm)" />
+          <img src="https://images.weserv.nl/?url=gudrunsgoodies.odoo.com%2Fweb%2Fimage%2F409-4778285d%2FGG%2520logo%2520orange.png&w=500&h=500&fit=cover&a=attention&output=webp&q=70" alt="" width="600" height="600" loading="lazy" decoding="async" style="object-fit:contain;padding:1.6rem;background:var(--bg-warm)" />
         </div>
         <div class="g-item reveal">
-          <img src="https://www.gudrunsgoodies.dk/web/image/1162-96e5df38/Food%20Danish.png" alt="Madkort på dansk" loading="lazy" style="object-fit:contain;background:#fff;padding:.6rem" />
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1162-96e5df38%2FFood%2520Danish.png&w=500&h=500&fit=cover&a=attention&output=webp&q=70" alt="Madkort på dansk" width="600" height="600" loading="lazy" decoding="async" style="object-fit:contain;background:#fff;padding:.6rem" />
         </div>
         <div class="g-item reveal">
-          <img src="https://www.gudrunsgoodies.dk/web/image/1164-dcb20a69/Food%20Icelandic.png" alt="Islandsk menukort" loading="lazy" style="object-fit:contain;background:#fff" />
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1164-dcb20a69%2FFood%2520Icelandic.png&w=500&h=500&fit=cover&a=attention&output=webp&q=70" alt="Islandsk menukort" width="600" height="600" loading="lazy" decoding="async" style="object-fit:contain;background:#fff" />
         </div>
       </div>
     </div>
@@ -359,19 +366,19 @@
     <div class="foot-grid">
       <div>
         <div class="foot-brand">
-          <img src="https://gudrunsgoodies.odoo.com/web/image/409-4778285d/GG%20logo%20orange.png" alt="Guðrun's Goodies logo" />
+          <img src="https://images.weserv.nl/?url=gudrunsgoodies.odoo.com%2Fweb%2Fimage%2F409-4778285d%2FGG%2520logo%2520orange.png&w=120&h=28&fit=cover&a=attention&output=webp&q=70" alt="" width="120" height="28" loading="lazy" decoding="async" />
           <b>Guðrun's Goodies</b>
         </div>
         <p>Islandsk café i hjertet af København. Kom for smagen, bliv for varmen.</p>
       </div>
       <div class="foot-col">
-        <h4>Café</h4>
+        <h3>Café</h3>
         <a href="#menu">Menu</a>
         <a href="#om">Om os</a>
         <a href="#galleri">Galleri</a>
       </div>
       <div class="foot-col">
-        <h4>Besøg</h4>
+        <h3>Besøg</h3>
         <p>Sankt Peders Stræde 35<br/>1453 København K</p>
         <a href="#find-vej">Åbningstider</a>
       </div>
