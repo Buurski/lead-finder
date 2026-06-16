@@ -58,6 +58,15 @@ på dispatch-build (Bearer vs `STUDIO_DISPATCH_SECRET||DEEP_RESEARCH_SECRET`, no
 
 Token-størrelse genereret prompt: ~4-6k tegn (godt under limit).
 
-## Runde 3 — demo-kritik (TBD)
+## Runde 3 — demo-kritik (Sonnet + Playwright)
 
-## Runde 3 — demo-kritik (TBD)
+E2E-lead: Guðrun's Goodies (islandsk café KBH, gudrunsgoodies.dk). Recon-full gav titel/desc (varm islandsk tone), 8 ægte billed-URLs (orange logo + menu-PNGs + FB-madfoto), menu-heading. Palette tom (Odoo, ingen inline hex) → orange brand udledt fra GG-logo. Prompt 6013 tegn, restaurant-template.
+
+R3 fund + status:
+- HIGH: samme madfoto 4× = AI-slop → FIXED (hero=FB-foto, about+galleri=distinkte menu-PNGs)
+- MED: islandsk identitet kun navne-dyb → FIXED (Velkomin·Velkommen i hero)
+- MED: ingen kontakt → FIXED (walk-in-note, ingen fake-nr)
+- MED: hamburger CSS men ingen markup → ÅBEN (Fase B)
+- MED: galleri har tomme felter → ÅBEN (Fase B)
+
+Verificeret Playwright 1280px: hero stærk, menu 3 kort + sprog-toggles, about m. ægte menu-PNG, find-vej m. ca.-tider (ingen opfundne tal). Eneste console-fejl = favicon 404 (harmløs). Café-ægte, ikke generisk. Screenshot: gudruns-demo-full.jpeg.
