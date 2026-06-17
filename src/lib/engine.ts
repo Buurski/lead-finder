@@ -26,8 +26,10 @@ import { draft_personal_message } from "./draft.ts";
 import { hardDrop } from "./qualify.ts";
 import { isBlacklisted } from "./tone-mixer.ts";
 import { composeColdEmail } from "./compose.ts";
-import { appendDrafts, newDraftId } from "./queue.ts";
+import { appendDrafts, newDraftId, readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
+import { pickHybridSender } from "./senders.ts";
+import type { SenderId } from "./senders.ts";
 import { compositeScore } from "./leads/composite-score.ts";
 import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
@@ -48,6 +50,9 @@ export interface EngineProgress {
   total: number; // target draft count (the limit)
   name?: string; // current lead
   reason?: string; // for "skip"
+  // Which Gmail identity the engine just assigned to this draft (hybrid
+  // allocation, see senders.ts). Populated on "collected" only.
+  sender?: SenderId;
 }
 
 export interface EngineOptions {
@@ -303,6 +308,22 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
 
   emit({ phase: "pick", idx: 0, total: limit });
 
+  // Hybrid sender allocation (2026-06-17). Read the existing queue ONCE so
+  // we know who's already busy in the last 14 days, then for each draft
+  // re-evaluate including the drafts we've already assigned in THIS run —
+  // that way a single engine run balances itself too (one big batch doesn't
+  // dump 100 % on whichever sender had the lower recent count).
+  const existingQueue = await readQueue().catch(() => [] as QueueDraft[]);
+  const senderHistory = (d: { sender?: SenderId | null; status: string; updatedAt: string }) => ({
+    sender: d.sender ?? null,
+    status: d.status,
+    updatedAt: d.updatedAt,
+  });
+  const historyForPick = (): Array<{ sender: SenderId | null; status: string; updatedAt: string }> => [
+    ...existingQueue.map(senderHistory),
+    ...collected.map(senderHistory),
+  ];
+
   for (const lead of leads) {
     if (collected.length >= limit) break;
     picked++;
@@ -363,6 +384,9 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
 
     // COLLECT.
     const now = new Date().toISOString();
+    // Hybrid allokering: hent den Gmail-identity der har sendt færrest i
+    // de sidste 14 dage. Ties → Lucas (defaultSender), se senders.ts.
+    const sender = pickHybridSender(historyForPick());
     collected.push({
       id: newDraftId(),
       leadId: (lead as { id?: string }).id ?? "",
@@ -380,8 +404,9 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
       updatedAt: now,
       comboId,
       openerKind,
+      sender,
     });
-    emit({ phase: "collected", idx: collected.length, total: limit, name: lead.name });
+    emit({ phase: "collected", idx: collected.length, total: limit, name: lead.name, sender });
   }
 
   emit({ phase: "done", idx: collected.length, total: limit });

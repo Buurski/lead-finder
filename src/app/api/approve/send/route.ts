@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { store } from "@/lib/store";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
+import { getTransporter, formatFrom, defaultSender, isSenderAvailable } from "@/lib/senders";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -57,8 +57,10 @@ export async function POST(req: Request) {
   // May limit-hit batch where emailSentAt was stamped optimistically but the mail
   // never actually went out (verified via Gmail). pause + canSendTo still apply.
   const force = new URL(req.url).searchParams.get("force") === "1";
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    return NextResponse.json({ ok: false, error: "Ingen mail-creds." }, { status: 200 });
+  // Accepter EITHER Lucas- eller Charlie-creds (hybrid allokering 2026-06-17).
+  // Helt uden creds er eneste tilfælde hvor vi nægter at starte.
+  if (!isSenderAvailable("lucas") && !isSenderAvailable("charlie")) {
+    return NextResponse.json({ ok: false, error: "Ingen mail-creds (hverken GMAIL_USER eller CHARLIE_GMAIL_USER er sat)." }, { status: 200 });
   }
 
   // 1. Never send while paused / halted.
@@ -109,10 +111,13 @@ export async function POST(req: Request) {
   }
   const byId = new Map(leads.map((l) => [l.id, l]));
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com", port: 465, secure: true,
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  });
+  // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
+  // draft.sender (sat af engine via pickHybridSender). Manglende sender
+  // (legacy drafts skrevet før denne ændring) falder tilbage på defaultSender().
+  const transportFor = (sender?: string) => {
+    const id: "lucas" | "charlie" = (sender === "lucas" || sender === "charlie") ? sender : defaultSender();
+    return { transport: getTransporter(id), from: formatFrom(id) };
+  };
 
   // SSE plumbing. The loop runs inside the stream so each send/skip is reported live.
   const encoder = new TextEncoder();
@@ -176,10 +181,11 @@ export async function POST(req: Request) {
           // 4. Human spacing before each send (except the first).
           if (sent > 0) await sleep(randGap());
 
-          send({ type: "sending", index: processed, total, name: d.name, n: sent + 1 });
+          send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: d.sender ?? defaultSender() });
           try {
-            await transporter.sendMail({
-              from: `Lucas Buur <${process.env.GMAIL_USER}>`,
+            const { transport, from } = transportFor(d.sender);
+            await transport.sendMail({
+              from,
               to: target,
               subject: d.subject,
               text: d.body,
@@ -193,10 +199,10 @@ export async function POST(req: Request) {
               }
             }
             sent++;
-            send({ type: "sent", index: processed, total, name: d.name, n: sent });
+            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: d.sender ?? defaultSender() });
           } catch (err) {
             failed++;
-            send({ type: "failed", index: processed, total, name: d.name, error: String(err) });
+            send({ type: "failed", index: processed, total, name: d.name, sender: d.sender ?? defaultSender(), error: String(err) });
           }
         }
       } finally {

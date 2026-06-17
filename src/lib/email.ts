@@ -1,18 +1,10 @@
-import nodemailer from "nodemailer";
 import { DEMO_SITES } from "./demos.ts";
+import { defaultSender, formatFrom, getTransporter, isSenderAvailable } from "./senders.ts";
+import type { SenderId } from "./senders.ts";
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  pool: true,
-  maxConnections: 1,
-  maxMessages: Infinity,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+// The transporter is resolved per-send via senders.ts — there is no module-
+// level transport here because we now support two Gmail identities (Lucas
+// + Charlie). See senders.ts for the cache + fallback rules.
 
 // URLs come from the single source of truth in demos.ts (DEMO_SITES); this map
 // just shapes them for the email templates (food = [primary, secondary] etc.).
@@ -713,6 +705,10 @@ export async function sendLeadEmail(
     // Del 3: the engine composes the email ONCE (tone-mixer) and persists it.
     // When present we send those exact bytes; the legacy templates are fallback.
     composedSubject?: string; composedBody?: string; composedHtml?: string;
+    // Hybrid sender allocation (2026-06-17): which Gmail identity sends this
+    // lead. Defaults to the configured defaultSender() when absent (legacy
+    // drafts from before the Charlie-onboarding). The engine always sets this.
+    sender?: SenderId;
   },
   type: "cold" | "followup"
 ): Promise<void> {
@@ -746,8 +742,20 @@ export async function sendLeadEmail(
     html = template.html;
   }
 
+  // Pick the sender: explicit lead.sender wins; otherwise fall back to whichever
+  // Gmail identity is configured (defaultSender). If neither is available, fail
+  // loudly — better than silently using the wrong creds.
+  const sender: SenderId = lead.sender && isSenderAvailable(lead.sender)
+    ? lead.sender
+    : defaultSender();
+  const transporter = getTransporter(sender);
+  const fromAddress = formatFrom(sender);
+  // The List-Unsubscribe mailto must match the From: domain or Gmail will
+  // strip the header and tank deliverability. Use the sender's own address.
+  const unsubscribeMailto = fromAddress.match(/<([^>]+)>/)?.[1] ?? fromAddress;
+
   await transporter.sendMail({
-    from: `Lucas Buur <${process.env.GMAIL_USER}>`,
+    from: fromAddress,
     to: lead.email,
     subject,
     text,
@@ -755,9 +763,9 @@ export async function sendLeadEmail(
     headers: {
       // Gmail's 2024 bulk-sender guidelines: one-click List-Unsubscribe lifts deliverability
       // significantly and reduces the chance of a sender-side rate-limit (the 4.7.0 throttle
-      // that hit on May 12 + May 19). The mailto address is Lucas's own — replies marked
+      // that hit on May 12 + May 19). The mailto address is the sender's own — replies marked
       // "unsubscribe" should be auto-skipped by /api/email/sync-replies.
-      "List-Unsubscribe": `<mailto:${process.env.GMAIL_USER}?subject=unsubscribe>`,
+      "List-Unsubscribe": `<mailto:${unsubscribeMailto}?subject=unsubscribe>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       "X-Entity-Ref-ID": lead.id,
     },
