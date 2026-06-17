@@ -12,6 +12,7 @@
 import { store } from "./store.ts";
 
 import type { Demo } from "./demos.ts";
+import type { SenderId } from "./senders.ts";
 
 export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
 
@@ -37,6 +38,11 @@ export interface QueueDraft {
   updatedAt: string;
   comboId?: string;      // tone-mixer combination id (Del 3) — for follow-up variation
   openerKind?: string;   // which opener kind was used (achievement/quote/...)
+  // Hybrid sender allocation (2026-06-17): which Gmail identity sends this
+  // draft. Set by the engine on draft creation; read by email.ts and
+  // /approve/send to pick the right SMTP transport + From: header. Legacy
+  // drafts without this field fall back to "lucas" at send time.
+  sender?: SenderId;
 }
 
 // The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;

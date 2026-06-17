@@ -138,6 +138,21 @@ function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fromName || item.from}</span>
+            {item.account && (
+              <span
+                className="cc-chip"
+                title={`Modtaget på ${item.account === "lucas" ? "buur.aigro@gmail.com" : "1charlie.nielsen@gmail.com"}`}
+                style={{
+                  fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase",
+                  padding: "2px 7px",
+                  background: item.account === "lucas" ? "rgba(56, 132, 255, 0.12)" : "rgba(168, 85, 247, 0.14)",
+                  color: item.account === "lucas" ? "#3a6cd6" : "#8b3fcb",
+                  border: `1px solid ${item.account === "lucas" ? "rgba(56, 132, 255, 0.3)" : "rgba(168, 85, 247, 0.3)"}`,
+                }}
+              >
+                {item.account}
+              </span>
+            )}
             {item.category === "client" && <span className="cc-chip" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>blev kunde</span>}
           </div>
           <div className="cc-dim" style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.subject} · {item.reason || item.snippet}</div>

@@ -4,6 +4,10 @@
 // "replied" in the Sheet. Single source of truth for the manual dashboard
 // button AND the Vercel cron, so behaviour can never drift between them.
 //
+// Hybrid afsendere (2026-06-17): scanner BEGGE Gmail-identiteter (Lucas +
+// Charlie) i én kørsel. Per-account results merges til et samlet sæt
+// replied-rækker. Nye leads tilføjet via Charlie-kontoen fanges også.
+//
 // IMAP robustness (Vercel cron fix, 2026-06-13):
 //   - explicit connect + socket timeouts so a hung Gmail never runs past
 //     Vercel's maxDuration. Serverless can kill unhandled hangs at the platform
@@ -14,11 +18,16 @@
 //   - guaranteed logout in finally so we never leak sockets between runs.
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadEmailStatus } from "./sheets.ts";
+import { getActiveSenders, type SenderId } from "./senders.ts";
 
 export interface SyncRepliesResult {
   synced: number;
   checked: number;
   names?: string[];
+  // Hybrid: per-account resultat (2026-06-17). Gør det muligt for UI/cron-log
+  // at se hvilken konto der fangede hvad — fx hvis Charlie-kontoen har en
+  // fejl men Lucas-kontoen virker.
+  byAccount?: Record<SenderId, { synced: number; error?: string }>;
 }
 
 const FALLBACK_DAYS = 30;
@@ -49,17 +58,51 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   throw lastErr;
 }
 
-export async function syncReplies(): Promise<SyncRepliesResult> {
-  const leads = await getLeads();
-  const candidates = leads
-    .map((lead, rowIndex) => ({ lead, rowIndex }))
-    .filter(({ lead }) => lead.email && lead.emailStatus !== "replied");
-  if (candidates.length === 0) return { synced: 0, checked: 0, names: [] };
-
+async function scanOneAccount(
+  account: { id: SenderId; user: string; appPassword: string },
+  candidates: { lead: { email: string; emailStatus?: string }; rowIndex: number; name: string }[],
+  since: Date,
+  repliedRows: Set<number>,
+): Promise<{ synced: number; error?: string }> {
   const emailToRow = new Map(
     candidates.map(({ lead, rowIndex }) => [lead.email.toLowerCase().trim(), rowIndex]),
   );
-  const rowToName = new Map(candidates.map(({ lead, rowIndex }) => [rowIndex, lead.name]));
+  const client = new ImapFlow({
+    host: "imap.gmail.com",
+    port: 993,
+    secure: true,
+    ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
+    auth: { user: account.user, pass: account.appPassword },
+    logger: false,
+    connectionTimeout: CONNECT_TIMEOUT_MS,
+    socketTimeout: SOCKET_TIMEOUT_MS,
+  });
+
+  let beforeCount = repliedRows.size;
+  try {
+    await withRetry(() => client.connect(), `imap-connect[${account.id}]`);
+    try {
+      await client.mailboxOpen("INBOX");
+      for await (const msg of client.fetch({ since }, { envelope: true })) {
+        const from = msg.envelope?.from?.[0]?.address?.toLowerCase().trim();
+        if (from && emailToRow.has(from)) repliedRows.add(emailToRow.get(from)!);
+      }
+    } finally {
+      try { await client.logout(); } catch { /* already closed */ }
+    }
+  } catch (err) {
+    try { await client.logout(); } catch { /* ignore */ }
+    return { synced: repliedRows.size - beforeCount, error: String(err) };
+  }
+  return { synced: repliedRows.size - beforeCount };
+}
+
+export async function syncReplies(): Promise<SyncRepliesResult> {
+  const leads = await getLeads();
+  const candidates = leads
+    .map((lead, rowIndex) => ({ lead, rowIndex, name: lead.name }))
+    .filter(({ lead }) => lead.email && lead.emailStatus !== "replied");
+  if (candidates.length === 0) return { synced: 0, checked: 0, names: [] };
 
   const sendDates = candidates
     .map(({ lead }) => lead.emailSentAt).filter(Boolean)
@@ -79,31 +122,22 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
   if (since < floor) since = floor;
 
   const repliedRows = new Set<number>();
-  const client = new ImapFlow({
-    host: "imap.gmail.com",
-    port: 993,
-    secure: true,
-    ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
-    auth: { user: process.env.GMAIL_USER!, pass: process.env.GMAIL_APP_PASSWORD! },
-    logger: false,
-    connectionTimeout: CONNECT_TIMEOUT_MS,
-    socketTimeout: SOCKET_TIMEOUT_MS,
-  });
+  const byAccount: Record<SenderId, { synced: number; error?: string }> = {
+    lucas: { synced: 0 },
+    charlie: { synced: 0 },
+  };
 
-  try {
-    await withRetry(() => client.connect(), "imap-connect");
-    try {
-      await client.mailboxOpen("INBOX");
-      for await (const msg of client.fetch({ since }, { envelope: true })) {
-        const from = msg.envelope?.from?.[0]?.address?.toLowerCase().trim();
-        if (from && emailToRow.has(from)) repliedRows.add(emailToRow.get(from)!);
-      }
-    } finally {
-      try { await client.logout(); } catch { /* already closed */ }
-    }
-  } catch (err) {
-    try { await client.logout(); } catch { /* ignore */ }
-    throw err;
+  // Hybrid: scan begge konti med creds. Fejl i én konto stopper ikke den anden.
+  const accounts = getActiveSenders();
+  if (accounts.length === 0) {
+    return { synced: 0, checked: candidates.length, names: [], byAccount };
+  }
+
+  const rowToName = new Map(candidates.map(({ rowIndex, name }) => [rowIndex, name]));
+
+  for (const account of accounts) {
+    const r = await scanOneAccount(account, candidates, since, repliedRows);
+    byAccount[account.id] = r;
   }
 
   for (const rowIndex of repliedRows) {
@@ -113,5 +147,6 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
     synced: repliedRows.size,
     checked: candidates.length,
     names: [...repliedRows].map((r) => rowToName.get(r)!).filter(Boolean),
+    byAccount,
   };
 }

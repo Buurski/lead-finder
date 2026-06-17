@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/shell/Icon";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import type { HermesCronJob, HermesMessage, HermesProfile, HermesSessionMeta } from "@/lib/hermes";
+import { fetchHermesCronRuns, type HermesCronJobWithRuns } from "@/lib/hermes-client";
 
 interface Health {
   configured: boolean;
@@ -51,6 +52,7 @@ export default function HermesClient({
   const [msgs, setMsgs] = useState<HermesMessage[]>([]);
   const [sessions, setSessions] = useState<HermesSessionMeta[]>([]);
   const [jobs, setJobs] = useState<HermesCronJob[]>(initialJobs);
+  const [jobsWithRuns, setJobsWithRuns] = useState<HermesCronJobWithRuns[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [cronBusy, setCronBusy] = useState<string | null>(null);
@@ -72,6 +74,8 @@ export default function HermesClient({
       .then((r) => r.json())
       .then((d) => setSessions(d.sessions ?? []))
       .catch(() => {});
+    // Hent seneste runs til cron-sektionen (client-safe: går via /api/hermes/cron/runs)
+    fetchHermesCronRuns(5).then(setJobsWithRuns).catch(() => {});
   }, [profile, sending]);
 
   async function recheckHealth() {
@@ -414,6 +418,28 @@ export default function HermesClient({
                   <Icon name="Loader2" style={{ width: 13, height: 13, color: "var(--accent-ink)", animation: "spin 1s linear infinite" }} />
                 )}
               </div>
+              {/* Seneste kørsler + key points for dette job */}
+              {(() => {
+                const withRuns = jobsWithRuns.find((x) => x.id === j.id);
+                if (!withRuns || withRuns.runs.length === 0) return null;
+                return (
+                  <div style={{ marginTop: 6, paddingLeft: 21, borderLeft: "2px solid var(--border)", display: "grid", gap: 4 }}>
+                    {withRuns.runs.slice(0, 3).map((r) => (
+                      <div key={r.file} style={{ fontSize: 11, lineHeight: 1.4 }}>
+                        <span style={{ color: r.status === "ok" ? "var(--accent-ink)" : "var(--danger, #b4453a)" }}>
+                          {r.status === "ok" ? "✓" : "✗"}
+                        </span>{" "}
+                        <span className="cc-dim" style={{ fontFamily: "var(--font-mono)" }}>{r.timestamp.replace(" ", " ").slice(5, 16)}</span>
+                        {r.key_points && r.key_points.length > 0 && (
+                          <ul style={{ margin: "2px 0 0 16px", padding: 0 }}>
+                            {r.key_points.slice(0, 2).map((kp, i) => <li key={i} className="cc-dim">{kp}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </section>
