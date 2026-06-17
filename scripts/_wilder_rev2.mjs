@@ -1,0 +1,13 @@
+import path from "node:path"; import fs from "node:fs"; import { pathToFileURL } from "node:url";
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
+const imp = (p) => import(pathToFileURL(path.join(ROOT,"src","lib",p)).href);
+const { reconFull } = await imp("customer-recon-full.ts");
+const { buildClaudeCodePrompt } = await imp("prompt-builder.ts");
+const { templateForBranch } = await imp("design-templates.ts");
+const recon = await reconFull({ name:"Café Wilder", branch:"café", websiteUrl:"https://www.cafewilder.dk", igNotes:"Klassisk fransk bistro paa Christianshavn, Koebenhavn. Fransk bistrokoekken tilsat dansk snusfornuft." });
+const culturalIdentity = { country:"Frankrig", region:"parisisk bistro paa Christianshavn", era:"tidloes brasserie-tradition", mood:"parisisk brasserie-elegance, varm, uhoejtidelig", motifs:["brasserie-spejle","marmor-bordplade","messing-detaljer","art-nouveau-linjer","stearinlys-og-vin"], colorWords:["bordeaux","flaskegroen","kridt-creme","messing","antik-guld"], languageWords:["Bienvenue","Bon appétit","Santé","Merci"] };
+const fbVibe = { tone:"varm, ligefrem, uhoejtidelig kvalitet", bioVerbatim:"Fransk bistrokoekken tilsat dansk snusfornuft. Enkelt, laekkert og til fornuftige priser.", imageTheme:"bistro-facade, tartar og franske retter, levende lokale" };
+const tpl = templateForBranch("café");
+const prompt = buildClaudeCodePrompt({ name:"Café Wilder", branch:"café", slug:"cafe-wilder-rev2", websiteUrl:"https://www.cafewilder.dk", culturalIdentity, fbVibe }, recon, tpl, "615bc44");
+fs.writeFileSync(path.join(ROOT,".send_queue","dispatch_cafe-wilder_rev2.md"), prompt);
+console.log("chars:", prompt.length, "OK");

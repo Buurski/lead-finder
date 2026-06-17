@@ -5,6 +5,7 @@ import { composeColdEmail } from "@/lib/compose";
 import type { ComposeLead } from "@/lib/compose";
 import { getLeads } from "@/lib/sheets";
 import { hasUsableEmail } from "@/lib/leads/channel";
+import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -119,13 +120,7 @@ export async function GET(req: Request) {
   }
   const items = Array.isArray(file.items) ? file.items : [];
 
-  // Gate 1: leadIds already PENDING in the queue (appendDrafts also enforces this,
-  // but skipping here keeps the counters honest + avoids needless composes).
   const queue = await readQueue();
-  const pendingLeadIds = new Set<string>();
-  for (const d of queue) {
-    if (d.status === "pending" && d.leadId) pendingLeadIds.add(d.leadId);
-  }
 
   // Backfill: older drafts were queued BEFORE recipientEmail existed (incl. the
   // 75 "cowork-leadgen" drafts that have NO leadId at all — the old engine wrote
@@ -155,29 +150,24 @@ export async function GET(req: Request) {
     }
   }
 
-  // Gate 2: names already CONTACTED in Sheets. Sandbox couldn't dedup against the
-  // ~5000 Sheets rows, so we do it here. "Contacted" = status moved off "new", or
-  // an email was sent / a reply tracked. Best-effort: no Sheets creds ⇒ skip gate.
-  const contactedNames = new Set<string>();
-  let sheetsOk = true;
+  // Never-twice gate (suppress.ts): one set of rules shared with /api/approve/add.
+  // Blocks businesses already in-flight/sent/recently-rejected in the queue (by
+  // place_id + normalized name+city) AND already-contacted in Sheets — plus a hard
+  // medical/health branch exclude. Best-effort Sheets: no creds ⇒ queue half guards.
+  let sheetsLeads: Awaited<ReturnType<typeof getLeads>> | null = null;
   try {
-    const leads = await getLeads();
-    for (const l of leads) {
-      const contacted = l.status !== "new" || Boolean(l.emailSentAt) || Boolean(l.emailStatus);
-      if (contacted && l.name) contactedNames.add(norm(l.name));
-    }
+    sheetsLeads = await getLeads();
   } catch (err) {
-    sheetsOk = false;
     console.warn(JSON.stringify({ evt: "ingest-leadgen.sheets_unavailable", err: String(err) }));
   }
+  const blockSets = buildBlockSets(queue, sheetsLeads, now);
+  const sheetsOk = blockSets.contactedAvailable;
 
   const nowIso = new Date(now).toISOString();
   const drafts: QueueDraft[] = [];
-  let skippedPending = 0;
-  let skippedContacted = 0;
+  let skippedSuppressed = 0;
   let skippedVoice = 0;
   let skippedInvalid = 0;
-  const seen = new Set<string>();
 
   for (const it of items) {
     const name = (it.name || "").trim();
@@ -186,12 +176,8 @@ export async function GET(req: Request) {
       continue;
     }
     const leadId = (it.place_id || name).toString();
-    if (pendingLeadIds.has(leadId) || seen.has(leadId)) {
-      skippedPending++;
-      continue;
-    }
-    if (contactedNames.has(norm(name))) {
-      skippedContacted++;
+    if (suppressionReason({ leadId, name, city: it.city, branch: it.branch }, blockSets)) {
+      skippedSuppressed++;
       continue;
     }
 
@@ -213,7 +199,10 @@ export async function GET(req: Request) {
       continue;
     }
 
-    seen.add(leadId);
+    // Block the rest of this run from re-adding the same business.
+    blockSets.ids.add(leadId);
+    const k = bizKey(name, it.city);
+    if (k) blockSets.keys.add(k);
     drafts.push({
       id: newDraftId(),
       leadId,
@@ -244,8 +233,7 @@ export async function GET(req: Request) {
     candidates: items.length,
     added: drafts.length,
     backfilled,
-    skippedPending,
-    skippedContacted,
+    skippedSuppressed,
     skippedVoice,
     skippedInvalid,
     sheetsDedup: sheetsOk,

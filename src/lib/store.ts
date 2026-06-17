@@ -28,6 +28,7 @@ export interface Store {
   putAsset(key: string, content: string | Uint8Array, contentType: string): Promise<PutAssetResult>;
   getAssetUrl(key: string): Promise<string | null>;
   deleteAsset(key: string): Promise<void>;
+  listAssets(prefix: string): Promise<string[]>;
 }
 
 // Preserve the exact legacy file locations so nothing else observes a change.
@@ -125,6 +126,29 @@ export class FSStore implements Store {
       /* already gone */
     }
   }
+  async listAssets(prefix: string): Promise<string[]> {
+    const root = path.join(process.cwd(), "dist");
+    const out: string[] = [];
+    const walk = (dir: string) => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return; // dist/ (or a subdir) missing
+      }
+      for (const e of entries) {
+        const abs = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          walk(abs);
+        } else {
+          const key = path.relative(root, abs).split(path.sep).join("/");
+          if (key.startsWith(prefix)) out.push(key);
+        }
+      }
+    };
+    walk(root);
+    return out;
+  }
 }
 
 // In-memory driver for tests (no IO).
@@ -145,6 +169,7 @@ export class InMemoryStore implements Store {
   }
   async getAssetUrl(key: string) { return this.assets.get(key)?.url ?? null; }
   async deleteAsset(key: string) { this.assets.delete(key); }
+  async listAssets(prefix: string) { return [...this.assets.keys()].filter((k) => k.startsWith(prefix)); }
 }
 
 // Vercel KV driver (docs + logs). Lazy import so FS/node never loads it.
@@ -183,6 +208,7 @@ class KVStore implements Store {
   async putAsset(): Promise<PutAssetResult> { throw new Error("KVStore does not serve assets — use ComposedStore"); }
   async getAssetUrl() { return null; }
   async deleteAsset() { /* n/a */ }
+  async listAssets(): Promise<string[]> { throw new Error("KVStore does not serve assets — use ComposedStore"); }
 }
 
 // Vercel Blob driver (assets only). Lazy import.
@@ -212,6 +238,11 @@ class BlobStore {
       /* ignore */
     }
   }
+  async listAssets(prefix: string): Promise<string[]> {
+    const { list } = await this.blob();
+    const r = await list({ prefix });
+    return r.blobs.map((b: { pathname: string }) => b.pathname);
+  }
 }
 
 // Routes assets to Blob, everything else to KV.
@@ -227,6 +258,7 @@ class ComposedStore implements Store {
   putAsset(key: string, content: string | Uint8Array, contentType: string) { return this.blob.putAsset(key, content, contentType); }
   getAssetUrl(key: string) { return this.blob.getAssetUrl(key); }
   deleteAsset(key: string) { return this.blob.deleteAsset(key); }
+  listAssets(prefix: string) { return this.blob.listAssets(prefix); }
 }
 
 let _store: Store | null = null;
@@ -265,4 +297,5 @@ export const store: Store = {
   putAsset: (k, c, t) => active().putAsset(k, c, t),
   getAssetUrl: (k) => active().getAssetUrl(k),
   deleteAsset: (k) => active().deleteAsset(k),
+  listAssets: (p) => active().listAssets(p),
 };

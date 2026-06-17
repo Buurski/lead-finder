@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Café Wilder · Fransk bistro på Christianshavn</title>
+<meta name="description" content="Fransk bistro på Christianshavn. Fransk bistrokøkken tilsat dansk snusfornuft, enkelt og lækkert til fornuftige priser. Bienvenue. Sæt dig under varmelamperne og bliv lidt længere." />
+
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="dns-prefetch" href="https://www.cafewilder.dk" />
+
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w"
+  imagesizes="(max-width:820px) 100vw, 50vw" />
+
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Libre+Franklin:wght@300;400;500;600&display=swap"
+  onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Libre+Franklin:wght@300;400;500;600&display=swap" /></noscript>
+
+<style>
+  :root{
+    /* ---- Palette: French brasserie, mapped FIRST from culture (recon gave no hex) ---- */
+    --oxblood:#5a1322;         /* bordeaux / oxblood, deep wine */
+    --oxblood-2:#73202f;       /* lighter wine panel */
+    --bouteille:#1f3a2e;       /* flaskegrøn / bottle-green */
+    --bouteille-2:#2c4d3d;     /* lighter bottle-green */
+    --craie:#f4ede0;           /* kridt-creme, chalk-cream base */
+    --craie-2:#ece0cd;         /* warmer chalk panel */
+    --laiton:#b48a3f;          /* messing / brass */
+    --laiton-soft:#d6ad62;     /* antik-guld glow on dark */
+    --laiton-deep:#8a662a;     /* darker brass for small text on light (AA) */
+
+    --bg:var(--craie);
+    --ink:#2a211c;             /* roasted ink on chalk */
+    --ink-soft:#6a5b4d;        /* muted */
+    --line:rgba(42,33,28,.14);
+    --line-dark:rgba(244,237,224,.16);
+    --shadow:0 24px 64px -30px rgba(42,19,28,.55);
+    --maxw:1180px;
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+    --sans:'Libre Franklin',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);color:var(--ink);background:var(--bg);
+    line-height:1.72;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:var(--serif);font-weight:500;line-height:1.04;letter-spacing:-.01em}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 1.5rem}
+
+  /* french accent word: high-contrast italic Fraunces */
+  .fr{font-family:var(--serif);font-style:italic;font-weight:500;color:var(--oxblood)}
+  .eyebrow{
+    font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--bouteille);display:inline-flex;align-items:center;gap:.6rem;
+  }
+  .eyebrow svg{flex:0 0 auto}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:.55rem;font-family:var(--sans);
+    font-weight:600;font-size:.93rem;padding:.9rem 1.6rem;border-radius:1px;cursor:pointer;
+    transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease,border-color .25s ease;
+  }
+  .btn svg{flex:0 0 auto}
+  .btn-primary{background:var(--oxblood);color:var(--craie);box-shadow:0 14px 32px -16px rgba(90,19,34,.9)}
+  .btn-primary:hover{transform:translateY(-2px);background:#46101b}
+  .btn-ghost{border:1.5px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--oxblood);color:var(--oxblood)}
+  .btn-light{border:1.5px solid var(--line-dark);color:var(--craie)}
+  .btn-light:hover{border-color:var(--laiton-soft);color:var(--laiton-soft)}
+
+  /* brass hairline rule, repeated brasserie motif */
+  .brass-rule{display:flex;align-items:center;gap:1rem;color:var(--laiton)}
+  .brass-rule .ln{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--laiton),transparent)}
+
+  /* ---------- HEADER ---------- */
+  header{
+    position:sticky;top:0;z-index:60;background:rgba(244,237,224,.9);
+    backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;height:76px}
+  .brand{display:flex;align-items:center;gap:.7rem}
+  .brand img{height:42px;width:auto}
+  .brand b{font-family:var(--serif);font-size:1.3rem;font-weight:600;letter-spacing:-.01em}
+  .nav-links{display:flex;align-items:center;gap:2.1rem;font-size:.92rem;font-weight:500}
+  .nav-links a{color:var(--ink-soft);transition:color .2s}
+  .nav-links a:hover{color:var(--oxblood)}
+  .nav .btn{padding:.6rem 1.25rem;font-size:.85rem}
+  .menu-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);padding:.4rem}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;overflow:hidden;background:var(--oxblood);color:var(--craie)}
+  /* candlelight veil over wine */
+  .candle{position:absolute;inset:-30% auto auto -20%;width:70%;height:120%;pointer-events:none;opacity:.5;z-index:0}
+  .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.02fr .98fr;gap:0;align-items:stretch;min-height:min(88vh,740px)}
+  .hero-copy{padding:5.5rem 3.4rem 5.5rem 0;max-width:600px;margin-left:auto;align-self:center}
+  .hero-copy .inner{max-width:540px}
+  .hero .greet{font-family:var(--serif);font-style:italic;font-size:1.18rem;color:var(--laiton-soft);margin-bottom:.6rem}
+  .hero h1{font-size:clamp(2.9rem,6.6vw,5rem);margin:.2rem 0 1.35rem;color:var(--craie)}
+  .hero h1 .fr{color:var(--laiton-soft)}
+  .hero p.lead{font-size:1.14rem;color:rgba(244,237,224,.84);margin-bottom:2.2rem;font-weight:400}
+  .hero-cta{display:flex;gap:.9rem;flex-wrap:wrap}
+  .hero-media{position:relative;min-height:460px}
+  .hero-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* wine fade into image + brass frame edge */
+  .hero-media::after{content:"";position:absolute;inset:0;background:linear-gradient(95deg,var(--oxblood) 0%,rgba(90,19,34,.34) 30%,transparent 60%)}
+  .hero-media::before{content:"";position:absolute;inset:1.1rem;border:1px solid rgba(214,173,98,.4);z-index:3;pointer-events:none}
+  .hero-meta{position:relative;z-index:2;border-top:1px solid var(--line-dark);background:rgba(70,16,27,.5)}
+  .hero-meta .wrap{display:flex;flex-wrap:wrap;gap:1.2rem 2.6rem;padding-top:1.1rem;padding-bottom:1.1rem}
+  .hero-meta .item{display:flex;align-items:center;gap:.6rem;font-size:.9rem;color:rgba(244,237,224,.84)}
+  .hero-meta .item svg{color:var(--laiton-soft)}
+  .hero-meta .item b{color:var(--craie);font-weight:600}
+
+  /* ---------- SECTIONS ---------- */
+  section{position:relative}
+  .pad{padding:6rem 0}
+  .pad-sm{padding:4rem 0}
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* story: text + full image */
+  .story{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:0}
+  .story .text{padding:5rem 4rem}
+  .story .text .eyebrow{margin-bottom:1.2rem}
+  .story h2{font-size:clamp(2rem,3.6vw,2.9rem);margin-bottom:1.3rem}
+  .story p{color:var(--ink-soft);font-size:1.06rem;margin-bottom:1.1rem}
+  .story p:last-child{margin-bottom:0}
+  .story .media{position:relative;align-self:stretch;min-height:480px}
+  .story .media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .story.flip .text{order:2}
+  .story.dark{background:var(--bouteille);color:var(--craie)}
+  .story.dark .eyebrow{color:var(--laiton-soft)}
+  .story.dark p{color:rgba(244,237,224,.82)}
+  .story.dark .fr{color:var(--laiton-soft)}
+
+  /* full-bleed quote band, marble texture */
+  .band{position:relative;background:var(--craie-2);text-align:center;overflow:hidden}
+  .band .marble{position:absolute;inset:0;opacity:.5;pointer-events:none}
+  .band .wrap{position:relative;z-index:2;max-width:840px}
+  .band blockquote{font-family:var(--serif);font-style:italic;font-size:clamp(1.6rem,3.2vw,2.4rem);line-height:1.3;color:var(--oxblood);font-weight:500}
+  .band cite{display:block;margin-top:1.5rem;font-family:var(--sans);font-style:normal;font-size:.8rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft)}
+
+  /* ---------- MENU (centerpiece) ---------- */
+  .menu{background:var(--oxblood);color:var(--craie);position:relative;overflow:hidden}
+  .menu .mirror{position:absolute;inset:0;opacity:.16;pointer-events:none}
+  .menu .wrap{position:relative;z-index:2}
+  .menu-head{text-align:center;max-width:680px;margin:0 auto 3.4rem}
+  .menu-head .eyebrow{color:var(--laiton-soft);justify-content:center}
+  .menu-head h2{font-size:clamp(2.2rem,4vw,3.2rem);color:var(--craie);margin:.8rem 0 1rem}
+  .menu-head p{color:rgba(244,237,224,.78)}
+  .menu-layout{display:grid;grid-template-columns:1.05fr .95fr;gap:3.4rem;align-items:center}
+  .menu-card{position:relative}
+  .menu-card .frame{position:relative;padding:1rem}
+  .menu-card .frame::before{content:"";position:absolute;inset:0;border:1px solid rgba(214,173,98,.5)}
+  .menu-card img{width:100%;height:520px;object-fit:cover;position:relative;z-index:1}
+  .menu-card .tag{position:absolute;left:1.8rem;bottom:1.8rem;z-index:3;background:var(--craie);color:var(--oxblood);font-family:var(--serif);font-style:italic;font-size:1.05rem;padding:.5rem 1.1rem}
+  .menu-list .group{margin-bottom:2.4rem}
+  .menu-list .group:last-child{margin-bottom:0}
+  .menu-list h3{font-size:1.5rem;color:var(--laiton-soft);margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem}
+  .menu-list h3 .hr{flex:1;height:1px;background:rgba(214,173,98,.34)}
+  .dish{display:flex;align-items:baseline;gap:.7rem;margin-bottom:1rem}
+  .dish .name{font-weight:600;color:var(--craie);white-space:nowrap}
+  .dish .dots{flex:1;border-bottom:1px dotted rgba(244,237,224,.34);transform:translateY(-.25rem)}
+  .dish .note{color:rgba(244,237,224,.68);font-size:.92rem;font-style:italic;font-family:var(--serif);white-space:nowrap}
+  .menu-foot{text-align:center;margin-top:3rem;color:rgba(244,237,224,.7);font-size:.95rem}
+
+  /* ---------- GALLERY ---------- */
+  .gallery .eyebrow{justify-content:center}
+  .gallery-head{text-align:center;max-width:620px;margin:0 auto 2.8rem}
+  .gallery-head h2{font-size:clamp(2rem,3.6vw,2.8rem);margin:.7rem 0 .8rem}
+  .gallery-head p{color:var(--ink-soft)}
+  .grid-g{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:200px;gap:.7rem}
+  .grid-g figure{position:relative;overflow:hidden;background:var(--craie-2)}
+  .grid-g figure img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+  .grid-g figure:hover img{transform:scale(1.05)}
+  .g-tall{grid-row:span 2}
+  .g-wide{grid-column:span 2}
+
+  /* ---------- VISIT ---------- */
+  .visit{background:var(--bouteille);color:var(--craie);position:relative;overflow:hidden}
+  .visit .leaf{position:absolute;right:-6%;top:-10%;width:46%;opacity:.12;pointer-events:none}
+  .visit .wrap{position:relative;z-index:2}
+  .visit-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.4rem;align-items:start}
+  .visit .eyebrow{color:var(--laiton-soft)}
+  .visit h2{font-size:clamp(2rem,3.6vw,2.8rem);color:var(--craie);margin:.8rem 0 1.2rem}
+  .visit p.intro{color:rgba(244,237,224,.82);margin-bottom:2rem}
+  .hours{border-top:1px solid rgba(214,173,98,.3)}
+  .hours .row{display:flex;justify-content:space-between;align-items:baseline;padding:.85rem 0;border-bottom:1px solid rgba(214,173,98,.18)}
+  .hours .row .day{font-weight:500;color:var(--craie)}
+  .hours .row .time{color:rgba(244,237,224,.78);font-family:var(--serif);font-style:italic}
+  .hours-note{margin-top:1.1rem;font-size:.86rem;color:rgba(244,237,224,.62)}
+  .find{background:rgba(31,58,46,.4);border:1px solid rgba(214,173,98,.26);padding:2rem}
+  .find h3{font-size:1.4rem;color:var(--laiton-soft);margin-bottom:1.1rem}
+  .find .addr{font-size:1.06rem;color:var(--craie);margin-bottom:.3rem}
+  .find .sub{color:rgba(244,237,224,.74);margin-bottom:1.6rem}
+  .map-frame{margin-top:1.6rem;border:1px solid rgba(214,173,98,.26);overflow:hidden;line-height:0}
+  .map-frame iframe{width:100%;height:240px;border:0;filter:saturate(.85)}
+
+  /* ---------- FOOTER ---------- */
+  footer{background:var(--ink);color:rgba(244,237,224,.8);position:relative;overflow:hidden}
+  footer .flourish{position:absolute;left:50%;top:-2rem;transform:translateX(-50%);color:var(--laiton);opacity:.5}
+  .foot-rule{display:flex;align-items:center;gap:1rem;color:var(--laiton);padding-top:1rem}
+  .foot-rule .ln{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(180,138,63,.6),transparent)}
+  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:2.6rem;padding:3.4rem 0 2.6rem}
+  .foot-brand b{font-family:var(--serif);font-size:1.4rem;color:var(--craie);display:block;margin-bottom:.7rem}
+  .foot-brand p{font-size:.96rem;max-width:34ch}
+  .foot-col h4{font-family:var(--sans);font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--laiton-soft);margin-bottom:1rem;font-weight:600}
+  .foot-col p,.foot-col a{display:block;font-size:.95rem;margin-bottom:.5rem;color:rgba(244,237,224,.78)}
+  .foot-col a:hover{color:var(--laiton-soft)}
+  .foot-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.8rem;padding:1.6rem 0;border-top:1px solid rgba(244,237,224,.12);font-size:.84rem;color:rgba(244,237,224,.56)}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media(max-width:980px){
+    .hero-grid{grid-template-columns:1fr}
+    .hero-copy{padding:4rem 0 2.5rem;margin:0;max-width:none}
+    .hero-media{min-height:340px}
+    .story{grid-template-columns:1fr}
+    .story .text{padding:3.4rem 1.5rem}
+    .story.flip .text{order:0}
+    .story .media{min-height:320px}
+    .menu-layout{grid-template-columns:1fr;gap:2.4rem}
+    .menu-card img{height:380px}
+    .visit-grid{grid-template-columns:1fr;gap:2.4rem}
+    .grid-g{grid-template-columns:repeat(2,1fr);grid-auto-rows:170px}
+    .foot-grid{grid-template-columns:1fr;gap:1.8rem}
+  }
+  @media(max-width:640px){
+    .pad{padding:4rem 0}
+    .nav-links{display:none}
+    .menu-toggle{display:block}
+    .grid-g{grid-auto-rows:150px}
+    .g-wide{grid-column:span 2}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <nav class="nav" aria-label="Hovedmenu">
+      <a class="brand" href="#top" aria-label="Café Wilder forside">
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F1620137479965-DMLTDQ09M35U042A2L6I%2FWilder_logo-1.png&w=120&output=webp&q=80" alt="Café Wilder logo" width="48" height="42" decoding="async" />
+        <b>Café Wilder</b>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#historie">Historien</a>
+        <a href="#menu">Kortet</a>
+        <a href="#galleri">Stemning</a>
+        <a href="#besog">Find vej</a>
+        <a class="btn btn-primary" href="#besog">Book bord</a>
+      </div>
+      <button class="menu-toggle" id="navToggle" aria-label="Åbn menu" aria-expanded="false">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <svg class="candle" viewBox="0 0 400 600" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="glow" cx="35%" cy="30%" r="60%">
+        <stop offset="0%" stop-color="#d6ad62" stop-opacity="0.55"/>
+        <stop offset="45%" stop-color="#b48a3f" stop-opacity="0.16"/>
+        <stop offset="100%" stop-color="#5a1322" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="400" height="600" fill="url(#glow)"/>
+  </svg>
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="inner reveal">
+          <p class="greet">Bienvenue chez Wilder</p>
+          <h1>En fransk bistro med <span class="fr">københavnsk</span> hjerte</h1>
+          <p class="lead">Fransk bistrokøkken tilsat en god håndfuld dansk snusfornuft. Enkelt, lækkert og til fornuftige priser, midt på Christianshavn, hvor snakken går og man får lyst til at hænge over en ekstra pastis i baren.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#besog">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+              Book et bord
+            </a>
+            <a class="btn btn-light" href="#menu">Se kortet</a>
+          </div>
+        </div>
+      </div>
+      <div class="hero-media reveal">
+        <img
+          src="https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75"
+          srcset="https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=static1.squarespace.com%2Fstatic%2F5faa50adb7c3555273892468%2Ft%2F6033b9be520a7560ba998fea%2F1614002625716%2FCafe%2BFront-kopi.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w"
+          sizes="(max-width:820px) 100vw, 50vw"
+          alt="Café Wilders facade på Christianshavn med varmelamper og borde på fortovet" width="900" height="600" fetchpriority="high" decoding="async" />
+      </div>
+    </div>
+  </div>
+  <div class="hero-meta">
+    <div class="wrap">
+      <div class="item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-10a7 7 0 0 1 14 0c0 4.8-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+        <span><b>Christianshavn</b>, København K</span>
+      </div>
+      <div class="item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Åbent <b>til sent</b>, varmelamper udenfor</span>
+      </div>
+      <div class="item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v6a4 4 0 0 1-2 3.5V22M8 2c0 3 0 6 0 6M11 2v20M16 2c-1.5 0-2.5 1.5-2.5 4s1 4 2.5 4v12"/></svg>
+        <span>Fransk køkken, <b>dansk snusfornuft</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="story" id="historie">
+  <div class="text reveal">
+    <span class="eyebrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>
+      Bistroen på hjørnet
+    </span>
+    <h2>Et uformelt sted, hvor snakken går</h2>
+    <p>Café Wilder ligger, hvor Wildersgade møder Sankt Annæ Gade, og har gjort gæster glade i generationer. Det er en uformel restaurant uden løftede pegefingre. Du sætter dig, bestiller et glas, og pludselig er der gået et par timer.</p>
+    <p>Køkkenet er fransk i sjælen og dansk i hverdagen. Vi laver klassikere som de skal smage, med gode råvarer og uden dikkedarer. <span class="fr">Voilà</span>, så enkelt kan det være.</p>
+    <p>Når vejret driller, tænder vi varmelamperne udenfor, og baren holder åbent til den sidste pastis er drukket.</p>
+  </div>
+  <div class="media reveal">
+    <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2Fc7ecc05b-73c7-41e8-9f4a-10399050cedd%2FCafe_front_ny_1.jpg&w=760&h=960&fit=cover&a=attention&output=webp&q=75" alt="Café Wilders hjørnefacade med klassiske franske bistrovinduer" width="760" height="960" loading="lazy" decoding="async" />
+  </div>
+</section>
+
+<section class="band pad-sm">
+  <svg class="marble" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
+    <g fill="none" stroke="#b48a3f" stroke-opacity="0.22" stroke-width="1">
+      <path d="M0 60 C 200 30 380 110 560 70 S 940 30 1200 90"/>
+      <path d="M0 150 C 240 120 420 200 660 150 S 1000 110 1200 170"/>
+      <path d="M0 240 C 180 210 460 280 720 230 S 1020 200 1200 250"/>
+      <path d="M120 0 C 160 90 90 180 150 300" stroke-opacity="0.12"/>
+      <path d="M880 0 C 940 100 860 190 920 300" stroke-opacity="0.12"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <div class="brass-rule reveal" style="max-width:200px;margin:0 auto 1.8rem">
+      <span class="ln"></span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M7 6c0 3 2 4 5 4s5-1 5-4M7 6h10"/></svg>
+      <span class="ln"></span>
+    </div>
+    <blockquote class="reveal">Maden er fransk bistrokøkken tilsat en god håndfuld dansk snusfornuft. Enkelt, lækkert og til fornuftige priser.</blockquote>
+    <cite class="reveal">Café Wilder, Christianshavn</cite>
+  </div>
+</section>
+
+<section class="menu" id="menu">
+  <svg class="mirror" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="none" stroke="#d6ad62" stroke-width="1.4">
+      <rect x="120" y="60" width="560" height="480" rx="280" ry="240" stroke-opacity="0.5"/>
+      <rect x="150" y="90" width="500" height="420" rx="250" ry="210" stroke-opacity="0.3"/>
+      <path d="M400 30 C 360 50 360 70 400 60 C 440 70 440 50 400 30" stroke-opacity="0.6"/>
+      <path d="M400 570 C 360 550 360 530 400 540 C 440 530 440 550 400 570" stroke-opacity="0.6"/>
+    </g>
+  </svg>
+  <div class="wrap pad">
+    <div class="menu-head reveal">
+      <span class="eyebrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14M5 20h14M7 4v16M17 4v16M7 8h10M7 12h10M7 16h10"/></svg>
+        Le Carte
+      </span>
+      <h2>Kortet, kort fortalt</h2>
+      <p>Et lille udsnit af de retter, der ofte står på tavlen. Kortet skifter med årstiden og hvad markedet byder ind med. <span class="fr">Bon appétit.</span></p>
+    </div>
+    <div class="menu-layout">
+      <div class="menu-card reveal">
+        <div class="frame">
+          <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F92f2daa3-8dd0-46ca-bf6f-8a4bdad3467c%2FTartar_ny.jpg&w=620&h=720&fit=cover&a=attention&output=webp&q=78" alt="Husets oksetatar, anrettet på fransk vis" width="620" height="720" loading="lazy" decoding="async" />
+          <span class="tag">Husets tatar</span>
+        </div>
+      </div>
+      <div class="menu-list reveal">
+        <div class="group">
+          <h3>Forretter <span class="hr"></span></h3>
+          <div class="dish"><span class="name">Oksetatar</span><span class="dots"></span><span class="note">skåret i hånden</span></div>
+          <div class="dish"><span class="name">Løgsuppe</span><span class="dots"></span><span class="note">gratineret</span></div>
+          <div class="dish"><span class="name">Dagens terrine</span><span class="dots"></span><span class="note">med syltede løg</span></div>
+        </div>
+        <div class="group">
+          <h3>Hovedretter <span class="hr"></span></h3>
+          <div class="dish"><span class="name">Confit de canard</span><span class="dots"></span><span class="note">andelår</span></div>
+          <div class="dish"><span class="name">Entrecôte</span><span class="dots"></span><span class="note">bearnaise, pommes frites</span></div>
+          <div class="dish"><span class="name">Dagens fisk</span><span class="dots"></span><span class="note">fra markedet</span></div>
+        </div>
+        <div class="group">
+          <h3>Til sidst <span class="hr"></span></h3>
+          <div class="dish"><span class="name">Crème brûlée</span><span class="dots"></span><span class="note">vanilje</span></div>
+          <div class="dish"><span class="name">Ost fra disken</span><span class="dots"></span><span class="note">og et glas vin</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="menu-foot reveal">Kortet her er et udvalg til inspiration. Det fulde kort og dagens ret finder du på tavlen, når du sætter dig. <span class="fr">Santé.</span></p>
+  </div>
+</section>
+
+<section class="story flip dark">
+  <div class="text reveal">
+    <span class="eyebrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a3 3 0 0 0 6 0V3M9 3v18M15 3c-1.5 0-2.5 2-2.5 4.5S14 12 15 12v9"/></svg>
+      I baren og ved bordet
+    </span>
+    <h2>Et glas vin, en plads ved vinduet</h2>
+    <p>Baren er stedet, hvor en aften ofte begynder og lige så ofte slutter. Et glas rødvin, en pastis med vand, og tid til at lade samtalen finde sit eget tempo.</p>
+    <p>Vi tror på de små ting gjort ordentligt. Friske råvarer, en ærlig sauce og en stemning, hvor ingen kigger på uret. <span class="fr">À table.</span></p>
+  </div>
+  <div class="media reveal">
+    <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F1605001241652-UCVC8OHISBZ6S8RCXLK9%2FMad_foto_1.jpg&w=760&h=960&fit=cover&a=attention&output=webp&q=78" alt="Fransk ret fra Café Wilders køkken, enkelt anrettet" width="760" height="960" loading="lazy" decoding="async" />
+  </div>
+</section>
+
+<section class="gallery pad" id="galleri">
+  <div class="wrap">
+    <div class="gallery-head reveal">
+      <span class="eyebrow" style="justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="8" cy="9" r="1.4"/></svg>
+        Stemningen
+      </span>
+      <h2>Lidt af det, der venter</h2>
+      <p>Bordene udenfor, retterne fra køkkenet og det levende lokale. Kom forbi og mærk resten selv.</p>
+    </div>
+    <div class="grid-g reveal">
+      <figure class="g-tall">
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F1605001581736-7ZAQRL3C8BSSIH8I22T2%2FThe%2Blady.jpeg&w=500&h=720&fit=cover&a=attention&output=webp&q=75" alt="Detalje fra Café Wilders interiør med fransk stemning" width="500" height="720" loading="lazy" decoding="async" />
+      </figure>
+      <figure class="g-wide">
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F1680092578921-7SBC98SIKGAYAFVAER8H%2F190219_WILDER_0049_LOW%2B.jpg&w=720&h=480&fit=cover&a=attention&output=webp&q=75" alt="Levende stemning i Café Wilder med gæster ved bordene" width="720" height="480" loading="lazy" decoding="async" />
+      </figure>
+      <figure>
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F1605004171499-NJFBFJKPMBITLLKHRE2L%2FIMG_5105%2Bcopy.jpeg&w=500&h=380&fit=cover&a=attention&output=webp&q=75" alt="Ret fra køkkenet på Café Wilder" width="500" height="380" loading="lazy" decoding="async" />
+      </figure>
+      <figure class="g-wide">
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2Fc7ecc05b-73c7-41e8-9f4a-10399050cedd%2FCafe_front_ny_1.jpg&w=720&h=480&fit=cover&a=attention&output=webp&q=75" alt="Café Wilders facade set fra gaden på Christianshavn" width="720" height="480" loading="lazy" decoding="async" />
+      </figure>
+      <figure>
+        <img src="https://images.weserv.nl/?url=images.squarespace-cdn.com%2Fcontent%2Fv1%2F5faa50adb7c3555273892468%2F92f2daa3-8dd0-46ca-bf6f-8a4bdad3467c%2FTartar_ny.jpg&w=500&h=380&fit=cover&a=attention&output=webp&q=75" alt="Oksetatar anrettet på Café Wilder" width="500" height="380" loading="lazy" decoding="async" />
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="visit pad" id="besog">
+  <svg class="leaf" viewBox="0 0 300 400" aria-hidden="true">
+    <g fill="none" stroke="#d6ad62" stroke-width="1.4" stroke-opacity="0.7">
+      <path d="M150 20 C 90 120 90 280 150 380 C 210 280 210 120 150 20 Z"/>
+      <path d="M150 20 L150 380"/>
+      <path d="M150 110 L100 80M150 110 L200 80M150 180 L96 150M150 180 L204 150M150 250 L100 224M150 250 L200 224"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <div class="visit-grid">
+      <div class="reveal">
+        <span class="eyebrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Åbningstider
+        </span>
+        <h2>Hvornår vi har åbent</h2>
+        <p class="intro">Kom forbi til frokost, en sen middag eller bare et glas i baren. Køkkenet lukker lidt før stedet, så der altid er tid til en sidste pastis.</p>
+        <div class="hours">
+          <div class="row"><span class="day">Mandag til torsdag</span><span class="time">ca. 11 til 24</span></div>
+          <div class="row"><span class="day">Fredag</span><span class="time">ca. 11 til 02</span></div>
+          <div class="row"><span class="day">Lørdag</span><span class="time">ca. 10 til 02</span></div>
+          <div class="row"><span class="day">Søndag</span><span class="time">ca. 10 til 24</span></div>
+        </div>
+        <p class="hours-note">Tiderne er vejledende (markeret med ca.) og kan ændre sig ved helligdage og særlige aftener. Ring gerne, hvis du vil være sikker.</p>
+      </div>
+      <div class="reveal">
+        <div class="find">
+          <h3>Find vej</h3>
+          <p class="addr">Wildersgade 56</p>
+          <p class="sub">1408 København K, Christianshavn</p>
+          <a class="btn btn-light" href="https://www.google.com/maps?q=Wildersgade+56,+1408+K%C3%B8benhavn" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-10a7 7 0 0 1 14 0c0 4.8-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+            Vis på kort
+          </a>
+          <div style="margin-top:1.6rem">
+            <a class="btn btn-primary" href="tel:+4532540616" style="margin-right:.6rem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 13l3 1v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+              Ring og book
+            </a>
+          </div>
+          <div class="map-frame">
+            <iframe title="Kort over Café Wilder på Wildersgade, Christianshavn" loading="lazy" src="https://www.google.com/maps?q=Wildersgade+56,+1408+K%C3%B8benhavn&output=embed"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-rule">
+      <span class="ln"></span>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c3 2 3 5 0 7-3-2-3-5 0-7zM12 10v11M7 21h10"/></svg>
+      <span class="ln"></span>
+    </div>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <b>Café Wilder</b>
+        <p>En fransk bistro på Christianshavn. Fransk bistrokøkken tilsat dansk snusfornuft, enkelt og lækkert til fornuftige priser. Bienvenue, og tak fordi du kigger forbi.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Find os</h4>
+        <p>Wildersgade 56</p>
+        <p>1408 København K</p>
+        <a href="https://www.google.com/maps?q=Wildersgade+56,+1408+K%C3%B8benhavn" target="_blank" rel="noopener">Vis på kort</a>
+      </div>
+      <div class="foot-col">
+        <h4>Genveje</h4>
+        <a href="#historie">Historien</a>
+        <a href="#menu">Kortet</a>
+        <a href="#galleri">Stemning</a>
+        <a href="#besog">Åbningstider</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>Café Wilder, Christianshavn. <span class="fr" style="color:var(--laiton-soft)">Merci</span>.</span>
+      <span>Demo-visning. Ikke den endelige hjemmeside.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var t=document.getElementById('navToggle');
+    var links=document.getElementById('navLinks');
+    if(t&&links){
+      t.addEventListener('click',function(){
+        var open=links.style.display==='flex';
+        links.style.display=open?'':'flex';
+        if(!open){links.style.position='absolute';links.style.top='76px';links.style.left='0';links.style.right='0';links.style.flexDirection='column';links.style.background='rgba(244,237,224,.98)';links.style.padding='1.2rem 1.5rem';links.style.gap='1rem';links.style.borderBottom='1px solid var(--line)';links.style.zIndex='70';}
+        t.setAttribute('aria-expanded',String(!open));
+      });
+    }
+  })();
+
+  (function(){
+    var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els=document.querySelectorAll('.reveal');
+    if(rm||!('IntersectionObserver'in window)){els.forEach(function(e){e.classList.add('in')});return;}
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+    },{threshold:.14});
+    els.forEach(function(e){io.observe(e)});
+  })();
+</script>
+</body>
+</html>

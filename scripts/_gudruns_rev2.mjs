@@ -1,0 +1,15 @@
+import path from "node:path"; import fs from "node:fs"; import { pathToFileURL } from "node:url";
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
+const imp = (p) => import(pathToFileURL(path.join(ROOT,"src","lib",p)).href);
+const { reconFull } = await imp("customer-recon-full.ts");
+const { buildClaudeCodePrompt } = await imp("prompt-builder.ts");
+const { templateForBranch } = await imp("design-templates.ts");
+const recon = await reconFull({ name:"Guðrun's Goodies", branch:"café", websiteUrl:"https://www.gudrunsgoodies.dk/", igNotes:"Islandsk café i København, Sankt Peders Stræde 35. Hjemlig, varm, jordnaer." });
+const culturalIdentity = { country:"Island", region:"Reykjavík-tradition i København", era:"gammel reykjavik bagetradition", mood:"varm-storytelling, rolig, jordnaer", motifs:["nordlys","runer","vulkansk basalt","fjord-lys","uld-tekstur"], colorWords:["basalt","mos","tundra","rav","gletsjer-blaa"], languageWords:["Velkomin","Takk","Góðan dag"] };
+const fbVibe = { tone:"varm, personlig, jordnaer, fortaellende", bioVerbatim:"A cozy cafe bringing the authentic flavors of Iceland. Come for the taste, stay for the warmth.", imageTheme:"islandske kager og hjemlig hygge i naerbillede" };
+const tpl = templateForBranch("café");
+const prompt = buildClaudeCodePrompt({ name:"Guðrun's Goodies", branch:"café", slug:"gudruns-goodies-rev2", websiteUrl:"https://www.gudrunsgoodies.dk/", culturalIdentity, fbVibe }, recon, tpl, "fee922f");
+const out = path.join(ROOT,".send_queue","dispatch_gudruns_rev2.md");
+fs.writeFileSync(out, prompt);
+const { validateNoSlop } = await imp("prompt-builder.ts");
+console.log("chars:", prompt.length, "| slop:", JSON.stringify(validateNoSlop(prompt.replace(/ALDRIG AI-fraser:.*/,"")).ok), "| file:", out);
