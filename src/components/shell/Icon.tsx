@@ -5,7 +5,7 @@ import {
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
   Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
-  Moon, Pause,
+  Moon, Pause, Columns3, ArrowUpRight,
   type LucideProps,
 } from "lucide-react";
 
@@ -15,7 +15,7 @@ const MAP = {
   ArrowRight, Coffee, Inbox, Activity, HeartPulse, X, Menu, CircleDot,
   Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
-  Moon, Pause,
+  Moon, Pause, Columns3, ArrowUpRight,
 } as const;
 
 export type IconName = keyof typeof MAP;

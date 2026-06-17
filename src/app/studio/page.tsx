@@ -11,7 +11,8 @@ export default function StudioPage() {
         icon="LayoutGrid"
         title="Studio"
         subtitle="Demoer og klient-sites — live preview, filtrér efter branche, åbn i ny fane."
-        action={<span style={{ display: "flex", gap: 8 }}>
+        action={<span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/studio/compare" className="cc-btn">Sammenlign demoer →</Link>
           <Link href="/studio/prompt-gen" className="cc-btn">Prompt-gen →</Link>
           <Link href="/studio/new" className="cc-btn cc-btn-accent">+ Lav demo</Link>
         </span>}

@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   // import in src/lib/seo.ts (runs headless Chrome locally). Keep them external
   // so the server build never tries to bundle their dynamic requires.
   serverExternalPackages: ["lighthouse", "chrome-launcher"],
+  // Bundle the committed single-file demos so /studio/demo-site/<slug> can read
+  // them at runtime on Vercel (dist/ is gitignored; demo-sites/ is committed).
+  outputFileTracingIncludes: {
+    "/studio/demo-site/[slug]": ["./demo-sites/**/*.html"],
+  },
   turbopack: {
     root: __dirname,
     resolveAlias: {
