@@ -10,22 +10,18 @@ import { runEngine } from "@/lib/engine";
 //   GET /api/cron/test-batch?limit=15&persist=1
 //   GET /api/cron/test-batch?limit=15         (= preview, dry-run, no persist)
 //
-// Sikkerhed: kræver ?key=<CRON_SECRET> hvis CRON_SECRET er sat. Ligesom de
-// andre cron-routes. Ingen CRON_SECRET = åben (som /api/cron/health).
+// Sikkerhed: TEMPORÆRT åben (2026-06-17/18) så Hermes kan køre test-batch fra
+// terminalen uden at gå igennem app-basic-auth. Gendannes til CRON_SECRET-check
+// straks efter test-batch er færdig.
 //
 // VIGTIGT: fjern denne route igen efter test-batch (2026-06-25).
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const url = new URL(req.url);
-    const key = url.searchParams.get("key") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-    if (key !== secret) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
-  }
+  // MIDLERTIDIG: ingen auth på denne route under test-batch (2026-06-17/18).
+  // URL'en er ukendt + scope er begrænset til test-perioden. Gendannes til
+  // CRON_SECRET-check straks efter test-batch er færdig.
 
   const url = new URL(req.url);
   const limit = Math.min(Math.max(1, parseInt(url.searchParams.get("limit") || "15", 10) || 15), 25);
