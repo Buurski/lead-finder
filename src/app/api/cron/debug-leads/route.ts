@@ -28,7 +28,7 @@ export async function GET() {
       const key = `${st}|${passesFilter ? "PASS" : "FAIL"}`;
       buckets[key] = (buckets[key] ?? 0) + 1;
       if (passesFilter) {
-        candidates.push({ name: l.name, branch: l.branch, city: l.city, email: l.email, status: l.status, emailStatus: l.emailStatus, score: l.score, comp: compositeScore(l) });
+        candidates.push({ name: l.name, branch: l.branch, city: l.city, email: l.email, status: l.status, emailStatus: l.emailStatus, score: l.score, comp: compositeScore(l).score });
       }
     }
     candidates.sort((a, b) => b.comp - a.comp);
