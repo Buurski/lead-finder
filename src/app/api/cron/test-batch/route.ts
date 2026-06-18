@@ -61,6 +61,9 @@ export async function GET(req: Request) {
       const channelBreakdown: Record<string, number> = {};
       const samples: Record<string, Array<{ name: string; status: string; email: string; channel: string; reasons: string[] }>> = {};
       let passes = 0;
+      let newClean = 0;
+      const newFailedReasons: Record<string, number> = {};
+      const newSamples: Array<{ name: string; status: string; emailSentAt: string; emailStatus: string; followupSentAt: string; callbackDate: string; channel: string }> = [];
       for (const l of all) {
         const st = (l.status ?? "").toString().trim().toLowerCase() || "(blank)";
         statusBreakdown[st] = (statusBreakdown[st] ?? 0) + 1;
@@ -78,10 +81,31 @@ export async function GET(req: Request) {
             }
           }
         }
+        // Drill into "new" status — which contactable gate kills them?
+        if (st === "new") {
+          if (reasons.length === 0 && ch === "email") {
+            newClean++;
+          } else {
+            for (const r of reasons) {
+              if (r !== "worked-status") newFailedReasons[r] = (newFailedReasons[r] ?? 0) + 1;
+            }
+            if (newSamples.length < 5) {
+              newSamples.push({
+                name: l.name, status: l.status,
+                emailSentAt: l.emailSentAt || "", emailStatus: l.emailStatus || "",
+                followupSentAt: l.followupSentAt || "", callbackDate: l.callbackDate || "",
+                channel: ch,
+              });
+            }
+          }
+        }
       }
       return NextResponse.json({
         total,
         passing: passes,
+        newClean,
+        newFailedReasons,
+        newSamples,
         reasonCounts,
         statusBreakdown,
         channelBreakdown,
