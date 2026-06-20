@@ -50,6 +50,7 @@ interface InDraft {
   body?: string;
   recipientEmail?: string;
   source?: string;
+  sender?: string; // optional "lucas" | "charlie"; unset ⇒ chosen on /approve (default lucas)
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
       recipientEmail: d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : undefined,
       status: "pending",
       source: d.source || "cowork-leadgen",
+      ...(d.sender === "charlie" ? { sender: "charlie" as const } : d.sender === "lucas" ? { sender: "lucas" as const } : {}),
       createdAt: now,
       updatedAt: now,
     });

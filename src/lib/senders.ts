@@ -168,3 +168,40 @@ export function formatFrom(senderId: SenderId): string {
   if (!creds) return senderId;
   return `${creds.displayName} <${creds.email}>`;
 }
+
+// ---- Signature rewrite (manual sender override, 2026-06-19) ----------------
+// Drafts are composed with a "Mvh, Lucas" sign-off. When the actual sender is
+// Charlie (engine allocation OR the manual /godkendelse toggle), the body must
+// be re-signed so the letter matches who sends it — otherwise a mail from
+// Charlie's account still says "Mvh, Lucas". Voice-safe (no contact CTA / kr).
+// Optional phone via {LUCAS,CHARLIE}_SENDER_PHONE.
+
+/** The closing sign-off for a sender. */
+export function signatureFor(id: SenderId): string {
+  if (id === "charlie") {
+    const phone = (process.env.CHARLIE_SENDER_PHONE || "").trim();
+    return phone ? `Mvh, Charlie\n${phone}` : "Mvh, Charlie";
+  }
+  const phone = (process.env.LUCAS_SENDER_PHONE || "").trim();
+  return phone ? `Mvh, Lucas\n${phone}` : "Mvh, Lucas";
+}
+
+// Strip whatever trailing Lucas/Charlie sign-off the body has, so we can re-sign
+// for the chosen sender. Covers "Mvh, Lucas", "Lucas\n+45 …" and bare "Lucas".
+export function stripSignature(body: string): string {
+  let t = (body || "").replace(/\s+$/, "");
+  const patterns: RegExp[] = [
+    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
+  ];
+  for (const re of patterns) {
+    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
+  }
+  return t;
+}
+
+/** Re-sign a body for the chosen sender. */
+export function applySignature(body: string, id: SenderId): string {
+  return `${stripSignature(body)}\n\n${signatureFor(id)}`;
+}

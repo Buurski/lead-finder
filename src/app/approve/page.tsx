@@ -25,6 +25,8 @@ interface QueueDraft {
   source: string;
   createdAt: string;
   updatedAt: string;
+  sender?: "lucas" | "charlie";
+  sentBy?: "lucas" | "charlie";
 }
 
 type Filter = "pending" | "approved" | "decided" | "all";
@@ -101,9 +103,12 @@ export default function ApprovePage() {
 
   const counts = useMemo(() => {
     const pending = drafts.filter((d) => d.status === "pending").length;
-    const approved = drafts.filter((d) => d.status === "approved").length;
+    const approvedList = drafts.filter((d) => d.status === "approved");
+    const approved = approvedList.length;
+    const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
+    const approvedLucas = approved - approvedCharlie;
     const decided = drafts.length - pending;
-    return { pending, approved, decided, all: drafts.length };
+    return { pending, approved, approvedLucas, approvedCharlie, decided, all: drafts.length };
   }, [drafts]);
 
   // Send the approved drafts. The route streams SSE progress, so the UI shows a
@@ -200,11 +205,11 @@ export default function ApprovePage() {
 
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
-    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }): Promise<{ ok: boolean; violations?: string[] }> => {
+    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }): Promise<{ ok: boolean; violations?: string[] }> => {
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify((action === "edit" || action === "set-demos") && payload ? { id, action, ...payload } : { id, action }),
+        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -274,7 +279,7 @@ export default function ApprovePage() {
       {counts.approved > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--green-dim)", border: "1px solid var(--green)" }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse{counts.approvedCharlie > 0 ? ` · Lucas ${counts.approvedLucas} · Charlie ${counts.approvedCharlie}` : ""}</div>
             <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
               Godkendt = markeret. Tryk Send for at sende <strong>rigtige mails</strong> til virksomhederne. Pause/halt-flag + kontaktet-tjek blokerer automatisk.
               {sendMsg && !sendProg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
@@ -484,13 +489,22 @@ function DraftLetter({
   onFocusRequest,
 }: {
   draft: QueueDraft;
-  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }) => Promise<{ ok: boolean; violations?: string[] }>;
+  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
+  const [sender, setSender] = useState<"lucas" | "charlie">(draft.sender ?? "lucas");
+
+  // Per-lead afsender-valg. Persists immediately; the send route routes the mail
+  // to the matching Gmail account + re-signs the body at send time.
+  async function chooseSender(next: "lucas" | "charlie") {
+    if (next === sender) return;
+    setSender(next);
+    await onAct(draft.id, "set-sender", { sender: next });
+  }
   const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "unapprove" | "set-demos">(null);
   const [violations, setViolations] = useState<string[]>([]);
 
@@ -612,6 +626,46 @@ function DraftLetter({
           {meta.label}
         </span>
       </div>
+
+      {/* afsender — hvem mailen sendes fra (Lucas/Charlie). Read-only når sendt. */}
+      {draft.status === "sent" ? (
+        <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)" }}>
+          Sendt som <strong style={{ color: "var(--text)" }}>{(draft.sentBy ?? draft.sender ?? "lucas") === "charlie" ? "Charlie" : "Lucas"}</strong>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Afsender</span>
+          <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
+            {(["lucas", "charlie"] as const).map((s) => {
+              const active = sender === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => chooseSender(s)}
+                  style={{
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "5px 13px",
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    color: active ? "var(--text)" : "var(--text-muted)",
+                    background: active ? "var(--surface)" : "transparent",
+                    boxShadow: active ? "0 1px 2px oklch(0% 0 0 / 0.08)" : "none",
+                  }}
+                >
+                  {s === "lucas" ? "Lucas" : "Charlie"}
+                </button>
+              );
+            })}
+          </div>
+          <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+            Konto + underskrift sættes automatisk ved afsendelse.
+          </span>
+        </div>
+      )}
 
       {/* hooks */}
       {draft.hooks.length > 0 && (

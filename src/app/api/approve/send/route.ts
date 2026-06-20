@@ -6,7 +6,7 @@ import { canSendTo } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
-import { getTransporter, formatFrom, defaultSender, isSenderAvailable } from "@/lib/senders";
+import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, type SenderId } from "@/lib/senders";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -104,11 +104,13 @@ export async function POST(req: Request) {
   // place_id↔Sheets-row leadId mismatch. Keyed by leadId + normalized name+city.
   const sentIds = new Set<string>();
   const sentKeys = new Set<string>();
+  const sentEmails = new Set<string>();   // global by-address ledger (cross-sender)
   for (const d of drafts) {
     if (d.status !== "sent") continue;
     if (d.leadId) sentIds.add(d.leadId);
     const k = bizKey(d.name, d.city);
     if (k) sentKeys.add(k);
+    if (d.recipientEmail) sentEmails.add(d.recipientEmail.trim().toLowerCase());
   }
 
   if (candidates.length === 0) {
@@ -127,12 +129,20 @@ export async function POST(req: Request) {
   }
   const byId = new Map(leads.map((l) => [l.id, l]));
 
+  // Seed the by-address ledger from Sheets too: any lead already emailed (by
+  // EITHER Lucas or Charlie) blocks a fresh cold send to that address. Cold-only
+  // route — follow-ups/replies run elsewhere, so this never blocks them.
+  for (const l of leads) {
+    if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
+  }
+
   // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
-  // draft.sender (sat af engine via pickHybridSender). Manglende sender
-  // (legacy drafts skrevet før denne ændring) falder tilbage på defaultSender().
+  // draft.sender (sat af engine via pickHybridSender ELLER manuelt via
+  // /godkendelse-knappen). Manglende sender (legacy drafts) falder tilbage på
+  // defaultSender(). Returnerer også det valgte id så vi kan re-signere body'en.
   const transportFor = (sender?: string) => {
-    const id: "lucas" | "charlie" = (sender === "lucas" || sender === "charlie") ? sender : defaultSender();
-    return { transport: getTransporter(id), from: formatFrom(id) };
+    const id: SenderId = (sender === "lucas" || sender === "charlie") ? sender : defaultSender();
+    return { id, transport: getTransporter(id), from: formatFrom(id) };
   };
 
   // SSE plumbing. The loop runs inside the stream so each send/skip is reported live.
@@ -167,6 +177,7 @@ export async function POST(req: Request) {
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;
           }
+          const targetKey = target.toLowerCase();
 
           // 2. NEVER re-contact (only meaningful when we have a Sheets row to check).
           if (lead && !force && alreadyEmailed(lead)) {
@@ -186,6 +197,14 @@ export async function POST(req: Request) {
           if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
             skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede sendt (kø-historik)" });
+            continue;
+          }
+          // 2c. Global by-address ledger — NEVER mail the same address twice,
+          // across BOTH Lucas and Charlie (Lucas's krav: jeg må ikke sende til en
+          // mail Charlie allerede har skrevet til, og omvendt). Cold-only route.
+          if (!force && sentEmails.has(targetKey)) {
+            skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet (samme mail)" });
             continue;
           }
           const decision = canSendTo({
@@ -211,20 +230,22 @@ export async function POST(req: Request) {
           // 4. Human spacing before each send (except the first).
           if (sent > 0) await sleep(randGap());
 
-          send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: d.sender ?? defaultSender() });
+          const { id: senderId, transport, from } = transportFor(d.sender);
+          send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
-            const { transport, from } = transportFor(d.sender);
             await transport.sendMail({
               from,
               to: target,
               subject: d.subject,
-              text: d.body,
+              text: applySignature(d.body, senderId),
             });
-            await updateDraft(d.id, { status: "sent" });
-            // Add to the in-run ledger so a same-business sibling later in this run skips.
+            await updateDraft(d.id, { status: "sent", sentBy: senderId });
+            // Add to the in-run ledgers so a same-business / same-address sibling
+            // later in this run skips — across BOTH senders.
             if (d.leadId) sentIds.add(d.leadId);
             const sk = bizKey(d.name, d.city);
             if (sk) sentKeys.add(sk);
+            sentEmails.add(targetKey);
             // Stamp Sheets only when there IS a row (ingest leads have none).
             if (lead) {
               const rowIndex = parseInt(lead.id, 10) - 2;

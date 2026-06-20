@@ -24,11 +24,13 @@ interface ActionBody {
     | "reject"
     | "unapprove"
     | "set-demos"
+    | "set-sender"
     | "reset-sent"
     | "cleanup-no-email";
   subject?: string;
   body?: string;
   demoPair?: Demo[];
+  sender?: "lucas" | "charlie";
 }
 
 // POST /api/approve/queue — approve | edit | reject a draft.
@@ -151,6 +153,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "voice-guide violation", violations: check.errors }, { status: 422 });
     }
     const updated = await updateDraft(id, { demoPair: pair, body: payload.body });
+    if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    return NextResponse.json({ draft: updated });
+  }
+
+  if (action === "set-sender") {
+    // Per-lead afsender-valg (Lucas/Charlie) på /godkendelse. Ændrer KUN hvem
+    // mailen sendes fra + underskriften ved afsendelse — ikke draft-status. Må
+    // vælges på pending/approved/edited (også efter godkendelse), aldrig sent.
+    const sender = payload.sender === "charlie" ? "charlie" : "lucas";
+    const existing = await readQueue();
+    const target = existing.find((d) => d.id === id);
+    if (!target) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    if (target.status === "sent") {
+      return NextResponse.json({ error: "draft already sent — afsender kan ikke ændres", status: target.status }, { status: 409 });
+    }
+    const updated = await updateDraft(id, { sender });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }

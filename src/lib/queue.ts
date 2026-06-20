@@ -43,6 +43,9 @@ export interface QueueDraft {
   // /approve/send to pick the right SMTP transport + From: header. Legacy
   // drafts without this field fall back to "lucas" at send time.
   sender?: SenderId;
+  // Stamped with the identity that ACTUALLY sent the mail (audit + the UI's
+  // "Sendt som X" line). Set by /approve/send on a successful send.
+  sentBy?: SenderId;
 }
 
 // The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;
@@ -110,7 +113,7 @@ export async function appendDrafts(
 // "approve" only marks the draft approved; real sending is a later layer.
 export async function updateDraft(
   id: string,
-  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string }
+  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId }
 ): Promise<QueueDraft | null> {
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
@@ -122,6 +125,8 @@ export async function updateDraft(
     ...(patch.body !== undefined ? { body: patch.body } : {}),
     ...(patch.demoPair !== undefined ? { demoPair: patch.demoPair } : {}),
     ...(patch.recipientEmail !== undefined ? { recipientEmail: patch.recipientEmail } : {}),
+    ...(patch.sender !== undefined ? { sender: patch.sender } : {}),
+    ...(patch.sentBy !== undefined ? { sentBy: patch.sentBy } : {}),
     updatedAt: new Date().toISOString(),
   };
   drafts[idx] = next;
