@@ -71,6 +71,10 @@ function snippetFrom(buf) {
   return s.slice(0, 320);
 }
 
+// Local antivirus tools (Kaspersky, ESET) MITM TLS and break the default cert
+// chain on some user machines. Set IMAP_INSECURE_TLS=1 in .env.local to bypass
+// on those machines. Vercel/clean envs leave it unset (stays secure).
+const insecureTls = ["1", "true", "yes"].includes((process.env.IMAP_INSECURE_TLS || "").toLowerCase());
 const client = new ImapFlow({
   host: "imap.gmail.com",
   port: 993,
@@ -79,6 +83,7 @@ const client = new ImapFlow({
   logger: false,
   connectionTimeout: 15000,
   socketTimeout: 30000,
+  tls: { rejectUnauthorized: !insecureTls },
 });
 
 const items = [];
