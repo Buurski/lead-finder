@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
+import { previewSignature } from "@/lib/leads/signature-preview";
+
+// Lucas' sender phone (matches Vercel env LUCAS_SENDER_PHONE — Charlie's is
+// intentionally empty until he provides a number, so his preview shows the
+// sign-off without a phone line). Embedded client-side as defaults; the
+// server (senders.ts) is the source of truth at send time.
+const PREVIEW_LUCAS_PHONE = "+45 23 24 24 82";
+const PREVIEW_CHARLIE_PHONE = "";
 
 // Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
 // has no server-only imports.
@@ -666,6 +674,48 @@ function DraftLetter({
           </span>
         </div>
       )}
+
+      {/* sign-off preview — what the email's last lines will look like with the
+          chosen sender. Updates live when Lucas/Charlie is toggled, so the
+          preview always matches what the send route will emit. (2026-06-22) */}
+      <div
+        style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          background: "var(--bg-2)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "var(--text-muted)",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: "var(--text-dim)",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            marginBottom: 4,
+          }}
+        >
+          Slutning af mailen — sendes som {sender === "lucas" ? "Lucas" : "Charlie"}
+        </div>
+        <pre
+          style={{
+            margin: 0,
+            fontFamily: "inherit",
+            whiteSpace: "pre-wrap",
+            color: "var(--text)",
+            lineHeight: 1.5,
+          }}
+        >
+          {previewSignature(body, sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE)
+            .split("\n")
+            .slice(-3)
+            .join("\n")}
+        </pre>
+      </div>
 
       {/* hooks */}
       {draft.hooks.length > 0 && (
