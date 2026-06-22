@@ -6,6 +6,7 @@
     { "path": "/api/cron/engine",         "schedule": "0 * * * *" },
     { "path": "/api/cron/inbox-triage",   "schedule": "0 * * * *" },
     { "path": "/api/cron/ingest-leadgen", "schedule": "30 6 * * *" },
-    { "path": "/api/cron/find-emails",    "schedule": "0 7-10 * * *" }
+    { "path": "/api/cron/find-emails",    "schedule": "0 7-10 * * *" },
+    { "path": "/api/cron/cleanup-no-email", "schedule": "0 6 * * *" }
   ]
 }
