@@ -23,6 +23,9 @@ const PLACEHOLDER_REGEX =
   /noreply|no-reply|donotreply|do-not-reply|example\.|@example|sentry|w3\.org|schema|jquery|googletagmanager|googleapis|@google\.com|facebook\.com|instagram\.com|linkedin|twitter|name@domain|user@domain|email@email|your@|youremail|test@test|@test\.dk$|@test\.com$|eksempel|firstname|lastname|sample@|placeholder|john\.doe|jane\.doe|@yourcompany|@yourdomain|@goodresto|@eksempel|@domain\.com$|@email\.com$|wixpress|cloudflare|wordpress\.com|sentry\.io|godaddy|hostnet|simply\.com/i;
 
 const BANNED_DOMAINS = new Set([
+  // Web-agency / builder domains: the scraped footer mail reaches the BUREAU, not
+  // the lead, and many leads share one (info@grouponline.dk) — never a real lead address (2026-06-22).
+  "grouponline.dk", "planway.com", "wannafind.dk", "dandomain.dk", "simplero.com",
   "example.com", "example.dk", "example.org",
   "domain.com", "domain.dk", "email.com",
   "test.com", "test.dk",

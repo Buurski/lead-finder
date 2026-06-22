@@ -76,11 +76,15 @@ function norm(s: string): string {
 
 function checkAuth(req: Request): boolean {
   const expected = process.env.ADMIN_KEY || "";
+  const cronSecret = process.env.CRON_SECRET || "";
+  const h = req.headers.get("authorization") || "";
+  const bearer = h.startsWith("Bearer ") ? h.slice(7) : "";
+  // Vercel Cron injects "Bearer CRON_SECRET" — accept it so this route can be a cron (2026-06-22).
+  if (cronSecret && bearer === cronSecret) return true;
   if (!expected) return true;
   const url = new URL(req.url);
   if ((url.searchParams.get("key") || "") === expected) return true;
-  const h = req.headers.get("authorization") || "";
-  return h.startsWith("Bearer ") && h.slice(7) === expected;
+  return bearer === expected;
 }
 
 async function fetchLeadgenItems(): Promise<LeadgenItem[]> {

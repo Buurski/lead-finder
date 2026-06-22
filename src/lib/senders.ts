@@ -180,10 +180,14 @@ export function formatFrom(senderId: SenderId): string {
 export function signatureFor(id: SenderId): string {
   if (id === "charlie") {
     const phone = (process.env.CHARLIE_SENDER_PHONE || "").trim();
-    return phone ? `Mvh, Charlie\n${phone}` : "Mvh, Charlie";
+    return phone
+      ? `Med venlig hilsen\nCharlie Nielsen\n${phone}`
+      : "Med venlig hilsen\nCharlie Nielsen";
   }
   const phone = (process.env.LUCAS_SENDER_PHONE || "").trim();
-  return phone ? `Mvh, Lucas\n${phone}` : "Mvh, Lucas";
+  return phone
+    ? `Med venlig hilsen\nLucas Buur\n${phone}`
+    : "Med venlig hilsen\nLucas Buur";
 }
 
 // Strip whatever trailing Lucas/Charlie sign-off the body has, so we can re-sign
@@ -191,6 +195,7 @@ export function signatureFor(id: SenderId): string {
 export function stripSignature(body: string): string {
   let t = (body || "").replace(/\s+$/, "");
   const patterns: RegExp[] = [
+    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n+\+?[\d\s]{6,})?\s*$/i,
     /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
