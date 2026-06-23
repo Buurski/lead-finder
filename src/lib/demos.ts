@@ -82,9 +82,12 @@ const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning
 export function pickDemos(branch: string, name: string): Demo[] {
   const t = `${name} ${branch}`.toLowerCase();
 
+  // VIDA (reel kunde på eget domæne vida-klinik.dk) er altid hovedpunktet for
+  // skønhed/klinik. Andre demos er supplement — rækkefølgen i array er den
+  // rækkefølge de vises i mailen.
   if (CLINIC.test(t)) return [D.vida];
-  if (BARBER.test(t)) return [D.streetcut, D.salonArtec];
-  if (BEAUTY.test(t)) return [D.salonArtec, D.vida];
+  if (BARBER.test(t)) return [D.salonArtec, D.streetcut];
+  if (BEAUTY.test(t)) return [D.vida, D.salonArtec];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
