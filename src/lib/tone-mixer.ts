@@ -33,7 +33,7 @@ export interface MixLead {
   achievements?: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
 
-export type OpenerKind = "achievement" | "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
+export type OpenerKind = "achievement" | "lokation" | "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
 
 export interface ToneMix {
   comboId: string;
@@ -100,6 +100,21 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
       text: pick(seed + "ach", [
         `først og fremmest: ${achievement} er altså ret stort. Tillykke. Men det er også ærlig talt netop derfor jeg skriver, for når man er på det niveau fagligt, så er hjemmesiden tit det første sted nye kunder møder en.`,
         `tillykke med ${achievement}. Det er ærlig talt netop derfor jeg skriver. Når man har leveret på det niveau, fortjener hjemmesiden samme finish.`,
+      ]),
+    });
+  }
+
+  // 0b. Lokation + branche — high-priority fallback for leads WITHOUT
+  //     review/achievement data but WITH branch+city. Reads as personal
+  //     (\"For en permanent makeup i Faaborg…\") instead of generic
+  //     (\"Med jeres kundebase…\").
+  if (lead.branch && lead.city && (lead.branch + " " + lead.city).trim().length > 4) {
+    out.push({
+      kind: "lokation",
+      text: pick(seed + "l", [
+        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
       ]),
     });
   }
@@ -205,10 +220,19 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
 export function mixForLead(lead: MixLead): ToneMix {
   const seed = lead.name;
   const openers = eligibleOpeners(lead);
-  // Achievement is the analysis's #1 opener — always use it when present.
-  // Otherwise deterministic hash-pick among the eligible openers (spreads a batch).
+  // Priority: achievement > lokation (branch+city) > others. Achievement
+  // is the analysis's #1 opener. Lokation is preferred over demo-hook for
+  // hooks-less leads (reads as personal). Demo-hook is the universal fallback.
   const ach = openers.find((o) => o.kind === "achievement");
-  const chosen = ach ?? openers[hash(seed + "open") % openers.length];
+  const lok = openers.find((o) => o.kind === "lokation");
+  let chosen;
+  if (ach) {
+    chosen = ach;
+  } else if (lok) {
+    chosen = lok;
+  } else {
+    chosen = openers[hash(seed + "open") % openers.length];
+  }
 
   // The salgselev-hobby disclosure — the differentiator. Always present.
   // The salgselev-hobby disclosure (the differentiator). No "pris"/"gratis" — the
