@@ -4,7 +4,7 @@ import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
-import { leadChannel } from "@/lib/leads/channel";
+import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -58,19 +58,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, reset });
   }
 
-  // One-time cleanup (no id): reject any pending/approved draft whose lead has no
-  // usable email — those should never have been email-drafts (they're Messenger/SMS
-  // leads). Keeps godkendelse email-only.
+  // One-time cleanup (no id): reject any pending/approved draft whose
+  // recipientEmail is set-but-blocked (bureau mail, placeholder, junk). Drafts
+  // WITHOUT any email stay in the queue so find-emails cron can fill them later.
+  // See /api/cron/cleanup-no-email/route.ts for full rationale.
   if (action === "cleanup-no-email") {
-    const [drafts, leads] = await Promise.all([readQueue(), getLeads().catch(() => [])]);
-    const byId = new Map(leads.map((l) => [l.id, l]));
+    const drafts = await readQueue();
     let rejected = 0;
     for (const d of drafts) {
       if (d.status !== "pending" && d.status !== "approved") continue;
-      // Resolve by leadId ONLY — a name fallback could reject a valid same-named
-      // lead's draft (duplicate names are common in Sheets).
-      const lead = d.leadId ? byId.get(d.leadId) : undefined;
-      if (lead && leadChannel(lead) !== "email") { d.status = "rejected"; d.updatedAt = new Date().toISOString(); rejected++; }
+      const email = (d.recipientEmail || "").trim();
+      if (!email) continue;                       // no email → keep for find-emails
+      if (hasUsableEmail(email)) continue;       // good email → keep
+      if (!isBlockedEmail(email)) continue;      // malformed but not blocked → keep
+      d.status = "rejected";
+      d.updatedAt = new Date().toISOString();
+      rejected++;
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, rejected });
