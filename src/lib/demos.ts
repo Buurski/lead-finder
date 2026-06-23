@@ -17,7 +17,8 @@ export const DEMO_SITES = {
   buurfoto: "https://buurfoto.vercel.app/",
   streetcut: "https://streetcut.vercel.app/",
   salonArtec: "https://salon-artec.vercel.app/Salon%20Artec.html",
-  vida: "https://vida-ten-gamma.vercel.app/",
+  // VIDA reference-projekt ligger på eget domæne siden 2026-06-17.
+  vida: "https://vida-klinik.dk/",
   vestfjends: "https://vestfjends.vercel.app/",
   midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
 } as const;
@@ -70,13 +71,19 @@ const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entr
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
 const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
 
-// Returns two distinct, branch-relevant demos. Photo is the one case that maps
-// to a single strong demo (we still return two by pairing with a neutral one).
-export function pickDemoPair(branch: string, name: string): [Demo, Demo] {
+// Returns the demos that best match the lead's branch. Most branches return
+// 2 demos; CLINIC (skønhedsklinik) returns a single demo (vida-klinik.dk) per
+// Lucas (2026-06-23) — lead-template shows a softer "Eksempel på en hjemmeside
+// for en kunde"-framing for single-demo leads. Photo also pairs with a neutral
+// one for visual variety.
+// Returns 1-2 demos for the branch. Per Lucas (2026-06-23): CLINIC (skønhedsklinik)
+// returns a SINGLE demo (vida-klinik.dk) — gentaget demo-pair lyder spam-agtigt.
+// Andre brancher får to demos for variation.
+export function pickDemos(branch: string, name: string): Demo[] {
   const t = `${name} ${branch}`.toLowerCase();
 
+  if (CLINIC.test(t)) return [D.vida];
   if (BARBER.test(t)) return [D.streetcut, D.salonArtec];
-  if (CLINIC.test(t)) return [D.vida, D.salonArtec];
   if (BEAUTY.test(t)) return [D.salonArtec, D.vida];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];

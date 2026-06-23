@@ -60,7 +60,7 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   hair: "beauty",           // English: Hair by us, Hair salon
   negle: "beauty",          // negleklinik, neglepleje
   nails: "beauty",
-  salon: "beauty",          // Salon No. 1, Salon Heidi — almost always beauty in DK context
+  salon: "beauty",          // Salon No. 1, Salon Heidi. almost always beauty in DK context
   klip: "beauty",           // Klip&Cool, Klip og farve
   spa: "beauty",
   velvære: "beauty",
@@ -140,7 +140,7 @@ function getBranchDisplay(branch: string): string {
 
 function getBranchGroup(branch: string): string {
   const normalized = branch.toLowerCase().trim();
-  if (!normalized) return "service"; // generic safe fallback — neutral copy, no demo link mismatch
+  if (!normalized) return "service"; // generic safe fallback. neutral copy, no demo link mismatch
   for (const [key, group] of Object.entries(BRANCH_GROUP_MAP)) {
     if (normalized.includes(key)) return group;
   }
@@ -178,18 +178,18 @@ function websiteLine(v: TemplateVars): string {
   // Softened copy 2026-05-20: previous wording was called "fornærmende" / "flabet" by recipients.
   // Always frame as an offer/possibility — never imply their current site is bad.
   if (v.websiteStatus === "none")
-    return "Jeg kan se I ikke har en hjemmeside endnu — der kunne ligge noget potentiale i en god lille en.";
+    return "Jeg kan se I ikke har en hjemmeside endnu. Der kunne ligge noget potentiale i en god lille en.";
   if (v.websiteQualityTier === "dead" || v.websiteStatus === "dead")
     // NB: never assert the site is broken/down. A "dead" tier can come from a fetch
     // that was bot-blocked rather than a genuinely dead site (Lucas got burned sending
     // "din hjemmeside har tekniske udfordringer" to businesses whose sites were fine).
     // Keep this purely as a neutral offer so a misclassification can't insult anyone.
-    return "Jeg kiggede forbi jeres online tilstedeværelse — jeg sender bare et lille indspark hvis I på et tidspunkt overvejer en frisk hjemmeside.";
+    return "Jeg kiggede forbi jeres online tilstedeværelse. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer en frisk hjemmeside.";
   if (v.websiteQualityTier === "old" || v.websiteStatus === "old")
-    return "Jeg kiggede forbi jeres hjemmeside — den fungerer fint, men jeg tænker at en lille opdatering kunne give jer endnu mere ud af den.";
+    return "Jeg kiggede forbi jeres hjemmeside. Den fungerer fint, men jeg tænker at en lille opdatering kunne give jer endnu mere ud af den.";
   if (v.websiteQualityTier === "mediocre")
-    return "Jeg kiggede forbi jeres hjemmeside — den fungerer fint som den er. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer en frisk version.";
-  return "Jeg kiggede forbi jeres hjemmeside — den ser fin ud. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer noget nyt.";
+    return "Jeg kiggede forbi jeres hjemmeside. Den fungerer fint som den er. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer en frisk version.";
+  return "Jeg kiggede forbi jeres hjemmeside. Den ser fin ud. Jeg sender bare et lille indspark hvis I på et tidspunkt overvejer noget nyt.";
 }
 
 // Warm opener — compliments the business before any critique.
@@ -200,17 +200,17 @@ function websiteLine(v: TemplateVars): string {
 function complimentLine(group: string, name: string, city: string): string {
   switch (group) {
     case "food":
-      return "Jeg er stødt på " + name + " i " + city + " — det ser ud som et sted folk virkelig kommer for stemningen.";
+      return "Jeg er stødt på " + name + " i " + city + ". Det ser ud som et sted folk virkelig kommer for stemningen.";
     case "craft":
-      return name + " ser ud til at have et solidt ry i " + city + " — det er tydeligt I står for kvalitetsarbejde.";
+      return name + " ser ud til at have et solidt ry i " + city + ". Det er tydeligt I står for kvalitetsarbejde.";
     case "beauty":
       // Dropped the dead "ser ud til at have bygget noget særligt op" opener
       // (OUTREACH_ANALYSIS: 30+ sends, 0 positives). Neutral, low-risk instead.
       return "Jeg blev nysgerrig på " + name + " i " + city + " og kom til at tænke på, hvordan en rolig, stilren side kunne klæde jer.";
     case "professional":
-      return "I " + city + " kender folk " + name + " — det er tydeligt I har en stærk position.";
+      return "I " + city + " kender folk " + name + ". Det er tydeligt I har en stærk position.";
     case "gallery":
-      return "Det visuelle udtryk hos " + name + " er stærkt — det fortjener at blive set af flere.";
+      return "Det visuelle udtryk hos " + name + " er stærkt. det fortjener at blive set af flere.";
     case "photo":
       return "Med det øje du har bag kameraet er der allerede meget at vise frem.";
     case "service":
@@ -236,7 +236,7 @@ Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} som I kan kigge på
 → ${demos.primary}
 → ${demos.secondary}
 
-Det er kun demoer — den fulde version til ${v.name} ville selvfølgelig matche jeres stil, menu og farver helt.
+Det er kun demoer. den fulde version til ${v.name} ville selvfølgelig matche jeres stil, menu og farver helt.
 
 Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.
 
@@ -252,7 +252,7 @@ Lucas
 <p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} som I kan kigge på:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<p>Det er kun demoer — den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, menu og farver helt.</p>
+<p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, menu og farver helt.</p>
 <p>Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -261,15 +261,15 @@ Lucas
       const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til ${v.name} — stemningen, jeres menu, farverne.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til ${v.name}. stemningen, jeres menu, farverne.
 
 Demoerne til inspiration ligger her:
 → ${demos.primary}
 → ${demos.secondary}
 
-Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Sig endelig til hvis det lyder interessant.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver. helt uforpligtende. Sig endelig til hvis det lyder interessant.
 
-Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.
+Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.
 
 Lucas
 +45 23 24 24 82`;
@@ -278,12 +278,12 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til <strong>${v.name}</strong> — stemningen, jeres menu, farverne.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til <strong>${v.name}</strong>. stemningen, jeres menu, farverne.</p>
 <p>Demoerne til inspiration ligger her:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
     },
@@ -296,14 +296,14 @@ Lucas
       const demo = pickCraftDemo(v.branch);
       const text = `Hej ${v.name},
 
-${compliment} Jeres arbejde taler for sig selv — hjemmesiden fortjener at gøre det samme.
+${compliment} Jeres arbejde taler for sig selv. hjemmesiden fortjener at gøre det samme.
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} — se den her:
+Jeg har lavet en demo-hjemmeside til ${v.branchDisplay}. se den her:
 → ${demo}
 
-Den er kun en demo — en fuld version til ${v.name} ville selvfølgelig bære jeres egne projekter, farver og udtryk.
+Den er kun en demo. en fuld version til ${v.name} ville selvfølgelig bære jeres egne projekter, farver og udtryk.
 
 Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
@@ -314,11 +314,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej ${v.name},</p>
-<p>${compliment} Jeres arbejde taler for sig selv — hjemmesiden fortjener at gøre det samme.</p>
+<p>${compliment} Jeres arbejde taler for sig selv. hjemmesiden fortjener at gøre det samme.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay} — se den her:<br>
+<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay}. se den her:<br>
 → <a href="${demo}">${demo}</a></p>
-<p>Den er kun en demo — en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
+<p>Den er kun en demo. en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -327,14 +327,14 @@ Lucas
       const demo = pickCraftDemo(v.branch);
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter — det er der mange håndværkere der har god gavn af.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.
 
 Demoen ligger her:
 → ${demo}
 
-Hvis I er nysgerrige, kan jeg lave en hurtig skitse til ${v.name} med 2-3 af jeres egne projekter — helt uforpligtende. Sig endelig til hvis det lyder interessant.
+Hvis I er nysgerrige, kan jeg lave en hurtig skitse til ${v.name} med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.
 
-Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.
+Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.
 
 Lucas
 +45 23 24 24 82`;
@@ -343,11 +343,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter — det er der mange håndværkere der har god gavn af.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.</p>
 <p>Demoen ligger her:<br>
 → <a href="${demo}">${demo}</a></p>
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
     },
@@ -362,10 +362,10 @@ Med det øje du har bag kameraet fortjener du en hjemmeside der viser det frem.
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til fotografer — se den her:
+Jeg har lavet en demo-hjemmeside til fotografer. se den her:
 → ${DEMO_URLS.photo}
 
-Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig — dit udtryk, dine billeder, din stil.
+Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig. dit udtryk, dine billeder, din stil.
 
 Ring eller skriv hvis du er nysgerrig.
 
@@ -378,9 +378,9 @@ Lucas
 <p>Hej ${v.name},</p>
 <p>Med det øje du har bag kameraet fortjener du en hjemmeside der viser det frem.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til fotografer — se den her:<br>
+<p>Jeg har lavet en demo-hjemmeside til fotografer. se den her:<br>
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
-<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig — dit udtryk, dine billeder, din stil.</p>
+<p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig. dit udtryk, dine billeder, din stil.</p>
 <p>Ring eller skriv hvis du er nysgerrig.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -388,12 +388,12 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem — det er det jeg gerne vil hjælpe med.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem. det er det jeg gerne vil hjælpe med.
 
 Min demo til fotografer:
 → ${DEMO_URLS.photo}
 
-Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder — helt uforpligtende. Sig endelig til hvis det lyder interessant.
+Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder. helt uforpligtende. Sig endelig til hvis det lyder interessant.
 
 Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
@@ -404,10 +404,10 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem — det er det jeg gerne vil hjælpe med.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem. det er det jeg gerne vil hjælpe med.</p>
 <p>Min demo til fotografer:<br>
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
-<p>Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -423,7 +423,7 @@ I ${v.city} kender folk jer. Hjemmesiden burde de også gøre.
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til virksomheder som jeres — se den her:
+Jeg har lavet en demo-hjemmeside til virksomheder som jeres. se den her:
 → ${DEMO_URLS.professional}
 
 Det er kun en demo, men jeg laver en fuld version der passer specifikt til ${v.name}.
@@ -439,7 +439,7 @@ Lucas
 <p>Hej ${v.name},</p>
 <p>I ${v.city} kender folk jer. Hjemmesiden burde de også gøre.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til virksomheder som jeres — se den her:<br>
+<p>Jeg har lavet en demo-hjemmeside til virksomheder som jeres. se den her:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
 <p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
 <p>Ring eller skriv hvis du vil høre mere.</p>
@@ -449,14 +449,14 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser — og det første indtryk vejer tungt.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser. og det første indtryk vejer tungt.
 
 Demoen:
 → ${DEMO_URLS.professional}
 
-Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset ${v.name} — helt uforpligtende. Sig endelig til hvis det lyder interessant.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset ${v.name}. helt uforpligtende. Sig endelig til hvis det lyder interessant.
 
-Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.
+Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.
 
 Lucas
 +45 23 24 24 82`;
@@ -465,11 +465,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser — og det første indtryk vejer tungt.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser. og det første indtryk vejer tungt.</p>
 <p>Demoen:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong> — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong>. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
     },
@@ -486,11 +486,11 @@ ${compliment}
 
 ${ws}
 
-Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — så I kan se hvordan det kunne se ud:
+Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay}. så I kan se hvordan det kunne se ud:
 → ${demos.primary}
 → ${demos.secondary}
 
-Det er kun demoer — den fulde version til ${v.name} ville selvfølgelig matche jeres stil, behandlinger og farver helt.
+Det er kun demoer. den fulde version til ${v.name} ville selvfølgelig matche jeres stil, behandlinger og farver helt.
 
 Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
@@ -503,10 +503,10 @@ Lucas
 <p>Hej ${v.name},</p>
 <p>${compliment}</p>
 <p>${ws}</p>
-<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay} — så I kan se hvordan det kunne se ud:<br>
+<p>Jeg har lavet et par demo-hjemmesider til ${v.branchDisplay}. så I kan se hvordan det kunne se ud:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<p>Det er kun demoer — den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, behandlinger og farver helt.</p>
+<p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, behandlinger og farver helt.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -515,13 +515,13 @@ Lucas
       const demos = pickBeautyDemoOrder();
       const text = `Hej igen ${v.name},
 
-Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings — særligt nu hvor folk googler alt før de bestiller tid.
+Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings. særligt nu hvor folk googler alt før de bestiller tid.
 
 Demoerne til inspiration ligger her:
 → ${demos.primary}
 → ${demos.secondary}
 
-Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger — helt uforpligtende. Sig endelig til hvis det lyder interessant.
+Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger. helt uforpligtende. Sig endelig til hvis det lyder interessant.
 
 Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
@@ -532,11 +532,11 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg tænker stadig at noget visuelt der virkelig fremhæver <strong>${v.name}</strong> kunne gøre en forskel for jeres bookings — særligt nu hvor folk googler alt før de bestiller tid.</p>
+<p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg tænker stadig at noget visuelt der virkelig fremhæver <strong>${v.name}</strong> kunne gøre en forskel for jeres bookings. særligt nu hvor folk googler alt før de bestiller tid.</p>
 <p>Demoerne til inspiration ligger her:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -550,10 +550,10 @@ Lucas
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:
+Jeg har lavet en demo-hjemmeside til visuelle brands. se den her:
 → ${DEMO_URLS.gallery}
 
-Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til ${v.name} og jeres udtryk.
+Det er en demo til en fotograf. men jeg laver selvfølgelig en version der passer specifikt til ${v.name} og jeres udtryk.
 
 Ring eller skriv hvis I vil se hvad det kunne se ud som.
 
@@ -565,9 +565,9 @@ Lucas
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til visuelle brands — se den her:<br>
+<p>Jeg har lavet en demo-hjemmeside til visuelle brands. se den her:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
-<p>Det er en demo til en fotograf — men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
+<p>Det er en demo til en fotograf. men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
 <p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -575,7 +575,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.
 
 Se min demo:
 → ${DEMO_URLS.gallery}
@@ -589,7 +589,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.</p>
 <p>Se min demo:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Ring eller skriv.</p>
@@ -605,7 +605,7 @@ Lucas
 
 ${ws}
 
-Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.
+Mange i ${v.city} søger lokale ${v.branchDisplay} online. en god hjemmeside er det første de ser.
 
 Skriv eller ring hvis du vil se hvad jeg kan lave til jer.
 
@@ -617,7 +617,7 @@ Lucas
         html: buildHtml(`
 <p>Hej ${v.name},</p>
 <p>${ws}</p>
-<p>Mange i ${v.city} søger lokale ${v.branchDisplay} online — en god hjemmeside er det første de ser.</p>
+<p>Mange i ${v.city} søger lokale ${v.branchDisplay} online. en god hjemmeside er det første de ser.</p>
 <p>Skriv eller ring hvis du vil se hvad jeg kan lave til jer.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -625,7 +625,7 @@ Lucas
     followup: (v) => {
       const text = `Hej igen ${v.name},
 
-Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.
+Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.
 
 Ring eller skriv.
 
@@ -636,7 +636,7 @@ Lucas
         text,
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
-<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer — tilbuddet gælder stadig.</p>
+<p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.</p>
 <p>Ring eller skriv.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
       };
@@ -723,7 +723,7 @@ export async function sendLeadEmail(
     html = lead.composedHtml || lead.composedBody.replace(/\n/g, "<br>");
   } else {
     if (type === "cold") {
-      console.warn(`[email] LEGACY template path for "${lead.name}" — no composedBody on the lead.`);
+      console.warn(`[email] LEGACY template path for "${lead.name}". no composedBody on the lead.`);
     }
     const daysSince = type === "followup" && lead.emailSentAt
       ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))

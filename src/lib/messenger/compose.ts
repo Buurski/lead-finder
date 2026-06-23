@@ -85,13 +85,13 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
 }
 
 function patternA(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser — det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads — apprentice-niveau, men med meget omhu i hver enkelt. Her er et eksempel jeg lavede til en anden ${branchDisp} — ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
+  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
 }
 function patternB(city: string, branchDisp: string, demoUrl: string): string {
-  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp} — det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Her er et eksempel jeg lavede til en anden ${branchDisp} — ${demoUrl}. Helt uforpligtende selvfølgelig :)\n\nMvh, Lucas`;
+  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Helt uforpligtende selvfølgelig :)\n\nMvh, Lucas`;
 }
 function patternC(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Hurtigt spørgsmål — jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Her er et eksempel jeg lavede til en anden ${branchDisp} — ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
+  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
 }
 
 export const MSG_PATTERNS = ["A", "B", "C"] as const;

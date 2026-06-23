@@ -25,14 +25,14 @@ export function buildInboxTriagePrompt(opts: InboxPromptOptions = {}): string {
     ? `Authorization: Bearer ${opts.apiSecret}`
     : "# (sæt INBOX_DIGEST_SECRET env var, og tilføj: Authorization: Bearer $INBOX_DIGEST_SECRET)";
 
-  return `# Indbakke-triage — ${account} (sidste ${windowDays} dage)
+  return `# Indbakke-triage, ${account} (sidste ${windowDays} dage)
 
 Du er Lucas's assistent. Gennemgå hans Gmail-indbakke og find de mails der FAKTISK
-kræver et svar — ikke alt, kun det væsentlige. Skriv resultatet tilbage til
+kræver et svar, ikke alt, kun det væsentlige. Skriv resultatet tilbage til
 Command Center som en rangeret digest.
 
 ## Hvorfor
-"Svar"-siden viste før ALLE svar uden prioritering — for råt. Du laver i stedet en
+"Svar"-siden viste før ALLE svar uden prioritering, for råt. Du laver i stedet en
 kort, rangeret liste: de vigtigste øverst, støj (nyhedsbreve, kvitteringer,
 autosvar, notifikationer) skjult.
 
@@ -43,10 +43,10 @@ autosvar, notifikationer) skjult.
      not-interested | newsletter | auto-reply | receipt | spam | other
    - **needsReply** (bool): kræver den et personligt svar fra Lucas?
    - **importance** (0–100): hvor hurtigt bør han svare? (køber-intent højest)
-   - **reason** (1 linje dansk): hvorfor vigtig — eller hvorfor støj
+   - **reason** (1 linje dansk): hvorfor vigtig, eller hvorfor støj
    - **suggestedReply** (kun for needsReply=true): kort, varmt dansk udkast,
      ingen priser/kr, ingen robot-CTA, afslut "Mvh, Lucas"
-3. Drop åbenlys støj (sæt needsReply=false, lav importance) — men medtag den stadig
+3. Drop åbenlys støj (sæt needsReply=false, lav importance), men medtag den stadig
    i listen, så Lucas kan folde den ud.
 
 ## Output (InboxDigest JSON)
@@ -70,7 +70,7 @@ autosvar, notifikationer) skjult.
       "category": "interested",
       "importance": 88,
       "needsReply": true,
-      "reason": "Spørger om en pris-snak — varm lead",
+      "reason": "Spørger om en pris-snak, varm lead",
       "gmailLink": "https://mail.google.com/mail/u/0/#inbox/<id>",
       "suggestedReply": "Hej ...\\n\\n...\\n\\nMvh, Lucas"
     }
@@ -88,6 +88,6 @@ ${secretLine}
 \`\`\`
 
 Bekræft med en kort summary i chatten: hvor mange scannet, hvor mange kræver svar,
-top-3 vigtigste afsendere. Send INTET svar til nogen — du laver kun triage.
+top-3 vigtigste afsendere. Send INTET svar til nogen, du laver kun triage.
 `;
 }

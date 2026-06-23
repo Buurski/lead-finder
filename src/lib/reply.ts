@@ -27,8 +27,8 @@ export type ReplyCategory =
 export interface ReplyClassification {
   category: ReplyCategory;
   isInterested: boolean; // worth a personal reply / follow-up
-  becameClient: boolean; // explicit yes — flip lead to "client"
-  shouldStop: boolean; // unsubscribe / hard no / wrong person — suppress
+  becameClient: boolean; // explicit yes. flip lead to "client"
+  shouldStop: boolean; // unsubscribe / hard no / wrong person. suppress
   confidence: number; // 0..1 heuristic confidence
   signals: string[];
 }
@@ -99,19 +99,19 @@ function templateFor(cat: ReplyCategory, leadName: string): string {
   switch (cat) {
     case "interested":
     case "question":
-      return `${hi}\n\nDejligt at høre fra jer! Jeg svarer gerne på det I tænker — og ellers kan vi tage en kort uforpligtende snak om hvordan en side til jer kunne se ud. Pas det jer at jeg ringer en dag i denne uge?${sign}`;
+      return `${hi}\n\nDejligt at høre fra jer! Jeg svarer gerne på det I tænker. Og ellers kan vi tage en kort uforpligtende snak om hvordan en side til jer kunne se ud. Pas det jer at jeg ringer en dag i denne uge?${sign}`;
     case "objection":
-      return `${hi}\n\nDet forstår jeg godt — ingen hast. Jeg lader demoerne stå, så I kan kigge når der er ro på. Sig endelig til hvis I på et tidspunkt vil vende det.${sign}`;
+      return `${hi}\n\nDet forstår jeg godt. Ingen hast. Jeg lader demoerne stå, så I kan kigge når der er ro på. Sig endelig til hvis I på et tidspunkt vil vende det.${sign}`;
     case "not-interested":
-      return `${hi}\n\nTak for svaret — helt fint, jeg respekterer det. Jeg ønsker jer alt godt fremover.${sign}`;
+      return `${hi}\n\nTak for svaret. Helt fint, jeg respekterer det. Jeg ønsker jer alt godt fremover.${sign}`;
     case "wrong-person":
       return `${hi}\n\nTak, beklager ulejligheden! Hvis du kan pege mig i retning af den rette, skriver jeg gerne til vedkommende i stedet.${sign}`;
     case "unsubscribe":
-      return `${hi}\n\nSelvfølgelig — jeg fjerner jer med det samme og skriver ikke igen. Beklager forstyrrelsen.${sign}`;
+      return `${hi}\n\nSelvfølgelig. Jeg fjerner jer med det samme og skriver ikke igen. Beklager forstyrrelsen.${sign}`;
     case "auto-reply":
       return ""; // no reply to an autoresponder
     default:
-      return `${hi}\n\nTak for jeres besked — jeg vender tilbage hurtigst muligt.${sign}`;
+      return `${hi}\n\nTak for jeres besked. Jeg vender tilbage hurtigst muligt.${sign}`;
   }
 }
 

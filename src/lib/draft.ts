@@ -15,7 +15,7 @@ import { mixForLead } from "./tone-mixer.ts";
 export interface Draft {
   subject: string;
   body: string;
-  demoPair: [Demo, Demo];
+  demoPair: Demo[];
 }
 
 export interface ValidationResult {
@@ -116,9 +116,9 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
     const q = cleanQuote(hook);
     if (q) {
       const cand = pick(lead.name, [
-        `jeg faldt over en af jeres Google-anmeldelser hvor en kunde skrev "${q}" — sådan noget siger jo en del.`,
+        `jeg faldt over en af jeres Google-anmeldelser hvor en kunde skrev "${q}". Sådan noget siger jo en del.`,
         `en af jeres anmeldelser fangede mig: en kunde skrev "${q}". Det er svært at købe sig til.`,
-        `jeg kom til at læse jeres anmeldelser — en kunde skrev "${q}", og det sagde mig en del om jer.`,
+        `jeg kom til at læse jeres anmeldelser. En kunde skrev "${q}", og det sagde mig en del om jer.`,
       ]);
       // Never emit an opener that breaks the voice rules (e.g. a quote that
       // slipped a price/kr word) — that would get the whole line stripped.
@@ -129,7 +129,7 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
   // 2. A specific named detail (service / award / established-since).
   if (hook && hook.length > 8 && !/anmeldelser på Google/i.test(hook)) {
     const cand = pick(lead.name, [
-      `jeg lagde mærke til jeres ${cleanHook(hook)} — det ser virkelig stærkt ud.`,
+      `jeg lagde mærke til jeres ${cleanHook(hook)}. Det ser virkelig stærkt ud.`,
       `jeg faldt over jeres ${cleanHook(hook)} og blev nysgerrig.`,
     ]);
     if (validateDraft(cand).ok) return cand;
@@ -139,7 +139,7 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
   //    the dead "bygget noget særligt op" phrasing.
   if (lead.reviewsCount >= 50) {
     return pick(lead.name, [
-      `jeg sad og kiggede på jer i ${lead.city}, og ${lead.reviewsCount} anmeldelser — det er folk der kommer tilbage.`,
+      `jeg sad og kiggede på jer i ${lead.city}, og ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
       `jeg lagde mærke til hvor mange gode anmeldelser I har her i ${lead.city}.`,
     ]);
   }
@@ -159,16 +159,16 @@ function branchValueLine(branch: string): string {
   if (/frisør|frisor|salon|skønhed|skonhed|hud|negle|vippe|barber|kosmet|\bspa\b|wellness|massage|klinik|beauty|hair/.test(b))
     return `For en salon som jeres kunne sådan en side fx samle online booking ét sted og fremhæve jeres bedste anmeldelser, så nye kunder nemt finder vej.`;
   if (/restaurant|café|cafe|pizz|\bbar\b|\bpub\b|grill|\bkro\b|bistro|brasseri|bager|spise|køkken|food|takeaway|sushi|kebab|burger|bodega/.test(b))
-    return `For et spisested kunne en rigtig side gøre menukort og bordbestilling nemt at finde — og lade stemningen og jeres anmeldelser sælge, før gæsten er kommet.`;
+    return `For et spisested kunne en rigtig side gøre menukort og bordbestilling nemt at finde og lade stemningen og jeres anmeldelser sælge, før gæsten er kommet.`;
   if (/tømrer|tomrer|maler|murer|vvs|elektr|håndværk|\btag\b|snedker|smed|anlæg|entrepren|blik|kloak/.test(b))
-    return `For et håndværksfirma kunne en side vise et galleri af jeres arbejde og gøre det nemt for kunder at sende en forespørgsel direkte — mens interessen er der.`;
+    return `For et håndværksfirma kunne en side vise et galleri af jeres arbejde og gøre det nemt for kunder at sende en forespørgsel direkte, mens interessen er der.`;
   if (/foto|photo/.test(b))
-    return `For en fotograf er en stærk portfolio næsten alt — et sted hvor jeres billeder får lov at sælge, og folk nemt kan booke jer.`;
-  return `En rigtig side ville samle det vigtigste ét sted — hvad I laver, jeres anmeldelser og en nem måde at række ud på — så I står stærkere når folk søger jer.`;
+    return `For en fotograf er en stærk portfolio næsten alt. Et sted hvor jeres billeder får lov at sælge, og folk nemt kan booke jer.`;
+  return `En rigtig side ville samle det vigtigste ét sted, hvad I laver, jeres anmeldelser og en nem måde at række ud på, så I står stærkere når folk søger jer.`;
 }
 
 function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
-  const [d1, d2] = research.demoPair;
+  const demos = research.demoPair;
   const name = firstName(lead.name);
 
   // Tone-mixer (OUTREACH_ANALYSIS-driven): data-aware, deterministic opener +
@@ -187,9 +187,17 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult): Dra
   const opener = validateDraft(mix.opener).ok ? mix.opener : buildOpener(lead, research);
 
   const tailorLine = pick(lead.name + "t", [
-    `Det er bare eksempler — en rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`,
-    `Det er kun for at vise idéen — en rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
+    `Det er bare eksempler. En rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`,
+    `Det er kun for at vise idéen. En rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
   ]);
+
+  // For single-demo leads (skønhedsklinikker) use the softer
+  // "Eksempel på en hjemmeside for en kunde"-framing.
+  const demoLines = demos.length <= 1
+    ? (demos[0]
+        ? [`Eksempel på en hjemmeside for en kunde:`, `→ ${demos[0].url}`]
+        : [])
+    : [`→ ${demos[0].url}`, `→ ${demos[1].url}`];
 
   const body = [
     `Hej ${name},`,
@@ -199,14 +207,11 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult): Dra
     branchValueLine(lead.branch),
     ``,
     mix.demoIntro,
-    `→ ${d1.url}`,
-    `→ ${d2.url}`,
+    ...demoLines,
     ``,
     tailorLine,
     ``,
     mix.closing,
-    ``,
-    `Mvh, Lucas`,
   ].join("\n");
 
   return {
@@ -238,15 +243,27 @@ async function composeWithLLM(
   voiceGuide: string
 ): Promise<string | null> {
   if (!isAiEnabled()) return null;
-  const [d1, d2] = research.demoPair;
+  const demos = research.demoPair;
+  // Skønhedsklinikker får ÉN demo med softer "Eksempel på en hjemmeside for en
+  // kunde"-framing; andre brancher får to demoer. Prompt afspejler dette.
+  const singleDemo = demos.length <= 1;
+  const demoBlock = singleDemo
+    ? [
+        `Inkludér PRÆCIS denne demo-linje, indledt med "Eksempel på en hjemmeside for en kunde:" og linket på næste linje med "→ ":`,
+        demos[0] ? `→ ${demos[0].url}` : ``,
+      ]
+    : [
+        `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
+        `→ ${demos[0].url}`,
+        `→ ${demos[1].url}`,
+      ];
   const prompt = [
     `Skriv en kort, varm, personlig dansk besked fra Lucas til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
-    research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet — hold åbningen ærlig og lokal.`,
-    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio) — ikke bare "her er to demoer".`,
-    `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
-    `→ ${d1.url}`,
-    `→ ${d2.url}`,
-    `Slut med "Mvh, Lucas".`,
+    research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet. Hold åbningen ærlig og lokal.`,
+    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio), ikke bare "her er to demoer".`,
+    ...demoBlock,
+    `Slut med en naturlig dansk sætning (ikke "Mvh" eller anden høflighedsfrase, da signaturen tilføjes separat af pipeline).`,
+    `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,
   ].join("\n\n");
 
   // DRAFT -> Opus 4.8 (model resolved by ai.ts; gateway -> anthropic -> null).
@@ -277,10 +294,11 @@ export async function draft_personal_message(
       let body = llm;
       if (!validateDraft(body).ok) body = sanitize(body);
       // Ensure both demo links survived sanitisation; otherwise fall back.
-      const [d1, d2] = research.demoPair;
-      if (validateDraft(body).ok && body.includes(d1.url) && body.includes(d2.url)) {
-        return { subject: `En lille hilsen til ${firstName(lead.name)}`, body, demoPair: research.demoPair };
-      }
+          const demos = research.demoPair;
+          const urlsOk = demos.every((d) => body.includes(d.url));
+          if (validateDraft(body).ok && urlsOk) {
+            return { subject: `En lille hilsen til ${firstName(lead.name)}`, body, demoPair: research.demoPair };
+          }
     }
   }
 
