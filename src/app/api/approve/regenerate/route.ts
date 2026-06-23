@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
       await updateDraft(d.id, {
         subject: newSubject,
-        body: composed.html,
+        body: composed.text,
         demoPair: composed.demoPair,
       });
 

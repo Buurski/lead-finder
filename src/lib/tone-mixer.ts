@@ -175,6 +175,21 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     ]),
   });
 
+  // 5b. Lokation + branche — fallback for leads WITHOUT reviews/achievements/
+  //     hooks/websiteStatus. Use the lead's own branch + city instead of
+  //     generic "kundebase". Avoids the "Med jeres kundebase…" being used
+  //     twice (opener + value-line) when nothing else is available.
+  if (lead.branch && lead.city && (lead.branch + " " + lead.city).trim().length > 4) {
+    out.push({
+      kind: "brand", // reuses brand opener kind for now
+      text: pick(seed + "l", [
+        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
+      ]),
+    });
+  }
+
   // 6. Brand-tolkning — neutral, safe across every branch (no "projekter"/"menu").
   out.push({
     kind: "brand",
