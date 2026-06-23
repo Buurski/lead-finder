@@ -42,7 +42,6 @@ function leadFromDraft(d: { name: string; branch: string; city: string; hooks: s
     branch: d.branch || "",
     city: d.city || "",
     hooks: d.hooks || [],
-    professionalism: d.professionalism,
     reviewsCount,
     websiteStatus,
   };
