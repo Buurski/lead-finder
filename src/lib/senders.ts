@@ -71,9 +71,15 @@ const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf
 const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
 
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
-const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";   // per Charlie 2026-06-26
-const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager"; // per Charlie 2026-06-26
-const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";  // per Charlie 2026-06-26
+// 2026-06-26 (korrigeret): per bruger-spec skal Charlies default-signatur være
+// HELT TOM bortset fra navnet "Charlie Nielsen" — ingen telefon, ingen titel,
+// ingen tagline. Telefon ("salgselev"-lignende differentiator), titel og tagline
+// er LUCAS' ting; Charlie er "med i virksomheden, lærer det, tager ejerskab"
+// (KnowledgeOS/context/about_charlie.md). Hvis Charlie senere vil have et felt
+// i signaturen, opt-in via CHARLIE_SENDER_PHONE / _TITLE / _TAGLINE env vars.
+const CHARLIE_DEFAULT_PHONE = "";
+const CHARLIE_DEFAULT_TITLE = "";
+const CHARLIE_DEFAULT_TAGLINE = "";
 
 /** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
  *  Returns the first defined value (including ""). The old `||` operator
