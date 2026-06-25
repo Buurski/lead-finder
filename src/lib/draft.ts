@@ -168,14 +168,8 @@ function branchValueLine(branch: string): string {
   return `En rigtig side ville samle det vigtigste ét sted, hvad I laver, jeres anmeldelser og en nem måde at række ud på, så I står stærkere når folk søger jer.`;
 }
 
-<<<<<<< Updated upstream
-function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
-  const demos = research.demoPair;
-=======
 function composeDeterministic(lead: ResearchLead, research: ResearchResult, sender: SenderId = "lucas"): Draft {
-  const [d1, d2] = research.demoPair;
->>>>>>> Stashed changes
-  const name = firstName(lead.name);
+  const demos = research.demoPair; const name = firstName(lead.name);
   // 2026-06-26: closing line is now sender-specific. Lucas = "Mvh, Lucas",
   // Charlie = "Mvh, Charlie Nielsen" — no hardcoded name left in the draft.
   const signature = formatSignature(sender);
@@ -221,11 +215,8 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     tailorLine,
     ``,
     mix.closing,
-<<<<<<< Updated upstream
-=======
     ``,
     signature.closing,
->>>>>>> Stashed changes
   ].join("\n");
 
   return {
@@ -258,8 +249,9 @@ async function composeWithLLM(
   sender: SenderId = "lucas"
 ): Promise<string | null> {
   if (!isAiEnabled()) return null;
-<<<<<<< Updated upstream
   const demos = research.demoPair;
+  const signature = formatSignature(sender);
+  const senderName = sender === "lucas" ? "Lucas" : "Charlie Nielsen";
   // Skønhedsklinikker får ÉN demo med softer "Eksempel på en hjemmeside for en
   // kunde"-framing; andre brancher får to demoer. Prompt afspejler dette.
   const singleDemo = demos.length <= 1;
@@ -274,28 +266,12 @@ async function composeWithLLM(
         `→ ${demos[1].url}`,
       ];
   const prompt = [
-    `Skriv en kort, varm, personlig dansk besked fra Lucas til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
+    `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
     research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet. Hold åbningen ærlig og lokal.`,
     `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio), ikke bare "her er to demoer".`,
     ...demoBlock,
-    `Slut med en naturlig dansk sætning (ikke "Mvh" eller anden høflighedsfrase, da signaturen tilføjes separat af pipeline).`,
-    `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,
-=======
-  const [d1, d2] = research.demoPair;
-  // 2026-06-26: prompt reflects the actual sender — Charlie drafts read "fra
-  // Charlie Nielsen" and close with "Mvh, Charlie Nielsen", not "fra Lucas".
-  const signature = formatSignature(sender);
-  const senderName = sender === "lucas" ? "Lucas" : "Charlie Nielsen";
-  const prompt = [
-    `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
-    research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet — hold åbningen ærlig og lokal.`,
-    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio) — ikke bare "her er to demoer".`,
-    `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
-    `→ ${d1.url}`,
-    `→ ${d2.url}`,
-    `Slut med "${signature.closing}".`,
->>>>>>> Stashed changes
-  ].join("\n\n");
+    `Slut med en naturlig dansk sætning. Signaturen "${signature.closing}" tilføjes separat af pipeline.`,
+    `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,  ].join("\n\n");
 
   // DRAFT -> Opus 4.8 (model resolved by ai.ts; gateway -> anthropic -> null).
   const res = await generate({

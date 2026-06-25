@@ -1,17 +1,16 @@
-// senders.test.ts — verifies the per-sender signature system added 2026-06-26.
-// Before this change the cold-mail signature was hardcoded "Lucas\n+45 23 24 24 82"
-// in 28+ places in email.ts. The fix: every template now renders the signature
-// through formatSignature(senderId) so Charlie gets his own contact details
-// automatically — env-driven, never hardcoded.
+// senders.test.ts — sender hub unit tests, frosset kontrakt per 2026-06-26.
 //
-// Charlie's defaults (2026-06-26, opdateret fra telefon-fri til fuld profil):
-//   - telefon: "+45 42 25 32 62"
-//   - titel:   "Senior Funding Manager"
-//   - tagline: "Web-design entusiast"
-// All four fields (navn + titel + tagline + telefon) are env-overridable, so
-// Charlie kan finjustere via CHARLIE_SENDER_TITLE / _TAGLINE / _PHONE uden at
-// røre koden. Lucas beholder sit eksisterende layout ("navn + telefon") så
-// diff'en for hans mails er usynlig for modtageren.
+// Lucas-specifik kontrakt (regression-safe): format uændret
+//   text = "Lucas Buur\n+45 23 24 24 82" / closing = "Mvh, Lucas Buur"
+//
+// Charlie-specifik kontrakt (bruger-spec 2026-06-26, KORRIGERET fra tidligere
+// session der havde sat defaults til "Senior Funding Manager / Web-design / +45 42 25 32 62"):
+//   defaults: phone="", title="", tagline=""  → signatur = "Charlie Nielsen" + closing "Mvh, Charlie Nielsen"
+//   "salgselev" ALDRIG i Charlie-signatur (Lucas' differentiator)
+//   telefon opt-in: process.env.CHARLIE_SENDER_PHONE (legacy alias CHARLIE_PHONE)
+//   titel opt-in:   process.env.CHARLIE_SENDER_TITLE  (legacy alias CHARLIE_TITLE)
+//   tagline opt-in: process.env.CHARLIE_SENDER_TAGLINE (legacy alias CHARLIE_TAGLINE)
+//   defense-in-depth: scrubCharlieLeak() fjerner "salgselev" fra Charlie-felter uanset kilde.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,111 +23,199 @@ import {
   isSenderAvailable,
 } from "./senders.ts";
 
-// ---- formatSignature: defaults ------------------------------------------
+const DUMMY_PW = "dummy-app-pw";
 
-test("formatSignature: Lucas defaults = navn + telefon, ingen titel", () => {
-  // Lucas's existing layout must be preserved exactly so the diff is invisible.
-  const sig = formatSignature("lucas");
-  assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
-  assert.equal(sig.html, "<strong>Lucas Buur</strong><br>+45 23 24 24 82");
-  assert.equal(sig.closing, "Mvh, Lucas Buur");
+// Snapshot + restore helpers for each test
+function withEnv<T>(setup: () => void, teardown: () => void, fn: () => T): T {
+  setup();
+  try { return fn(); } finally { teardown(); }
+}
+
+function setLucasEnv() {
+  process.env.GMAIL_USER = "lucas@buur.dk";
+  process.env.GMAIL_APP_PASSWORD = DUMMY_PW;
+  process.env.LUCAS_SENDER_PHONE = "+45 23 24 24 82";
+}
+function clearLucasEnv() {
+  delete process.env.GMAIL_USER;
+  delete process.env.GMAIL_APP_PASSWORD;
+  delete process.env.LUCAS_SENDER_PHONE;
+  delete process.env.LUCAS_PHONE;
+  delete process.env.LUCAS_SENDER_TITLE;
+  delete process.env.LUCAS_TITLE;
+  delete process.env.LUCAS_SENDER_TAGLINE;
+  delete process.env.LUCAS_TAGLINE;
+}
+function setCharlieEnv() {
+  process.env.CHARLIE_GMAIL_USER = "1charlie.nielsen@gmail.com";
+  process.env.CHARLIE_GMAIL_APP_PASSWORD = DUMMY_PW;
+}
+function clearCharlieEnv() {
+  delete process.env.CHARLIE_GMAIL_USER;
+  delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
+  delete process.env.CHARLIE_SENDER_PHONE;
+  delete process.env.CHARLIE_PHONE;
+  delete process.env.CHARLIE_SENDER_TITLE;
+  delete process.env.CHARLIE_TITLE;
+  delete process.env.CHARLIE_SENDER_TAGLINE;
+  delete process.env.CHARLIE_TAGLINE;
+}
+
+// ============================================================================
+// formatSignature: Lucas (regression)
+// ============================================================================
+
+test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
+  withEnv(setLucasEnv, clearLucasEnv, () => {
+    const sig = formatSignature("lucas");
+    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
+    assert.equal(sig.html, "<strong>Lucas Buur</strong><br>+45 23 24 24 82");
+    assert.equal(sig.closing, "Mvh, Lucas Buur");
+  });
 });
 
-test("formatSignature: Charlie defaults = kun navn (ingen telefon, ingen titel)", () => {
-  // Per Charlie's spec: "fjern telefonnummeret fra mailsignaturen".
-  // Signaturen er bevidst telefon-fri indtil han sætter CHARLIE_SENDER_PHONE.
-  const sig = formatSignature("charlie");
-  assert.equal(sig.text, "Charlie Nielsen");
-  assert.equal(sig.html, "<strong>Charlie Nielsen</strong>");
-  assert.equal(sig.closing, "Mvh, Charlie Nielsen");
-  // Eksplicitte checks: ingen default-telefon, ingen default-titel.
-  assert.equal(sig.text.includes("+45"), false, "ingen default telefon i Charlie-signatur");
-  assert.equal(sig.text.includes("salgselev"), false, "aldrig 'salgselev' på Charlie");
-  assert.equal(sig.text.includes("Medstifter"), false, "ingen default titel i Charlie-signatur");
+test("formatSignature: Lucas creds-missing fallback — defaults stadig active", () => {
+  withEnv(clearLucasEnv, () => {}, () => {
+    const sig = formatSignature("lucas");
+    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
+  });
 });
 
-test("formatSignature: Charlie + CHARLIE_SENDER_PHONE env tilføjer telefon", () => {
-  const prev = process.env.CHARLIE_SENDER_PHONE;
-  process.env.CHARLIE_SENDER_PHONE = "+45 42 25 32 62";
-  try {
+// ============================================================================
+// formatSignature: Charlie (BRUGER-SPEC — telefon-fri, ingen "salgselev")
+// ============================================================================
+
+test("formatSignature: Charlie defaults — KUN navn (ingen telefon, ingen titel)", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text, "Charlie Nielsen");
+    assert.equal(sig.html, "<strong>Charlie Nielsen</strong>");
+    assert.equal(sig.closing, "Mvh, Charlie Nielsen");
+  });
+});
+
+test("formatSignature: Charlie — ALDRIG 'salgselev' i nogen signatur-del", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text.toLowerCase().includes("salgselev"), false);
+    assert.equal(sig.html.toLowerCase().includes("salgselev"), false);
+    assert.equal(sig.closing.toLowerCase().includes("salgselev"), false);
+  });
+});
+
+test("formatSignature: Charlie — ALDRIG telefon-mønster i default-signatur", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(/\+45|\d{2}\s\d{2}/.test(sig.text), false,
+      "ingen telefon-lignende cifre: " + JSON.stringify(sig.text));
+    assert.equal(/\+45|\d{2}\s\d{2}/.test(sig.html), false);
+  });
+});
+
+test("formatSignature: Charlie — ALDRIG 'Senior Funding Manager' (forladt default)", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text.includes("Senior Funding"), false);
+    assert.equal(sig.html.includes("Senior Funding"), false);
+  });
+});
+
+test("formatSignature: Charlie — ALDRIG 'Web-design entusiast' (forladt default)", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text.includes("Web-design"), false);
+  });
+});
+
+test("formatSignature: Charlie + CHARLIE_SENDER_PHONE env — opt-in til telefon", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_PHONE = "+45 42 25 32 62";
+  }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
     assert.equal(sig.text, "Charlie Nielsen\n+45 42 25 32 62");
-    assert.equal(sig.html, "<strong>Charlie Nielsen</strong><br>+45 42 25 32 62");
-  } finally {
-    if (prev === undefined) delete process.env.CHARLIE_SENDER_PHONE;
-    else process.env.CHARLIE_SENDER_PHONE = prev;
-  }
+  });
 });
 
-test("formatSignature: Charlie + CHARLIE_SENDER_TITLE env tilføjer titel", () => {
-  const prev = process.env.CHARLIE_SENDER_TITLE;
-  process.env.CHARLIE_SENDER_TITLE = "Medstifter, Buur & Nielsen";
-  try {
+test("formatSignature: Charlie + legacy CHARLIE_PHONE alias — opt-in stadig", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_PHONE = "+45 99 88 77 66";
+  }, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text, "Charlie Nielsen\n+45 99 88 77 66");
+  });
+});
+
+test("formatSignature: Charlie + CHARLIE_SENDER_PHONE vinder over CHARLIE_PHONE", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_PHONE = "+45 11 11 11 11";
+    process.env.CHARLIE_PHONE = "+45 99 99 99 99";
+  }, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.ok(sig.text.includes("+45 11 11 11 11"));
+    assert.ok(!sig.text.includes("+45 99 99 99 99"));
+  });
+});
+
+test("formatSignature: Charlie + CHARLIE_SENDER_TITLE env — opt-in til titel", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_TITLE = "Medstifter, Buur & Nielsen";
+  }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
     assert.equal(sig.text, "Charlie Nielsen\nMedstifter, Buur & Nielsen");
-    assert.equal(sig.html, "<strong>Charlie Nielsen</strong><br>Medstifter, Buur & Nielsen");
-  } finally {
-    if (prev === undefined) delete process.env.CHARLIE_SENDER_TITLE;
-    else process.env.CHARLIE_SENDER_TITLE = prev;
-  }
+  });
 });
 
-test("formatSignature: Charlie + både telefon og titel", () => {
-  const prevPhone = process.env.CHARLIE_SENDER_PHONE;
-  const prevTitle = process.env.CHARLIE_SENDER_TITLE;
-  process.env.CHARLIE_SENDER_PHONE = "+45 42 25 32 62";
-  process.env.CHARLIE_SENDER_TITLE = "Medstifter, Buur & Nielsen";
-  try {
+test("formatSignature: Charlie + både telefon OG titel env", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_PHONE = "+45 22 22 22 22";
+    process.env.CHARLIE_SENDER_TITLE = "QA-tester";
+  }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.equal(sig.text, "Charlie Nielsen\nMedstifter, Buur & Nielsen\n+45 42 25 32 62");
-    assert.equal(
-      sig.html,
-      "<strong>Charlie Nielsen</strong><br>Medstifter, Buur & Nielsen<br>+45 42 25 32 62"
-    );
-    assert.equal(sig.closing, "Mvh, Charlie Nielsen");
-  } finally {
-    if (prevPhone === undefined) delete process.env.CHARLIE_SENDER_PHONE;
-    else process.env.CHARLIE_SENDER_PHONE = prevPhone;
-    if (prevTitle === undefined) delete process.env.CHARLIE_SENDER_TITLE;
-    else process.env.CHARLIE_SENDER_TITLE = prevTitle;
-  }
+    assert.equal(sig.text, "Charlie Nielsen\nQA-tester\n+45 22 22 22 22");
+  });
 });
 
-test("formatSignature: legacy alias CHARLIE_PHONE (uden _SENDER_) virker stadig", () => {
-  // Vercel deploy satte muligvis CHARLIE_PHONE uden _SENDER_ prefix.
-  // formatSignature skal acceptere begge former.
-  const prev = process.env.CHARLIE_PHONE;
-  const prevSender = process.env.CHARLIE_SENDER_PHONE;
-  delete process.env.CHARLIE_SENDER_PHONE;
-  process.env.CHARLIE_PHONE = "+45 42 25 32 62";
-  try {
+test("formatSignature: Charlie + tom CHARLIE_SENDER_TITLE skjuler titel-linje", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_TITLE = "";
+  }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.equal(sig.text, "Charlie Nielsen\n+45 42 25 32 62");
-  } finally {
-    if (prev === undefined) delete process.env.CHARLIE_PHONE;
-    else process.env.CHARLIE_PHONE = prev;
-    if (prevSender === undefined) delete process.env.CHARLIE_SENDER_PHONE;
-    else process.env.CHARLIE_SENDER_PHONE = prevSender;
-  }
+    assert.equal(sig.text, "Charlie Nielsen");
+    assert.equal(sig.text.split("\n").length, 1);
+  });
 });
 
-test("formatSignature: CHARLIE_SENDER_PHONE vinder over CHARLIE_PHONE (legacy)", () => {
-  const prev = process.env.CHARLIE_SENDER_PHONE;
-  const prevLegacy = process.env.CHARLIE_PHONE;
-  process.env.CHARLIE_SENDER_PHONE = "+45 99 99 99 99";
-  process.env.CHARLIE_PHONE = "+45 11 11 11 11";
-  try {
+test("formatSignature: defense-in-depth — 'salgselev' scrubbes fra Charlie-felter", () => {
+  withEnv(() => {
+    setCharlieEnv();
+    process.env.CHARLIE_SENDER_TITLE = "salgselev-elev";
+  }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    // _SENDER_-varianten er den primære, så den vinder.
-    assert.ok(sig.text.includes("+45 99 99 99 99"));
-    assert.equal(sig.text.includes("+45 11 11 11 11"), false);
-  } finally {
-    if (prev === undefined) delete process.env.CHARLIE_SENDER_PHONE;
-    else process.env.CHARLIE_SENDER_PHONE = prev;
-    if (prevLegacy === undefined) delete process.env.CHARLIE_PHONE;
-    else process.env.CHARLIE_PHONE = prevLegacy;
-  }
+    assert.equal(sig.text.toLowerCase().includes("salgselev"), false,
+      "salgselev skal scrubbes: " + sig.text);
+  });
 });
+
+test("formatSignature: Lucas ALDRIG scrubbes (det er hans differentiator)", () => {
+  withEnv(() => {
+    setLucasEnv();
+    process.env.LUCAS_SENDER_TITLE = "salgselev";
+  }, clearLucasEnv, () => {
+    const sig = formatSignature("lucas");
+    assert.ok(sig.text.includes("salgselev"),
+      "Lucas må gerne have 'salgselev'-titel: " + sig.text);
+  });
+});
+
+// ============================================================================
+// formatSignature: edge cases
+// ============================================================================
 
 test("formatSignature: credsOverride tvinger bestemte værdier (test/dry-run)", () => {
   const sig = formatSignature("charlie", {
@@ -138,161 +225,137 @@ test("formatSignature: credsOverride tvinger bestemte værdier (test/dry-run)", 
     displayName: "Charlie Test",
     phone: "+45 00 00 00 00",
     title: "QA-test",
+    tagline: "",
   });
   assert.equal(sig.text, "Charlie Test\nQA-test\n+45 00 00 00 00");
   assert.equal(sig.closing, "Mvh, Charlie Test");
 });
 
-// ---- formatFrom -----------------------------------------------------------
-
-test("formatFrom: uden creds falder tilbage til senderId; med creds viser displaynavn", () => {
-  const prevLucas = process.env.GMAIL_USER;
-  const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
-  delete process.env.GMAIL_USER;
-  delete process.env.GMAIL_APP_PASSWORD;
-  try {
-    assert.equal(formatFrom("lucas"), "lucas");
-    assert.equal(formatFrom("charlie"), "charlie");
-  } finally {
-    if (prevLucas !== undefined) process.env.GMAIL_USER = prevLucas;
-    if (prevLucasPw !== undefined) process.env.GMAIL_APP_PASSWORD = prevLucasPw;
-  }
-  process.env.GMAIL_USER = "buur.aigro@gmail.com";
-  process.env.GMAIL_APP_PASSWORD = "dummy";
-  try {
-    const f = formatFrom("lucas");
-    assert.ok(f.includes("Lucas Buur"));
-    assert.ok(f.includes("buur.aigro@gmail.com"));
-  } finally {
-    delete process.env.GMAIL_USER;
-    delete process.env.GMAIL_APP_PASSWORD;
-  }
+test("formatSignature: ingen creds falder tilbage til defaults (Lucas: telefon, Charlie: tom)", () => {
+  withEnv(() => {
+    clearLucasEnv();
+    clearCharlieEnv();
+  }, () => {}, () => {
+    const lucas = formatSignature("lucas");
+    const charlie = formatSignature("charlie");
+    assert.ok(lucas.text.includes("+45 23 24 24 82"));
+    assert.equal(charlie.text, "Charlie Nielsen");
+  });
 });
 
-// ---- availableSenders / isSenderAvailable --------------------------------
+test("formatSignature: ingen trailing newlines når alle felter er tomme", () => {
+  withEnv(setCharlieEnv, clearCharlieEnv, () => {
+    const sig = formatSignature("charlie");
+    assert.equal(sig.text.endsWith("\n"), false);
+    assert.equal(sig.html.endsWith("<br>"), false);
+  });
+});
 
-test("availableSenders / isSenderAvailable: ingen creds = tom liste, begge unavailable", () => {
-  const prevLucas = process.env.GMAIL_USER;
-  const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
-  const prevCharlie = process.env.CHARLIE_GMAIL_USER;
-  const prevCharliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
-  delete process.env.GMAIL_USER;
-  delete process.env.GMAIL_APP_PASSWORD;
-  delete process.env.CHARLIE_GMAIL_USER;
-  delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
-  try {
+// ============================================================================
+// formatFrom
+// ============================================================================
+
+test("formatFrom: uden creds = senderId; med creds = displayName <email>", () => {
+  withEnv(clearLucasEnv, () => {}, () => {
+    assert.equal(formatFrom("lucas"), "lucas");
+    assert.equal(formatFrom("charlie"), "charlie");
+  });
+  process.env.GMAIL_USER = "buur.aigro@gmail.com";
+  process.env.GMAIL_APP_PASSWORD = DUMMY_PW;
+  const f = formatFrom("lucas");
+  assert.ok(f.includes("Lucas Buur"));
+  assert.ok(f.includes("buur.aigro@gmail.com"));
+  clearLucasEnv();
+});
+
+// ============================================================================
+// availableSenders / isSenderAvailable / defaultSender
+// ============================================================================
+
+test("availableSenders / isSenderAvailable: ingen creds = tom liste", () => {
+  withEnv(() => {
+    clearLucasEnv();
+    clearCharlieEnv();
+  }, () => {}, () => {
     assert.deepEqual(availableSenders(), []);
     assert.equal(isSenderAvailable("lucas"), false);
     assert.equal(isSenderAvailable("charlie"), false);
-  } finally {
-    if (prevLucas !== undefined) process.env.GMAIL_USER = prevLucas;
-    if (prevLucasPw !== undefined) process.env.GMAIL_APP_PASSWORD = prevLucasPw;
-    if (prevCharlie !== undefined) process.env.CHARLIE_GMAIL_USER = prevCharlie;
-    if (prevCharliePw !== undefined) process.env.CHARLIE_GMAIL_APP_PASSWORD = prevCharliePw;
-  }
+  });
 });
 
 test("defaultSender: foretrækker Lucas når begge er tilgængelige", () => {
-  const prevLucas = process.env.GMAIL_USER;
-  const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
-  const prevCharlie = process.env.CHARLIE_GMAIL_USER;
-  const prevCharliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
-  process.env.GMAIL_USER = "lucas@buur.dk";
-  process.env.GMAIL_APP_PASSWORD = "dummy";
-  process.env.CHARLIE_GMAIL_USER = "charlie@buur.dk";
-  process.env.CHARLIE_GMAIL_APP_PASSWORD = "dummy";
-  try {
+  withEnv(() => {
+    setLucasEnv();
+    setCharlieEnv();
+  }, () => {
+    clearLucasEnv();
+    clearCharlieEnv();
+  }, () => {
     assert.equal(defaultSender(), "lucas");
-  } finally {
-    if (prevLucas === undefined) delete process.env.GMAIL_USER;
-    else process.env.GMAIL_USER = prevLucas;
-    if (prevLucasPw === undefined) delete process.env.GMAIL_APP_PASSWORD;
-    else process.env.GMAIL_APP_PASSWORD = prevLucasPw;
-    if (prevCharlie === undefined) delete process.env.CHARLIE_GMAIL_USER;
-    else process.env.CHARLIE_GMAIL_USER = prevCharlie;
-    if (prevCharliePw === undefined) delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
-    else process.env.CHARLIE_GMAIL_APP_PASSWORD = prevCharliePw;
-  }
+  });
 });
 
 test("defaultSender: falder tilbage til charlie hvis kun charlie er sat", () => {
-  const prevLucas = process.env.GMAIL_USER;
-  const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
-  const prevCharlie = process.env.CHARLIE_GMAIL_USER;
-  const prevCharliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
-  delete process.env.GMAIL_USER;
-  delete process.env.GMAIL_APP_PASSWORD;
-  process.env.CHARLIE_GMAIL_USER = "charlie@buur.dk";
-  process.env.CHARLIE_GMAIL_APP_PASSWORD = "dummy";
-  try {
+  withEnv(() => {
+    clearLucasEnv();
+    setCharlieEnv();
+  }, () => {
+    clearLucasEnv();
+    clearCharlieEnv();
+  }, () => {
     assert.equal(defaultSender(), "charlie");
-  } finally {
-    if (prevLucas === undefined) delete process.env.GMAIL_USER;
-    else process.env.GMAIL_USER = prevLucas;
-    if (prevLucasPw === undefined) delete process.env.GMAIL_APP_PASSWORD;
-    else process.env.GMAIL_APP_PASSWORD = prevLucasPw;
-    if (prevCharlie === undefined) delete process.env.CHARLIE_GMAIL_USER;
-    else process.env.CHARLIE_GMAIL_USER = prevCharlie;
-    if (prevCharliePw === undefined) delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
-    else process.env.CHARLIE_GMAIL_APP_PASSWORD = prevCharliePw;
-  }
+  });
 });
 
-// ---- getSenderCreds: telefon + titel er en del af creds -------------------
+// ============================================================================
+// getSenderCreds: phone/title/tagline defaults
+// ============================================================================
 
-test("getSenderCreds: telefonnummer og titel er en del af creds for begge sendere", () => {
-  const prevLucas = process.env.GMAIL_USER;
-  const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
-  const prevCharlie = process.env.CHARLIE_GMAIL_USER;
-  const prevCharliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
-  process.env.GMAIL_USER = "lucas@buur.dk";
-  process.env.GMAIL_APP_PASSWORD = "dummy";
-  process.env.CHARLIE_GMAIL_USER = "charlie@buur.dk";
-  process.env.CHARLIE_GMAIL_APP_PASSWORD = "dummy";
-  try {
+test("getSenderCreds: Lucas creds har telefon (default), Charlie creds har IKKE telefon som default", () => {
+  withEnv(() => {
+    setLucasEnv();
+    setCharlieEnv();
+  }, () => {
+    clearLucasEnv();
+    clearCharlieEnv();
+  }, () => {
     const lucas = getSenderCreds("lucas");
     const charlie = getSenderCreds("charlie");
     assert.ok(lucas, "lucas creds skal være sat");
     assert.ok(charlie, "charlie creds skal være sat");
-    assert.equal(lucas!.phone, "+45 23 24 24 82");
-    assert.equal(lucas!.title, "");
-    assert.equal(charlie!.phone, ""); // bevidst tom default
-    assert.equal(charlie!.title, ""); // bevidst tom default
-    assert.equal(lucas!.displayName, "Lucas Buur");
-    assert.equal(charlie!.displayName, "Charlie Nielsen");
+    assert.equal(lucas.phone, "+45 23 24 24 82"); // default
+    assert.equal(lucas.title, ""); // default (skjult for Lucas)
+    assert.equal(lucas.tagline, ""); // default
+    assert.equal(charlie.phone, ""); // TOM (telefon-fri)
+    assert.equal(charlie.title, ""); // TOM
+    assert.equal(charlie.tagline, ""); // TOM
+    assert.equal(lucas.displayName, "Lucas Buur");
+    assert.equal(charlie.displayName, "Charlie Nielsen");
+  });
+});
+
+// ============================================================================
+// pickHybridSender (regression)
+// ============================================================================
+
+test("pickHybridSender: 14-dags hybrid allokering med Lucas tie-break", async () => {
+  // pickHybridSender kortslutter via availableSenders() — begge Gmail-creds
+  // skal være sat for at nå den egentlige hybrid-logik.
+  setLucasEnv();
+  setCharlieEnv();
+  try {
+    const { pickHybridSender } = await import("./senders.ts");
+    const now = new Date("2026-06-26T12:00:00Z");
+    const history: any[] = [
+      { sender: "lucas", status: "sent", updatedAt: "2026-06-20T12:00:00Z" },
+      { sender: "lucas", status: "sent", updatedAt: "2026-06-21T12:00:00Z" },
+      { sender: "charlie", status: "sent", updatedAt: "2026-06-22T12:00:00Z" },
+    ];
+    // Lucas har sendt 2, Charlie 1 → Charlie bør vælges (lavere count wins)
+    const choice = pickHybridSender(history, now);
+    assert.equal(choice, "charlie");
   } finally {
-    delete process.env.GMAIL_USER;
-    delete process.env.GMAIL_APP_PASSWORD;
-    delete process.env.CHARLIE_GMAIL_USER;
-    delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
+    clearLucasEnv();
+    clearCharlieEnv();
   }
-});
-
-// ---- Regressionssikring: Lucas-format er uændret --------------------------
-
-test("REGRESSION: Lucas' signatur-format er uændret efter refactoring", () => {
-  // Hvis denne test fejler, har vi brudt Lucas' eksisterende format — en
-  // mail-modtager vil bemærke forskellen. Vigtigt at holde denne stabil.
-  const sig = formatSignature("lucas");
-  // Præcis det format der var hardcoded før — to linjer, ingen titel.
-  assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
-  // HTML-form: vi tilføjer <strong> omkring navnet som lille forbedring —
-  // bekræft bevidst at dette er den nye normal.
-  assert.equal(sig.html, "<strong>Lucas Buur</strong><br>+45 23 24 24 82");
-});
-
-// ---- Charlie-specifik: ikke "salgselev", telefon-fri som default ---------
-
-test("Charlies signatur matcher Charlie-profilen (ikke 'salgselev', ingen default-telefon)", () => {
-  const sig = formatSignature("charlie");
-  assert.equal(sig.text.includes("salgselev"), false);
-  assert.equal(sig.text.includes("Lucas"), false, "aldrig Lucas-navn på Charlie");
-  // Default er bevidst telefon-fri.
-  assert.equal(sig.text.includes("+45"), false, "default-signatur er telefon-fri");
-  // Men Charlie-opt-in via env virker (testes andetsteds).
-});
-
-test("Charlies signatur-senderClosing matcher hans navn", () => {
-  const sig = formatSignature("charlie");
-  assert.equal(sig.closing, "Mvh, Charlie Nielsen");
 });

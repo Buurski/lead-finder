@@ -71,9 +71,39 @@ const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf
 const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
 
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
-const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";   // per Charlie 2026-06-26
-const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager"; // per Charlie 2026-06-26
-const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";  // per Charlie 2026-06-26
+// 2026-06-26 (korrigeret): per bruger-spec skal Charlies default-signatur være
+// HELT TOM bortset fra navnet "Charlie Nielsen" — ingen telefon, ingen titel,
+// ingen tagline. Telefon ("salgselev"-lignende differentiator), titel og tagline
+// er LUCAS' ting; Charlie er "med i virksomheden, lærer det, tager ejerskab"
+// (KnowledgeOS/context/about_charlie.md). Hvis Charlie senere vil have et felt
+// i signaturen, opt-in via CHARLIE_SENDER_PHONE / _TITLE / _TAGLINE env vars.
+const CHARLIE_DEFAULT_PHONE = "";
+const CHARLIE_DEFAULT_TITLE = "";
+const CHARLIE_DEFAULT_TAGLINE = "";
+
+/** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
+ *  Returns the first defined value (including ""). The old `||` operator
+ *  collapsed empty string into the fallback, breaking the opt-out semantics
+ *  for tagline. Hoisted to module level so both fromEnv() (line ~95) and
+ *  formatSignature() (line ~300) can share it. */
+function pickEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+}
+
+
+/**
+ * Defense-in-depth: scrub "salgselev" ud af Charlie-signatur-felter. Default
+ * paths inkluderer aldrig "salgselev", men en stray env-var kunne. Lucas'
+ * signatur røres ikke.
+ */
+function scrubCharlieLeak(value: string): string {
+  if (!value) return value;
+  return value.replace(/salgselev/gi, "").trim();
+}
 
 function fromEnv(): Record<SenderId, SenderCreds | null> {
   const lucasEmail = process.env.GMAIL_USER;
@@ -81,6 +111,10 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
   const charlieEmail = process.env.CHARLIE_GMAIL_USER;
   const charliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
 
+  // 2026-06-26: use pickEnv() instead of || so that an empty env var means
+  // "explicit opt-out" — the field is stored as "" in creds and formatSignature
+  // will filter the line out. The old || operator collapsed "" into the
+  // in-code default, breaking the opt-out test.
   return {
     lucas: lucasEmail && lucasPw
       ? {
@@ -88,9 +122,9 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           email: lucasEmail,
           appPassword: lucasPw,
           displayName: LUCAS_DEFAULT_NAME,
-          phone: (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || LUCAS_DEFAULT_PHONE),
-          title: (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || LUCAS_DEFAULT_TITLE),
-          tagline: (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || LUCAS_DEFAULT_TAGLINE),
+          phone: pickEnv("LUCAS_SENDER_PHONE", "LUCAS_PHONE") ?? LUCAS_DEFAULT_PHONE,
+          title: pickEnv("LUCAS_SENDER_TITLE", "LUCAS_TITLE") ?? LUCAS_DEFAULT_TITLE,
+          tagline: pickEnv("LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE") ?? LUCAS_DEFAULT_TAGLINE,
         }
       : null,
     charlie: charlieEmail && charliePw
@@ -99,9 +133,9 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           email: charlieEmail,
           appPassword: charliePw,
           displayName: CHARLIE_DEFAULT_NAME,
-          phone: (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || CHARLIE_DEFAULT_PHONE),
-          title: (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || CHARLIE_DEFAULT_TITLE),
-          tagline: (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || CHARLIE_DEFAULT_TAGLINE),
+          phone: pickEnv("CHARLIE_SENDER_PHONE", "CHARLIE_PHONE") ?? CHARLIE_DEFAULT_PHONE,
+          title: pickEnv("CHARLIE_SENDER_TITLE", "CHARLIE_TITLE") ?? CHARLIE_DEFAULT_TITLE,
+          tagline: pickEnv("CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE") ?? CHARLIE_DEFAULT_TAGLINE,
         }
       : null,
   };
@@ -228,49 +262,6 @@ export function formatFrom(senderId: SenderId): string {
   return `${creds.displayName} <${creds.email}>`;
 }
 
-<<<<<<< Updated upstream
-// ---- Signature rewrite (manual sender override, 2026-06-19) ----------------
-// Drafts are composed with a "Mvh, Lucas" sign-off. When the actual sender is
-// Charlie (engine allocation OR the manual /godkendelse toggle), the body must
-// be re-signed so the letter matches who sends it — otherwise a mail from
-// Charlie's account still says "Mvh, Lucas". Voice-safe (no contact CTA / kr).
-// Optional phone via {LUCAS,CHARLIE}_SENDER_PHONE.
-
-/** The closing sign-off for a sender. */
-export function signatureFor(id: SenderId): string {
-  if (id === "charlie") {
-    const phone = (process.env.CHARLIE_SENDER_PHONE || "").trim();
-    return phone
-      ? `Med venlig hilsen\nCharlie Nielsen\n${phone}`
-      : "Med venlig hilsen\nCharlie Nielsen";
-  }
-  const phone = (process.env.LUCAS_SENDER_PHONE || "").trim();
-  return phone
-    ? `Med venlig hilsen\nLucas Buur\n${phone}`
-    : "Med venlig hilsen\nLucas Buur";
-}
-
-// Strip whatever trailing Lucas/Charlie sign-off the body has, so we can re-sign
-// for the chosen sender. Covers "Mvh, Lucas", "Lucas\n+45 …" and bare "Lucas".
-export function stripSignature(body: string): string {
-  let t = (body || "").replace(/\s+$/, "");
-  const patterns: RegExp[] = [
-    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
-  ];
-  for (const re of patterns) {
-    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
-  }
-  return t;
-}
-
-/** Re-sign a body for the chosen sender. */
-export function applySignature(body: string, id: SenderId): string {
-  return `${stripSignature(body)}\n\n${signatureFor(id)}`;
-}
-=======
 // ---- Signature rendering --------------------------------------------------
 // 2026-06-26: the cold-mail signature used to be hardcoded "Lucas\n+45 23 24
 // 24 82" in 28+ places in email.ts. It is now a single function so Charlie
@@ -301,15 +292,6 @@ export interface Signature {
   closing: string;
 }
 
-/** "salgselev" er Lucas' differentiator og må ALDRIG optræde på Charlie.
- *  Denne helper stripper det fra et hvilket som helst felt Charlie's env
- *  måtte sætte til det — defense-in-depth så en tastefejl i Vercel-dashboardet
- *  ikke ender i kunders indbakke. Lucas' path filterer IKKE (det er hans
- *  differentiator). */
-function scrubCharlieLeak(value: string): string {
-  return value.replace(/salgselev/gi, "").trim();
-}
-
 export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds): Signature {
   const creds = credsOverride ?? getSenderCreds(senderId);
   // Layered lookup: creds (Gmail-loaded) -> env vars (per-sender _SENDER_ prefix,
@@ -326,9 +308,13 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
     : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
   const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
-  let phone = creds?.phone || envPhone || (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
-  let title = creds?.title || envTitle || (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
-  let tagline = creds?.tagline || envTagline || (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
+  const senderEnvPhone = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_PHONE", "LUCAS_PHONE"] : ["CHARLIE_SENDER_PHONE", "CHARLIE_PHONE"]));
+  const senderEnvTitle = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TITLE", "LUCAS_TITLE"] : ["CHARLIE_SENDER_TITLE", "CHARLIE_TITLE"]));
+  const senderEnvTagline = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE"] : ["CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE"]));
+
+  let phone = creds?.phone ?? senderEnvPhone ?? (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
+  let title = creds?.title ?? senderEnvTitle ?? (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
+  let tagline = creds?.tagline ?? senderEnvTagline ?? (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
 
   // Defense-in-depth: scrub "salgselev" out of Charlie's signature no matter
   // where it came from. The default paths never include it, but a stray env
@@ -353,4 +339,30 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     closing: `Mvh, ${trim(name)}`,
   };
 }
->>>>>>> Stashed changes
+
+// ---- Legacy applySignature helper ----------------------------------------
+// 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send
+// to re-sign drafts when the manual override flips sender mid-batch). Uses
+// the layered formatSignature() under the hood so it picks up the same env
+// vars and per-sender defaults.
+
+/** Strip any trailing sign-off from a body so we can re-sign for the chosen sender. */
+export function stripSignature(body: string): string {
+  let t = (body || "").replace(/\s+$/, "");
+  const patterns: RegExp[] = [
+    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
+  ];
+  for (const re of patterns) {
+    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
+  }
+  return t;
+}
+
+/** Re-sign a body for the chosen sender. */
+export function applySignature(body: string, id: SenderId): string {
+  const sig = formatSignature(id);
+  return `${stripSignature(body)}\n\n${sig.text}`;
+}

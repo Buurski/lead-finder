@@ -283,15 +283,9 @@ ${signature.text}`;
 <p>Demoerne til inspiration ligger her:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
-<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
-=======
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
 <p>${signature.html}</p>`),
->>>>>>> Stashed changes
       };
     },
   },
@@ -351,15 +345,9 @@ ${signature.text}`;
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.</p>
 <p>Demoen ligger her:<br>
 → <a href="${demo}">${demo}</a></p>
-<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
-=======
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
 <p>${signature.html}</p>`),
->>>>>>> Stashed changes
       };
     },
   },
@@ -475,15 +463,9 @@ ${signature.text}`;
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser. og det første indtryk vejer tungt.</p>
 <p>Demoen:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
-<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong>. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
-=======
-<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong> — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
-<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.</p>
 <p>${signature.html}</p>`),
->>>>>>> Stashed changes
       };
     },
   },
