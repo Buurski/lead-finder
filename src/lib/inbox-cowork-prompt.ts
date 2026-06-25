@@ -33,13 +33,8 @@ export function buildInboxTriagePrompt(opts: InboxPromptOptions = {}): string {
 
   return `# Indbakke-triage, ${account} (sidste ${windowDays} dage)
 
-<<<<<<< Updated upstream
-Du er Lucas's assistent. Gennemgå hans Gmail-indbakke og find de mails der FAKTISK
-kræver et svar, ikke alt, kun det væsentlige. Skriv resultatet tilbage til
-=======
 Du er ${account}'s assistent. Gennemgå deres Gmail-indbakke og find de mails der FAKTISK
 kræver et svar — ikke alt, kun det væsentlige. Skriv resultatet tilbage til
->>>>>>> Stashed changes
 Command Center som en rangeret digest.
 
 ## Hvorfor
@@ -56,13 +51,8 @@ autosvar, notifikationer) skjult.
    - **importance** (0–100): hvor hurtigt bør han svare? (køber-intent højest)
    - **reason** (1 linje dansk): hvorfor vigtig, eller hvorfor støj
    - **suggestedReply** (kun for needsReply=true): kort, varmt dansk udkast,
-<<<<<<< Updated upstream
-     ingen priser/kr, ingen robot-CTA, afslut "Mvh, Lucas"
-3. Drop åbenlys støj (sæt needsReply=false, lav importance), men medtag den stadig
-=======
      ingen priser/kr, ingen robot-CTA, afslut "${signature.closing}"
 3. Drop åbenlys støj (sæt needsReply=false, lav importance) — men medtag den stadig
->>>>>>> Stashed changes
    i listen, så Lucas kan folde den ud.
 
 ## Output (InboxDigest JSON)
