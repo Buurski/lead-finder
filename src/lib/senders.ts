@@ -228,49 +228,6 @@ export function formatFrom(senderId: SenderId): string {
   return `${creds.displayName} <${creds.email}>`;
 }
 
-<<<<<<< Updated upstream
-// ---- Signature rewrite (manual sender override, 2026-06-19) ----------------
-// Drafts are composed with a "Mvh, Lucas" sign-off. When the actual sender is
-// Charlie (engine allocation OR the manual /godkendelse toggle), the body must
-// be re-signed so the letter matches who sends it — otherwise a mail from
-// Charlie's account still says "Mvh, Lucas". Voice-safe (no contact CTA / kr).
-// Optional phone via {LUCAS,CHARLIE}_SENDER_PHONE.
-
-/** The closing sign-off for a sender. */
-export function signatureFor(id: SenderId): string {
-  if (id === "charlie") {
-    const phone = (process.env.CHARLIE_SENDER_PHONE || "").trim();
-    return phone
-      ? `Med venlig hilsen\nCharlie Nielsen\n${phone}`
-      : "Med venlig hilsen\nCharlie Nielsen";
-  }
-  const phone = (process.env.LUCAS_SENDER_PHONE || "").trim();
-  return phone
-    ? `Med venlig hilsen\nLucas Buur\n${phone}`
-    : "Med venlig hilsen\nLucas Buur";
-}
-
-// Strip whatever trailing Lucas/Charlie sign-off the body has, so we can re-sign
-// for the chosen sender. Covers "Mvh, Lucas", "Lucas\n+45 …" and bare "Lucas".
-export function stripSignature(body: string): string {
-  let t = (body || "").replace(/\s+$/, "");
-  const patterns: RegExp[] = [
-    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
-  ];
-  for (const re of patterns) {
-    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
-  }
-  return t;
-}
-
-/** Re-sign a body for the chosen sender. */
-export function applySignature(body: string, id: SenderId): string {
-  return `${stripSignature(body)}\n\n${signatureFor(id)}`;
-}
-=======
 // ---- Signature rendering --------------------------------------------------
 // 2026-06-26: the cold-mail signature used to be hardcoded "Lucas\n+45 23 24
 // 24 82" in 28+ places in email.ts. It is now a single function so Charlie
@@ -326,9 +283,25 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
     : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
   const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
-  let phone = creds?.phone || envPhone || (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
-  let title = creds?.title || envTitle || (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
-  let tagline = creds?.tagline || envTagline || (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
+  // 2026-06-26 (later): explicit-empty-env opt-out. If CHARLIE_SENDER_TAGLINE
+  // is set to "" the user is explicitly saying "no tagline" — different from
+  // the env var being absent (in which case the per-sender default applies).
+  // Using `pickEnv()` preserves that distinction; the || operator would have
+  // collapsed both into the default and broken the opt-out test.
+  const pickEnv = (...names: string[]): string | undefined => {
+    for (const n of names) {
+      const v = process.env[n];
+      if (v !== undefined) return v; // empty string IS a valid opt-out
+    }
+    return undefined;
+  };
+  const senderEnvPhone = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_PHONE", "LUCAS_PHONE"] : ["CHARLIE_SENDER_PHONE", "CHARLIE_PHONE"]));
+  const senderEnvTitle = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TITLE", "LUCAS_TITLE"] : ["CHARLIE_SENDER_TITLE", "CHARLIE_TITLE"]));
+  const senderEnvTagline = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE"] : ["CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE"]));
+
+  let phone = creds?.phone ?? senderEnvPhone ?? (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
+  let title = creds?.title ?? senderEnvTitle ?? (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
+  let tagline = creds?.tagline ?? senderEnvTagline ?? (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
 
   // Defense-in-depth: scrub "salgselev" out of Charlie's signature no matter
   // where it came from. The default paths never include it, but a stray env
@@ -353,4 +326,30 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     closing: `Mvh, ${trim(name)}`,
   };
 }
->>>>>>> Stashed changes
+
+// ---- Legacy applySignature helper ----------------------------------------
+// 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send
+// to re-sign drafts when the manual override flips sender mid-batch). Uses
+// the layered formatSignature() under the hood so it picks up the same env
+// vars and per-sender defaults.
+
+/** Strip any trailing sign-off from a body so we can re-sign for the chosen sender. */
+export function stripSignature(body: string): string {
+  let t = (body || "").replace(/\s+$/, "");
+  const patterns: RegExp[] = [
+    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
+  ];
+  for (const re of patterns) {
+    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
+  }
+  return t;
+}
+
+/** Re-sign a body for the chosen sender. */
+export function applySignature(body: string, id: SenderId): string {
+  const sig = formatSignature(id);
+  return `${stripSignature(body)}\n\n${sig.text}`;
+}

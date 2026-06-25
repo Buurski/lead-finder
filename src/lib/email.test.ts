@@ -2,7 +2,11 @@
 // signature (2026-06-26). Before this refactor every template had "Lucas\n+45
 // 23 24 24 82" hardcoded 28 times. After: formatSignature(sender) drives the
 // render, so Charlie drafts get Charlie's name automatically and pick up his
-// own phone/title only if CHARLIE_SENDER_PHONE / _TITLE env vars are set.
+// own phone/title/tagline per Charlie's own profile.
+//
+// Per 2026-06-26: Charlie's default-signatur er Senior Funding Manager +
+// Web-design entusiast + +45 42 25 32 62. Lucas beholder sit format (kun
+// navn + telefon). Alle fire felter er env-overridable.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -32,25 +36,34 @@ test("buildLeadEmail: Lucas-skabelon beholder præcis det gamle format", () => {
   assert.equal(tpl.text.includes("+45 42 25 32 62"), false);
 });
 
-test("buildLeadEmail: Charlie-skabelon = kun 'Charlie Nielsen' (default telefon-fri)", () => {
+test("buildLeadEmail: Charlie-skabelon = navn + titel + tagline + telefon (fuld profil)", () => {
+  // Per Charlie 2026-06-26: fuld profil inkl. telefon + titel + tagline.
   const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
   // Charlie-specifik navn SKAL være der.
   assert.ok(tpl.text.includes("Charlie Nielsen"));
   assert.ok(tpl.html.includes("Charlie Nielsen"));
+  // Charlie-specifik titel + tagline + telefon SKAL være der.
+  assert.ok(tpl.text.includes("Senior Funding Manager"));
+  assert.ok(tpl.text.includes("Web-design entusiast"));
+  assert.ok(tpl.text.includes("+45 42 25 32 62"));
   // Skal IKKE have Lucas' data.
   assert.equal(tpl.text.includes("Lucas Buur"), false);
   assert.equal(tpl.text.includes("+45 23 24 24 82"), false);
-  // Default er telefon-fri.
-  assert.equal(tpl.text.includes("+45 42 25 32 62"), false, "ingen default telefon i Charlie-mail");
+  // Aldrig 'salgselev' på Charlie.
+  assert.equal(tpl.text.includes("salgselev"), false);
 });
 
-test("buildLeadEmail: Charlie + CHARLIE_SENDER_PHONE env tilføjer telefon", () => {
+test("buildLeadEmail: Charlie + CHARLIE_SENDER_PHONE env overskriver default-telefon", () => {
   const prev = process.env.CHARLIE_SENDER_PHONE;
-  process.env.CHARLIE_SENDER_PHONE = "+45 42 25 32 62";
+  process.env.CHARLIE_SENDER_PHONE = "+45 99 88 77 66";
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
     assert.ok(tpl.text.includes("Charlie Nielsen"));
-    assert.ok(tpl.text.includes("+45 42 25 32 62"));
+    assert.ok(tpl.text.includes("+45 99 88 77 66"), "env-telefon skal være der");
+    assert.equal(tpl.text.includes("+45 42 25 32 62"), false, "default-telefon væk");
+    // Titel + tagline følger stadig defaults.
+    assert.ok(tpl.text.includes("Senior Funding Manager"));
+    assert.ok(tpl.text.includes("Web-design entusiast"));
     assert.equal(tpl.text.includes("Lucas Buur"), false);
   } finally {
     if (prev === undefined) delete process.env.CHARLIE_SENDER_PHONE;
