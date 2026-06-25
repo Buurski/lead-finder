@@ -75,12 +75,40 @@ const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";   // per Charlie 2026-06-26
 const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager"; // per Charlie 2026-06-26
 const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";  // per Charlie 2026-06-26
 
+/** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
+ *  Returns the first defined value (including ""). The old `||` operator
+ *  collapsed empty string into the fallback, breaking the opt-out semantics
+ *  for tagline. Hoisted to module level so both fromEnv() (line ~95) and
+ *  formatSignature() (line ~300) can share it. */
+function pickEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+}
+
+
+/**
+ * Defense-in-depth: scrub "salgselev" ud af Charlie-signatur-felter. Default
+ * paths inkluderer aldrig "salgselev", men en stray env-var kunne. Lucas'
+ * signatur røres ikke.
+ */
+function scrubCharlieLeak(value: string): string {
+  if (!value) return value;
+  return value.replace(/salgselev/gi, "").trim();
+}
+
 function fromEnv(): Record<SenderId, SenderCreds | null> {
   const lucasEmail = process.env.GMAIL_USER;
   const lucasPw = process.env.GMAIL_APP_PASSWORD;
   const charlieEmail = process.env.CHARLIE_GMAIL_USER;
   const charliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
 
+  // 2026-06-26: use pickEnv() instead of || so that an empty env var means
+  // "explicit opt-out" — the field is stored as "" in creds and formatSignature
+  // will filter the line out. The old || operator collapsed "" into the
+  // in-code default, breaking the opt-out test.
   return {
     lucas: lucasEmail && lucasPw
       ? {
@@ -88,9 +116,9 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           email: lucasEmail,
           appPassword: lucasPw,
           displayName: LUCAS_DEFAULT_NAME,
-          phone: (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || LUCAS_DEFAULT_PHONE),
-          title: (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || LUCAS_DEFAULT_TITLE),
-          tagline: (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || LUCAS_DEFAULT_TAGLINE),
+          phone: pickEnv("LUCAS_SENDER_PHONE", "LUCAS_PHONE") ?? LUCAS_DEFAULT_PHONE,
+          title: pickEnv("LUCAS_SENDER_TITLE", "LUCAS_TITLE") ?? LUCAS_DEFAULT_TITLE,
+          tagline: pickEnv("LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE") ?? LUCAS_DEFAULT_TAGLINE,
         }
       : null,
     charlie: charlieEmail && charliePw
@@ -99,9 +127,9 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           email: charlieEmail,
           appPassword: charliePw,
           displayName: CHARLIE_DEFAULT_NAME,
-          phone: (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || CHARLIE_DEFAULT_PHONE),
-          title: (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || CHARLIE_DEFAULT_TITLE),
-          tagline: (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || CHARLIE_DEFAULT_TAGLINE),
+          phone: pickEnv("CHARLIE_SENDER_PHONE", "CHARLIE_PHONE") ?? CHARLIE_DEFAULT_PHONE,
+          title: pickEnv("CHARLIE_SENDER_TITLE", "CHARLIE_TITLE") ?? CHARLIE_DEFAULT_TITLE,
+          tagline: pickEnv("CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE") ?? CHARLIE_DEFAULT_TAGLINE,
         }
       : null,
   };
@@ -258,15 +286,6 @@ export interface Signature {
   closing: string;
 }
 
-/** "salgselev" er Lucas' differentiator og må ALDRIG optræde på Charlie.
- *  Denne helper stripper det fra et hvilket som helst felt Charlie's env
- *  måtte sætte til det — defense-in-depth så en tastefejl i Vercel-dashboardet
- *  ikke ender i kunders indbakke. Lucas' path filterer IKKE (det er hans
- *  differentiator). */
-function scrubCharlieLeak(value: string): string {
-  return value.replace(/salgselev/gi, "").trim();
-}
-
 export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds): Signature {
   const creds = credsOverride ?? getSenderCreds(senderId);
   // Layered lookup: creds (Gmail-loaded) -> env vars (per-sender _SENDER_ prefix,
@@ -283,18 +302,6 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
     : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
   const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
-  // 2026-06-26 (later): explicit-empty-env opt-out. If CHARLIE_SENDER_TAGLINE
-  // is set to "" the user is explicitly saying "no tagline" — different from
-  // the env var being absent (in which case the per-sender default applies).
-  // Using `pickEnv()` preserves that distinction; the || operator would have
-  // collapsed both into the default and broken the opt-out test.
-  const pickEnv = (...names: string[]): string | undefined => {
-    for (const n of names) {
-      const v = process.env[n];
-      if (v !== undefined) return v; // empty string IS a valid opt-out
-    }
-    return undefined;
-  };
   const senderEnvPhone = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_PHONE", "LUCAS_PHONE"] : ["CHARLIE_SENDER_PHONE", "CHARLIE_PHONE"]));
   const senderEnvTitle = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TITLE", "LUCAS_TITLE"] : ["CHARLIE_SENDER_TITLE", "CHARLIE_TITLE"]));
   const senderEnvTagline = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE"] : ["CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE"]));

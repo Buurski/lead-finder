@@ -221,19 +221,27 @@ test("formatSignature: credsOverride med tom tagline skjuler tagline-linje", () 
 // ---- formatFrom -----------------------------------------------------------
 
 test("formatFrom: uden creds falder tilbage til senderId; med creds viser displaynavn", () => {
+  // 2026-06-26: Charlie har egne creds (CHARLIE_GMAIL_USER + APP_PASSWORD),
+  // så testen skal slette BEGGE sæt for at ramme "ingen creds"-stien.
   const prevLucas = process.env.GMAIL_USER;
   const prevLucasPw = process.env.GMAIL_APP_PASSWORD;
+  const prevCharlie = process.env.CHARLIE_GMAIL_USER;
+  const prevCharliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
   delete process.env.GMAIL_USER;
   delete process.env.GMAIL_APP_PASSWORD;
+  delete process.env.CHARLIE_GMAIL_USER;
+  delete process.env.CHARLIE_GMAIL_APP_PASSWORD;
   try {
     assert.equal(formatFrom("lucas"), "lucas");
     assert.equal(formatFrom("charlie"), "charlie");
   } finally {
     if (prevLucas !== undefined) process.env.GMAIL_USER = prevLucas;
     if (prevLucasPw !== undefined) process.env.GMAIL_APP_PASSWORD = prevLucasPw;
+    if (prevCharlie !== undefined) process.env.CHARLIE_GMAIL_USER = prevCharlie;
+    if (prevCharliePw !== undefined) process.env.CHARLIE_GMAIL_APP_PASSWORD = prevCharliePw;
   }
   process.env.GMAIL_USER = "buur.aigro@gmail.com";
-  process.env.GMAIL_APP_PASSWORD = "dummy";
+  process.env.GMAIL_APP_PASSWORD = "x";
   try {
     const f = formatFrom("lucas");
     assert.ok(f.includes("Lucas Buur"));
