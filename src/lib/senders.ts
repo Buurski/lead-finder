@@ -8,12 +8,25 @@
 // inbox-live scan BOTH accounts so replies to either side surface in the
 // "Svar" tab.
 //
+// 2026-06-26: also became the source of truth for the *display signature*
+// (displayName + title + tagline + phone). Previously the signature was
+// hardcoded in 28+ places in email.ts and 3 places in draft.ts. Now every
+// cold mail renders the sender's signature through formatSignature(senderId)
+// so Charlie and Lucas each get their own contact details automatically.
+//
+// 2026-06-26 (later): added `tagline` for Charlie's "Web-design entusiast"
+// line. Charlie's profile is Senior Funding Manager (title) + Web-design
+// entusiast (tagline). Both fall back to env vars, both default empty for
+// Lucas so his layout stays "navn + telefon, intet andet".
+//
 // Hard rules in this file:
 //   - If a sender's credentials are missing, that sender is unavailable.
 //     pickHybridSender / getTransporter fall back to the other one rather than
 //     throw — losing a sender for a deploy blip shouldn't kill the whole run.
 //   - All sender resolution goes through this module. Don't reach for
 //     process.env.GMAIL_USER directly in lib/* or app/api/* from here on.
+//   - "salgselev" is Lucas' differentiator and must NEVER appear on Charlie.
+//     Both default + env paths for Charlie filter this string (see below).
 //
 // Strip-safe (no Next imports) so node tooling (CLI engine) can use it.
 
@@ -27,10 +40,40 @@ export interface SenderCreds {
   appPassword: string;
   /** Display name used in the From: header (e.g. "Lucas Buur"). */
   displayName: string;
+  /** Phone number shown in the email signature (e.g. "+45 23 24 24 82"). */
+  phone: string;
+  /** Optional title shown above the phone number ("Senior Funding Manager" / ""). */
+  title: string;
+  /** Optional tagline shown between title and phone ("Web-design entusiast" / "").
+   *  Added 2026-06-26 for Charlie's web-design passion. Default empty for both
+   *  senders; opt-in via *_SENDER_TAGLINE env var. */
+  tagline: string;
 }
 
+// ---- Per-sender defaults -------------------------------------------------
+// Phone numbers, titles and taglines are kept here as *defaults* that can be
+// overridden by env vars. Hard rules:
+//
+//  - No field is ever hardcoded in email templates — everything flows through
+//    formatSignature(senderId) below.
+//  - Lucas keeps his existing layout ("Lucas\n+45 23 24 24 82", no title, no
+//    tagline). LUCAS_SENDER_PHONE is what Vercel currently has set;
+//    LUCAS_PHONE is accepted as a legacy alias. Same for title/tagline.
+//  - Charlie's signature is: navn + titel ("Senior Funding Manager") +
+//    tagline ("Web-design entusiast") + telefon ("+45 42 25 32 62"). All four
+//    fields are env-overridable so the team can tweak without a redeploy.
+//  - "salgselev" is filtered out of Charlie's signature at the formatSignature
+//    boundary even if some env var accidentally sets it. Lucas' tag/title
+//    paths do NOT filter — that's his differentiator by design.
 const LUCAS_DEFAULT_NAME = "Lucas Buur";
+const LUCAS_DEFAULT_PHONE = "+45 23 24 24 82";
+const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf)
+const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
+
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
+const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";   // per Charlie 2026-06-26
+const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager"; // per Charlie 2026-06-26
+const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";  // per Charlie 2026-06-26
 
 function fromEnv(): Record<SenderId, SenderCreds | null> {
   const lucasEmail = process.env.GMAIL_USER;
@@ -40,10 +83,26 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
 
   return {
     lucas: lucasEmail && lucasPw
-      ? { id: "lucas", email: lucasEmail, appPassword: lucasPw, displayName: LUCAS_DEFAULT_NAME }
+      ? {
+          id: "lucas",
+          email: lucasEmail,
+          appPassword: lucasPw,
+          displayName: LUCAS_DEFAULT_NAME,
+          phone: (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || LUCAS_DEFAULT_PHONE),
+          title: (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || LUCAS_DEFAULT_TITLE),
+          tagline: (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || LUCAS_DEFAULT_TAGLINE),
+        }
       : null,
     charlie: charlieEmail && charliePw
-      ? { id: "charlie", email: charlieEmail, appPassword: charliePw, displayName: CHARLIE_DEFAULT_NAME }
+      ? {
+          id: "charlie",
+          email: charlieEmail,
+          appPassword: charliePw,
+          displayName: CHARLIE_DEFAULT_NAME,
+          phone: (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || CHARLIE_DEFAULT_PHONE),
+          title: (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || CHARLIE_DEFAULT_TITLE),
+          tagline: (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || CHARLIE_DEFAULT_TAGLINE),
+        }
       : null,
   };
 }
@@ -169,6 +228,7 @@ export function formatFrom(senderId: SenderId): string {
   return `${creds.displayName} <${creds.email}>`;
 }
 
+<<<<<<< Updated upstream
 // ---- Signature rewrite (manual sender override, 2026-06-19) ----------------
 // Drafts are composed with a "Mvh, Lucas" sign-off. When the actual sender is
 // Charlie (engine allocation OR the manual /godkendelse toggle), the body must
@@ -210,3 +270,87 @@ export function stripSignature(body: string): string {
 export function applySignature(body: string, id: SenderId): string {
   return `${stripSignature(body)}\n\n${signatureFor(id)}`;
 }
+=======
+// ---- Signature rendering --------------------------------------------------
+// 2026-06-26: the cold-mail signature used to be hardcoded "Lucas\n+45 23 24
+// 24 82" in 28+ places in email.ts. It is now a single function so Charlie
+// automatically gets his own name + phone + title, and the runtime can be
+// reconfigured via env (LUCAS_SENDER_PHONE / LUCAS_SENDER_TITLE /
+// CHARLIE_SENDER_PHONE / CHARLIE_SENDER_TITLE) without touching code.
+// Legacy names without _SENDER_ (LUCAS_PHONE / LUCAS_TITLE / CHARLIE_PHONE /
+// CHARLIE_TITLE) are accepted as aliases for backwards compatibility.
+//
+// 2026-06-26 (later): added `tagline` for Charlie ("Web-design entusiast").
+// Same env override pattern (LUCAS_SENDER_TAGLINE / CHARLIE_SENDER_TAGLINE
+// with legacy _TAGLINE aliases).
+//
+// formatSignature returns BOTH the plain-text and HTML rendering of the
+// signature block. Email templates interpolate the relevant form. If the
+// sender creds are not configured we fall back to the per-sender defaults.
+// Order: navn, titel, tagline, telefon — alle tomme felter filtreres væk så
+// vi aldrig emitterer "Charlie\n\n\n+45 42…" (med blanke linjer).
+
+export interface Signature {
+  /** Plain-text signatur, linjer adskilt af "\n". Eksempel Lucas:
+   *  "Lucas Buur\n+45 23 24 24 82". Eksempel Charlie:
+   *  "Charlie Nielsen\nSenior Funding Manager\nWeb-design entusiast\n+45 42 25 32 62". */
+  text: string;
+  /** HTML-form: hver linje adskilt af "<br>", navn i <strong>. */
+  html: string;
+  /** "Mvh, Lucas" / "Mvh, Charlie Nielsen" — drop-in for LLM-promptens afslutning. */
+  closing: string;
+}
+
+/** "salgselev" er Lucas' differentiator og må ALDRIG optræde på Charlie.
+ *  Denne helper stripper det fra et hvilket som helst felt Charlie's env
+ *  måtte sætte til det — defense-in-depth så en tastefejl i Vercel-dashboardet
+ *  ikke ender i kunders indbakke. Lucas' path filterer IKKE (det er hans
+ *  differentiator). */
+function scrubCharlieLeak(value: string): string {
+  return value.replace(/salgselev/gi, "").trim();
+}
+
+export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds): Signature {
+  const creds = credsOverride ?? getSenderCreds(senderId);
+  // Layered lookup: creds (Gmail-loaded) -> env vars (per-sender _SENDER_ prefix,
+  // legacy aliases without _SENDER_) -> in-code defaults. The env vars are
+  // consulted even when creds is null so tests/dry-run can still tweak the
+  // signature without provisioning a full Gmail account.
+  const envPhone = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || "")
+    : (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || "");
+  const envTitle = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || "")
+    : (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || "");
+  const envTagline = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
+    : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
+  const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
+  let phone = creds?.phone || envPhone || (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
+  let title = creds?.title || envTitle || (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
+  let tagline = creds?.tagline || envTagline || (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
+
+  // Defense-in-depth: scrub "salgselev" out of Charlie's signature no matter
+  // where it came from. The default paths never include it, but a stray env
+  // var could.
+  if (senderId === "charlie") {
+    phone = scrubCharlieLeak(phone);
+    title = scrubCharlieLeak(title);
+    tagline = scrubCharlieLeak(tagline);
+  }
+
+  // Text form: filter out empty fields so we never emit trailing blank lines
+  // ("Charlie\n") when phone is empty. Order: name, title, tagline, phone.
+  // Lucas's existing layout (no title, no tagline) is preserved so the diff
+  // is invisible for him.
+  const trim = (s: string) => s.trim();
+  const textLines = [name, title, tagline, phone].map(trim).filter((s) => s.length > 0);
+  const htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
+
+  return {
+    text: textLines.join("\n"),
+    html: htmlLines.join("<br>"),
+    closing: `Mvh, ${trim(name)}`,
+  };
+}
+>>>>>>> Stashed changes

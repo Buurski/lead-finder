@@ -11,6 +11,7 @@ import type { ResearchResult, ResearchLead } from "./research.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead } from "./tone-mixer.ts";
+import { formatSignature, type SenderId } from "./senders.ts";
 
 export interface Draft {
   subject: string;
@@ -167,9 +168,17 @@ function branchValueLine(branch: string): string {
   return `En rigtig side ville samle det vigtigste ét sted, hvad I laver, jeres anmeldelser og en nem måde at række ud på, så I står stærkere når folk søger jer.`;
 }
 
+<<<<<<< Updated upstream
 function composeDeterministic(lead: ResearchLead, research: ResearchResult): Draft {
   const demos = research.demoPair;
+=======
+function composeDeterministic(lead: ResearchLead, research: ResearchResult, sender: SenderId = "lucas"): Draft {
+  const [d1, d2] = research.demoPair;
+>>>>>>> Stashed changes
   const name = firstName(lead.name);
+  // 2026-06-26: closing line is now sender-specific. Lucas = "Mvh, Lucas",
+  // Charlie = "Mvh, Charlie Nielsen" — no hardcoded name left in the draft.
+  const signature = formatSignature(sender);
 
   // Tone-mixer (OUTREACH_ANALYSIS-driven): data-aware, deterministic opener +
   // the salgselev-hobby disclosure + demo intro + closing. The dead "bygget noget
@@ -212,6 +221,11 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult): Dra
     tailorLine,
     ``,
     mix.closing,
+<<<<<<< Updated upstream
+=======
+    ``,
+    signature.closing,
+>>>>>>> Stashed changes
   ].join("\n");
 
   return {
@@ -240,9 +254,11 @@ function sanitize(text: string): string {
 async function composeWithLLM(
   lead: ResearchLead,
   research: ResearchResult,
-  voiceGuide: string
+  voiceGuide: string,
+  sender: SenderId = "lucas"
 ): Promise<string | null> {
   if (!isAiEnabled()) return null;
+<<<<<<< Updated upstream
   const demos = research.demoPair;
   // Skønhedsklinikker får ÉN demo med softer "Eksempel på en hjemmeside for en
   // kunde"-framing; andre brancher får to demoer. Prompt afspejler dette.
@@ -264,12 +280,27 @@ async function composeWithLLM(
     ...demoBlock,
     `Slut med en naturlig dansk sætning (ikke "Mvh" eller anden høflighedsfrase, da signaturen tilføjes separat af pipeline).`,
     `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,
+=======
+  const [d1, d2] = research.demoPair;
+  // 2026-06-26: prompt reflects the actual sender — Charlie drafts read "fra
+  // Charlie Nielsen" and close with "Mvh, Charlie Nielsen", not "fra Lucas".
+  const signature = formatSignature(sender);
+  const senderName = sender === "lucas" ? "Lucas" : "Charlie Nielsen";
+  const prompt = [
+    `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
+    research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet — hold åbningen ærlig og lokal.`,
+    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio) — ikke bare "her er to demoer".`,
+    `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
+    `→ ${d1.url}`,
+    `→ ${d2.url}`,
+    `Slut med "${signature.closing}".`,
+>>>>>>> Stashed changes
   ].join("\n\n");
 
   // DRAFT -> Opus 4.8 (model resolved by ai.ts; gateway -> anthropic -> null).
   const res = await generate({
     task: "draft",
-    system: `Du er Lucas. Skriv kun selve beskeden, intet andet. Følg denne stemme-guide nøje:\n\n${voiceGuide}`,
+    system: `Du er ${senderName}. Skriv kun selve beskeden, intet andet. Følg denne stemme-guide nøje:\n\n${voiceGuide}`,
     prompt,
     maxTokens: 600,
     temperature: 0.7,
@@ -279,6 +310,10 @@ async function composeWithLLM(
 
 export interface DraftOptions {
   useLLM?: boolean;
+  /** Which sender identity the draft should sign as. Defaults to "lucas" so
+   *  existing callers (engine, /api/leads/analyze) keep working unchanged.
+   *  The engine sets this to the hybrid-allocation pickHybridSender() result. */
+  sender?: SenderId;
 }
 
 export async function draft_personal_message(
@@ -287,9 +322,13 @@ export async function draft_personal_message(
   voiceGuide: string,
   opts: DraftOptions = {}
 ): Promise<Draft> {
+  // 2026-06-26: every draft is now sender-aware — closing line + LLM prompt
+  // honour whichever identity the engine allocates to this lead.
+  const sender: SenderId = opts.sender ?? "lucas";
+
   // Try the LLM lift only when explicitly enabled and a key exists.
   if (opts.useLLM) {
-    const llm = await composeWithLLM(lead, research, voiceGuide);
+    const llm = await composeWithLLM(lead, research, voiceGuide, sender);
     if (llm) {
       let body = llm;
       if (!validateDraft(body).ok) body = sanitize(body);
@@ -303,7 +342,7 @@ export async function draft_personal_message(
   }
 
   // Deterministic path — guaranteed to pass the validator.
-  const draft = composeDeterministic(lead, research);
+  const draft = composeDeterministic(lead, research, sender);
   const check = validateDraft(draft.body);
   if (!check.ok) {
     // Should never happen, but never emit a rule-breaking draft.

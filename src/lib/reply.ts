@@ -13,6 +13,7 @@
 
 import { validateDraft } from "./draft.ts";
 import { generate, isAiEnabled } from "./ai.ts";
+import { formatSignature, type SenderId } from "./senders.ts";
 
 export type ReplyCategory =
   | "interested"
@@ -93,9 +94,11 @@ export function classifyReply(textRaw: string): ReplyClassification {
 }
 
 // ---- deterministic reply templates --------------------------------------
-function templateFor(cat: ReplyCategory, leadName: string): string {
+// 2026-06-26: signature is now sender-specific so a Charlie-reply uses the
+// Charlie closing line, not Lucas's.
+function templateFor(cat: ReplyCategory, leadName: string, sender: SenderId = "lucas"): string {
   const hi = `Hej${leadName ? " " + leadName : ""},`;
-  const sign = "\n\nMvh, Lucas";
+  const sign = `\n\n${formatSignature(sender).closing}`;
   switch (cat) {
     case "interested":
     case "question":
@@ -130,15 +133,22 @@ export interface ReplyContext {
 
 // Compose a suggested reply. AI (Opus) when enabled + validated; deterministic
 // template otherwise (and as the fallback whenever AI output breaks a rule).
+//
+// 2026-06-26: opts.sender picks which identity signs the reply — defaults to
+// "lucas" for legacy callers. The AI prompt is also sender-aware so the LLM
+// closes with the right "Mvh, …" line and writes in the right voice.
 export async function draftReply(
   incomingText: string,
   ctx: ReplyContext = {},
   voiceGuide = "",
-  opts: { useAI?: boolean } = {}
+  opts: { useAI?: boolean; sender?: SenderId } = {}
 ): Promise<ReplyDraft> {
   const classification = classifyReply(incomingText);
   const cat = classification.category;
-  const deterministic = templateFor(cat, ctx.leadName ?? "");
+  const sender: SenderId = opts.sender ?? "lucas";
+  const deterministic = templateFor(cat, ctx.leadName ?? "", sender);
+  const signature = formatSignature(sender);
+  const senderName = sender === "lucas" ? "Lucas" : "Charlie Nielsen";
 
   // Never auto-reply to an autoresponder, and keep hard-stops minimal/safe.
   const useAI = (opts.useAI ?? true) && isAiEnabled() && cat !== "auto-reply";
@@ -146,8 +156,8 @@ export async function draftReply(
     const res = await generate({
       task: "draft",
       system:
-        `Du er Lucas, en ydmyg hobby-webudvikler. Skriv et kort, varmt, menneskeligt dansk SVAR på en indkommende besked. ` +
-        `Ingen priser/kr, ingen robot-CTA, ingen smileys. Afslut med "Mvh, Lucas". Skriv kun selve svaret.` +
+        `Du er ${senderName}, en ydmyg hobby-webudvikler (Lucas) eller medstifter af virksomheden (Charlie). Skriv et kort, varmt, menneskeligt dansk SVAR på en indkommende besked. ` +
+        `Ingen priser/kr, ingen robot-CTA, ingen smileys. Afslut med "${signature.closing}". Skriv kun selve svaret.` +
         (voiceGuide ? `\n\nStemme-guide:\n${voiceGuide}` : ""),
       prompt:
         `Virksomhed: ${ctx.leadName ?? "(ukendt)"}${ctx.branch ? ` (${ctx.branch}${ctx.city ? ", " + ctx.city : ""})` : ""}.\n` +
@@ -156,7 +166,7 @@ export async function draftReply(
       maxTokens: 400,
       temperature: 0.6,
     });
-    if (res && validateDraft(res.text).ok && /Mvh, Lucas/.test(res.text)) {
+    if (res && validateDraft(res.text).ok && new RegExp(signature.closing.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(res.text)) {
       return { category: cat, classification, suggestedReply: res.text.trim(), source: "ai" };
     }
   }
