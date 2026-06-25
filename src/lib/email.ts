@@ -1,6 +1,5 @@
 import { DEMO_SITES } from "./demos.ts";
-import { defaultSender, formatFrom, getTransporter, isSenderAvailable } from "./senders.ts";
-import type { SenderId } from "./senders.ts";
+import { defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
 // level transport here because we now support two Gmail identities (Lucas
@@ -164,6 +163,10 @@ interface TemplateVars {
   websiteStatus: string;      // "none" | "dead" | "old" | "ok"
   websiteQualityTier: string; // "modern" | "mediocre" | "old" | "dead" | ""
   daysSince: number;
+  /** Which sender identity the signature should be rendered for. 2026-06-26: every
+   *  template now renders the sender-specific signature (name + title + phone) via
+   *  formatSignature() so Charlie gets his own contact details automatically. */
+  sender: SenderId;
 }
 
 function buildHtml(body: string): string {
@@ -223,7 +226,7 @@ function complimentLine(group: string, name: string, city: string): string {
 const TEMPLATES: Record<string, Record<"cold" | "followup", (v: TemplateVars) => EmailTemplate>> = {
   food: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const compliment = complimentLine("food", v.name, v.city);
       const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej ${v.name},
@@ -240,8 +243,7 @@ Det er kun demoer. den fulde version til ${v.name} ville selvfølgelig matche je
 
 Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Lille idé til ${v.name}`,
         text,
@@ -254,11 +256,11 @@ Lucas
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, menu og farver helt.</p>
 <p>Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const demos = pickFoodDemoOrder(v.name, v.branch);
+      const signature = formatSignature(v.sender);      const demos = pickFoodDemoOrder(v.name, v.branch);
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk tænkt lidt videre over hvordan en hjemmeside kunne se ud specifikt til ${v.name}. stemningen, jeres menu, farverne.
@@ -271,8 +273,7 @@ Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og f
 
 Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Lille idé til ${v.name}`,
         text,
@@ -282,16 +283,22 @@ Lucas
 <p>Demoerne til inspiration ligger her:<br>
 → <a href="${demos.primary}">${demos.primary}</a><br>
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
+<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
+=======
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
+<p>${signature.html}</p>`),
+>>>>>>> Stashed changes
       };
     },
   },
 
   craft: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const compliment = complimentLine("craft", v.name, v.city);
       const demo = pickCraftDemo(v.branch);
       const text = `Hej ${v.name},
@@ -307,8 +314,7 @@ Den er kun en demo. en fuld version til ${v.name} ville selvfølgelig bære jere
 
 Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Lille idé til ${v.name}`,
         text,
@@ -320,11 +326,11 @@ Lucas
 → <a href="${demo}">${demo}</a></p>
 <p>Den er kun en demo. en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const demo = pickCraftDemo(v.branch);
+      const signature = formatSignature(v.sender);      const demo = pickCraftDemo(v.branch);
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.
@@ -336,8 +342,7 @@ Hvis I er nysgerrige, kan jeg lave en hurtig skitse til ${v.name} med 2-3 af jer
 
 Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Lille idé til ${v.name}`,
         text,
@@ -346,16 +351,22 @@ Lucas
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.</p>
 <p>Demoen ligger her:<br>
 → <a href="${demo}">${demo}</a></p>
+<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
+=======
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for — så lader jeg jer være.</p>
+<p>${signature.html}</p>`),
+>>>>>>> Stashed changes
       };
     },
   },
 
   photo: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const text = `Hej ${v.name},
 
 Med det øje du har bag kameraet fortjener du en hjemmeside der viser det frem.
@@ -369,8 +380,7 @@ Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig. 
 
 Ring eller skriv hvis du er nysgerrig.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Din hjemmeside, ${v.name}?`,
         text,
@@ -382,11 +392,11 @@ Lucas
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
 <p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig. dit udtryk, dine billeder, din stil.</p>
 <p>Ring eller skriv hvis du er nysgerrig.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const text = `Hej igen ${v.name},
+      const signature = formatSignature(v.sender);      const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. En fotograf-hjemmeside skal vise dit eget arbejde frem. det er det jeg gerne vil hjælpe med.
 
@@ -397,8 +407,7 @@ Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne bille
 
 Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Lille idé til din hjemmeside, ${v.name}`,
         text,
@@ -409,14 +418,14 @@ Lucas
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
 <p>Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
   },
 
   professional: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const text = `Hej ${v.name},
 
 I ${v.city} kender folk jer. Hjemmesiden burde de også gøre.
@@ -430,8 +439,7 @@ Det er kun en demo, men jeg laver en fuld version der passer specifikt til ${v.n
 
 Ring eller skriv hvis du vil høre mere.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Hjemmeside til ${v.name}?`,
         text,
@@ -443,11 +451,11 @@ Lucas
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
 <p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
 <p>Ring eller skriv hvis du vil høre mere.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const text = `Hej igen ${v.name},
+      const signature = formatSignature(v.sender);      const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser. og det første indtryk vejer tungt.
 
@@ -458,8 +466,7 @@ Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset ${v.name}. helt uf
 
 Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Lille idé til ${v.name}`,
         text,
@@ -468,16 +475,22 @@ Lucas
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. For en virksomhed som jeres er hjemmesiden ofte det første kunder ser. og det første indtryk vejer tungt.</p>
 <p>Demoen:<br>
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
+<<<<<<< Updated upstream
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong>. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.</p>
 <p>Lucas<br>+45 23 24 24 82</p>`),
+=======
+<p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong> — helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
+<p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for — så respekterer jeg det.</p>
+<p>${signature.html}</p>`),
+>>>>>>> Stashed changes
       };
     },
   },
 
   beauty: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const compliment = complimentLine("beauty", v.name, v.city);
       const demos = pickBeautyDemoOrder();
       const text = `Hej ${v.name},
@@ -494,8 +507,7 @@ Det er kun demoer. den fulde version til ${v.name} ville selvfølgelig matche je
 
 Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Lille idé til ${v.name}`,
         text,
@@ -508,11 +520,11 @@ Lucas
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, behandlinger og farver helt.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const demos = pickBeautyDemoOrder();
+      const signature = formatSignature(v.sender);      const demos = pickBeautyDemoOrder();
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg tænker stadig at noget visuelt der virkelig fremhæver ${v.name} kunne gøre en forskel for jeres bookings. særligt nu hvor folk googler alt før de bestiller tid.
@@ -525,8 +537,7 @@ Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres 
 
 Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Lille idé til ${v.name}`,
         text,
@@ -538,14 +549,14 @@ Lucas
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
   },
 
   gallery: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const text = `Hej ${v.name},
 
 ${ws}
@@ -557,8 +568,7 @@ Det er en demo til en fotograf. men jeg laver selvfølgelig en version der passe
 
 Ring eller skriv hvis I vil se hvad det kunne se ud som.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Hjemmeside til ${v.name}?`,
         text,
@@ -569,11 +579,11 @@ Lucas
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Det er en demo til en fotograf. men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
 <p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const text = `Hej igen ${v.name},
+      const signature = formatSignature(v.sender);      const text = `Hej igen ${v.name},
 
 Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.
 
@@ -582,8 +592,7 @@ Se min demo:
 
 Ring eller skriv.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Hjemmeside til ${v.name}`,
         text,
@@ -593,14 +602,14 @@ Lucas
 <p>Se min demo:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Ring eller skriv.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
   },
 
   service: {
     cold: (v) => {
-      const ws = websiteLine(v);
+      const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const text = `Hej ${v.name},
 
 ${ws}
@@ -609,8 +618,7 @@ Mange i ${v.city} søger lokale ${v.branchDisplay} online. en god hjemmeside er 
 
 Skriv eller ring hvis du vil se hvad jeg kan lave til jer.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Hjemmeside til ${v.name}?`,
         text,
@@ -619,18 +627,17 @@ Lucas
 <p>${ws}</p>
 <p>Mange i ${v.city} søger lokale ${v.branchDisplay} online. en god hjemmeside er det første de ser.</p>
 <p>Skriv eller ring hvis du vil se hvad jeg kan lave til jer.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
     followup: (v) => {
-      const text = `Hej igen ${v.name},
+      const signature = formatSignature(v.sender);      const text = `Hej igen ${v.name},
 
 Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.
 
 Ring eller skriv.
 
-Lucas
-+45 23 24 24 82`;
+${signature.text}`;
       return {
         subject: `Re: Hjemmeside til ${v.name}`,
         text,
@@ -638,7 +645,7 @@ Lucas
 <p>Hej igen ${v.name},</p>
 <p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.</p>
 <p>Ring eller skriv.</p>
-<p>Lucas<br>+45 23 24 24 82</p>`),
+<p>${signature.html}</p>`),
       };
     },
   },
@@ -647,12 +654,17 @@ Lucas
 export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
-  vars: Omit<TemplateVars, "branchDisplay"> & { leadId: string }
+  vars: Omit<TemplateVars, "branchDisplay"> & { leadId: string; sender?: SenderId }
 ): EmailTemplate {
+  // 2026-06-26: every cold mail now uses the sender-specific signature. Default to
+  // "lucas" so legacy callers (preview routes, admin scripts) keep working without
+  // changes — they'll simply render Lucas's signature. New callers (buildLeadEmail,
+  // sendLeadEmail) always pass the explicit sender.
+  const sender: SenderId = vars.sender ?? "lucas";
   const group = getBranchGroup(branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const branchDisplay = getBranchDisplay(branch);
-  const result = template({ ...vars, branchDisplay });
+  const result = template({ ...vars, branchDisplay, sender });
   return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
 }
 
@@ -680,9 +692,17 @@ export class NoMatchingTemplateError extends Error {
  * would be sent.
  */
 export function buildLeadEmail(
-  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt: string },
+  lead: {
+    id: string; name: string; branch: string; city: string;
+    websiteStatus: string; websiteQualityTier: string; emailSentAt: string;
+    /** Which Gmail identity signs the mail — drives the signature render. */
+    sender?: SenderId;
+  },
   type: "cold" | "followup"
 ): { subject: string; text: string; html: string } {
+  // 2026-06-26: honour the lead's allocated sender so the rendered signature
+  // matches what the engine will actually use when sending.
+  const sender: SenderId = lead.sender ?? defaultSender();
   const daysSince = type === "followup" && lead.emailSentAt
     ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
     : 7;
@@ -694,6 +714,7 @@ export function buildLeadEmail(
     websiteStatus: lead.websiteStatus,
     websiteQualityTier: lead.websiteQualityTier,
     daysSince,
+    sender,
   });
   return { subject: template.subject, text: template.text, html: template.html };
 }
@@ -728,6 +749,7 @@ export async function sendLeadEmail(
     const daysSince = type === "followup" && lead.emailSentAt
       ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
       : 7;
+    const sender: SenderId = lead.sender ?? defaultSender();
     const template = getEmailTemplate(lead.branch, type, {
       leadId: lead.id,
       name: lead.name,
@@ -736,6 +758,7 @@ export async function sendLeadEmail(
       websiteStatus: lead.websiteStatus,
       websiteQualityTier: lead.websiteQualityTier,
       daysSince,
+      sender,
     });
     subject = template.subject;
     text = template.text;
@@ -773,9 +796,18 @@ export async function sendLeadEmail(
 }
 
 export function previewEmailTemplate(
-  lead: { id: string; name: string; branch: string; city: string; websiteStatus: string; websiteQualityTier: string; emailSentAt?: string },
+  lead: {
+    id: string; name: string; branch: string; city: string;
+    websiteStatus: string; websiteQualityTier: string; emailSentAt?: string;
+    /** Which Gmail identity signs the mail — drives the signature render. */
+    sender?: SenderId;
+  },
   type: "cold" | "followup"
 ): EmailTemplate {
+  // 2026-06-26: honour the lead's allocated sender so the preview matches the
+  // actual send. Defaults to lucas so admin/preview flows without a sender keep
+  // rendering Lucas's signature.
+  const sender: SenderId = lead.sender ?? defaultSender();
   const daysSince = type === "followup" && lead.emailSentAt
     ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
     : 7;
@@ -787,5 +819,6 @@ export function previewEmailTemplate(
     websiteStatus: lead.websiteStatus,
     websiteQualityTier: lead.websiteQualityTier,
     daysSince,
+    sender,
   });
 }

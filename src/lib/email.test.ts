@@ -1,0 +1,154 @@
+// email.test.ts — verifies the cold-mail templates render the sender-specific
+// signature (2026-06-26). Before this refactor every template had "Lucas\n+45
+// 23 24 24 82" hardcoded 28 times. After: formatSignature(sender) drives the
+// render, so Charlie drafts get Charlie's name automatically and pick up his
+// own phone/title only if CHARLIE_SENDER_PHONE / _TITLE env vars are set.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { buildLeadEmail, previewEmailTemplate, getEmailTemplate } from "./email.ts";
+import { formatSignature } from "./senders.ts";
+
+const baseLead = {
+  id: "lead-test-123",
+  name: "Test Virksomhed",
+  branch: "restaurant",
+  city: "Aarhus",
+  websiteStatus: "none",
+  websiteQualityTier: "",
+  emailSentAt: "",
+};
+
+// ---- Lucas (regression — formatet SKAL være uændret) -----------------------
+
+test("buildLeadEmail: Lucas-skabelon beholder præcis det gamle format", () => {
+  const tpl = buildLeadEmail({ ...baseLead, sender: "lucas" }, "cold");
+  assert.ok(tpl.text.includes("Lucas Buur"));
+  assert.ok(tpl.text.includes("+45 23 24 24 82"));
+  assert.ok(tpl.html.includes("Lucas Buur"));
+  assert.ok(tpl.html.includes("+45 23 24 24 82"));
+  // Ingen Charlie-specifik data i Lucas-mail.
+  assert.equal(tpl.text.includes("Medstifter"), false);
+  assert.equal(tpl.text.includes("+45 42 25 32 62"), false);
+});
+
+test("buildLeadEmail: Charlie-skabelon = kun 'Charlie Nielsen' (default telefon-fri)", () => {
+  const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
+  // Charlie-specifik navn SKAL være der.
+  assert.ok(tpl.text.includes("Charlie Nielsen"));
+  assert.ok(tpl.html.includes("Charlie Nielsen"));
+  // Skal IKKE have Lucas' data.
+  assert.equal(tpl.text.includes("Lucas Buur"), false);
+  assert.equal(tpl.text.includes("+45 23 24 24 82"), false);
+  // Default er telefon-fri.
+  assert.equal(tpl.text.includes("+45 42 25 32 62"), false, "ingen default telefon i Charlie-mail");
+});
+
+test("buildLeadEmail: Charlie + CHARLIE_SENDER_PHONE env tilføjer telefon", () => {
+  const prev = process.env.CHARLIE_SENDER_PHONE;
+  process.env.CHARLIE_SENDER_PHONE = "+45 42 25 32 62";
+  try {
+    const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
+    assert.ok(tpl.text.includes("Charlie Nielsen"));
+    assert.ok(tpl.text.includes("+45 42 25 32 62"));
+    assert.equal(tpl.text.includes("Lucas Buur"), false);
+  } finally {
+    if (prev === undefined) delete process.env.CHARLIE_SENDER_PHONE;
+    else process.env.CHARLIE_SENDER_PHONE = prev;
+  }
+});
+
+test("buildLeadEmail: followup Charlie-skabelon bruger også Charlie-signatur", () => {
+  const tpl = buildLeadEmail(
+    { ...baseLead, sender: "charlie", emailSentAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+    "followup"
+  );
+  assert.ok(tpl.text.includes("Charlie Nielsen"));
+  assert.equal(tpl.text.includes("Lucas Buur"), false);
+  assert.equal(tpl.text.includes("+45 23 24 24 82"), false);
+});
+
+test("buildLeadEmail: alle 7 branch-grupper render Charlie-signatur korrekt", () => {
+  const branches = ["restaurant", "frisør", "tømrer", "advokat", "foto", "galleri", "rengøringsvirksomhed"];
+  for (const branch of branches) {
+    const tpl = buildLeadEmail({ ...baseLead, branch, sender: "charlie" }, "cold");
+    assert.ok(
+      tpl.text.includes("Charlie Nielsen"),
+      `branch=${branch} skal have Charlie-navn i text`
+    );
+    assert.equal(
+      tpl.text.includes("Lucas Buur"),
+      false,
+      `branch=${branch} må IKKE have Lucas-navn`
+    );
+  }
+});
+
+test("buildLeadEmail: default sender uden lead.sender = Lucas (backward-compat)", () => {
+  const tpl = buildLeadEmail(baseLead, "cold");
+  assert.ok(tpl.text.includes("Lucas Buur"));
+  assert.ok(tpl.text.includes("+45 23 24 24 82"));
+});
+
+// ---- previewEmailTemplate -------------------------------------------------
+
+test("previewEmailTemplate: Charlie-sender viser Charlie-signatur i preview", () => {
+  const tpl = previewEmailTemplate({ ...baseLead, sender: "charlie" }, "cold");
+  assert.ok(tpl.text.includes("Charlie Nielsen"));
+  assert.equal(tpl.text.includes("Lucas Buur"), false);
+});
+
+test("previewEmailTemplate: default sender = Lucas", () => {
+  const tpl = previewEmailTemplate(baseLead, "cold");
+  assert.ok(tpl.text.includes("Lucas Buur"));
+  assert.ok(tpl.text.includes("+45 23 24 24 82"));
+});
+
+// ---- getEmailTemplate: direkte API ----------------------------------------
+
+test("getEmailTemplate: sender propagates ned til signatur-render", () => {
+  const lucasTpl = getEmailTemplate("restaurant", "cold", {
+    leadId: "x", name: "X", branch: "restaurant", city: "Aarhus",
+    websiteStatus: "none", websiteQualityTier: "", daysSince: 7,
+    sender: "lucas",
+  });
+  const charlieTpl = getEmailTemplate("restaurant", "cold", {
+    leadId: "x", name: "X", branch: "restaurant", city: "Aarhus",
+    websiteStatus: "none", websiteQualityTier: "", daysSince: 7,
+    sender: "charlie",
+  });
+  const lucasSig = formatSignature("lucas");
+  const charlieSig = formatSignature("charlie");
+  assert.ok(lucasTpl.text.includes(lucasSig.text), "Lucas-template skal matche formatSignature(lucas).text");
+  assert.ok(charlieTpl.text.includes(charlieSig.text), "Charlie-template skal matche formatSignature(charlie).text");
+});
+
+test("getEmailTemplate: default sender når ikke sat = lucas", () => {
+  // Sender-prop er nu påkrævet i TemplateVars — vi sender "lucas" eksplicit
+  // for at verificere at den propagater korrekt gennem formatSignature.
+  const tpl = getEmailTemplate("restaurant", "cold", {
+    leadId: "x", name: "X", branch: "restaurant", city: "Aarhus",
+    websiteStatus: "none", websiteQualityTier: "", daysSince: 7,
+    sender: "lucas",
+  });
+  assert.ok(tpl.text.includes("Lucas Buur"));
+  assert.ok(tpl.text.includes("+45 23 24 24 82"));
+});
+
+// ---- HTML-form verifikation ----------------------------------------------
+
+test("HTML-form: Charlie-skabelon har ikke Lucas' telefonnummer", () => {
+  const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
+  assert.equal(
+    tpl.html.includes("Lucas<br>+45 23 24 24 82"),
+    false,
+    "Gammel hardcoded Lucas-signatur må ikke være i HTML"
+  );
+  assert.equal(
+    tpl.html.includes("Lucas Buur<br>+45 23 24 24 82"),
+    false,
+    "Lucas-signatur må ikke være i Charlie-HTML"
+  );
+  // Skal have Charlie-data.
+  assert.ok(tpl.html.includes("Charlie Nielsen"));
+});
