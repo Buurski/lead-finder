@@ -71,15 +71,15 @@ const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf
 const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
 
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
-// 2026-06-26 (korrigeret): per bruger-spec skal Charlies default-signatur være
-// HELT TOM bortset fra navnet "Charlie Nielsen" — ingen telefon, ingen titel,
-// ingen tagline. Telefon ("salgselev"-lignende differentiator), titel og tagline
-// er LUCAS' ting; Charlie er "med i virksomheden, lærer det, tager ejerskab"
-// (KnowledgeOS/context/about_charlie.md). Hvis Charlie senere vil have et felt
-// i signaturen, opt-in via CHARLIE_SENDER_PHONE / _TITLE / _TAGLINE env vars.
-const CHARLIE_DEFAULT_PHONE = "";
-const CHARLIE_DEFAULT_TITLE = "";
-const CHARLIE_DEFAULT_TAGLINE = "";
+// 2026-06-26 (gen-restoreret efter tom-forsøg kl 01:51): Charlie ønsker fuld
+// profil igen — titel "Senior Funding Manager" + tagline "Web-design
+// entusiast" + telefon "+45 42 25 32 62". Tom-version var et fejlskud fra
+// kort refactor-window. Alle fire felter stadig env-overridable så Lucas kan
+// justere uden redeploy. scrubCharlieLeak() defense-in-depth mod "salgselev"
+// er stadig aktiv.
+const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";
+const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager";
+const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";
 
 /** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
  *  Returns the first defined value (including ""). The old `||` operator

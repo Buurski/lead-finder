@@ -1,7 +1,8 @@
 // email.test.ts — verify cold-mail templates render sender-specific signature
-// per bruger-spec 2026-06-26:
+// per bruger-spec 2026-06-26 (gen-restoreret):
 //   Lucas: format uændret ("Lucas Buur\n+45 23 24 24 82")
-//   Charlie: telefon-fri, ingen titel, ingen tagline ("Charlie Nielsen")
+//   Charlie: FULD profil ("Charlie Nielsen\nSenior Funding Manager\nWeb-design
+//   entusiast\n+45 42 25 32 62")
 //   "salgselev" ALDRIG i Charlie-mails
 //   HTML-form matcher text-form
 
@@ -91,27 +92,29 @@ test("buildLeadEmail: Lucas-mail ALDRIG 'salgselev' i template-body", () => {
   } finally { clearLucas(); }
 });
 
-// ---- Charlie (bruger-spec 2026-06-26: telefon-fri, ingen salgselev) -------
+// ---- Charlie (bruger-spec 2026-06-26 gen-restoreret: fuld profil) ---------
 
-test("buildLeadEmail: Charlie-skabelon = KUN 'Charlie Nielsen' (telefon-fri)", () => {
+test("buildLeadEmail: Charlie-skabelon = FULD profil (navn + titel + tagline + telefon)", () => {
   setCharlie();
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
     assert.ok(tpl.text.includes("Charlie Nielsen"), "Charlie-navn i text");
     assert.ok(tpl.html.includes("Charlie Nielsen"), "Charlie-navn i html");
-    assert.equal(tpl.text.includes("+45 42 25 32 62"), false);
-    assert.equal(tpl.text.includes("+45 23 24 24 82"), false);
-    assert.equal(/\+\d{2,3}/.test(tpl.text), false,
-      "ingen +XX telefon-mønster i Charlie-mail: " + JSON.stringify(tpl.text));
-    assert.equal(tpl.text.includes("Senior Funding"), false);
-    assert.equal(tpl.text.includes("Web-design"), false);
+    assert.ok(tpl.text.includes("+45 42 25 32 62"), "Charlie-telefon i text");
+    assert.ok(tpl.html.includes("+45 42 25 32 62"), "Charlie-telefon i html");
+    assert.ok(tpl.text.includes("Senior Funding Manager"), "Charlie-titel i text");
+    assert.ok(tpl.html.includes("Senior Funding Manager"), "Charlie-titel i html");
+    assert.ok(tpl.text.includes("Web-design entusiast"), "Charlie-tagline i text");
+    assert.ok(tpl.html.includes("Web-design entusiast"), "Charlie-tagline i html");
+    assert.equal(tpl.text.includes("Lucas Buur"), false, "Ingen Lucas-navn i Charlie-mail");
+    assert.equal(tpl.html.includes("Lucas Buur"), false, "Ingen Lucas-navn i Charlie-html");
+    assert.equal(tpl.text.includes("+45 23 24 24 82"), false, "Ingen Lucas-telefon i Charlie-mail");
     assert.equal(tpl.text.toLowerCase().includes("salgselev"), false);
     assert.equal(tpl.html.toLowerCase().includes("salgselev"), false);
-    assert.equal(tpl.text.includes("Lucas Buur"), false, "Ingen Lucas-navn i Charlie-mail");
   } finally { clearCharlie(); }
 });
 
-test("buildLeadEmail: followup Charlie-skabelon = telefon-fri", () => {
+test("buildLeadEmail: followup Charlie-skabelon = FULD profil", () => {
   setCharlie();
   try {
     const tpl = buildLeadEmail(
@@ -119,13 +122,14 @@ test("buildLeadEmail: followup Charlie-skabelon = telefon-fri", () => {
       "followup"
     );
     assert.ok(tpl.text.includes("Charlie Nielsen"));
-    assert.equal(tpl.text.includes("+45 42 25 32 62"), false);
+    assert.ok(tpl.text.includes("+45 42 25 32 62"));
+    assert.ok(tpl.text.includes("Senior Funding Manager"));
+    assert.ok(tpl.text.includes("Web-design entusiast"));
     assert.equal(tpl.text.includes("Lucas Buur"), false);
-    assert.equal(tpl.text.includes("+45 23 24 24 82"), false);
   } finally { clearCharlie(); }
 });
 
-test("buildLeadEmail: alle 7 branch-grupper render Charlie-specifik (telefon-fri)", () => {
+test("buildLeadEmail: alle 7 branch-grupper render Charlie-specifik (FULD)", () => {
   setCharlie();
   try {
     const branches: Array<{ branch: string }> = [
@@ -141,8 +145,12 @@ test("buildLeadEmail: alle 7 branch-grupper render Charlie-specifik (telefon-fri
       const tpl = buildLeadEmail({ ...baseLead, branch, sender: "charlie" }, "cold");
       assert.ok(tpl.text.includes("Charlie Nielsen"),
         "branch=" + branch + " skal have Charlie-navn");
-      assert.equal(tpl.text.includes("+45 42 25 32 62"), false,
-        "branch=" + branch + " må IKKE have Charlie-telefon");
+      assert.ok(tpl.text.includes("+45 42 25 32 62"),
+        "branch=" + branch + " skal have Charlie-telefon");
+      assert.ok(tpl.text.includes("Senior Funding Manager"),
+        "branch=" + branch + " skal have Charlie-titel");
+      assert.ok(tpl.text.includes("Web-design entusiast"),
+        "branch=" + branch + " skal have Charlie-tagline");
       assert.equal(tpl.text.includes("Lucas Buur"), false,
         "branch=" + branch + " må IKKE have Lucas-navn");
     }
@@ -160,12 +168,14 @@ test("buildLeadEmail: default sender uden lead.sender = Lucas (backward-compat)"
 
 // ---- previewEmailTemplate -------------------------------------------------
 
-test("previewEmailTemplate: Charlie-sender viser Charlie-signatur (telefon-fri)", () => {
+test("previewEmailTemplate: Charlie-sender viser FULD Charlie-signatur", () => {
   setCharlie();
   try {
     const tpl = previewEmailTemplate({ ...baseLead, sender: "charlie" }, "cold");
     assert.ok(tpl.text.includes("Charlie Nielsen"));
-    assert.equal(tpl.text.includes("+45 42 25 32 62"), false);
+    assert.ok(tpl.text.includes("+45 42 25 32 62"));
+    assert.ok(tpl.text.includes("Senior Funding Manager"));
+    assert.ok(tpl.text.includes("Web-design entusiast"));
     assert.equal(tpl.text.includes("Lucas Buur"), false);
   } finally { clearCharlie(); }
 });
@@ -216,14 +226,16 @@ test("getEmailTemplate: default sender når ikke sat = lucas", () => {
 
 // ---- HTML-form verifikation ----------------------------------------------
 
-test("HTML-form: Charlie-skabelon har ikke Lucas-signatur", () => {
+test("HTML-form: Charlie-skabelon har FULD Charlie-profil i <strong>", () => {
   setCharlie();
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
     assert.equal(tpl.html.includes("Lucas<br>+45 23 24 24 82"), false);
     assert.equal(tpl.html.includes("Lucas Buur<br>+45 23 24 24 82"), false);
     assert.ok(tpl.html.includes("Charlie Nielsen"));
-    assert.equal(tpl.html.includes("+45 42 25 32 62"), false);
+    assert.ok(tpl.html.includes("+45 42 25 32 62"));
+    assert.ok(tpl.html.includes("Senior Funding Manager"));
+    assert.ok(tpl.html.includes("Web-design entusiast"));
   } finally { clearCharlie(); }
 });
 

@@ -23,12 +23,25 @@ function stripSignature(body: string): string {
   return t;
 }
 
+/**
+ * Render the signature block for the given sender.
+ *  - Lucas: navn + telefon (hans eksisterende layout — bevarer diff)
+ *  - Charlie: navn + titel + tagline + telefon
+ * Tomme felter filtres væk så vi aldrig emitterer blanke linjer.
+ */
 function signatureFor(id: SenderId, lucasPhone: string, charliePhone: string): string {
-  const phone = id === "lucas" ? lucasPhone : charliePhone;
   if (id === "lucas") {
-    return phone ? `Med venlig hilsen\nLucas Buur\n${phone}` : "Med venlig hilsen\nLucas Buur";
+    const lines = ["Lucas Buur", lucasPhone].map((s) => s.trim()).filter((s) => s.length > 0);
+    return `Med venlig hilsen\n${lines.join("\n")}`;
   }
-  return phone ? `Med venlig hilsen\nCharlie Nielsen\n${phone}` : "Med venlig hilsen\nCharlie Nielsen";
+  // Charlie: name + title + tagline + phone, alle tomme felter fra.
+  const lines = [
+    "Charlie Nielsen",
+    "Senior Funding Manager",
+    "Web-design entusiast",
+    charliePhone,
+  ].map((s) => s.trim()).filter((s) => s.length > 0);
+  return `Med venlig hilsen\n${lines.join("\n")}`;
 }
 
 /** Re-sign a body for the chosen sender — preview only, no DB write. */

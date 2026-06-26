@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
 import { previewSignature } from "@/lib/leads/signature-preview";
 
-// Lucas' sender phone (matches Vercel env LUCAS_SENDER_PHONE — Charlie's is
-// intentionally empty until he provides a number, so his preview shows the
-// sign-off without a phone line). Embedded client-side as defaults; the
-// server (senders.ts) is the source of truth at send time.
+// Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
+// ikke trækker server-only env-vars; serveren (senders.ts) er source of
+// truth ved faktisk afsendelse. Hold disse i sync med LUCAS_SENDER_PHONE /
+// CHARLIE_SENDER_PHONE i Vercel-env.
 const PREVIEW_LUCAS_PHONE = "+45 23 24 24 82";
-const PREVIEW_CHARLIE_PHONE = "";
+const PREVIEW_CHARLIE_PHONE = "+45 42 25 32 62";
 
 // Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
 // has no server-only imports.
