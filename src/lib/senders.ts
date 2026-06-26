@@ -326,12 +326,24 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   }
 
   // Text form: filter out empty fields so we never emit trailing blank lines
-  // ("Charlie\n") when phone is empty. Order: name, title, tagline, phone.
-  // Lucas's existing layout (no title, no tagline) is preserved so the diff
-  // is invisible for him.
+  // ("Charlie\n") when phone is empty.
+  //
+  // 2026-06-26 (midt­ertidig): Charlie bedt om at holde title+tagline på ÉN
+  // linje ("Senior Funding Manager & Web-design entusiast") indtil vi kan
+  // sætte rigtig Gmail-signatur. Lucas's eksisterende layout bevares (hans
+  // title/tagline er tomme, så de filtreres væk og han ser stadig kun
+  // "navn + telefon").
   const trim = (s: string) => s.trim();
-  const textLines = [name, title, tagline, phone].map(trim).filter((s) => s.length > 0);
-  const htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
+  let textLines: string[];
+  let htmlLines: string[];
+  if (senderId === "charlie" && trim(title) && trim(tagline)) {
+    const role = `${trim(title)} & ${trim(tagline)}`;
+    textLines = [trim(name), role, trim(phone)].filter((s) => s.length > 0);
+    htmlLines = [`<strong>${trim(name)}</strong>`, role, trim(phone)].filter((s) => s.length > 0);
+  } else {
+    textLines = [name, title, tagline, phone].map(trim).filter((s) => s.length > 0);
+    htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
+  }
 
   return {
     text: textLines.join("\n"),

@@ -6,7 +6,7 @@
 // Charlie-specifik kontrakt (bruger-spec 2026-06-26, gen-restoreret til FULD):
 //   defaults: phone="+45 42 25 32 62", title="Senior Funding Manager",
 //             tagline="Web-design entusiast"
-//   → signatur = "Charlie Nielsen\nSenior Funding Manager\nWeb-design entusiast\n+45 42 25 32 62"
+//   → signatur = "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62"
 //   closing = "Mvh, Charlie Nielsen"
 //   "salgselev" ALDRIG i Charlie-signatur (Lucas' differentiator) — scrubCharlieLeak()
 //   defense-in-depth: fjerner "salgselev" fra Charlie-felter uanset kilde.
@@ -87,17 +87,16 @@ test("formatSignature: Lucas creds-missing fallback — defaults stadig active",
 // formatSignature: Charlie (BRUGER-SPEC — FULD profil gen-restoreret)
 // ============================================================================
 
-test("formatSignature: Charlie defaults — navn + titel + tagline + telefon", () => {
+test("formatSignature: Charlie defaults — navn + titel+tagline-på-én-linje + telefon", () => {
   withEnv(setCharlieEnv, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
     assert.equal(
       sig.text,
-      "Charlie Nielsen\nSenior Funding Manager\nWeb-design entusiast\n+45 42 25 32 62"
+      "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62"
     );
     assert.equal(sig.closing, "Mvh, Charlie Nielsen");
     assert.ok(sig.html.includes("Charlie Nielsen"));
-    assert.ok(sig.html.includes("Senior Funding Manager"));
-    assert.ok(sig.html.includes("Web-design entusiast"));
+    assert.ok(sig.html.includes("Senior Funding Manager & Web-design entusiast"));
     assert.ok(sig.html.includes("+45 42 25 32 62"));
   });
 });

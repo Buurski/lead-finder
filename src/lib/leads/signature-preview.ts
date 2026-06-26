@@ -26,7 +26,8 @@ function stripSignature(body: string): string {
 /**
  * Render the signature block for the given sender.
  *  - Lucas: navn + telefon (hans eksisterende layout — bevarer diff)
- *  - Charlie: navn + titel + tagline + telefon
+ *  - Charlie: navn + (titel "&" tagline på ÉN linje) + telefon
+ *    (midt­ertidig per Charlie 2026-06-26, indtil rigtig Gmail-signatur er sat)
  * Tomme felter filtres væk så vi aldrig emitterer blanke linjer.
  */
 function signatureFor(id: SenderId, lucasPhone: string, charliePhone: string): string {
@@ -34,13 +35,9 @@ function signatureFor(id: SenderId, lucasPhone: string, charliePhone: string): s
     const lines = ["Lucas Buur", lucasPhone].map((s) => s.trim()).filter((s) => s.length > 0);
     return `Med venlig hilsen\n${lines.join("\n")}`;
   }
-  // Charlie: name + title + tagline + phone, alle tomme felter fra.
-  const lines = [
-    "Charlie Nielsen",
-    "Senior Funding Manager",
-    "Web-design entusiast",
-    charliePhone,
-  ].map((s) => s.trim()).filter((s) => s.length > 0);
+  // Charlie: name + role ("Senior Funding Manager & Web-design entusiast") + phone.
+  const role = ["Senior Funding Manager", "Web-design entusiast"].map((s) => s.trim()).filter((s) => s.length > 0).join(" & ");
+  const lines = ["Charlie Nielsen", role, charliePhone].map((s) => s.trim()).filter((s) => s.length > 0);
   return `Med venlig hilsen\n${lines.join("\n")}`;
 }
 
