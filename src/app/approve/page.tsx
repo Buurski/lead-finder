@@ -508,8 +508,17 @@ function DraftLetter({
 
   // Per-lead afsender-valg. Persists immediately; the send route routes the mail
   // to the matching Gmail account + re-signs the body at send time.
+  //
+  // 2026-06-26: re-sign body CLIENT-SIDE too, så det body-felt brugeren ser i
+  // /godkendelse matcher den nye afsender. Før denne fix blev signaturen i
+  // bunden ikke opdateret når man skiftede afsender (kun top-preview'et
+  // "SLUTNING AF MAILEN" opdaterede sig), hvilket var forvirrende. Body
+  // gemmes først i databasen ved Godkend/Redigér — her opdaterer vi kun den
+  // lokale state så det visuelle er konsistent.
   async function chooseSender(next: "lucas" | "charlie") {
     if (next === sender) return;
+    const resignBody = previewSignature(body, next, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE);
+    setBody(resignBody);
     setSender(next);
     await onAct(draft.id, "set-sender", { sender: next });
   }
