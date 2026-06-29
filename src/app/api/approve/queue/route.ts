@@ -135,8 +135,11 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
+    // FIX A: "Gem rettelse + godkend" skal lande i godkendt-tab'en, ikke
+    // forsvinde som "edited". Status="approved" så den vises under
+    // Godkendt og kan sendes uden yderligere klik.
     const updated = await updateDraft(id, {
-      status: "edited",
+      status: "approved",
       subject: payload.subject,
       body: payload.body,
     });

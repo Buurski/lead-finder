@@ -206,7 +206,7 @@ export default function ApprovePage() {
 
   const visible = useMemo(() => {
     if (filter === "pending") return drafts.filter((d) => d.status === "pending");
-    if (filter === "approved") return drafts.filter((d) => d.status === "approved");
+    if (filter === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
     if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
     return drafts;
   }, [drafts, filter]);
@@ -844,7 +844,7 @@ function DraftLetter({
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>
-          {dirty && !demosDirty && (
+          {dirty && (
             <button onClick={() => act("edit")} disabled={busy !== null} style={btnSecondary}>
               {busy === "edit" ? "Gemmer…" : "Gem rettelse + godkend"}
             </button>
