@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { validateDraft } from "@/lib/draft";
 
-// POST /api/replies/[id]/send-reply — QA-only reply send.
+// POST /api/replies/[leadId]/send-reply — QA-only reply send.
 //
 // Hard rule (matches the build guardrails): this route can send a reply ONLY as
 // a QA copy to Lucas's own inbox (buur.aigro@gmail.com). It never mails a lead
@@ -23,8 +23,8 @@ interface Body {
   confirm?: boolean;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function POST(req: Request, { params }: { params: Promise<{ leadId: string }> }) {
+  const { leadId } = await params;
   let body: Body;
   try {
     body = (await req.json()) as Body;
@@ -70,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     try {
       const t = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD } });
-      await t.sendMail({ from: `Lucas Buur <${process.env.GMAIL_USER}>`, to, subject: body.subject || `Re: ${body.leadName ?? id}`, text: reply });
+      await t.sendMail({ from: `Lucas Buur <${process.env.GMAIL_USER}>`, to, subject: body.subject || `Re: ${body.leadName ?? leadId}`, text: reply });
       return NextResponse.json({ ok: true, sent: true, mode: "live", to });
     } catch (err) {
       return NextResponse.json({ ok: false, message: String(err) }, { status: 200 });
@@ -95,8 +95,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await transporter.sendMail({
       from: `Lucas Buur <${process.env.GMAIL_USER}>`,
       to: QA_RECIPIENT, // hard-locked — never the lead
-      subject: `[QA-SVAR] ${body.subject ?? `Svar til ${body.leadName ?? id}`}`,
-      text: `QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${reply}`,
+      subject: `[QA-SVAR] ${body.subject ?? `Svar til ${body.leadName ?? leadId}`}`,
+      text: `QA-kopi af et foreslået svar (lead ${leadId}). Dette gik IKKE til kunden.\n\n---\n\n${reply}`,
     });
     return NextResponse.json({ ok: true, sent: true, to: QA_RECIPIENT, mode: "qa" });
   } catch (err) {
