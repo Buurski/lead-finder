@@ -28,7 +28,7 @@ export default function Sidebar({
     <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
       <div className="cc-brand">
         <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden style={{ flexShrink: 0 }}>
-          <rect x="8" y="24" width="22" height="28" rx="7" fill="var(--accent)" />
+          <rect x="8" y="24" width="22" height="28" rx="7" fill="var(--accent-ink)" />
           <rect x="35.75" y="25.75" width="18.5" height="24.5" rx="5.5" fill="none" stroke="var(--text)" strokeWidth="3.5" />
           <circle cx="32" cy="12.5" r="5" fill="#C8A97E" />
         </svg>

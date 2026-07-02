@@ -48,6 +48,10 @@ Begge er allerede indlæst i både lead-system og buur-cms via next/font.
 
 1. Mærket skalerer ned til 16 px (favicon-varianten). Brug aldrig
    wordmark-SVG'erne under 24 px højde.
+1b. På lyse UI-flader (creme sidebar) bruges den mørke sage
+   (`--accent-ink`, oklch 42%) til den fyldte blok — ren `--accent` er for
+   lavkontrast (~2.6:1) til små grafiske objekter. Favicon-varianten bruger
+   ink + sage blokke (ikke sage + guld — de smelter sammen ved 16 px).
 2. Én accent pr. flade: sage ER accenten i Command Center. Guld kun til
    prikken og små highlights.
 3. Ingen skygger/gradienter i mærket — flade former, som resten af CC.
