@@ -37,6 +37,12 @@ export interface LocalRankResult {
   total: number;
   topNames: string[];
   note: string;
+  // Google-anmeldelser (social proof) — udfyldes kun når virksomheden selv
+  // blev fundet i søgningen. Alle valgfrie: ældre gemte rapporter har dem ikke.
+  rating?: number | null; // egen stjerne-score, fx 4.6
+  reviews?: number | null; // eget antal anmeldelser
+  top3AvgRating?: number | null; // snit for top-3 i samme søgning
+  top3AvgReviews?: number | null;
 }
 
 export interface BookingAudit {
@@ -226,6 +232,23 @@ export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: Loc
       how: "Opdater jeres Google-profil (åbningstider, billeder, svar på anmeldelser) og bed tilfredse kunder om en anmeldelse. Det flytter placeringen mere end noget andet.",
     });
   }
+  // Anmeldelses-gab: kun når vi kender både egne tal og toppens snit, og
+  // gabet er tydeligt (under halvdelen af toppens antal). Anmeldelser flytter
+  // Maps-placering, så det her er en gør-det-selv-fix ejeren kan starte i dag.
+  if (
+    localRank?.available &&
+    localRank.reviews != null &&
+    localRank.top3AvgReviews != null &&
+    localRank.top3AvgReviews > 20 &&
+    localRank.reviews < localRank.top3AvgReviews / 2
+  ) {
+    out.push({
+      w: 6,
+      title: `I har ${localRank.reviews} Google-anmeldelser — toppen har i snit ${Math.round(localRank.top3AvgReviews)}`,
+      why: "Antal og friskhed af anmeldelser er en af de tungeste faktorer for placeringen i Google Maps, og kunder vælger ofte stedet med flest stjerner og anmeldelser.",
+      how: "Bed jeres gladeste kunder om en anmeldelse — et lille skilt ved kassen eller et link i kvitteringsmailen virker. 2-3 nye om ugen flytter mærkbart på et par måneder.",
+    });
+  }
   const geo = seo.geo;
   if (geo && geo.aiCrawlersAllowed === false) {
     out.push({
@@ -301,6 +324,17 @@ function scoreCircle(label: string, n: number | null | undefined): string {
  * to disk by the CLI runner. Print CSS included so "Gem som PDF" (window.print)
  * gives a clean PDF; deliberately no PDF library.
  */
+// Google-anmeldelser som social proof i rapporten. Dansk talformat (komma).
+function reviewsLine(lr: LocalRankResult): string {
+  if (lr.rating == null || lr.reviews == null) return "";
+  const da = (n: number) => n.toLocaleString("da-DK");
+  let line = `Jeres Google-anmeldelser: <strong>${da(lr.rating)} stjerner (${da(lr.reviews)} anmeldelser)</strong>.`;
+  if (lr.top3AvgRating != null) {
+    line += ` Top-3 i søgningen har i snit ${da(lr.top3AvgRating)} stjerner${lr.top3AvgReviews != null ? ` og ${da(lr.top3AvgReviews)} anmeldelser` : ""}.`;
+  }
+  return `<p>${line}</p>`;
+}
+
 export function renderReportHtml(r: SeoTjekReport, opts: { standalone?: boolean; bookingUrl?: string } = {}): string {
   const s = r.seo;
   const m = s.lighthouse?.scores ?? null;
@@ -334,7 +368,7 @@ export function renderReportHtml(r: SeoTjekReport, opts: { standalone?: boolean;
         r.localRank.position == null
           ? `Jeres side var <strong>ikke blandt de ${r.localRank.total} første</strong> resultater.`
           : `I ligger <strong>nr. ${r.localRank.position} af ${r.localRank.total}</strong>.`
-      }${r.localRank.topNames.length ? ` Toppen lige nu: ${esc(r.localRank.topNames.slice(0, 3).join(", "))}.` : ""}</p>`
+      }${r.localRank.topNames.length ? ` Toppen lige nu: ${esc(r.localRank.topNames.slice(0, 3).join(", "))}.` : ""}</p>${reviewsLine(r.localRank)}`
     : `<p class="muted">Lokal placering ikke målt (${esc(r.localRank?.note || "mangler by/branche")}).</p>`;
 
   const bookingBlock = r.booking.relevant
@@ -424,6 +458,22 @@ ${ps}
 </div>`;
 }
 
+// Direkte booking-link (Cal.com el.lign.) i funnel-mails. Samme env som
+// rapport-siden bruger; tom streng = ingen ekstra linje (CTA'en er så "svar
+// på mailen"), aldrig en død placeholder.
+export function bookingUrlFromEnv(): string | null {
+  const u = (process.env.SEO_TJEK_BOOKING_URL || "").trim();
+  return u || null;
+}
+function bookingLineText(): string {
+  const u = bookingUrlFromEnv();
+  return u ? `\n\nBook direkte i kalenderen (15 min, gratis): ${u}` : "";
+}
+function bookingLineHtml(): string {
+  const u = bookingUrlFromEnv();
+  return u ? ` <a href="${esc(u)}">Book direkte i kalenderen her (15 min, gratis)</a>.` : "";
+}
+
 export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUrl: string): { subject: string; text: string; html: string } {
   const host = hostOfUrl(sub.url);
   const topFix = report.fixes[0];
@@ -441,7 +491,7 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
     ``,
     fixLines,
     ``,
-    `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.`,
+    `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineText()}`,
     ``,
     `Mvh, Lucas`,
     `Buur Web`,
@@ -453,7 +503,7 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
       `Hej,`,
       `Tak fordi du bad om et gratis SEO-tjek af <strong>${esc(host)}</strong>. Rapporten er klar, og du kan også gemme den som PDF.`,
       topFix ? `<strong>Den vigtigste ting at fikse først: ${esc(topFix.title)}.</strong> ${esc(topFix.why)}` : `Din side klarer sig faktisk fint. Rapporten viser detaljerne.`,
-      `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.`,
+      `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineHtml()}`,
       `Mvh, Lucas<br>Buur Web`,
     ],
     "Se din rapport",
@@ -474,7 +524,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
     ``,
     `Rapporten ligger stadig her: ${reportUrl}`,
     ``,
-    `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?`,
+    `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineText()}`,
     ``,
     `Mvh, Lucas`,
     `Buur Web`,
@@ -485,7 +535,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
     [
       `Hej,`,
       `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: <strong>Vida Klinik</strong> scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
-      `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?`,
+      `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineHtml()}`,
       `Mvh, Lucas<br>Buur Web`,
     ],
     "Se rapporten igen",
@@ -535,15 +585,24 @@ export async function runLocalRank(host: string, name: string, branch?: string, 
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "places.displayName,places.websiteUri",
+        "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.rating,places.userRatingCount",
       },
       body: JSON.stringify({ textQuery: query, languageCode: "da", maxResultCount: 20, regionCode: "DK" }),
       signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) return { ...empty(`Places svarede ${res.status}.`), query };
-    const data = (await res.json()) as { places?: Array<{ displayName?: { text?: string }; websiteUri?: string }> };
-    const places = (data.places ?? []).map((p) => ({ title: p.displayName?.text ?? "", website: p.websiteUri ?? null }));
+    const data = (await res.json()) as { places?: Array<{ displayName?: { text?: string }; websiteUri?: string; rating?: number; userRatingCount?: number }> };
+    const places = (data.places ?? []).map((p) => ({
+      title: p.displayName?.text ?? "",
+      website: p.websiteUri ?? null,
+      rating: typeof p.rating === "number" ? p.rating : null,
+      reviews: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+    }));
     const position = matchRank(places, host, name);
+    // Anmeldelses-snit for toppen + egne tal (kun når vi fandt virksomheden).
+    const top3 = places.slice(0, 3).filter((p) => p.rating != null);
+    const avg = (xs: number[]): number | null => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+    const own = position != null ? places[position - 1] : null;
     return {
       available: true,
       query,
@@ -551,6 +610,10 @@ export async function runLocalRank(host: string, name: string, branch?: string, 
       total: places.length,
       topNames: places.slice(0, 3).map((p) => p.title).filter(Boolean),
       note: position == null ? "Ikke fundet i top-resultaterne." : `Placering ${position} af ${places.length}.`,
+      rating: own?.rating ?? null,
+      reviews: own?.reviews ?? null,
+      top3AvgRating: avg(top3.map((p) => p.rating as number)),
+      top3AvgReviews: avg(top3.map((p) => p.reviews ?? 0).filter((n) => n > 0)),
     };
   } catch (err) {
     return { ...empty(`Places-kald fejlede: ${String(err).slice(0, 80)}`), query };

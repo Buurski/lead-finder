@@ -109,6 +109,18 @@ const seoResult = {
   check("healthy site -> <=3 fixes, no crash", Array.isArray(fixes) && fixes.length <= 3);
 }
 
+{
+  // review-gap fix: fires only with clear gap vs top-3 (own < half of avg, avg > 20).
+  // Healthy site so the w=6 fix isn't squeezed out of the top-3 by perf/schema.
+  const healthySeo = { ...seoResult, schema: { found: true, types: ["Restaurant"], count: 1 }, geo: { ...seoResult.geo, llmsTxt: true, aiCrawlersAllowed: true, blockedBots: [] }, lighthouse: { available: true, scores: { performance: 95, accessibility: 95, bestPractices: 95, seo: 95 }, note: "" }, onPage: { score: 100, checks: [] } };
+  const lrGap = { available: true, query: "café i Ikast", position: 2, total: 20, topNames: ["A"], note: "", rating: 4.1, reviews: 12, top3AvgRating: 4.7, top3AvgReviews: 120 };
+  const withGap = st.plainFixes(healthySeo, { relevant: false, found: false, system: null, note: "" }, lrGap);
+  check("review-gap fix fires", withGap.some((f) => /anmeldelser/i.test(f.title)));
+  const lrOk = { ...lrGap, reviews: 90 };
+  const noGap = st.plainFixes(healthySeo, { relevant: false, found: false, system: null, note: "" }, lrOk);
+  check("review-gap fix silent when close to top", !noGap.some((f) => /anmeldelser.*toppen|toppen.*anmeldelser/i.test(f.title)));
+}
+
 // ---- renderReportHtml -----------------------------------------------------
 const submission = { id: "test-1", url: "https://x.dk", email: "a@b.dk", consent: true, consentAt: "2026-07-02T08:00:00Z", createdAt: "2026-07-02T08:00:00Z" };
 const report = {
@@ -128,6 +140,11 @@ const report = {
   check("report: fixes rendered", html.includes("Din side er langsom på mobil"));
   check("report: no raw email leaked", !html.includes("a@b.dk"));
   check("report: escapes host", st.renderReportHtml({ ...report, host: "<script>x</script>" }).includes("&lt;script&gt;") );
+  const withReviews = { ...report, localRank: { ...report.localRank, rating: 4.6, reviews: 87, top3AvgRating: 4.8, top3AvgReviews: 214 } };
+  const rhtml = st.renderReportHtml(withReviews);
+  check("report: own reviews shown (da-DK format)", rhtml.includes("4,6 stjerner") && rhtml.includes("87 anmeldelser"));
+  check("report: top3 avg shown", rhtml.includes("4,8") && rhtml.includes("214"));
+  check("report: reviews line absent when no data", !st.renderReportHtml(report).includes("Jeres Google-anmeldelser"));
 }
 
 // ---- mails ----------------------------------------------------------------
