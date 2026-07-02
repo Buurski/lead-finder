@@ -76,11 +76,15 @@ function norm(s: string): string {
 
 function checkAuth(req: Request): boolean {
   const expected = process.env.ADMIN_KEY || "";
+  const cronSecret = process.env.CRON_SECRET || "";
+  const h = req.headers.get("authorization") || "";
+  const bearer = h.startsWith("Bearer ") ? h.slice(7) : "";
+  // Vercel Cron injects "Bearer CRON_SECRET" — accept it so this route can be a cron (2026-06-22).
+  if (cronSecret && bearer === cronSecret) return true;
   if (!expected) return true;
   const url = new URL(req.url);
   if ((url.searchParams.get("key") || "") === expected) return true;
-  const h = req.headers.get("authorization") || "";
-  return h.startsWith("Bearer ") && h.slice(7) === expected;
+  return bearer === expected;
 }
 
 async function fetchLeadgenItems(): Promise<LeadgenItem[]> {
@@ -155,12 +159,21 @@ export async function GET(req: Request) {
     if (it.name && it.website) siteByName.set(norm(it.name), it.website);
   }
 
-  // Target drafts: live (not sent/rejected), no usable recipientEmail yet, not a
+  // Target drafts: any non-sent draft without a usable recipientEmail, not a
   // hard-excluded medical branch (those never send anyway).
+  //
+  // Status rules (2026-06-23 fix):
+  //   - sent      → skip (already sent)
+  //   - rejected  → STILL process if no usable email (cleanup-rejected leads
+  //                 can have email found later; manually-rejected leads just
+  //                 have email filled, send will skip them via status check)
+  //   - approved / edited / pending / cleanup-rejected → process
+  //
+  // This means `rejected` is no longer a hard skip — only "sent" is. Send-route
+  // already blocks status === "rejected" from sending, so this is safe.
   const targets = queue.filter(
     (d) =>
       d.status !== "sent" &&
-      d.status !== "rejected" &&
       !hasUsableEmail(d.recipientEmail) &&
       !isExcludedBranch(d.branch, d.name),
   );

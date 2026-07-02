@@ -8,12 +8,25 @@
 // inbox-live scan BOTH accounts so replies to either side surface in the
 // "Svar" tab.
 //
+// 2026-06-26: also became the source of truth for the *display signature*
+// (displayName + title + tagline + phone). Previously the signature was
+// hardcoded in 28+ places in email.ts and 3 places in draft.ts. Now every
+// cold mail renders the sender's signature through formatSignature(senderId)
+// so Charlie and Lucas each get their own contact details automatically.
+//
+// 2026-06-26 (later): added `tagline` for Charlie's "Web-design entusiast"
+// line. Charlie's profile is Senior Funding Manager (title) + Web-design
+// entusiast (tagline). Both fall back to env vars, both default empty for
+// Lucas so his layout stays "navn + telefon, intet andet".
+//
 // Hard rules in this file:
 //   - If a sender's credentials are missing, that sender is unavailable.
 //     pickHybridSender / getTransporter fall back to the other one rather than
 //     throw — losing a sender for a deploy blip shouldn't kill the whole run.
 //   - All sender resolution goes through this module. Don't reach for
 //     process.env.GMAIL_USER directly in lib/* or app/api/* from here on.
+//   - "salgselev" is Lucas' differentiator and must NEVER appear on Charlie.
+//     Both default + env paths for Charlie filter this string (see below).
 //
 // Strip-safe (no Next imports) so node tooling (CLI engine) can use it.
 
@@ -27,10 +40,70 @@ export interface SenderCreds {
   appPassword: string;
   /** Display name used in the From: header (e.g. "Lucas Buur"). */
   displayName: string;
+  /** Phone number shown in the email signature (e.g. "+45 23 24 24 82"). */
+  phone: string;
+  /** Optional title shown above the phone number ("Senior Funding Manager" / ""). */
+  title: string;
+  /** Optional tagline shown between title and phone ("Web-design entusiast" / "").
+   *  Added 2026-06-26 for Charlie's web-design passion. Default empty for both
+   *  senders; opt-in via *_SENDER_TAGLINE env var. */
+  tagline: string;
 }
 
+// ---- Per-sender defaults -------------------------------------------------
+// Phone numbers, titles and taglines are kept here as *defaults* that can be
+// overridden by env vars. Hard rules:
+//
+//  - No field is ever hardcoded in email templates — everything flows through
+//    formatSignature(senderId) below.
+//  - Lucas keeps his existing layout ("Lucas\n+45 23 24 24 82", no title, no
+//    tagline). LUCAS_SENDER_PHONE is what Vercel currently has set;
+//    LUCAS_PHONE is accepted as a legacy alias. Same for title/tagline.
+//  - Charlie's signature is: navn + titel ("Senior Funding Manager") +
+//    tagline ("Web-design entusiast") + telefon ("+45 42 25 32 62"). All four
+//    fields are env-overridable so the team can tweak without a redeploy.
+//  - "salgselev" is filtered out of Charlie's signature at the formatSignature
+//    boundary even if some env var accidentally sets it. Lucas' tag/title
+//    paths do NOT filter — that's his differentiator by design.
 const LUCAS_DEFAULT_NAME = "Lucas Buur";
+const LUCAS_DEFAULT_PHONE = "+45 23 24 24 82";
+const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf)
+const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
+
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
+// 2026-06-26 (gen-restoreret efter tom-forsøg kl 01:51): Charlie ønsker fuld
+// profil igen — titel "Senior Funding Manager" + tagline "Web-design
+// entusiast" + telefon "+45 42 25 32 62". Tom-version var et fejlskud fra
+// kort refactor-window. Alle fire felter stadig env-overridable så Lucas kan
+// justere uden redeploy. scrubCharlieLeak() defense-in-depth mod "salgselev"
+// er stadig aktiv.
+const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";
+const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager";
+const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";
+
+/** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
+ *  Returns the first defined value (including ""). The old `||` operator
+ *  collapsed empty string into the fallback, breaking the opt-out semantics
+ *  for tagline. Hoisted to module level so both fromEnv() (line ~95) and
+ *  formatSignature() (line ~300) can share it. */
+function pickEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+}
+
+
+/**
+ * Defense-in-depth: scrub "salgselev" ud af Charlie-signatur-felter. Default
+ * paths inkluderer aldrig "salgselev", men en stray env-var kunne. Lucas'
+ * signatur røres ikke.
+ */
+function scrubCharlieLeak(value: string): string {
+  if (!value) return value;
+  return value.replace(/salgselev/gi, "").trim();
+}
 
 function fromEnv(): Record<SenderId, SenderCreds | null> {
   const lucasEmail = process.env.GMAIL_USER;
@@ -38,12 +111,32 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
   const charlieEmail = process.env.CHARLIE_GMAIL_USER;
   const charliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
 
+  // 2026-06-26: use pickEnv() instead of || so that an empty env var means
+  // "explicit opt-out" — the field is stored as "" in creds and formatSignature
+  // will filter the line out. The old || operator collapsed "" into the
+  // in-code default, breaking the opt-out test.
   return {
     lucas: lucasEmail && lucasPw
-      ? { id: "lucas", email: lucasEmail, appPassword: lucasPw, displayName: LUCAS_DEFAULT_NAME }
+      ? {
+          id: "lucas",
+          email: lucasEmail,
+          appPassword: lucasPw,
+          displayName: LUCAS_DEFAULT_NAME,
+          phone: pickEnv("LUCAS_SENDER_PHONE", "LUCAS_PHONE") ?? LUCAS_DEFAULT_PHONE,
+          title: pickEnv("LUCAS_SENDER_TITLE", "LUCAS_TITLE") ?? LUCAS_DEFAULT_TITLE,
+          tagline: pickEnv("LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE") ?? LUCAS_DEFAULT_TAGLINE,
+        }
       : null,
     charlie: charlieEmail && charliePw
-      ? { id: "charlie", email: charlieEmail, appPassword: charliePw, displayName: CHARLIE_DEFAULT_NAME }
+      ? {
+          id: "charlie",
+          email: charlieEmail,
+          appPassword: charliePw,
+          displayName: CHARLIE_DEFAULT_NAME,
+          phone: pickEnv("CHARLIE_SENDER_PHONE", "CHARLIE_PHONE") ?? CHARLIE_DEFAULT_PHONE,
+          title: pickEnv("CHARLIE_SENDER_TITLE", "CHARLIE_TITLE") ?? CHARLIE_DEFAULT_TITLE,
+          tagline: pickEnv("CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE") ?? CHARLIE_DEFAULT_TAGLINE,
+        }
       : null,
   };
 }
@@ -169,31 +262,109 @@ export function formatFrom(senderId: SenderId): string {
   return `${creds.displayName} <${creds.email}>`;
 }
 
-// ---- Signature rewrite (manual sender override, 2026-06-19) ----------------
-// Drafts are composed with a "Mvh, Lucas" sign-off. When the actual sender is
-// Charlie (engine allocation OR the manual /godkendelse toggle), the body must
-// be re-signed so the letter matches who sends it — otherwise a mail from
-// Charlie's account still says "Mvh, Lucas". Voice-safe (no contact CTA / kr).
-// Optional phone via {LUCAS,CHARLIE}_SENDER_PHONE.
+// ---- Signature rendering --------------------------------------------------
+// 2026-06-26: the cold-mail signature used to be hardcoded "Lucas\n+45 23 24
+// 24 82" in 28+ places in email.ts. It is now a single function so Charlie
+// automatically gets his own name + phone + title, and the runtime can be
+// reconfigured via env (LUCAS_SENDER_PHONE / LUCAS_SENDER_TITLE /
+// CHARLIE_SENDER_PHONE / CHARLIE_SENDER_TITLE) without touching code.
+// Legacy names without _SENDER_ (LUCAS_PHONE / LUCAS_TITLE / CHARLIE_PHONE /
+// CHARLIE_TITLE) are accepted as aliases for backwards compatibility.
+//
+// 2026-06-26 (later): added `tagline` for Charlie ("Web-design entusiast").
+// Same env override pattern (LUCAS_SENDER_TAGLINE / CHARLIE_SENDER_TAGLINE
+// with legacy _TAGLINE aliases).
+//
+// formatSignature returns BOTH the plain-text and HTML rendering of the
+// signature block. Email templates interpolate the relevant form. If the
+// sender creds are not configured we fall back to the per-sender defaults.
+// Order: navn, titel, tagline, telefon — alle tomme felter filtreres væk så
+// vi aldrig emitterer "Charlie\n\n\n+45 42…" (med blanke linjer).
 
-/** The closing sign-off for a sender. */
-export function signatureFor(id: SenderId): string {
-  if (id === "charlie") {
-    const phone = (process.env.CHARLIE_SENDER_PHONE || "").trim();
-    return phone ? `Mvh, Charlie\n${phone}` : "Mvh, Charlie";
-  }
-  const phone = (process.env.LUCAS_SENDER_PHONE || "").trim();
-  return phone ? `Mvh, Lucas\n${phone}` : "Mvh, Lucas";
+export interface Signature {
+  /** Plain-text signatur, linjer adskilt af "\n". Eksempel Lucas:
+   *  "Lucas Buur\n+45 23 24 24 82". Eksempel Charlie:
+   *  "Charlie Nielsen\nSenior Funding Manager\nWeb-design entusiast\n+45 42 25 32 62". */
+  text: string;
+  /** HTML-form: hver linje adskilt af "<br>", navn i <strong>. */
+  html: string;
+  /** "Mvh, Lucas" / "Mvh, Charlie Nielsen" — drop-in for LLM-promptens afslutning. */
+  closing: string;
 }
 
-// Strip whatever trailing Lucas/Charlie sign-off the body has, so we can re-sign
-// for the chosen sender. Covers "Mvh, Lucas", "Lucas\n+45 …" and bare "Lucas".
+export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds): Signature {
+  const creds = credsOverride ?? getSenderCreds(senderId);
+  // Layered lookup: creds (Gmail-loaded) -> env vars (per-sender _SENDER_ prefix,
+  // legacy aliases without _SENDER_) -> in-code defaults. The env vars are
+  // consulted even when creds is null so tests/dry-run can still tweak the
+  // signature without provisioning a full Gmail account.
+  const envPhone = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || "")
+    : (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || "");
+  const envTitle = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || "")
+    : (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || "");
+  const envTagline = senderId === "lucas"
+    ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
+    : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
+  const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
+  const senderEnvPhone = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_PHONE", "LUCAS_PHONE"] : ["CHARLIE_SENDER_PHONE", "CHARLIE_PHONE"]));
+  const senderEnvTitle = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TITLE", "LUCAS_TITLE"] : ["CHARLIE_SENDER_TITLE", "CHARLIE_TITLE"]));
+  const senderEnvTagline = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE"] : ["CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE"]));
+
+  let phone = creds?.phone ?? senderEnvPhone ?? (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
+  let title = creds?.title ?? senderEnvTitle ?? (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
+  let tagline = creds?.tagline ?? senderEnvTagline ?? (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
+
+  // Defense-in-depth: scrub "salgselev" out of Charlie's signature no matter
+  // where it came from. The default paths never include it, but a stray env
+  // var could.
+  if (senderId === "charlie") {
+    phone = scrubCharlieLeak(phone);
+    title = scrubCharlieLeak(title);
+    tagline = scrubCharlieLeak(tagline);
+  }
+
+  // Text form: filter out empty fields so we never emit trailing blank lines
+  // ("Charlie\n") when phone is empty.
+  //
+  // 2026-06-26 (midt­ertidig): Charlie bedt om at holde title+tagline på ÉN
+  // linje ("Senior Funding Manager & Web-design entusiast") indtil vi kan
+  // sætte rigtig Gmail-signatur. Lucas's eksisterende layout bevares (hans
+  // title/tagline er tomme, så de filtreres væk og han ser stadig kun
+  // "navn + telefon").
+  const trim = (s: string) => s.trim();
+  let textLines: string[];
+  let htmlLines: string[];
+  if (senderId === "charlie" && trim(title) && trim(tagline)) {
+    const role = `${trim(title)} & ${trim(tagline)}`;
+    textLines = [trim(name), role, trim(phone)].filter((s) => s.length > 0);
+    htmlLines = [`<strong>${trim(name)}</strong>`, role, trim(phone)].filter((s) => s.length > 0);
+  } else {
+    textLines = [name, title, tagline, phone].map(trim).filter((s) => s.length > 0);
+    htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
+  }
+
+  return {
+    text: textLines.join("\n"),
+    html: htmlLines.join("<br>"),
+    closing: `Mvh, ${trim(name)}`,
+  };
+}
+
+// ---- Legacy applySignature helper ----------------------------------------
+// 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send
+// to re-sign drafts when the manual override flips sender mid-batch). Uses
+// the layered formatSignature() under the hood so it picks up the same env
+// vars and per-sender defaults.
+
+/** Strip any trailing sign-off from a body so we can re-sign for the chosen sender. */
 export function stripSignature(body: string): string {
   let t = (body || "").replace(/\s+$/, "");
   const patterns: RegExp[] = [
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n+\+?[\d\s]{6,})?\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
+    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n\+?[\d\s]{6,})?\s*$/i,
+    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
   ];
   for (const re of patterns) {
@@ -204,5 +375,6 @@ export function stripSignature(body: string): string {
 
 /** Re-sign a body for the chosen sender. */
 export function applySignature(body: string, id: SenderId): string {
-  return `${stripSignature(body)}\n\n${signatureFor(id)}`;
+  const sig = formatSignature(id);
+  return `${stripSignature(body)}\n\n${sig.text}`;
 }

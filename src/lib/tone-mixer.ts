@@ -33,7 +33,7 @@ export interface MixLead {
   achievements?: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
 
-export type OpenerKind = "achievement" | "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
+export type OpenerKind = "achievement" | "lokation" | "quote" | "tech-problem" | "review-volume" | "detail" | "demo-hook" | "brand";
 
 export interface ToneMix {
   comboId: string;
@@ -98,8 +98,23 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "achievement",
       text: pick(seed + "ach", [
-        `først og fremmest — ${achievement} er altså ret stort. Tillykke. Men det er også ærlig talt netop derfor jeg skriver: når man er på det niveau fagligt, så er hjemmesiden tit det første sted nye kunder møder en.`,
-        `tillykke med ${achievement} — det er ærlig talt netop derfor jeg skriver. Når man har leveret på det niveau, fortjener hjemmesiden samme finish.`,
+        `først og fremmest: ${achievement} er altså ret stort. Tillykke. Men det er også ærlig talt netop derfor jeg skriver, for når man er på det niveau fagligt, så er hjemmesiden tit det første sted nye kunder møder en.`,
+        `tillykke med ${achievement}. Det er ærlig talt netop derfor jeg skriver. Når man har leveret på det niveau, fortjener hjemmesiden samme finish.`,
+      ]),
+    });
+  }
+
+  // 0b. Lokation + branche — high-priority fallback for leads WITHOUT
+  //     review/achievement data but WITH branch+city. Reads as personal
+  //     (\"For en permanent makeup i Faaborg…\") instead of generic
+  //     (\"Med jeres kundebase…\").
+  if (lead.branch && lead.city && (lead.branch + " " + lead.city).trim().length > 4) {
+    out.push({
+      kind: "lokation",
+      text: pick(seed + "l", [
+        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
       ]),
     });
   }
@@ -112,9 +127,9 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
       out.push({
         kind: "quote",
         text: pick(seed + "q", [
-          `jeg faldt over en af jeres anmeldelser, hvor en kunde skrev "${q}" — sådan noget kan man ikke købe sig til.`,
-          `en af jeres anmeldelser fangede mig: en kunde skrev "${q}".`,
-        ]),
+        `jeg faldt over en af jeres anmeldelser, hvor en kunde skrev "${q}". Sådan noget kan man ikke købe sig til.`,
+        `en af jeres anmeldelser fangede mig: en kunde skrev "${q}".`,
+      ]),
       });
     }
   }
@@ -125,16 +140,16 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "tech-problem",
       text: pick(seed + "t", [
-        `jeg ledte efter jer online og kunne faktisk ikke finde en rigtig hjemmeside — kun en Facebook-side. Det betyder at dem der googler jer i ${city}, ofte lander et tilfældigt sted.`,
-        `det jeg lagde mærke til er, at I ikke rigtig har en hjemmeside endnu — så når nogen googler jer, er der ikke noget at lande på.`,
+        `jeg ledte efter jer online og kunne faktisk ikke finde en rigtig hjemmeside, kun en Facebook-side. Det betyder at dem der googler jer i ${city}, ofte lander et tilfældigt sted.`,
+        `det jeg lagde mærke til er, at I ikke rigtig har en hjemmeside endnu, så når nogen googler jer, er der ikke noget at lande på.`,
       ]),
     });
   } else if (ws === "old") {
     out.push({
       kind: "tech-problem",
       text: pick(seed + "t", [
-        `jeg kiggede på jeres side, og den virker til at være et par år gammel — det er nok ikke helt det første indtryk I selv ville vælge i dag.`,
-        `jeres side fungerer, men den bærer lidt præg af at have nogle år på bagen — og det er tit dér nye kunder danner deres første indtryk.`,
+        `jeg kiggede på jeres side, og den virker til at være et par år gammel. Det er nok ikke helt det første indtryk I selv ville vælge i dag.`,
+        `jeres side fungerer, men den bærer lidt præg af at have nogle år på bagen, og det er tit dér nye kunder danner deres første indtryk.`,
       ]),
     });
   }
@@ -144,8 +159,8 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "review-volume",
       text: pick(seed + "r", [
-        `jeg sad og kiggede på jer i ${city}, og ${lead.reviewsCount} anmeldelser — det er folk der kommer tilbage.`,
-        `${lead.reviewsCount} anmeldelser for en ${lead.branch || "virksomhed"} af jeres størrelse er ærlig talt flot — det siger noget om jer.`,
+        `jeg sad og kiggede på jer i ${city}, og ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
+        `${lead.reviewsCount} anmeldelser for en ${lead.branch || "virksomhed"} af jeres størrelse er ærlig talt flot. Det siger noget om jer.`,
       ]),
     });
   }
@@ -155,20 +170,40 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "detail",
       text: pick(seed + "d", [
-        `jeg lagde mærke til jeres ${cleanHook(hook)} — det ser virkelig stærkt ud.`,
+        `jeg lagde mærke til jeres ${cleanHook(hook)}. Det ser virkelig stærkt ud.`,
         `jeres ${cleanHook(hook)} fangede mig, og jeg blev nysgerrig.`,
       ]),
     });
   }
 
-  // 5. Demo-krog — always available, low-risk, neutral.
+  // 5. Anerkendelse + demo-krog — altid tilgængelig, anerkender kundens arbejde
+  //    FØRST og linker til demo bagefter. Varierer kraftigt så det ikke lyder
+  //    som om alle mails er skåret over samme skabelon.
   out.push({
     kind: "demo-hook",
     text: pick(seed + "h", [
-      `jeg kom til at lave en lille demo med jer i tankerne — helt uden forventning.`,
-      `jeg har bygget en lille demo som et eksempel på hvordan jeres kunne se ud — uden nogen forventning.`,
+      `Med det ry og de anmeldelser I har bygget op, fortjener I et website der matcher niveauet. Et der henter nye kunder ind, frem for bare at vise de nuværende vej.`,
+      `Det I har bygget op er tydeligvis noget særligt, og det fortjener en side der viser det ordentligt frem til nye kunder der ikke kender jer endnu.`,
+      `Jeg lagde mærke til jeres arbejde, og tænkte at det kunne være fedt at give jer en hjemmeside der gør det samme som I gør: leverer kvalitet fra første klik.`,
+      `Med jeres kundebase giver det god mening med en side der gør et stærkere første indtryk, så nye kunder ikke bare forsvinder igen.`,
+      `Det man møder hos jer online bør matche den kvalitet I leverer IRL. Det er faktisk det der har fået mig til at skrive.`,
     ]),
   });
+
+  // 5b. Lokation + branche — fallback for leads WITHOUT reviews/achievements/
+  //     hooks/websiteStatus. Use the lead's own branch + city instead of
+  //     generic "kundebase". Avoids the "Med jeres kundebase…" being used
+  //     twice (opener + value-line) when nothing else is available.
+  if (lead.branch && lead.city && (lead.branch + " " + lead.city).trim().length > 4) {
+    out.push({
+      kind: "brand", // reuses brand opener kind for now
+      text: pick(seed + "l", [
+        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
+      ]),
+    });
+  }
 
   // 6. Brand-tolkning — neutral, safe across every branch (no "projekter"/"menu").
   out.push({
@@ -185,32 +220,41 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
 export function mixForLead(lead: MixLead): ToneMix {
   const seed = lead.name;
   const openers = eligibleOpeners(lead);
-  // Achievement is the analysis's #1 opener — always use it when present.
-  // Otherwise deterministic hash-pick among the eligible openers (spreads a batch).
+  // Priority: achievement > lokation (branch+city) > others. Achievement
+  // is the analysis's #1 opener. Lokation is preferred over demo-hook for
+  // hooks-less leads (reads as personal). Demo-hook is the universal fallback.
   const ach = openers.find((o) => o.kind === "achievement");
-  const chosen = ach ?? openers[hash(seed + "open") % openers.length];
+  const lok = openers.find((o) => o.kind === "lokation");
+  let chosen;
+  if (ach) {
+    chosen = ach;
+  } else if (lok) {
+    chosen = lok;
+  } else {
+    chosen = openers[hash(seed + "open") % openers.length];
+  }
 
   // The salgselev-hobby disclosure — the differentiator. Always present.
   // The salgselev-hobby disclosure (the differentiator). No "pris"/"gratis" — the
   // voice-guide bans money words in cold mail, so we keep the humble, fair tone
   // without the literal word.
   const disclosure = pick(seed + "i", [
-    `Jeg laver hjemmesider som hobby ved siden af min salgselev-plads, så det er helt uden det store setup — bare mig, ærligt og ligetil.`,
+    `Jeg laver hjemmesider som hobby ved siden af min salgselev-plads, så det er helt uden det store setup. Bare mig, ærligt og ligetil.`,
     `Det er mig der sidder og bygger dem, ved siden af min salgselev-plads. Ingen bureau-pakke, bare en ærlig snak.`,
-    `Jeg bygger sider som hobby ved siden af mit arbejde som salgselev — så det er afslappet og ligetil.`,
+    `Jeg bygger sider som hobby ved siden af mit arbejde som salgselev, så det er afslappet og ligetil.`,
   ]);
 
   const demoIntro = pick(seed + "dm", [
     `Jeg lavede et par demoer I kan kigge på:`,
-    `Sådan kunne det fx se ud — kig endelig:`,
+    `Sådan kunne det fx se ud, kig endelig:`,
     `Bedst hvis I selv kigger:`,
   ]);
 
   const closing = pick(seed + "c", [
-    `Sig endelig til, hvis I vil se en version til jer — ellers ingen skade sket.`,
-    `Bare en idé — skriv gerne hvis det lyder interessant.`,
+    `Sig endelig til, hvis I vil se en version til jer. Ellers ingen skade sket.`,
+    `Bare en idé. Skriv gerne hvis det lyder interessant.`,
     `Helt uden forventning. Skriv hvis I har lyst, ellers intet problem.`,
-    `Skriv endelig hvis det kunne være noget — og hvis ikke, så ingen skade sket.`,
+    `Skriv endelig hvis det kunne være noget, og hvis ikke, så ingen skade sket.`,
   ]);
 
   return {

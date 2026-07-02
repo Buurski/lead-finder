@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
+import { previewSignature } from "@/lib/leads/signature-preview";
+
+// Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
+// ikke trækker server-only env-vars; serveren (senders.ts) er source of
+// truth ved faktisk afsendelse. Hold disse i sync med LUCAS_SENDER_PHONE /
+// CHARLIE_SENDER_PHONE i Vercel-env.
+const PREVIEW_LUCAS_PHONE = "+45 23 24 24 82";
+const PREVIEW_CHARLIE_PHONE = "+45 42 25 32 62";
 
 // Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
 // has no server-only imports.
@@ -198,7 +206,7 @@ export default function ApprovePage() {
 
   const visible = useMemo(() => {
     if (filter === "pending") return drafts.filter((d) => d.status === "pending");
-    if (filter === "approved") return drafts.filter((d) => d.status === "approved");
+    if (filter === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
     if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
     return drafts;
   }, [drafts, filter]);
@@ -500,8 +508,17 @@ function DraftLetter({
 
   // Per-lead afsender-valg. Persists immediately; the send route routes the mail
   // to the matching Gmail account + re-signs the body at send time.
+  //
+  // 2026-06-26: re-sign body CLIENT-SIDE too, så det body-felt brugeren ser i
+  // /godkendelse matcher den nye afsender. Før denne fix blev signaturen i
+  // bunden ikke opdateret når man skiftede afsender (kun top-preview'et
+  // "SLUTNING AF MAILEN" opdaterede sig), hvilket var forvirrende. Body
+  // gemmes først i databasen ved Godkend/Redigér — her opdaterer vi kun den
+  // lokale state så det visuelle er konsistent.
   async function chooseSender(next: "lucas" | "charlie") {
     if (next === sender) return;
+    const resignBody = previewSignature(body, next, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE);
+    setBody(resignBody);
     setSender(next);
     await onAct(draft.id, "set-sender", { sender: next });
   }
@@ -667,6 +684,48 @@ function DraftLetter({
         </div>
       )}
 
+      {/* sign-off preview — what the email's last lines will look like with the
+          chosen sender. Updates live when Lucas/Charlie is toggled, so the
+          preview always matches what the send route will emit. (2026-06-22) */}
+      <div
+        style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          background: "var(--bg-2)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "var(--text-muted)",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: "var(--text-dim)",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            marginBottom: 4,
+          }}
+        >
+          Slutning af mailen — sendes som {sender === "lucas" ? "Lucas" : "Charlie"}
+        </div>
+        <pre
+          style={{
+            margin: 0,
+            fontFamily: "inherit",
+            whiteSpace: "pre-wrap",
+            color: "var(--text)",
+            lineHeight: 1.5,
+          }}
+        >
+          {previewSignature(body, sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE)
+            .split("\n")
+            .slice(-3)
+            .join("\n")}
+        </pre>
+      </div>
+
       {/* hooks */}
       {draft.hooks.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
@@ -785,7 +844,7 @@ function DraftLetter({
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>
-          {dirty && !demosDirty && (
+          {dirty && (
             <button onClick={() => act("edit")} disabled={busy !== null} style={btnSecondary}>
               {busy === "edit" ? "Gemmer…" : "Gem rettelse + godkend"}
             </button>
