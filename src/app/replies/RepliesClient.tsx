@@ -219,7 +219,7 @@ function ScanNowButton({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   async function scan() {
     setBusy(true);
-    try { await fetch("/api/cron/inbox-triage?force=1"); onDone(); } catch { /* ignore */ } finally { setBusy(false); }
+    try { await fetch("/api/ops/run-cron/inbox-triage", { method: "POST" }); onDone(); } catch { /* ignore */ } finally { setBusy(false); }
   }
   return <button className="cc-btn" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>;
 }

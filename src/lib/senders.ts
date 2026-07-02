@@ -192,6 +192,7 @@ export function stripSignature(body: string): string {
   let t = (body || "").replace(/\s+$/, "");
   const patterns: RegExp[] = [
     /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n+\+?[\d\s]{6,})?\s*$/i,
+    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n+\+?[\d\s]{6,})?\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n+\+?[\d\s]{6,}\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
   ];
