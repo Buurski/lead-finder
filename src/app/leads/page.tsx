@@ -2,6 +2,7 @@ import { getLeads } from "@/lib/sheets";
 import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
+import WarnBanner from "@/components/WarnBanner";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
 
 export const revalidate = 60;
@@ -39,16 +40,9 @@ export default async function LeadsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {!sheetsOk && (
-        <div
-          className="cc-card cc-card-pad"
-          role="status"
-          style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}
-        >
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
-          </span>
-        </div>
+        <WarnBanner>
+          Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
+        </WarnBanner>
       )}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>

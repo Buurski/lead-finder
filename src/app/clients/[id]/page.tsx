@@ -4,6 +4,7 @@ import PageHeader from "@/components/shell/PageHeader";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import Icon from "@/components/shell/Icon";
 import ClientSeoWidget from "./ClientSeoWidget";
+import WarnBanner from "@/components/WarnBanner";
 import { getClients } from "@/lib/sheets";
 import { readVaultNote } from "@/lib/vault";
 import { clientNoteRel } from "@/lib/client-notes";
@@ -32,12 +33,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     return (
       <div className="cc-fade">
         <PageHeader icon="Briefcase" title="Klient" subtitle="kunne ikke hentes" action={<Link href="/clients" className="cc-btn">← Klienter</Link>} />
-        <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke nå Google Sheets lige nu — klienten er der stadig. Genindlæs om et øjeblik.
-          </span>
-        </div>
+        <WarnBanner>
+          Kunne ikke nå Google Sheets lige nu — klienten er der stadig. Genindlæs om et øjeblik.
+        </WarnBanner>
       </div>
     );
   }
