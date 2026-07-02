@@ -432,7 +432,7 @@ function QueueCard({ s }: { s: DeckSummary }) {
             ))}
           </ul>
           <div style={{ padding: "12px 22px" }}>
-            <Link href="/approve" className="cc-btn" style={{ width: "100%", justifyContent: "center" }}>Åbn godkendelse</Link>
+            <Link href="/approve" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Åbn godkendelse →</Link>
           </div>
         </>
       )}
