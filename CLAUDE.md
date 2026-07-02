@@ -58,12 +58,15 @@ arbejder SAMMEN, og dokumenterne findes BEVIDST begge steder:
   byggestart): CLAUDE.md (byggeplan), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md,
   CLIENT_CMS_BLUEPRINT.md, .env.local (Anthropic+Google-nøgler kopieret
   herfra; Mongo/Vercel-placeholders).
-- **Kopier her i lead-system:** CMS_CLAUDE_CODE_PLAN.md (= buur-cms'
-  CLAUDE.md), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md, CLIENT_CMS_BLUEPRINT.md.
+- **De delte CMS-docs bor KUN i vaulten:**
+  `KnowledgeOS/wiki/os/cms/` (CMS_MASTERPLAN.md, CMS_CLAUDE_CODE_PLAN.md,
+  CMS_LUCAS_TODO.md, CLIENT_CMS_BLUEPRINT.md + README.md med regler).
+  Konsolideret 2026-07-02 (Bundle A) — den gamle synk-regel med kopier i
+  begge repos var allerede brudt (kopierne divergerede 7.-11. juni).
 
-**SYNK-REGEL:** ret du et CMS-dokument ét sted → kopiér det STRAKS til
-det andet sted. Agenter i buur-cms SKAL læse denne CLAUDE.md (denne
-sektion + arkitektur/mønstre); agenter her bør kende buur-cms/CLAUDE.md.
+**REGEL:** ret CMS-dokumenter i vaulten, aldrig via repo-kopier. Agenter i
+buur-cms SKAL læse denne CLAUDE.md (denne sektion + arkitektur/mønstre);
+agenter her bør kende buur-cms/CLAUDE.md (repo-lokalt operating brief).
 
 **Obsidian er hovedhukommelsen:** vault-noten er
 `KnowledgeOS/wiki/os/buur-cms.md`; beslutninger i
