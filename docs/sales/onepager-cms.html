@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Ret din egen side</title>
+<style>
+  :root{
+    --creme:#faf7f2;
+    --ink:#2b2620;
+    --muted:#6b6357;
+    --line:#e3dbcd;
+    --accent:#3f6f78;      /* deep teal/slate */
+    --accent-soft:#dfeaeb;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  html,body{background:#d9d2c6;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);}
+  @page{size:A4;margin:0;}
+  .page{
+    width:210mm;height:297mm;background:var(--creme);
+    padding:14mm 14mm 12mm 14mm;margin:0 auto;position:relative;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  @media print{ html,body{background:var(--creme);} .page{margin:0;} }
+
+  h1,h2,h3,.brand,.kicker{font-family:Georgia,"Times New Roman",serif;}
+
+  header{border-bottom:2px solid var(--accent);padding-bottom:6mm;margin-bottom:6mm;
+    display:flex;justify-content:space-between;align-items:flex-end;}
+  .brand{font-size:15pt;font-weight:700;letter-spacing:.3px;color:var(--ink);}
+  .brand span{color:var(--accent);}
+  .brand small{display:block;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:9.5pt;font-weight:400;color:var(--muted);letter-spacing:.2px;margin-top:2px;}
+  .kicker{font-size:10.5pt;color:var(--accent);text-align:right;font-style:italic;}
+
+  h1{font-size:30pt;line-height:1.02;font-weight:700;margin-bottom:3mm;}
+  .lede{font-size:11pt;color:var(--muted);max-width:155mm;line-height:1.45;margin-bottom:6mm;}
+  .lede b{color:var(--ink);}
+
+  /* Three feature callouts */
+  .feats{display:flex;gap:5mm;margin-bottom:7mm;}
+  .feat{flex:1;background:var(--accent-soft);border-radius:3px;padding:4mm 5mm;}
+  .feat .fh{font-family:Georgia,serif;font-size:11pt;font-weight:700;margin-bottom:1.5mm;color:var(--accent);}
+  .feat .fd{font-size:9pt;color:var(--ink);line-height:1.4;}
+
+  /* Tiers */
+  .tiers{display:flex;flex-direction:column;gap:3mm;margin-bottom:6mm;}
+  .tier{display:flex;align-items:center;gap:5mm;background:#fff;border:1px solid var(--line);
+    border-left:4px solid var(--accent);border-radius:3px;padding:4mm 5mm;}
+  .tier .price{flex:none;width:34mm;font-family:Georgia,serif;font-size:16pt;font-weight:700;color:var(--accent);line-height:1;}
+  .tier .price small{display:block;font-size:8.5pt;color:var(--muted);font-family:-apple-system,Arial,sans-serif;font-weight:400;margin-top:1mm;}
+  .tier .tname{flex:none;width:24mm;font-family:Georgia,serif;font-size:11.5pt;font-weight:700;}
+  .tier .tdesc{font-size:9.5pt;color:var(--muted);line-height:1.35;}
+
+  /* One-off setup row */
+  .oneoffs{display:flex;gap:5mm;margin-bottom:auto;}
+  .oneoff{flex:1;background:var(--ink);color:#fff;border-radius:3px;padding:4mm 5mm;
+    display:flex;align-items:center;gap:5mm;}
+  .oneoff .oprice{flex:none;font-family:Georgia,serif;font-size:16pt;font-weight:700;color:#8fc0c8;}
+  .oneoff .oname{font-family:Georgia,serif;font-size:11pt;font-weight:700;margin-bottom:.6mm;}
+  .oneoff .odesc{font-size:8.5pt;color:#cdd9da;line-height:1.35;}
+
+  .terms{background:var(--accent-soft);border-radius:3px;padding:4mm 6mm;margin-top:5mm;
+    font-size:10pt;color:var(--ink);line-height:1.45;}
+  .terms b{font-family:Georgia,serif;color:var(--accent);}
+
+  footer{border-top:1px solid var(--line);padding-top:4mm;margin-top:5mm;
+    display:flex;justify-content:space-between;align-items:flex-end;}
+  footer .name{font-family:Georgia,serif;font-size:10.5pt;font-weight:700;}
+  footer .contact{font-size:9pt;color:var(--muted);line-height:1.5;margin-top:1mm;}
+  footer .note{font-size:8pt;color:var(--muted);text-align:right;max-width:70mm;line-height:1.4;}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="brand">Buur <span>&middot;</span> CMS<small>Webudvikling i Ikast/Herning</small></div>
+    <div class="kicker">Din side. Din kontrol.</div>
+  </header>
+
+  <h1>Ret din egen side</h1>
+  <p class="lede">For samme pris som almindelig hosting kan du selv styre din side. <b>Skriv teksten om, skift billedet, tryk Udgiv.</b> Går noget galt, ruller du tilbage med ét klik. Og du er aldrig alene om det, en dansk AI-hjælper står ved siden af når du skriver.</p>
+
+  <div class="feats">
+    <div class="feat">
+      <div class="fh">Ret tekst og billeder selv</div>
+      <div class="fd">Opdatér åbningstider, skift et billede eller skriv en tekst om, uden at ringe til nogen.</div>
+    </div>
+    <div class="feat">
+      <div class="fh">Dansk AI-hjælp</div>
+      <div class="fd">Går du i stå på en tekst, spørger du bare. AI'en foreslår et udkast på dansk, du godkender.</div>
+    </div>
+    <div class="feat">
+      <div class="fh">Udgiv og rul tilbage</div>
+      <div class="fd">Alt sker sikkert. Er du ikke tilfreds, fortryder du med ét klik og siden er som før.</div>
+    </div>
+  </div>
+
+  <div class="tiers">
+    <div class="tier">
+      <div class="price">495<small>kr/md.</small></div>
+      <div class="tname">Basis</div>
+      <div class="tdesc">Selv-redigering af tekst og billeder, hosting og drift, Udgiv og rul-tilbage, support ved problemer.</div>
+    </div>
+    <div class="tier">
+      <div class="price">795<small>kr/md.</small></div>
+      <div class="tname">Pro</div>
+      <div class="tdesc">Alt fra Basis, plus den danske AI-hjælper ved siden af dig, op til 10 sider og prioriteret support.</div>
+    </div>
+    <div class="tier">
+      <div class="price">1.495<small>kr/md.</small></div>
+      <div class="tname">Premium</div>
+      <div class="tdesc">Alt fra Pro, plus jeg klarer ændringerne for dig, op til 3 timer om måneden, og vi går siden efter sammen hvert kvartal.</div>
+    </div>
+  </div>
+
+  <div class="oneoffs">
+    <div class="oneoff">
+      <div class="oprice">3.500 kr</div>
+      <div>
+        <div class="oname">Setup, engangs</div>
+        <div class="odesc">Din side er god nok som den er, den skal bare kobles på, så du selv kan rette den.</div>
+      </div>
+    </div>
+    <div class="oneoff">
+      <div class="oprice">4.900 kr</div>
+      <div>
+        <div class="oname">Site-rescue, engangs</div>
+        <div class="odesc">Har du en side du er træt af og ikke kan komme til? Jeg overtager den og flytter den ind i systemet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="terms">
+    <b>Erstatter hosting:</b> vælger du et CMS-abonnement, er drift og hosting inkluderet i prisen. Du betaler aldrig begge dele. &nbsp;<b>Ingen binding.</b> Opsigelse med 30 dages varsel.
+  </div>
+
+  <footer>
+    <div>
+      <div class="name">Lucas Buur, webudvikler i Ikast/Herning</div>
+      <div class="contact">Telefon: [dit nummer]&nbsp;&nbsp;&middot;&nbsp;&nbsp;Mail: [din mail]</div>
+    </div>
+    <div class="note">Priser uden moms. Betaling 50/50 ved setup-opgaver.</div>
+  </footer>
+</div>
+</body>
+</html>
