@@ -162,14 +162,6 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   display: flex; align-items: center; gap: 10px;
   padding: 6px 8px 14px;
 }
-.cc-brand-mark {
-  width: 30px; height: 30px;
-  display: grid; place-items: center;
-  border-radius: 9px;
-  background: var(--accent); color: #fff;
-  font-family: var(--font-display);
-  font-weight: 600; font-size: 15px;
-}
 .cc-brand-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.02em; }
 .cc-brand-sub { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
 
