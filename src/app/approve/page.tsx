@@ -317,11 +317,32 @@ export default function ApprovePage() {
         </div>
       )}
 
-      {error && (
-        <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>
-      )}
-
-      {!loading && visible.length === 0 ? (
+      {loading ? (
+        <div style={{ display: "grid", gap: 18 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="cc-skel" style={{ height: 180, borderRadius: 14 }} />
+          ))}
+        </div>
+      ) : error ? (
+        // A failed fetch must not masquerade as an empty queue — show the error
+        // with a retry instead of "Køen er tom".
+        <div
+          className="cc-card cc-card-pad"
+          role="alert"
+          style={{ display: "flex", alignItems: "center", gap: 12, borderColor: "var(--amber)" }}
+        >
+          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{error}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
+              Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
+            </div>
+          </div>
+          <button onClick={load} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+            Prøv igen
+          </button>
+        </div>
+      ) : visible.length === 0 ? (
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
