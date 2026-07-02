@@ -355,7 +355,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
       <div className="flex gap-5" style={{ minHeight: "calc(100vh - 220px)" }}>
 
         {/* Table */}
-        <div className="flex-1 min-w-0" style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" }}>
+        <div className="flex-1 min-w-0" style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", overflowX: "auto" }}>
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>

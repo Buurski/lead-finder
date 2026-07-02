@@ -152,7 +152,7 @@ export default function EngineRunner() {
             aria-label="Antal drafts"
           />
         </label>
-        <button className="cc-btn cc-btn-accent" onClick={() => call("preview")} disabled={busy}>
+        <button className={phase === "preview" ? "cc-btn" : "cc-btn cc-btn-accent"} onClick={() => call("preview")} disabled={busy}>
           {phase === "previewing" ? "Kører…" : "Preview"}
         </button>
       </div>

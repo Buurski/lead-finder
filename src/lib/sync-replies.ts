@@ -78,7 +78,7 @@ async function scanOneAccount(
     socketTimeout: SOCKET_TIMEOUT_MS,
   });
 
-  let beforeCount = repliedRows.size;
+  const beforeCount = repliedRows.size;
   try {
     await withRetry(() => client.connect(), `imap-connect[${account.id}]`);
     try {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
 import { previewSignature } from "@/lib/leads/signature-preview";
+import WarnBanner from "@/components/WarnBanner";
 
 // Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
 // ikke trækker server-only env-vars; serveren (senders.ts) er source of
@@ -76,8 +77,8 @@ export default function ApprovePage() {
     try {
       setDrafts(await fetchQueue());
       setError(null);
-    } catch {
-      setError("Kunne ikke hente køen.");
+    } catch (e) {
+      setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
     } finally {
       setLoading(false);
     }
@@ -94,8 +95,8 @@ export default function ApprovePage() {
           setDrafts(drafts);
           setError(null);
         }
-      } catch {
-        if (!cancelled) setError("Kunne ikke hente køen.");
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -317,7 +318,9 @@ export default function ApprovePage() {
         </div>
       )}
 
-      {loading ? (
+      {loading && drafts.length === 0 ? (
+        // Skeleton only on the first load — a manual refresh keeps the list
+        // visible instead of flashing back to shimmer.
         <div style={{ display: "grid", gap: 18 }}>
           {[0, 1, 2].map((i) => (
             <div key={i} className="cc-skel" style={{ height: 180, borderRadius: 14 }} />
@@ -326,22 +329,19 @@ export default function ApprovePage() {
       ) : error ? (
         // A failed fetch must not masquerade as an empty queue — show the error
         // with a retry instead of "Køen er tom".
-        <div
-          className="cc-card cc-card-pad"
+        <WarnBanner
           role="alert"
-          style={{ display: "flex", alignItems: "center", gap: 12, borderColor: "var(--amber)" }}
+          action={
+            <button onClick={load} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+              Prøv igen
+            </button>
+          }
         >
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{error}</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
-              Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
-            </div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>{error}</div>
+          <div style={{ fontSize: 12.5, marginTop: 2 }}>
+            Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
           </div>
-          <button onClick={load} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
-            Prøv igen
-          </button>
-        </div>
+        </WarnBanner>
       ) : visible.length === 0 ? (
         <EmptyState filter={filter} total={drafts.length} />
       ) : (

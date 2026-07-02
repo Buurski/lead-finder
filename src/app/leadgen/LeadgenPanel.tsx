@@ -236,7 +236,7 @@ export default function LeadgenPanel() {
               </select>
             </>
           )}
-          <button className="cc-btn cc-btn-accent" onClick={scrapeNow} disabled={scraping || (budget != null && budget.remaining <= 0)}>
+          <button className="cc-btn" onClick={scrapeNow} disabled={scraping || (budget != null && budget.remaining <= 0)}>
             {scraping
               ? (mode === "auto" && progress.total ? `Skraber… ${progress.done}/${progress.total}` : "Scraper…")
               : (budget != null && budget.remaining <= 0 ? "Dagsbudget nået"

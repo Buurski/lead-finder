@@ -57,6 +57,13 @@ export default function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) 
         <div style={{ fontSize: 12.5, color: "var(--danger, #b4453a)", marginBottom: 10 }}>{error}</div>
       )}
 
+      {goals.length === 0 && !error && (
+        <div className="cc-empty">
+          <Icon name="Target" />
+          <div style={{ fontSize: 13 }}>Ingen mål endnu. Tilføj det første nedenfor — listen gemmes i vaulten.</div>
+        </div>
+      )}
+
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 9 }}>
         {goals.map((g) => (
           <li key={g.text} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>

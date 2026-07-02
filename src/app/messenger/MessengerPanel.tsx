@@ -61,7 +61,7 @@ function CandidateCard({ c, onMark }: { c: Candidate; onMark: (id: string, actio
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button className="cc-btn cc-btn-accent" onClick={() => mark("sent")} disabled={busy}><Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> Marker sendt</button>
+        <button className="cc-btn" onClick={() => mark("sent")} disabled={busy}><Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> Marker sendt</button>
         <button className="cc-btn" onClick={() => mark("skip")} disabled={busy}>Spring over</button>
         <span className="cc-dim" style={{ fontSize: 11.5, marginLeft: "auto" }}>Du sender selv på Facebook. Intet sendes herfra.</span>
       </div>

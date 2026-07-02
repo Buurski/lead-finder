@@ -229,6 +229,8 @@ function ScanNowButton({ onDone }: { onDone: () => void }) {
       setFailed(true);
     } finally {
       setBusy(false);
+      // Don't let a stale failure notice linger after later successful loads.
+      setTimeout(() => setFailed(false), 8000);
     }
   }
   return (
