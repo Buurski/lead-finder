@@ -197,7 +197,7 @@ export async function POST(req: Request) {
       "Svar kort og konkret på dansk. Du rådgiver og forklarer. Hvis brugeren vil markere en lead eller gemme en note, " +
       "så bed dem skrive fx 'marker <virksomhed> som ikke interesseret' eller 'noter: ...'. " +
       "Mål på /goals kan ændres med 'tilføj mål: ...', 'fjern mål: ...' eller 'mål klaret: ...'. " +
-      "Henvis til de rigtige sider (/approve, /replies, /leads, /clients, /seo, /studio, /settings)." +
+      "Henvis til de rigtige sider (/approve, /replies, /leads, /clients, /seo, /studio, /settings — plus /leadgen, /messenger og /goals som stadig findes men er ude af sidebaren)." +
       (state ? `\n\nNuværende tilstand: ${state}.` : ""),
     prompt: message,
     maxTokens: 600,

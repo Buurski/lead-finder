@@ -82,7 +82,8 @@ export default function StudioGrid() {
         <div className="cc-card cc-empty">
           <Icon name="LayoutGrid" />
           <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text-muted)" }}>Ingen demoer i denne branche endnu</div>
-          <div style={{ fontSize: 12.5 }}>Byg en med &quot;+ Lav demo&quot; — branchen mangler i demo-biblioteket.</div>
+          <div style={{ fontSize: 12.5 }}>Branchen mangler i demo-biblioteket.</div>
+          <a href="/studio/prompt-gen" className="cc-btn" style={{ marginTop: 4 }}>+ Lav demo</a>
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>

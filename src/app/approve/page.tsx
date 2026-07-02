@@ -332,8 +332,8 @@ export default function ApprovePage() {
         <WarnBanner
           role="alert"
           action={
-            <button onClick={load} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
-              Prøv igen
+            <button onClick={load} disabled={loading} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", opacity: loading ? 0.6 : 1 }}>
+              {loading ? "Henter…" : "Prøv igen"}
             </button>
           }
         >
