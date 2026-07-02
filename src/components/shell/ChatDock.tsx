@@ -84,7 +84,7 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
       okMsg = `Fjernet "${typeof argName === "string" ? argName : "lead"}" fra godkendt-listen. Blokeret i 14 dage.`;
     } else if (action.type === "goal") {
       url = "/api/goals";
-      okMsg = "Målet er opdateret i vaulten — se /goals.";
+      okMsg = "Målet er opdateret i vaulten — åbn /goals direkte i adresselinjen.";
     } else if (action.type === "note") {
       url = "/api/actions/note";
     } else if (action.type === "suppress") {

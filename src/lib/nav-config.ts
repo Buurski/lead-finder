@@ -16,9 +16,10 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-// Trimmet 2026-07-02 (Bundle E): 8 kerneflader. Sider som /leadgen, /messenger,
-// /goals, /claude og /hermes er stadig routbare via direkte URL, men er ude af
-// nav'en for at holde fokus på det daglige flow.
+// Trimmet 2026-07-02 (Bundle E): 8 kerneflader. /leadgen, /messenger, /goals,
+// /claude og /hermes findes stadig (direkte URL, ude af nav). /radar, /sms,
+// /spend, /memory, /build-guide, /followup-review og /journal er SLETTET —
+// de ligger på branch archive/thin-pages-2026-07-02.
 export const NAV: NavGroup[] = [
   {
     id: "workspace",
