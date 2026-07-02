@@ -22,6 +22,7 @@ try {
 } catch { /* ingen .env.local */ }
 
 const st = await import(pathToFileURL(path.join(REPO_ROOT, "src", "lib", "seo-tjek.ts")).href);
+const seo = await import(pathToFileURL(path.join(REPO_ROOT, "src", "lib", "seo.ts")).href);
 
 const targets = process.argv.slice(2);
 if (!targets.length) {
@@ -44,6 +45,37 @@ for (const t of targets) {
   console.log(`\n=== ${v.url} (${branch || "?"} / ${city || "?"}) ===`);
   const t0 = Date.now();
   const report = await st.runFreeCheck(sub);
+  // CLI-only fallback: uden PAGESPEED_API_KEY lokalt køres manglende scores via
+  // lokal Lighthouse direkte (udenom seo.ts' 24h-cache, som kan mangle desktop).
+  // Prod bruger PageSpeed API'et direkte.
+  if (!report.desktop || !report.seo.lighthouse?.scores) {
+    try {
+      const chromeLauncher = await import("chrome-launcher");
+      const lighthouse = (await import("lighthouse")).default;
+      const chrome = await chromeLauncher.launch({ chromeFlags: ["--headless=new", "--no-sandbox", "--disable-gpu"] });
+      const pct = (s) => Math.round((s ?? 0) * 100);
+      const runLh = async (formFactor) => {
+        const res = await lighthouse(sub.url, {
+          port: chrome.port, output: "json", logLevel: "silent",
+          onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
+          formFactor,
+          screenEmulation: formFactor === "desktop" ? { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false } : undefined,
+        });
+        const c = res.lhr.categories;
+        return { performance: pct(c.performance?.score), accessibility: pct(c.accessibility?.score), bestPractices: pct(c["best-practices"]?.score), seo: pct(c.seo?.score) };
+      };
+      try {
+        if (!report.seo.lighthouse?.scores) {
+          const mobile = await runLh("mobile");
+          report.seo.lighthouse = { available: true, scores: mobile, note: "mobil-scores (Lighthouse, lokal kørsel)", ranAt: new Date().toISOString() };
+          report.fixes = st.plainFixes(report.seo, report.booking, report.localRank?.available ? report.localRank : null);
+        }
+        if (!report.desktop) report.desktop = await runLh("desktop");
+      } finally {
+        try { await chrome.kill(); } catch { /* allerede lukket */ }
+      }
+    } catch (err) { console.log(`  (lighthouse-fallback fejlede: ${String(err).slice(0, 100)})`); }
+  }
   const html = st.renderReportHtml(report, { standalone: true });
   const file = path.join(outDir, `${st.hostOfUrl(v.url).replace(/[^a-z0-9.]/g, "_")}.html`);
   fs.writeFileSync(file, html, "utf-8");
