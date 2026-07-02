@@ -239,12 +239,14 @@ export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: Loc
     localRank?.available &&
     localRank.reviews != null &&
     localRank.top3AvgReviews != null &&
-    localRank.top3AvgReviews > 20 &&
-    localRank.reviews < localRank.top3AvgReviews / 2
+    // Stort gab i normale byer, ELLER næsten ingen anmeldelser i små byer
+    // (dér er 3 anmeldelser mod toppens 12 stadig et reelt problem).
+    ((localRank.top3AvgReviews > 20 && localRank.reviews < localRank.top3AvgReviews / 2) ||
+      (localRank.reviews < 5 && localRank.top3AvgReviews > 5))
   ) {
     out.push({
       w: 6,
-      title: `I har ${localRank.reviews} Google-anmeldelser — toppen har i snit ${Math.round(localRank.top3AvgReviews)}`,
+      title: `I har ${localRank.reviews} Google-anmeldelser (toppen har i snit ${Math.round(localRank.top3AvgReviews)})`,
       why: "Antal og friskhed af anmeldelser er en af de tungeste faktorer for placeringen i Google Maps, og kunder vælger ofte stedet med flest stjerner og anmeldelser.",
       how: "Bed jeres gladeste kunder om en anmeldelse — et lille skilt ved kassen eller et link i kvitteringsmailen virker. 2-3 nye om ugen flytter mærkbart på et par måneder.",
     });
