@@ -71,6 +71,20 @@ export function isEligibleForCold(lead: Lead): boolean {
   return lead.score >= minScore;
 }
 
-// isEligibleForFollowup blev fjernet sammen med /api/email/send-followups
-// (ruten mistede sit UI-indgangspunkt da followup-review blev arkiveret).
-// Historikken har implementeringen hvis follow-ups genopstår.
+export function isEligibleForFollowup(lead: Lead): boolean {
+  if (!lead.email) return false;
+  if (!lead.emailSentAt) return false;
+  if (lead.emailOpenedAt) return false;
+  if (norm(lead.emailStatus) === "replied") return false;
+  if (norm(lead.emailStatus) === "bounced") return false;
+  if (lead.followupSentAt) return false;
+  if (norm(lead.status) === "skip" || norm(lead.status) === "client") return false;
+  if (lead.skipReason) return false;
+  // A chain or public-sector lead that slipped through before these guards
+  // existed must not receive a follow-up either.
+  if (isChain(lead.name)) return false;
+  if (isPublicSector(lead.name)) return false;
+  const sentDate = new Date(lead.emailSentAt);
+  const daysSince = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince >= FOLLOWUP_DAYS;
+}
