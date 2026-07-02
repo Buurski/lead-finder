@@ -82,7 +82,7 @@ export default async function LeadsPage() {
 
       <BulkEmailPanel />
 
-      <EmailDashboardClient leads={capped} />
+      <EmailDashboardClient leads={capped} sheetsOk={sheetsOk} />
     </div>
   );
 }

@@ -62,7 +62,7 @@ function ScoreCell({ rank, score }: { rank: number; score: number }) {
 type FilterStatus = LeadStatus | "all";
 type ScoreTier = "all" | "A" | "B" | "C";
 
-export default function LeadTable({ leads: initial, emailFilter = "all" }: { leads: Lead[]; emailFilter?: EmailFilter }) {
+export default function LeadTable({ leads: initial, emailFilter = "all", sheetsOk = true }: { leads: Lead[]; emailFilter?: EmailFilter; sheetsOk?: boolean }) {
   const [leads, setLeads] = useState(initial);
   const [selected, setSelected] = useState<Lead | null>(null);
   const [notes, setNotes] = useState("");
@@ -452,7 +452,9 @@ export default function LeadTable({ leads: initial, emailFilter = "all" }: { lea
           {filtered.length === 0 && (
             <div style={{ padding: "80px 0", textAlign: "center", color: "var(--text-dim)" }}>
               {leads.length === 0
-                ? <>Ingen leads endnu — klik &quot;+ Hent leads&quot; for at starte</>
+                ? sheetsOk
+                  ? <>Ingen leads endnu — klik &quot;+ Hent leads&quot; for at starte</>
+                  : "Kunne ikke hente leads fra Sheets lige nu — de er der stadig. Genindlæs siden om et øjeblik."
                 : "Ingen leads matcher filtrene"
               }
             </div>
