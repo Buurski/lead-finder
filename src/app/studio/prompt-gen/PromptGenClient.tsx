@@ -61,6 +61,8 @@ export default function PromptGenClient() {
   useEffect(() => {
     if (!busy) return;
     startRef.current = Date.now();
+    // Reset the elapsed counter when a phase starts — intentional sync setState.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTick(0);
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);

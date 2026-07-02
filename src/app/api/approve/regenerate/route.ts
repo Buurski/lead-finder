@@ -167,7 +167,7 @@ export async function POST(req: Request) {
         bodyChanged,
       });
       updated++;
-    } catch (e: any) {
+    } catch (e) {
       failed++;
       results.push({
         id: d.id,
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
         status: d.status,
         subjectChanged: false,
         bodyChanged: false,
-        error: e?.message || String(e),
+        error: e instanceof Error ? e.message : String(e),
       });
     }
   }

@@ -350,7 +350,7 @@ test("pickHybridSender: 14-dags hybrid allokering med Lucas tie-break", async ()
   try {
     const { pickHybridSender } = await import("./senders.ts");
     const now = new Date("2026-06-26T12:00:00Z");
-    const history: any[] = [
+    const history: Parameters<typeof pickHybridSender>[0] = [
       { sender: "lucas", status: "sent", updatedAt: "2026-06-20T12:00:00Z" },
       { sender: "lucas", status: "sent", updatedAt: "2026-06-21T12:00:00Z" },
       { sender: "charlie", status: "sent", updatedAt: "2026-06-22T12:00:00Z" },
