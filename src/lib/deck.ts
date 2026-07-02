@@ -9,7 +9,7 @@
 // empty states instead of crashing. That keeps Mission Control instant: it shows
 // a stale-but-real value first and never blocks on the network.
 
-import { getLeads, getClients } from "./sheets.ts";
+import { getLeads, getClients, getPauseStatus } from "./sheets.ts";
 import type { Lead, Client } from "./sheets.ts";
 import { readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
@@ -85,6 +85,9 @@ export interface DeckSummary {
   pulse: PulseClient[];
   dailySent: DailySent[]; // last 14 days, oldest -> newest (for the usage sparkline)
   revenue: Revenue;
+  // Master send-pause (halt-all). null = status unknown (Sheets unreachable) —
+  // the shell banner only shows on a POSITIVE paused signal, never on unknown.
+  pause: { paused: boolean; until: string | null } | null;
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
   buckets: Record<
     "indtjening" | "kunder" | "kalender" | "kommunikation" | "opgaver" | "moeder" | "viden",
@@ -268,6 +271,16 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     /* no overrides */
   }
 
+  // Surface the master pause so every page can show it — a halted system that
+  // looks normal is how sends get "mysteriously" stuck.
+  let pause: DeckSummary["pause"] = null;
+  try {
+    const p = await getPauseStatus("all");
+    pause = { paused: p.paused, until: p.until };
+  } catch {
+    /* unknown — banner stays hidden */
+  }
+
   const numbers = buildNumbers(leads);
   // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
   // it reflects what actually needs answering (incl. non-lead mail), not just the
@@ -289,6 +302,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     pulse,
     dailySent: buildDailySent(leads),
     revenue: buildRevenue(clients),
+    pause,
     buckets: {
       indtjening: clients.length > 0,
       kunder: clients.length > 0 || leads.some((l) => norm(l.status) === "client"),
