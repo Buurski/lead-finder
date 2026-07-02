@@ -11,7 +11,7 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  id: "workspace" | "agents" | "self";
+  id: "workspace" | "forretning" | "agents" | "self";
   label: string;
   items: NavItem[];
 }
@@ -29,6 +29,13 @@ export const NAV: NavGroup[] = [
       { href: "/messenger", label: "Messenger", icon: "MessageSquare", hint: "FB-leads at skrive til" },
       { href: "/sms", label: "SMS / Mobil", icon: "Smartphone", hint: "Mobil-leads (sms/ring)" },
       { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
+    ],
+  },
+  {
+    id: "forretning",
+    label: "Forretning",
+    items: [
+      { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Forecast, pipeline & indtjening" },
     ],
   },
   {

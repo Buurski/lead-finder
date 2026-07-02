@@ -75,13 +75,22 @@ export interface Client {
   websiteStatus: "demo" | "in progress" | "live";
   monthlyFee: string;
   setupFee: string;
+  // Deal / forecast fields (columns I–N) — all OPTIONAL. Added for the Økonomi
+  // section; older rows leave them blank and finance.ts falls back gracefully
+  // (e.g. stage is derived from websiteStatus when empty). Nothing renamed.
+  stage: string;         // column I — lead|contacted|engaged|concept|offer|negotiation|won|delivering|live|lost
+  wonDate: string;       // column J — YYYY-MM-DD, stamped when stage first hits won
+  expectedClose: string; // column K — YYYY-MM-DD, forecast input for open deals
+  source: string;        // column L — outreach|inbound|referral
+  owner: string;         // column M — charlie|lucas
+  package: string;       // column N — basis|standard|custom
 }
 
 // Bumped from A2:U to A2:V to include the new skipReason column. Existing
 // rows that haven't been touched will just return undefined → "" via the ??
 // fallback below, so this is backwards-compatible.
 const LEADS_RANGE = "Leads!A2:V";
-const CLIENTS_RANGE = "Clients!A2:I";
+const CLIENTS_RANGE = "Clients!A2:N";
 
 export async function getLeads(): Promise<Lead[]> {
   const sheets = getSheetsClient();
@@ -151,6 +160,13 @@ export async function getClients(): Promise<Client[]> {
     websiteStatus: (row[5] as Client["websiteStatus"]) ?? "demo",
     monthlyFee: row[6] ?? "",
     setupFee: row[7] ?? "",
+    // Columns I–N (deal / forecast). Undefined on older rows → "" fallback.
+    stage: row[8] ?? "",
+    wonDate: row[9] ?? "",
+    expectedClose: row[10] ?? "",
+    source: row[11] ?? "",
+    owner: row[12] ?? "",
+    package: row[13] ?? "",
   }));
 }
 
@@ -220,6 +236,132 @@ export async function updateClientFees(
     valueInputOption: "RAW",
     requestBody: { values: [[monthlyFee, setupFee]] },
   });
+}
+
+// Deal / forecast update for the Økonomi page. Same store + same mechanism as
+// updateClientFees (Google Sheets Clients tab, by row) — NOT a parallel store.
+// Only the fields present in `patch` are written; each maps to one column, and
+// every other column (name, brief, folder…) is left untouched. Writing one cell
+// at a time keeps concurrent edits from clobbering unrelated fields.
+export interface ClientDealPatch {
+  monthlyFee?: string; // col G
+  setupFee?: string;   // col H
+  stage?: string;      // col I
+  wonDate?: string;    // col J
+  expectedClose?: string; // col K
+  source?: string;     // col L
+  owner?: string;      // col M
+  package?: string;    // col N
+}
+const DEAL_COLUMN: Record<keyof ClientDealPatch, string> = {
+  monthlyFee: "G", setupFee: "H", stage: "I", wonDate: "J",
+  expectedClose: "K", source: "L", owner: "M", package: "N",
+};
+
+export async function updateClientDeal(clientId: string, patch: ClientDealPatch): Promise<void> {
+  const row = parseInt(clientId, 10);
+  if (!Number.isFinite(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
+  const data = (Object.keys(patch) as (keyof ClientDealPatch)[])
+    .filter((k) => patch[k] !== undefined)
+    .map((k) => ({ range: `Clients!${DEAL_COLUMN[k]}${row}`, values: [[patch[k] ?? ""]] }));
+  if (data.length === 0) return;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
+// ---- Targets (quarterly forecast goals) -----------------------------------
+// Stored in a dedicated "Targets" tab, one row per quarter, so the Økonomi page
+// can read + edit them through the SAME Sheets write path as everything else
+// (no vault file, no separate store). The tab is created on first save.
+
+export interface Target {
+  quarter: string;
+  target_new_clients: number;
+  target_setup_revenue: number;
+  target_mrr_added: number;
+  weekly_outreach_floor: number;
+  annual_mrr_goal: number;
+}
+
+const TARGETS_RANGE = "Targets!A2:F";
+const TARGET_HEADER = [
+  "quarter", "target_new_clients", "target_setup_revenue",
+  "target_mrr_added", "weekly_outreach_floor", "annual_mrr_goal",
+];
+
+function toTarget(r: string[]): Target {
+  const n = (v: string | undefined) => Number(v) || 0;
+  return {
+    quarter: r[0] ?? "",
+    target_new_clients: n(r[1]),
+    target_setup_revenue: n(r[2]),
+    target_mrr_added: n(r[3]),
+    weekly_outreach_floor: n(r[4]),
+    annual_mrr_goal: n(r[5]),
+  };
+}
+
+// Read all quarter targets. Tolerates a missing Targets tab (returns []) so the
+// page renders defaults until the first save creates it.
+export async function getTargets(): Promise<Target[]> {
+  const sheets = getSheetsClient();
+  try {
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: TARGETS_RANGE });
+    return (res.data.values ?? []).filter((r) => (r[0] ?? "").trim()).map((r) => toTarget(r as string[]));
+  } catch {
+    return []; // tab doesn't exist yet
+  }
+}
+
+async function ensureTargetsTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: "sheets.properties(title)" });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === "Targets");
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title: "Targets" } } }] },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Targets!A1:F1",
+    valueInputOption: "RAW",
+    requestBody: { values: [TARGET_HEADER] },
+  });
+}
+
+// Insert or update the target row for one quarter. Creates the tab if needed.
+export async function upsertTarget(t: Target): Promise<void> {
+  const quarter = t.quarter.trim();
+  if (!quarter) throw new Error("target quarter required");
+  await ensureTargetsTab();
+  const sheets = getSheetsClient();
+  const values = [[
+    quarter, t.target_new_clients, t.target_setup_revenue,
+    t.target_mrr_added, t.weekly_outreach_floor, t.annual_mrr_goal,
+  ]];
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: TARGETS_RANGE });
+  const rows = res.data.values ?? [];
+  const idx = rows.findIndex((r) => (r[0] ?? "").trim() === quarter);
+  if (idx === -1) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "Targets!A:F",
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+  } else {
+    const sheetRow = idx + 2; // TARGETS_RANGE starts at row 2
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `Targets!A${sheetRow}:F${sheetRow}`,
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+  }
 }
 
 export async function updateClientFolder(
