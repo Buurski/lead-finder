@@ -98,7 +98,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const base = baseUrl(req);
 
   // 24h dedupe: same url+email answers with the existing report — no new spend.
-  const dedupeKey = `seo-tjek/dedupe-${crypto.createHash("sha1").update(`${v.url}|${v.email}`).digest("hex").slice(0, 20)}`;
+  const dedupeKey = `seo-tjek-dedupe-${crypto.createHash("sha1").update(`${v.url}|${v.email}`).digest("hex").slice(0, 20)}`;
   try {
     const prior = await store.get<{ id: string; createdAt: string }>(dedupeKey);
     if (prior && Date.now() - Date.parse(prior.createdAt) < 24 * 60 * 60 * 1000) {

@@ -611,9 +611,10 @@ export async function runFreeCheck(sub: SeoTjekSubmission): Promise<SeoTjekRepor
 
 // ---- stats helper (lazy store) -----------------------------------------------------
 
-export const STATS_KEY = "seo-tjek/stats";
-export const SUB_PREFIX = "seo-tjek/sub-";
-export const REPORT_PREFIX = "seo-tjek/report-";
+// Flat keys (no slash): FSStore.list only sees top-level .send_queue entries.
+export const STATS_KEY = "seo-tjek-stats";
+export const SUB_PREFIX = "seo-tjek-sub-";
+export const REPORT_PREFIX = "seo-tjek-report-";
 
 export async function bumpStats(field: keyof SeoTjekStats): Promise<void> {
   try {
