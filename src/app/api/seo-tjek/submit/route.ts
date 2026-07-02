@@ -95,10 +95,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // Global daily cap — the per-IP limit alone doesn't stop a distributed
+  // farm from burning PageSpeed/Places quota. Soft counter (not atomic, fine
+  // as a budget brake). SEO_TJEK_DAILY_CAP overrides the default 50.
+  const dailyCap = parseInt(process.env.SEO_TJEK_DAILY_CAP || "50", 10);
+  const dayKey = `seo-tjek-daycap-${new Date().toISOString().slice(0, 10)}`;
+  try {
+    const used = (await store.get<number>(dayKey)) ?? 0;
+    if (used >= dailyCap) {
+      return NextResponse.json(
+        { ok: false, error: "Dagens gratis tjek er brugt op. Prøv igen i morgen." },
+        { status: 429 },
+      );
+    }
+    await store.put(dayKey, used + 1);
+  } catch { /* cap is best-effort */ }
+
   const base = baseUrl(req);
 
   // 24h dedupe: same url+email answers with the existing report — no new spend.
-  const dedupeKey = `seo-tjek-dedupe-${crypto.createHash("sha1").update(`${v.url}|${v.email}`).digest("hex").slice(0, 20)}`;
+  const dedupeKey = `seo-tjek-dedupe-${crypto.createHash("sha256").update(`${v.url}|${v.email}`).digest("hex").slice(0, 24)}`;
   try {
     const prior = await store.get<{ id: string; createdAt: string }>(dedupeKey);
     if (prior && Date.now() - Date.parse(prior.createdAt) < 24 * 60 * 60 * 1000) {

@@ -121,7 +121,7 @@ export function hostOfUrl(url: string): string {
 
 // ---- booking audit (pure) ---------------------------------------------------
 
-const BOOKING_RELEVANT_RE = /frisør|frisor|salon|barber|negle|hud|skønhed|skonhed|kosmet|spa|wellness|klinik|massage|tatov|restaurant|café|cafe|pizz|\bbar\b|grill|kro|bistro|spise/i;
+const BOOKING_RELEVANT_RE = /frisør|frisor|salon|barber|negle|hud|skønhed|skonhed|kosmet|spa|wellness|klinik|massage|tatov|tandlæge|tandlaege|fysio|fitness|træn|traen|restaurant|café|cafe|pizz|\bbar\b|grill|kro|bistro|spise/i;
 
 const BOOKING_SYSTEMS: Array<[RegExp, string]> = [
   [/planway/i, "Planway"],
@@ -136,6 +136,7 @@ const BOOKING_SYSTEMS: Array<[RegExp, string]> = [
   [/superb\w*\.\w/i, "Superb"],
   [/onlinebooq/i, "OnlineBooq"],
   [/terminland/i, "Terminland"],
+  [/calendly/i, "Calendly"],
 ];
 
 export function detectBookingSystem(html: string, branch?: string): BookingAudit {
@@ -198,8 +199,10 @@ export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: Loc
     });
   }
   if (booking.relevant && !booking.found) {
+    // Weighted ABOVE speed (council fund): for a salon/restaurant, missing
+    // online booking is a direct revenue blocker, not a nice-to-have.
     out.push({
-      w: 8,
+      w: 12,
       title: "Kunder kan ikke bestille tid eller bord online",
       why: "Mange kunder tjekker jer om aftenen, når telefonen er lukket. Uden online booking vælger de en konkurrent der har det.",
       how: "Opret gratis eller billig online booking (fx Planway til saloner eller DinnerBooking til restauranter) og læg knappen øverst på forsiden.",
@@ -209,7 +212,7 @@ export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: Loc
     out.push({
       w: 7,
       title: "Google mangler basisoplysninger om din forretning",
-      why: "Din side fortæller ikke Google hvad I hedder, hvor I ligger og hvad I laver i det format Google læser. Det koster synlighed i lokale søgninger og i Google Maps.",
+      why: "Når nogen søger jer frem, kan Google ikke vise åbningstider, adresse og branche rigtigt, fordi siden ikke serverer oplysningerne i det format Google læser. Det koster synlighed i lokale søgninger og i Google Maps.",
       how: "Der skal et lille stykke standardkode ind på siden med navn, adresse og branche. Rapporten her indeholder koden klar til at sætte ind, det tager en udvikler 10 minutter.",
     });
   }
@@ -360,7 +363,7 @@ export function renderReportHtml(r: SeoTjekReport, opts: { standalone?: boolean;
     <p class="muted">90+ er godt, 50-89 bør forbedres, under 50 koster kunder. ${esc(s.lighthouse?.note ?? "")}</p>
 
     <h2>De 3 vigtigste ting at fikse</h2>
-    ${fixes || "<p>Ingen kritiske problemer fundet. Flot side.</p>"}
+    ${fixes || `<p>Ingen kritiske problemer fundet. Flot side. Vil du holde den sådan, og komme foran i AI-søgning før konkurrenterne? <a href="${esc(bookingUrl)}">Book 15 minutter her</a>.</p>`}
 
     <h2>Kan ChatGPT og Google AI finde jer?</h2>
     <table class="ai">${aiTable}</table>
@@ -438,19 +441,19 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
     ``,
     fixLines,
     ``,
-    `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende.`,
+    `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.`,
     ``,
     `Mvh, Lucas`,
     `Buur Web`,
     ``,
-    `Du får denne mail, fordi du bad om et gratis SEO-tjek. Afmeld: ${unsub}`,
+    `Du får denne mail, fordi du bad om et gratis SEO-tjek. Har du ikke bedt om det, kan du bare ignorere mailen. Afmeld: ${unsub}`,
   ].join("\n");
   const html = mailHtml(
     [
       `Hej,`,
       `Tak fordi du bad om et gratis SEO-tjek af <strong>${esc(host)}</strong>. Rapporten er klar, og du kan også gemme den som PDF.`,
       topFix ? `<strong>Den vigtigste ting at fikse først: ${esc(topFix.title)}.</strong> ${esc(topFix.why)}` : `Din side klarer sig faktisk fint. Rapporten viser detaljerne.`,
-      `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende.`,
+      `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.`,
       `Mvh, Lucas<br>Buur Web`,
     ],
     "Se din rapport",
@@ -467,11 +470,9 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
   const text = [
     `Hej,`,
     ``,
-    `For en uge siden fik du en SEO-rapport for ${host}. Jeg ville bare høre om du fik kigget på den?`,
+    `For en uge siden fik du en SEO-rapport for ${host}. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: Vida Klinik scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
     ``,
     `Rapporten ligger stadig her: ${reportUrl}`,
-    ``,
-    `Et eksempel fra vores egen verden: Vida Klinik fik gennemgået deres site og scorer nu 90+ i Googles hastighedstest på alle punkter. Det er den slags løft der kan måles på antallet af henvendelser.`,
     ``,
     `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?`,
     ``,
@@ -483,8 +484,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
   const html = mailHtml(
     [
       `Hej,`,
-      `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den?`,
-      `Et eksempel fra vores egen verden: <strong>Vida Klinik</strong> fik gennemgået deres site og scorer nu 90+ i Googles hastighedstest på alle punkter. Det er den slags løft der kan måles på antallet af henvendelser.`,
+      `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: <strong>Vida Klinik</strong> scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
       `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?`,
       `Mvh, Lucas<br>Buur Web`,
     ],
@@ -582,7 +582,12 @@ export async function runFreeCheck(sub: SeoTjekSubmission): Promise<SeoTjekRepor
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000),
     });
-    if (res.ok) html = await res.text();
+    // Size guard (council fund): a hostile target must not buffer gigabytes
+    // into the function. Skip clearly-huge bodies, truncate the rest.
+    const len = parseInt(res.headers.get("content-length") || "0", 10);
+    if (res.ok && (!Number.isFinite(len) || len < 3_000_000)) {
+      html = (await res.text()).slice(0, 2_000_000);
+    }
   } catch { /* booking audit degrades below */ }
 
   const booking = detectBookingSystem(html, branchGuess);

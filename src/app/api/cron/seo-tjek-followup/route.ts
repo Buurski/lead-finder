@@ -24,7 +24,12 @@ function baseUrl(): string {
 }
 
 export async function GET(req: Request): Promise<NextResponse> {
+  // Stricter than the other crons: this route mails REAL visitor addresses, so
+  // on Vercel it refuses to run without a configured secret (council fund).
   const secret = process.env.CRON_SECRET;
+  if (!secret && process.env.VERCEL) {
+    return NextResponse.json({ ok: false, error: "CRON_SECRET mangler — nægter at sende mails uden auth" }, { status: 401 });
+  }
   if (secret) {
     const auth = req.headers.get("authorization") || "";
     if (auth !== `Bearer ${secret}`) {

@@ -21,7 +21,7 @@ export const config = {
   // seo-tjek er den offentlige lead-magnet-tragt: formular + rapport + afmeld
   // skal kunne nås af fremmede uden kodeord. Stats-endpointet (api/seo-tjek/stats)
   // matcher IKKE undtagelserne og forbliver bag basic auth.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|seo-tjek|api/seo-tjek/submit|api/seo-tjek/unsubscribe|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 const SESSION_COOKIE = "cc_sess";

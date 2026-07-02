@@ -96,7 +96,8 @@ const seoResult = {
   const fixes = st.plainFixes(seoResult, { relevant: true, found: false, system: null, note: "" }, { available: true, query: "café i Ikast", position: null, total: 20, topNames: ["A"], note: "" });
   check("exactly 3 fixes", fixes.length === 3);
   check("fixes have title/why/how", fixes.every((f) => f.title && f.why && f.how));
-  check("perf fix first (worst weight)", /langsom|hastighed/i.test(fixes[0].title + fixes[0].why));
+  check("booking fix outranks speed (revenue blocker)", /booking|bestille/i.test(fixes[0].title));
+  check("perf fix second", /langsom|hastighed/i.test(fixes[1].title + fixes[1].why));
   const all = JSON.stringify(fixes);
   check("no jargon: no 'canonical' in copy", !/canonical/i.test(all));
   check("no em-dash in fixes", !all.includes("—"));
