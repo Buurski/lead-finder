@@ -18,7 +18,10 @@ export const config = {
   // Run on everything except Next internals, the health check, and static files.
   // api/hermes/status er også undtaget: ren health-info (ingen hemmeligheder),
   // og den SKAL kunne tjekkes udefra når VPS-forbindelsen fejlsøges.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  // seo-tjek er den offentlige lead-magnet-tragt: formular + rapport + afmeld
+  // skal kunne nås af fremmede uden kodeord. Stats-endpointet (api/seo-tjek/stats)
+  // matcher IKKE undtagelserne og forbliver bag basic auth.
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|seo-tjek|api/seo-tjek/submit|api/seo-tjek/unsubscribe|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 const SESSION_COOKIE = "cc_sess";
