@@ -861,7 +861,7 @@ function DraftLetter({
 
       {/* actions */}
       {!decided && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>
