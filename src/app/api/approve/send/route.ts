@@ -61,7 +61,11 @@ const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
 // til at vise en ærlig bekræftelses-dialog i stedet for et rundt tal.
 // Holdes bevidst i samme fil som POST så guard-logikken ikke driver fra
 // hinanden — ændrer du en guard i løkken, så ændr den også her.
-export async function GET() {
+export async function GET(req: Request) {
+  // Spejler POST'ens ?force=1 (legacy re-run): samme kandidat-udvælgelse og
+  // samme !force-gating af re-contact-guards, ellers under-rapporterer
+  // dialogen på et force-run.
+  const force = new URL(req.url).searchParams.get("force") === "1";
   const senders = { lucas: isSenderAvailable("lucas"), charlie: isSenderAvailable("charlie") };
   const pause = await getPauseStatus("cold").catch(() => ({ paused: false as const, until: undefined as string | undefined }));
   const now = Date.now();
@@ -69,7 +73,9 @@ export async function GET() {
   const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
 
   const drafts = await readQueue();
-  const candidates = drafts.filter((d) => d.status === "approved");
+  const candidates = force
+    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
+    : drafts.filter((d) => d.status === "approved");
 
   const sentIds = new Set<string>();
   const sentKeys = new Set<string>();
@@ -107,7 +113,7 @@ export async function GET() {
       continue;
     }
     const targetKey = target.toLowerCase();
-    if (lead && alreadyEmailed(lead)) {
+    if (lead && !force && alreadyEmailed(lead)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet" });
       continue;
     }
@@ -115,11 +121,11 @@ export async function GET() {
       skipped.push({ name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
       continue;
     }
-    if ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city))) {
+    if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
       skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
       continue;
     }
-    if (sentEmails.has(targetKey)) {
+    if (!force && sentEmails.has(targetKey)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
       continue;
     }
