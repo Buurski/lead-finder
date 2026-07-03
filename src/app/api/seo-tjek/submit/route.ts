@@ -95,6 +95,11 @@ function clientIp(req: NextRequest): string {
 function baseUrl(req: NextRequest): string {
   const env = (process.env.APP_URL || "").trim();
   if (env) return env.replace(/\/$/, "");
+  // x-forwarded-host er domænet brugeren faktisk ramte (fx *-three-beta.vercel.app).
+  // VERCEL_URL er den interne per-deployment-URL — links i mails må ikke pege
+  // derhen: den skifter ved hvert deploy og kan senere ryddes op/beskyttes.
+  const fwd = (req.headers.get("x-forwarded-host") || "").split(",")[0].trim();
+  if (fwd) return `https://${fwd}`;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return new URL(req.url).origin;
 }
