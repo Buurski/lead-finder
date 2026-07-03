@@ -9,6 +9,7 @@ import FindEmailsButton from "./FindEmailsButton";
 import CronHealth from "./CronHealth";
 import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
+import MaalWidget from "./MaalWidget";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
 
@@ -216,6 +217,7 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
         <div style={{ display: "grid", gap: 18 }}>
           <QueueCard s={s} />
           <PipelineMini s={s} />
+          <MaalWidget />
         </div>
       </div>
       <CronHealth />
