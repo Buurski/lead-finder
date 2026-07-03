@@ -15,6 +15,7 @@ export async function GET(): Promise<NextResponse> {
     day0Sent: 0,
     day7Sent: 0,
     unsubscribes: 0,
+    honeypot: 0,
   };
   const keys = await store.list(SUB_PREFIX);
   const submissions: Array<Record<string, unknown>> = [];

@@ -41,6 +41,36 @@ Deliverable-mail sendt til buur.aigro@gmail.com med 3 eksempel-rapporter.
 2. Evt. PAGESPEED_API_KEY preview-target.
 3. Merge naar godkendt.
 
+## Hardening (2026-07-03)
+
+Funnel er komplet: /seo-tjek formular -> inline check -> rapport -> day 0-mail
+-> day 7-cron -> unsubscribe. 3 council-runder + en dedikeret hardening-runde
+paa den offentlige submit-route.
+
+- Honeypot: skjult felt `website2` (CSS off-screen, tabindex=-1, autocomplete=off)
+  i formularen. Udfyldes det, silent-drop: ruten returnerer et plausibelt
+  `{ ok: true, ... }` UDEN at koere checks eller sende mail, og bumper en ny
+  `honeypot`-taeller i stats.
+- KV fail-closed: `rateLimited()` naegter nu paa Vercel (VERCEL sat) hvis
+  KV_REST_API_URL/TOKEN mangler ELLER KV-kaldet fejler (catch). Public-route
+  der udloeser betalt Google-API + mail maa aldrig koere uden durabel
+  rate-limit. Samme moenster som cron-rutens CRON_SECRET-naegtelse. In-memory
+  fallback er nu KUN lokal (uden VERCEL).
+- Ved KV-mangel paa Vercel svarer POST 503 "midlertidigt utilgaengelig" (ikke
+  en vildledende 429).
+
+Preview (denne hardening): https://lead-finder-8dshhfh1y-buurskis-projects.vercel.app
+(deployment-protected, 307 forventet).
+
+Kendte env-krav:
+- `PAGESPEED_API_KEY` - fulde mobil/desktop-scores (ellers "?").
+- `GOOGLE_PLACES_API_KEY` - lokal-rang + anmeldelser.
+- KV (`KV_REST_API_URL` + `KV_REST_API_TOKEN`) - PAAKRAEVET i prod; uden dem
+  naegter submit-ruten (fail-closed).
+- `SEO_TJEK_TEST_RECIPIENT` - dirigerer alle funnel-mails til test-inbox (dev/preview).
+- `SEO_TJEK_BOOKING_URL` - valgfri; ellers mailto-fallback.
+- `CRON_SECRET` - day 7-cron naegter uden den paa Vercel.
+
 ## Noter
 
 - Council (2 lenses) koert + fixes committed (72eb284).

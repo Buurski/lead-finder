@@ -76,6 +76,7 @@ export interface SeoTjekStats {
   day0Sent: number;
   day7Sent: number;
   unsubscribes: number;
+  honeypot: number;
 }
 
 // ---- validation (pure) ------------------------------------------------------
@@ -689,7 +690,7 @@ export const REPORT_PREFIX = "seo-tjek-report-";
 export async function bumpStats(field: keyof SeoTjekStats): Promise<void> {
   try {
     const { store } = await import("./store.ts");
-    const cur = (await store.get<SeoTjekStats>(STATS_KEY)) ?? { submissions: 0, reports: 0, day0Sent: 0, day7Sent: 0, unsubscribes: 0 };
+    const cur = (await store.get<SeoTjekStats>(STATS_KEY)) ?? { submissions: 0, reports: 0, day0Sent: 0, day7Sent: 0, unsubscribes: 0, honeypot: 0 };
     cur[field] = (cur[field] ?? 0) + 1;
     await store.put(STATS_KEY, cur);
   } catch { /* tracking is best-effort, never blocks the funnel */ }

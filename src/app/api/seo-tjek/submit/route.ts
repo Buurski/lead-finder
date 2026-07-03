@@ -4,10 +4,15 @@
 // day 0 mail and answers with the report URL.
 //
 // Abuse guards, in order:
+//  0. Honeypot — hidden "website2" field; if filled, silent-drop (no checks,
+//     no mail) and bump the honeypot counter.
 //  1. validateSubmission — SSRF-guarded URL + email + consent required.
-//  2. Per-IP rate limit: 3 checks/hour (Vercel KV REST when configured,
-//     in-memory fallback locally).
-//  3. 24h dedupe on url+email — same person re-submitting gets the existing
+//  2. Per-IP rate limit: 3 checks/hour (Vercel KV REST when configured).
+//     Fail-closed on Vercel: no KV, or a failing KV call, refuses the request
+//     (503/429) rather than run the paid check unguarded. In-memory fallback
+//     is local-dev only.
+//  3. Global daily cap on paid-API spend.
+//  4. 24h dedupe on url+email — same person re-submitting gets the existing
 //     report instead of new API spend.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -33,32 +38,50 @@ const memHits = new Map<string, { count: number; resetAt: number }>();
 async function rateLimited(ip: string): Promise<boolean> {
   const url = process.env.KV_REST_API_URL;
   const tok = process.env.KV_REST_API_TOKEN;
-  if (url && tok) {
-    try {
-      const res = await fetch(`${url}/pipeline`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
-        body: JSON.stringify([
-          ["INCR", `seotjek:rl:${ip}`],
-          ["EXPIRE", `seotjek:rl:${ip}`, "3600", "NX"],
-        ]),
-        signal: AbortSignal.timeout(2500),
-      });
-      const json = res.ok ? ((await res.json()) as Array<{ result?: number }>) : null;
-      const count = json?.[0]?.result ?? 0;
-      return count > RL_MAX_PER_HOUR;
-    } catch {
-      // KV unreachable — fall through to the in-memory counter.
+
+  // Fail-closed on Vercel: this public route triggers paid Google API calls and
+  // a mail, so it must never run without a durable rate-limit backend. If KV is
+  // not configured in prod, refuse (treat as rate-limited). In-memory is a
+  // best-effort fallback for local dev only. Mirrors the CRON_SECRET fund.
+  if (!url || !tok) {
+    if (process.env.VERCEL) return true;
+    const now = Date.now();
+    const hit = memHits.get(ip);
+    if (!hit || hit.resetAt < now) {
+      memHits.set(ip, { count: 1, resetAt: now + 3600_000 });
+      return false;
     }
+    hit.count++;
+    return hit.count > RL_MAX_PER_HOUR;
   }
-  const now = Date.now();
-  const hit = memHits.get(ip);
-  if (!hit || hit.resetAt < now) {
-    memHits.set(ip, { count: 1, resetAt: now + 3600_000 });
-    return false;
+
+  try {
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
+      body: JSON.stringify([
+        ["INCR", `seotjek:rl:${ip}`],
+        ["EXPIRE", `seotjek:rl:${ip}`, "3600", "NX"],
+      ]),
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) throw new Error(`KV ${res.status}`);
+    const json = (await res.json()) as Array<{ result?: number }>;
+    const count = json?.[0]?.result ?? 0;
+    return count > RL_MAX_PER_HOUR;
+  } catch {
+    // KV call failed. On Vercel, fail-closed (refuse) rather than let the paid
+    // route run unguarded; locally, fall back to the in-memory counter.
+    if (process.env.VERCEL) return true;
+    const now = Date.now();
+    const hit = memHits.get(ip);
+    if (!hit || hit.resetAt < now) {
+      memHits.set(ip, { count: 1, resetAt: now + 3600_000 });
+      return false;
+    }
+    hit.count++;
+    return hit.count > RL_MAX_PER_HOUR;
   }
-  hit.count++;
-  return hit.count > RL_MAX_PER_HOUR;
 }
 
 function clientIp(req: NextRequest): string {
@@ -84,11 +107,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "Ugyldigt input." }, { status: 400 });
   }
 
+  // Honeypot: a hidden field ("website2") no real user ever fills. A bot that
+  // fills every input trips it. Silent drop — answer with a plausible success
+  // shape and run NO checks/mail, so the bot cannot tell it was blocked.
+  const website2 = (body as Record<string, unknown> | null)?.website2;
+  if (typeof website2 === "string" && website2.trim() !== "") {
+    await bumpStats("honeypot");
+    return NextResponse.json({ ok: true, id: crypto.randomUUID(), reportUrl: baseUrl(req) + "/seo-tjek" });
+  }
+
   const v = validateSubmission(body);
   if (!v.ok) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
 
   const ip = clientIp(req);
-  if (await rateLimited(ip)) {
+  const limited = await rateLimited(ip);
+  if (limited) {
+    // On Vercel with no KV, rateLimited fail-closes for everyone — surface that
+    // as a 503 "temporarily unavailable" rather than a misleading rate-limit.
+    if (process.env.VERCEL && (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN)) {
+      return NextResponse.json(
+        { ok: false, error: "Tjenesten er midlertidigt utilgængelig. Prøv igen senere." },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: "Du har tjekket flere sider den seneste time. Prøv igen senere." },
       { status: 429 },

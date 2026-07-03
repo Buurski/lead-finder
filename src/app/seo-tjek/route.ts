@@ -38,6 +38,7 @@ const FORM_HTML = `<!doctype html>
   .points li{padding-left:1.4rem;position:relative;margin:.4rem 0;font-size:.95rem}
   .points li:before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:700}
   .foot{margin-top:2rem;font-size:.78rem;color:var(--muted)}
+  .hp{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
@@ -77,6 +78,10 @@ const FORM_HTML = `<!doctype html>
         <input id="city" name="city" type="text" placeholder="Ikast">
       </div>
     </div>
+    <div class="hp" aria-hidden="true">
+      <label for="website2">Lad dette felt stå tomt</label>
+      <input id="website2" name="website2" type="text" tabindex="-1" autocomplete="off">
+    </div>
     <div class="consent">
       <input id="consent" name="consent" type="checkbox" required>
       <label for="consent" style="font-weight:400;margin:0">Ja tak, send rapporten til min mail. I må også følge op med ét godt råd om min side. Jeg kan afmelde med ét klik, og I deler aldrig min mail med andre.</label>
@@ -106,6 +111,7 @@ const FORM_HTML = `<!doctype html>
           branch: document.getElementById("branch").value,
           city: document.getElementById("city").value,
           consent: document.getElementById("consent").checked,
+          website2: document.getElementById("website2").value,
         }),
       });
       var data = await res.json();
