@@ -6,6 +6,7 @@ import {
   Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
   Moon, Pause, Columns3, ArrowUpRight,
+  Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard,
   type LucideProps,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ const MAP = {
   Clock, Mail, FileText, ChevronRight, ChevronUp, ChevronDown, Bot, Workflow,
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
   Moon, Pause, Columns3, ArrowUpRight,
+  Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard,
 } as const;
 
 export type IconName = keyof typeof MAP;
