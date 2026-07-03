@@ -153,10 +153,10 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
       )}
 
       {spendAlert && (
-        <Link href="/spend" className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)", textDecoration: "none", color: "inherit" }}>
+        <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
           <Icon name="CircleDollarSign" style={{ width: 17, height: 17, color: "var(--amber)" }} />
-          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Se AI Spend →</span>
-        </Link>
+          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Detaljer under Agents-fanen.</span>
+        </div>
       )}
 
       <MorningVitals />
@@ -294,7 +294,6 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Hvad skal vi i dag</h2>
         {dateLabel && <span className="cc-dim" style={{ fontSize: 12.5, marginLeft: 2 }}>· {dateLabel}</span>}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/journal" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Journal →</Link>
           {brief?.ok && (
             <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Skjul" : "Vis"} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", display: "grid", placeItems: "center" }}>
               <Icon name={open ? "ChevronUp" : "ChevronDown"} style={{ width: 16, height: 16 }} />
@@ -315,9 +314,8 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
           <div style={{ maxHeight: 360, overflowY: "auto" }}>
             <MarkdownLite source={brief.body} />
           </div>
-          <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-            <span>kilde: {brief.source === "remote" ? "live vault" : brief.source}</span>
-            <Link href="/journal" className="cc-link" style={{ marginLeft: "auto", fontWeight: 600 }}>Åbn i Journal →</Link>
+          <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12 }}>
+            kilde: {brief.source === "remote" ? "live vault" : brief.source} · {brief.pathRel}
           </div>
         </div>
       ) : null}
@@ -434,7 +432,7 @@ function QueueCard({ s }: { s: DeckSummary }) {
             ))}
           </ul>
           <div style={{ padding: "12px 22px" }}>
-            <Link href="/approve" className="cc-btn" style={{ width: "100%", justifyContent: "center" }}>Åbn godkendelse</Link>
+            <Link href="/approve" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Åbn godkendelse →</Link>
           </div>
         </>
       )}
@@ -728,7 +726,6 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
           <Icon name="CircleDollarSign" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>AI-forbrug</h2>
-          <Link href="/spend" className="cc-link" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Detaljer →</Link>
         </div>
         {spendOn ? (
           <>

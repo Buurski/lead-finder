@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const drafts = await readQueue();
   const moved: Array<{ id: string; name: string }> = [];
   let skippedNotPending = 0;
-  let skippedNotFound = 0;
+  const skippedNotFound = 0;
 
   for (const d of drafts) {
     if (idsSet && !idsSet.has(d.id)) continue;

@@ -225,9 +225,16 @@ export function mixForLead(lead: MixLead): ToneMix {
   // hooks-less leads (reads as personal). Demo-hook is the universal fallback.
   const ach = openers.find((o) => o.kind === "achievement");
   const lok = openers.find((o) => o.kind === "lokation");
+  // Specifikke openers (kundens egne tal/citater/site-problemer) slår lokation —
+  // lokation slår kun de generiske fallbacks (demo-hook/brand). Tidligere blev
+  // lokation valgt over ALT undtagen achievement, hvilket både druknede
+  // review-volume/quote/tech-problem og gav næsten ens mails i en batch.
+  const specific = openers.filter((o) => o.kind === "quote" || o.kind === "tech-problem" || o.kind === "review-volume" || o.kind === "detail");
   let chosen;
   if (ach) {
     chosen = ach;
+  } else if (specific.length > 0) {
+    chosen = specific[hash(seed + "open") % specific.length];
   } else if (lok) {
     chosen = lok;
   } else {

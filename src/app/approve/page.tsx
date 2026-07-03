@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
 import { previewSignature } from "@/lib/leads/signature-preview";
+import WarnBanner from "@/components/WarnBanner";
 
 // Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
 // ikke trækker server-only env-vars; serveren (senders.ts) er source of
@@ -76,8 +77,8 @@ export default function ApprovePage() {
     try {
       setDrafts(await fetchQueue());
       setError(null);
-    } catch {
-      setError("Kunne ikke hente køen.");
+    } catch (e) {
+      setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
     } finally {
       setLoading(false);
     }
@@ -94,8 +95,8 @@ export default function ApprovePage() {
           setDrafts(drafts);
           setError(null);
         }
-      } catch {
-        if (!cancelled) setError("Kunne ikke hente køen.");
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -127,7 +128,39 @@ export default function ApprovePage() {
   const sendApproved = useCallback(async () => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
     if (counts.approved === 0) return;
-    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
+
+    // Preflight (GET på send-ruten): kører alle guards uden at sende, så
+    // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
+    // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
+    // vi tilbage til den gamle dialog.
+    let confirmText = `Send ${counts.approved} godkendte udkast?`;
+    try {
+      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      if (pf && pf.ok) {
+        if (pf.paused) { setSendMsg(`Afsendelse er på pause${pf.until ? ` til ${pf.until}` : ""}.`); return; }
+        if (pf.busy) { setSendMsg("Afsendelse kører allerede — vent til den er færdig."); return; }
+        if (!pf.senders?.lucas && !pf.senders?.charlie) { setSendMsg("Ingen mail-creds sat — der kan ikke sendes."); return; }
+        if (pf.wouldSend === 0) {
+          const why = (pf.skipped ?? []).slice(0, 5).map((s: { name: string; reason: string }) => `· ${s.name}: ${s.reason}`).join("\n");
+          setSendMsg(`Ingen af de ${pf.approved} godkendte kan sendes.${why ? `\n${why}` : ""}`);
+          return;
+        }
+        const reasonCounts = new Map<string, number>();
+        for (const s of (pf.skipped ?? []) as { reason: string }[]) {
+          reasonCounts.set(s.reason, (reasonCounts.get(s.reason) ?? 0) + 1);
+        }
+        const skipLine = [...reasonCounts.entries()].map(([r, n]) => `${n}× ${r}`).join(", ");
+        confirmText = [
+          `Klar til at sende:`,
+          `· ${pf.wouldSend} sendes nu`,
+          pf.capped > 0 ? `· ${pf.capped} venter til næste klik (max ${pf.cap} pr. klik)` : "",
+          (pf.skipped?.length ?? 0) > 0 ? `· ${pf.skipped.length} springes over (${skipLine})` : "",
+          !pf.sheetsOk ? `· OBS: Sheets kunne ikke nås — dedup kører kun på kø-historikken` : "",
+        ].filter(Boolean).join("\n");
+      }
+    } catch { /* preflight er best-effort */ }
+
+    if (!window.confirm(`${confirmText}\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
     setSendBusy(true);
     setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
@@ -317,11 +350,31 @@ export default function ApprovePage() {
         </div>
       )}
 
-      {error && (
-        <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>
-      )}
-
-      {!loading && visible.length === 0 ? (
+      {loading && drafts.length === 0 ? (
+        // Skeleton only on the first load — a manual refresh keeps the list
+        // visible instead of flashing back to shimmer.
+        <div style={{ display: "grid", gap: 18 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="cc-skel" style={{ height: 180, borderRadius: 14 }} />
+          ))}
+        </div>
+      ) : error ? (
+        // A failed fetch must not masquerade as an empty queue — show the error
+        // with a retry instead of "Køen er tom".
+        <WarnBanner
+          role="alert"
+          action={
+            <button onClick={load} disabled={loading} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", opacity: loading ? 0.6 : 1 }}>
+              {loading ? "Henter…" : "Prøv igen"}
+            </button>
+          }
+        >
+          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>{error}</div>
+          <div style={{ fontSize: 12.5, marginTop: 2 }}>
+            Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
+          </div>
+        </WarnBanner>
+      ) : visible.length === 0 ? (
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -840,7 +893,7 @@ function DraftLetter({
 
       {/* actions */}
       {!decided && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>

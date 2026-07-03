@@ -73,7 +73,8 @@ const voice = "Voice: humble hobby salgselev, warm, no price/kr, no robot-CTA, 2
 const draft = await draft_personal_message(lead, research, voice, { useLLM: false });
 check("draft has subject", typeof draft.subject === "string" && draft.subject.length > 0);
 check("draft body greets lead", draft.body.includes("Salon Lumière"));
-check("draft body ends Mvh, Lucas", /Mvh, Lucas\s*$/.test(draft.body));
+// Sender-profiler (2026-06-26): deterministisk signatur er nu fulde navn.
+check("draft body ends Mvh, Lucas", /Mvh, Lucas( Buur)?\s*$/.test(draft.body));
 check("draft body includes both demo urls",
   draft.body.includes(research.demoPair[0].url) && draft.body.includes(research.demoPair[1].url));
 check("draft passes validateDraft (no price/robot)", validateDraft(draft.body).ok === true);

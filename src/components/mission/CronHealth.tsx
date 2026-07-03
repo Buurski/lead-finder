@@ -50,6 +50,8 @@ export default function CronHealth() {
   const [manuallyTriggeredAt, setManuallyTriggeredAt] = useState<Record<string, string>>({});
   const [mounted, setMounted] = useState(false);
 
+  // Client-only flag to avoid hydration mismatch — intentional sync setState.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   const load = async () => {
@@ -65,6 +67,8 @@ export default function CronHealth() {
   };
 
   useEffect(() => {
+    // Initial fetch + 30s poll; setState happens after await inside load().
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     const t = setInterval(load, 30_000);
     return () => clearInterval(t);

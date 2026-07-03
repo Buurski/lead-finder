@@ -27,12 +27,14 @@ export default function Sidebar({
   return (
     <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
       <div className="cc-brand">
-        <span className="cc-brand-mark" aria-hidden style={{ display: "grid", placeItems: "center" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 10px var(--accent)", display: "block" }} />
-        </span>
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden style={{ flexShrink: 0 }}>
+          <rect x="8" y="24" width="22" height="28" rx="7" fill="var(--accent-ink)" />
+          <rect x="35.75" y="25.75" width="18.5" height="24.5" rx="5.5" fill="none" stroke="var(--text)" strokeWidth="3.5" />
+          <circle cx="32" cy="12.5" r="5" fill="#C8A97E" />
+        </svg>
         <span>
-          <span className="cc-brand-name">Command Center</span>
-          <span className="cc-brand-sub" style={{ display: "block" }}>agentic OS</span>
+          <span className="cc-brand-name">buurski</span>
+          <span className="cc-brand-sub" style={{ display: "block" }}>Command Center</span>
         </span>
       </div>
 

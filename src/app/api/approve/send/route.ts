@@ -54,6 +54,120 @@ const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
   /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
 
+// GET /api/approve/send — PREFLIGHT. Sender INTET. Kører de samme guards som
+// send-løkken (samme rækkefølge, samme ledger-seeding) og svarer med hvad et
+// klik ville gøre: hvor mange sendes nu (SEND_CAP), hvor mange venter, hvem
+// springes over og hvorfor, samt pause/lås/afsender-status. UI'et bruger det
+// til at vise en ærlig bekræftelses-dialog i stedet for et rundt tal.
+// Holdes bevidst i samme fil som POST så guard-logikken ikke driver fra
+// hinanden — ændrer du en guard i løkken, så ændr den også her.
+export async function GET(req: Request) {
+  // Spejler POST'ens ?force=1 (legacy re-run): samme kandidat-udvælgelse og
+  // samme !force-gating af re-contact-guards, ellers under-rapporterer
+  // dialogen på et force-run.
+  const force = new URL(req.url).searchParams.get("force") === "1";
+  const senders = { lucas: isSenderAvailable("lucas"), charlie: isSenderAvailable("charlie") };
+  const pause = await getPauseStatus("cold").catch(() => ({ paused: false as const, until: undefined as string | undefined }));
+  const now = Date.now();
+  const lock = await store.get<{ until: number }>(LOCK_KEY).catch(() => null);
+  const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
+
+  const drafts = await readQueue();
+  const candidates = force
+    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
+    : drafts.filter((d) => d.status === "approved");
+
+  const sentIds = new Set<string>();
+  const sentKeys = new Set<string>();
+  const sentEmails = new Set<string>();
+  for (const d of drafts) {
+    if (d.status !== "sent") continue;
+    if (d.leadId) sentIds.add(d.leadId);
+    const k = bizKey(d.name, d.city);
+    if (k) sentKeys.add(k);
+    if (d.recipientEmail) sentEmails.add(d.recipientEmail.trim().toLowerCase());
+  }
+
+  let leads: Awaited<ReturnType<typeof getLeads>> = [];
+  let sheetsOk = true;
+  try {
+    leads = await getLeads();
+  } catch {
+    sheetsOk = false;
+    leads = [];
+  }
+  const byId = new Map(leads.map((l) => [l.id, l]));
+  for (const l of leads) {
+    if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
+  }
+
+  let wouldSend = 0;
+  let capped = 0;
+  const skipped: { name: string; reason: string }[] = [];
+  for (const d of candidates) {
+    const lead = (d.leadId && byId.get(d.leadId)) ||
+      leads.find((l) => l.name.trim().toLowerCase() === d.name.trim().toLowerCase());
+    const target = (d.recipientEmail && d.recipientEmail.trim()) || (lead?.email || "").trim();
+    if (!hasUsableEmail(target)) {
+      skipped.push({ name: d.name, reason: lead ? "no email" : "ingen modtager-email" });
+      continue;
+    }
+    const targetKey = target.toLowerCase();
+    if (lead && !force && alreadyEmailed(lead)) {
+      skipped.push({ name: d.name, reason: "allerede kontaktet" });
+      continue;
+    }
+    if (isExcludedBranch(d.branch, d.name)) {
+      skipped.push({ name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
+      continue;
+    }
+    if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+      skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
+      continue;
+    }
+    if (!force && sentEmails.has(targetKey)) {
+      skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
+      continue;
+    }
+    const decision = canSendTo({
+      name: lead?.name ?? d.name,
+      branch: lead?.branch ?? d.branch,
+      email: target,
+      emailStatus: lead?.emailStatus,
+      status: lead?.status,
+    });
+    if (!decision.ok) {
+      skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" });
+      continue;
+    }
+    if (wouldSend >= SEND_CAP) {
+      capped++;
+      continue;
+    }
+    wouldSend++;
+    // Spejl send-løkkens in-run ledger så en sibling-draft for samme
+    // virksomhed/adresse tælles som skip, præcis som i et rigtigt run.
+    if (d.leadId) sentIds.add(d.leadId);
+    const sk = bizKey(d.name, d.city);
+    if (sk) sentKeys.add(sk);
+    sentEmails.add(targetKey);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    senders,
+    paused: pause.paused,
+    until: pause.paused ? pause.until : undefined,
+    busy,
+    sheetsOk,
+    approved: candidates.length,
+    wouldSend,
+    capped,
+    cap: SEND_CAP,
+    skipped,
+  });
+}
+
 export async function POST(req: Request) {
   // ?force=1 overrides ONLY the never-re-contact guard (emailSentAt) — used for the
   // May limit-hit batch where emailSentAt was stamped optimistically but the mail

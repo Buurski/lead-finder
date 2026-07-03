@@ -27,7 +27,7 @@ const HTML_WRAPPER = '<div style="font-family:system-ui,sans-serif';
 
 function htmlToText(html: string): string {
   // Decode common entities first (cheap; doesn't touch raw text)
-  let t = html
+  const t = html
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")

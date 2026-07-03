@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>SEO uden ads</title>
+<style>
+  :root{
+    --creme:#faf7f2;
+    --ink:#2b2620;
+    --muted:#6b6357;
+    --line:#e3dbcd;
+    --accent:#5c7a52;      /* sage/olive */
+    --accent-soft:#e6ecdf;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  html,body{background:#d9d2c6;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);}
+  @page{size:A4;margin:0;}
+  .page{
+    width:210mm;height:297mm;background:var(--creme);
+    padding:14mm 14mm 12mm 14mm;margin:0 auto;position:relative;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  @media print{ html,body{background:var(--creme);} .page{margin:0;} }
+
+  h1,h2,h3,.brand,.kicker{font-family:Georgia,"Times New Roman",serif;}
+
+  header{border-bottom:2px solid var(--accent);padding-bottom:6mm;margin-bottom:6mm;
+    display:flex;justify-content:space-between;align-items:flex-end;}
+  .brand{font-size:15pt;font-weight:700;letter-spacing:.3px;color:var(--ink);}
+  .brand span{color:var(--accent);}
+  .brand small{display:block;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:9.5pt;font-weight:400;color:var(--muted);letter-spacing:.2px;margin-top:2px;}
+  .kicker{font-size:10.5pt;color:var(--accent);text-align:right;font-style:italic;}
+
+  h1{font-size:30pt;line-height:1.02;font-weight:700;margin-bottom:3mm;}
+  .lede{font-size:11pt;color:var(--muted);max-width:155mm;line-height:1.45;margin-bottom:7mm;}
+  .lede b{color:var(--ink);}
+
+  /* Six layers */
+  .layers{display:grid;grid-template-columns:1fr 1fr;gap:4mm 6mm;margin-bottom:7mm;}
+  .layer{display:flex;gap:4mm;align-items:flex-start;}
+  .layer .n{flex:none;width:9mm;height:9mm;border-radius:50%;background:var(--accent);
+    color:#fff;font-family:Georgia,serif;font-size:11pt;font-weight:700;
+    display:flex;align-items:center;justify-content:center;margin-top:.5mm;}
+  .layer .lt{font-family:Georgia,serif;font-size:11pt;font-weight:700;margin-bottom:.8mm;}
+  .layer .ld{font-size:9pt;color:var(--muted);line-height:1.4;}
+
+  /* Price + timeline row */
+  .row{display:flex;gap:5mm;margin-bottom:auto;}
+  .price-box{flex:1.1;background:var(--ink);color:#fff;border-radius:3px;padding:5mm 6mm;}
+  .price-box .pt{font-size:9pt;color:#cfd7c6;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm;}
+  .price-box .pmain{font-family:Georgia,serif;font-size:22pt;font-weight:700;line-height:1;color:#fff;}
+  .price-box .pmain span{color:#a9c096;font-size:11pt;}
+  .price-box .psub{font-size:9.5pt;color:#cfd7c6;margin-top:2mm;line-height:1.4;}
+  .price-box .plus{font-family:Georgia,serif;font-size:13pt;color:#a9c096;margin:3mm 0 .5mm;}
+
+  .timeline{flex:1.2;background:var(--accent-soft);border-radius:3px;padding:5mm 6mm;}
+  .timeline .tt{font-family:Georgia,serif;font-size:11.5pt;font-weight:700;margin-bottom:3mm;}
+  .timeline ul{list-style:none;}
+  .timeline li{font-size:9.5pt;line-height:1.4;color:var(--ink);padding-left:6mm;position:relative;margin-bottom:2.5mm;}
+  .timeline li::before{content:"";position:absolute;left:0;top:1.4mm;width:3mm;height:3mm;
+    border-radius:50%;border:1.6px solid var(--accent);}
+  .timeline li b{font-family:Georgia,serif;color:var(--accent);}
+  .honest{font-size:9.5pt;color:var(--muted);font-style:italic;line-height:1.4;margin-top:2mm;
+    border-top:1px solid #d3ddc7;padding-top:2.5mm;}
+
+  footer{border-top:1px solid var(--line);padding-top:4mm;margin-top:6mm;
+    display:flex;justify-content:space-between;align-items:flex-end;}
+  footer .name{font-family:Georgia,serif;font-size:10.5pt;font-weight:700;}
+  footer .contact{font-size:9pt;color:var(--muted);line-height:1.5;margin-top:1mm;}
+  footer .note{font-size:8pt;color:var(--muted);text-align:right;max-width:70mm;line-height:1.4;}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="brand">Buur <span>&middot;</span> seo<small>Webudvikling i Ikast/Herning</small></div>
+    <div class="kicker">Organisk. Lokalt. Ærligt.</div>
+  </header>
+
+  <h1>SEO uden ads</h1>
+  <p class="lede">Bliv fundet på Google, i Maps og i AI-søgning uden at betale per klik. Det her er den organiske vej: din profil, dine anmeldelser og dit indhold. Det tager lidt længere tid end annoncer, men <b>du betaler ikke per klik, og effekten bliver hængende</b> når vi holder op i stedet for at forsvinde.</p>
+
+  <div class="layers">
+    <div class="layer">
+      <div class="n">1</div>
+      <div>
+        <div class="lt">Teknisk fundament</div>
+        <div class="ld">Jeg rydder op i motorrummet: Google skal kunne læse din side rigtigt, og den skal være lynhurtig på mobil.</div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">2</div>
+      <div>
+        <div class="lt">Google Business Profile</div>
+        <div class="ld">Din profil er det første folk ser når de søger dig lokalt. Den gør jeg komplet og troværdig. Det rykker mest.</div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">3</div>
+      <div>
+        <div class="lt">Landingssider</div>
+        <div class="ld">Folk søger på det de skal bruge, ikke kun dit navn. Jeg laver en side per ting, så du findes præcis der.</div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">4</div>
+      <div>
+        <div class="lt">Ensartet info overalt</div>
+        <div class="ld">Står din adresse og telefon ens alle steder på nettet, bliver Google ikke i tvivl om hvem du er.</div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">5</div>
+      <div>
+        <div class="lt">Anmeldelses-motor med QR</div>
+        <div class="ld">En QR-kode på bordet gør glade kunder til to klik fra en ægte anmeldelse. Nummer et for lokal placering.</div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">6</div>
+      <div>
+        <div class="lt">Synlig i AI-søgning</div>
+        <div class="ld">Flere spørger ChatGPT i stedet for at google. Jeg gør din side let at læse, så du også kan blive nævnt der.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="price-box">
+      <div class="pt">Sådan er prisen</div>
+      <div class="pmain">2.500<span> kr</span></div>
+      <div class="psub">Opstart af hele fundamentet, inkl. dine 2 vigtigste landingssider.</div>
+      <div class="plus">+ 750 kr/md.</div>
+      <div class="psub">Løbende: nyt indhold, friske opslag, anmeldelser og kvartalsrapport du faktisk kan læse.</div>
+    </div>
+    <div class="timeline">
+      <div class="tt">Ærlig tidslinje</div>
+      <ul>
+        <li><b>4&ndash;8 uger:</b> Maps og anmeldelser begynder at rykke.</li>
+        <li><b>2&ndash;3 måneder:</b> landingssider og AI-synlighed følger med.</li>
+      </ul>
+      <div class="honest">Ingen garanti om placering. Ingen seriøs kan give det. Kun ærligt arbejde og målbare skridt i den rigtige retning.</div>
+    </div>
+  </div>
+
+  <footer>
+    <div>
+      <div class="name">Lucas Buur, webudvikler i Ikast/Herning</div>
+      <div class="contact">Telefon: [dit nummer]&nbsp;&nbsp;&middot;&nbsp;&nbsp;Mail: [din mail]</div>
+    </div>
+    <div class="note">Priser uden moms. Betaling 50/50 ved setup-opgaver.</div>
+  </footer>
+</div>
+</body>
+</html>

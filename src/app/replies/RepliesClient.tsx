@@ -217,11 +217,30 @@ function CopyPromptButton() {
 // gates) and refreshes — for when Cowork hasn't delivered and Lucas wants it now.
 function ScanNowButton({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   async function scan() {
     setBusy(true);
-    try { await fetch("/api/ops/run-cron/inbox-triage", { method: "POST" }); onDone(); } catch { /* ignore */ } finally { setBusy(false); }
+    setFailed(false);
+    try {
+      // Bundle A's browser-safe manuelle cron-trigger (ingen CRON_SECRET i
+      // klienten) kombineret med Bundle E/F's fejl-notits.
+      const r = await fetch("/api/ops/run-cron/inbox-triage", { method: "POST" });
+      if (!r.ok) setFailed(true);
+      onDone();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+      // Don't let a stale failure notice linger after later successful loads.
+      setTimeout(() => setFailed(false), 8000);
+    }
   }
-  return <button className="cc-btn" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <button className="cc-btn" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>
+      {failed && <span className="cc-dim" style={{ fontSize: 12, color: "var(--amber)" }}>Scan fejlede — prøv igen om lidt.</span>}
+    </span>
+  );
 }
 
 export default function RepliesClient() {
@@ -259,12 +278,17 @@ export default function RepliesClient() {
   if (state === "error") {
     const notConfigured = /imap not configured|not configured|gmail/i.test(err);
     return (
-      <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center" }}>
+      <div className="cc-card cc-card-pad" role="alert" style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap" }}>
         <Icon name={notConfigured ? "Mail" : "Activity"} style={{ width: 18, height: 18, color: "var(--amber)" }} />
-        <div>
+        <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{notConfigured ? "Gmail er ikke sat op endnu" : "Kunne ikke nå indbakken"}</div>
           <div className="cc-dim" style={{ fontSize: 12.5 }}>{notConfigured ? "Sæt GMAIL_USER + GMAIL_APP_PASSWORD i miljøet, så scanner jeg indbakken for svar. Intet blev rørt." : `${err} — read-only, intet blev rørt.`}</div>
         </div>
+        {!notConfigured && (
+          <button className="cc-btn" onClick={load}>
+            <Icon name="Activity" style={{ width: 14, height: 14 }} /> Prøv igen
+          </button>
+        )}
       </div>
     );
   }

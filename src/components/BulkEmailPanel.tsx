@@ -6,8 +6,8 @@ import { Send, RefreshCw, Search, MailCheck } from "lucide-react";
 export default function BulkEmailPanel() {
   const router = useRouter();
   const [bulkCount, setBulkCount] = useState<number | null>(null);
-  const [followupCount, setFollowupCount] = useState<number | null>(null);
   const [findEmailCount, setFindEmailCount] = useState<number | null>(null);
+  const [countsError, setCountsError] = useState(false);
   const [sendingBulk, setSendingBulk] = useState(false);
   const [findingEmails, setFindingEmails] = useState(false);
   const [syncingReplies, setSyncingReplies] = useState(false);
@@ -17,14 +17,19 @@ export default function BulkEmailPanel() {
   useEffect(() => { fetchCounts(); }, []);
 
   async function fetchCounts() {
-    const [b, f, e] = await Promise.all([
-      fetch("/api/email/bulk-send").then((r) => r.json()),
-      fetch("/api/email/send-followups").then((r) => r.json()),
-      fetch("/api/email/bulk-find-emails").then((r) => r.json()),
-    ]);
-    setBulkCount(b.eligible ?? 0);
-    setFollowupCount(f.count ?? 0);
-    setFindEmailCount(e.count ?? 0);
+    // Best-effort: a failed status fetch must not crash the panel or hide it
+    // silently — surface a retry instead.
+    try {
+      const [b, e] = await Promise.all([
+        fetch("/api/email/bulk-send").then((r) => r.json()),
+        fetch("/api/email/bulk-find-emails").then((r) => r.json()),
+      ]);
+      setBulkCount(b.eligible ?? 0);
+      setFindEmailCount(e.count ?? 0);
+      setCountsError(false);
+    } catch {
+      setCountsError(true);
+    }
   }
 
   async function runBulkSend() {
@@ -114,17 +119,15 @@ async function runFindEmails() {
         </div>
       )}
 
-      {(followupCount ?? 0) > 0 && (
+      {countsError && (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            <strong style={{ color: "var(--text)" }}>{followupCount}</strong> klar til follow-up
-          </span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Kunne ikke hente mail-status.</span>
           <button
-            onClick={() => router.push("/followup-review")}
-            style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#b45309", border: "1px solid #fbbf24", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            onClick={fetchCounts}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
           >
-            <Send size={11} />
-            Gennemse follow-ups →
+            <RefreshCw size={11} />
+            Prøv igen
           </button>
         </div>
       )}

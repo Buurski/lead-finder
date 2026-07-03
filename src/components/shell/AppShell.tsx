@@ -13,6 +13,20 @@ interface Counts {
   needs?: number;
 }
 
+interface PauseInfo {
+  paused: boolean;
+  until: string | null;
+}
+
+// Human line for the pause banner. `until` can be a date string or a sentinel
+// ("indefinite" etc.) — show the raw value when it isn't a parseable date.
+function pauseLine(p: PauseInfo): string {
+  if (!p.until) return "Al afsendelse er på pause.";
+  const t = Date.parse(p.until);
+  if (Number.isNaN(t)) return "Al afsendelse er på pause (indtil videre).";
+  return `Al afsendelse er på pause til ${new Date(t).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`;
+}
+
 function titleFor(pathname: string): string {
   if (pathname === "/") return "Mission Control";
   const hit = NAV_FLAT.find((i) => i.href !== "/" && (pathname === i.href || pathname.startsWith(i.href + "/")));
@@ -24,6 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>({});
+  const [pause, setPause] = useState<PauseInfo | null>(null);
 
   // Global ⌘K / Ctrl+K to toggle the palette.
   useEffect(() => {
@@ -48,6 +63,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .then((d) => {
         if (!alive || !d) return;
         setCounts({ queue: d?.queue?.pending, needs: d?.needsYou?.length });
+        setPause(d?.pause ?? null);
       })
       .catch(() => {});
     return () => {
@@ -81,6 +97,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {pause?.paused && (
+          <div
+            role="status"
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 20px", fontSize: 13, fontWeight: 600,
+              background: "var(--amber-dim)", color: "var(--text)",
+              borderBottom: "1px solid var(--amber)",
+            }}
+          >
+            <Icon name="Pause" style={{ width: 14, height: 14, color: "var(--amber)" }} />
+            {pauseLine(pause)}
+            <a href="/review/halt" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5 }}>Se pause-status</a>
+          </div>
+        )}
         <div className="cc-content">{children}</div>
       </div>
 

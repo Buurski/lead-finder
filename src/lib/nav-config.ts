@@ -11,46 +11,33 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  id: "workspace" | "agents" | "self";
+  id: "workspace" | "self";
   label: string;
   items: NavItem[];
 }
 
+// Trimmet 2026-07-02 (Bundle E): 8 kerneflader. /leadgen, /messenger, /goals,
+// /claude og /hermes findes stadig (direkte URL, ude af nav). /radar, /sms,
+// /spend, /memory, /build-guide, /followup-review og /journal er SLETTET —
+// de ligger på branch archive/thin-pages-2026-07-02.
 export const NAV: NavGroup[] = [
   {
     id: "workspace",
     label: "Workspace",
     items: [
       { href: "/", label: "Mission Control", icon: "LayoutDashboard", hint: "Dagens overblik" },
-      { href: "/leads", label: "Leads", icon: "Users", hint: "Pipeline" },
-      { href: "/leadgen", label: "Lead-gen", icon: "Search", hint: "Live lead-feed" },
       { href: "/approve", label: "Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Indbakke-triage" },
-      { href: "/messenger", label: "Messenger", icon: "MessageSquare", hint: "FB-leads at skrive til" },
-      { href: "/sms", label: "SMS / Mobil", icon: "Smartphone", hint: "Mobil-leads (sms/ring)" },
+      { href: "/leads", label: "Leads", icon: "Users", hint: "Pipeline" },
       { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
-    ],
-  },
-  {
-    id: "agents",
-    label: "Agents",
-    items: [
-      { href: "/claude", label: "Claude", icon: "Sparkles", hint: "Hjernen / byggeren" },
-      { href: "/radar", label: "AI-Radar", icon: "Radar", hint: "Nyt AI vi kan bruge" },
-      { href: "/hermes", label: "Hermes", icon: "Radio", hint: "Buur Agent — 24/7 på VPS'en" },
-      { href: "/spend", label: "AI Spend", icon: "CircleDollarSign", hint: "Forbrug pr. model" },
     ],
   },
   {
     id: "self",
     label: "Self",
     items: [
-      { href: "/goals", label: "Goals", icon: "Target", hint: "90-dages mål" },
       { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. klient" },
       { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer & klient-sites" },
-      { href: "/journal", label: "Journal", icon: "BookOpen", hint: "Daglige briefs" },
-      { href: "/memory", label: "Memory", icon: "Brain", hint: "Second brain" },
-      { href: "/build-guide", label: "Plan-historik", icon: "Map", hint: "Planen & systemet" },
       { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence" },
     ],
   },

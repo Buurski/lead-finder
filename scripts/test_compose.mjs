@@ -36,12 +36,16 @@ for (let i = 0; i < 100; i++) {
   };
   const c = composeColdEmail(lead);
   if (!validateDraft(c.text).ok) allValid = false;
-  if (!(c.text.includes(c.demoPair[0].url) && c.text.includes(c.demoPair[1].url))) demosOk = false;
-  if (!/Mvh, Lucas\s*$/.test(c.text)) mvhOk = false;
+  // pickDemos giver 1-2 demoer (CLINIC = bevidst single, 2026-06-23) — alle
+  // valgte demo-URL'er skal med i mailen.
+  if (!(c.demoPair.length >= 1 && c.demoPair.every((d) => c.text.includes(d.url)))) demosOk = false;
+  // Signaturen påsættes ved send/preview (senders.ts, re-sign 2026-06-29) —
+  // composeren må IKKE selv skrive "Mvh," (ellers dobbelt-signatur i mailen).
+  if (/Mvh,/.test(c.text)) mvhOk = false;
 }
 check("100 cold emails all pass validateDraft", allValid);
-check("every cold email includes both demo URLs", demosOk);
-check("every cold email signs off 'Mvh, Lucas'", mvhOk);
+check("every cold email includes its demo URLs (1-2)", demosOk);
+check("no baked-in signature (appended at send time)", mvhOk);
 
 // ---- per-branch snapshot: greets + subject ---------------------------------
 for (const b of branches) {

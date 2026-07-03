@@ -11,6 +11,7 @@ const BRANCHES: { id: DemoEntry["branch"] | "alle"; label: string }[] = [
   { id: "håndværk", label: "Håndværk" },
   { id: "foto", label: "Foto" },
   { id: "service", label: "Service" },
+  { id: "professionel", label: "Professionel" },
 ];
 
 export default function StudioGrid() {
@@ -78,6 +79,14 @@ export default function StudioGrid() {
         ))}
       </div>
 
+      {shown.length === 0 && (
+        <div className="cc-card cc-empty">
+          <Icon name="LayoutGrid" />
+          <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text-muted)" }}>Ingen demoer i denne branche endnu</div>
+          <div style={{ fontSize: 12.5 }}>Branchen mangler i demo-biblioteket.</div>
+          <a href="/studio/prompt-gen" className="cc-btn" style={{ marginTop: 4 }}>+ Lav demo</a>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
         {shown.map((d) => (
           <a

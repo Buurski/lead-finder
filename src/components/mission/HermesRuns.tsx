@@ -46,6 +46,8 @@ export default function HermesRuns() {
   };
 
   useEffect(() => {
+    // Initial fetch + 30s poll; setState happens after await inside load().
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     const t = setInterval(load, 30_000);
     return () => clearInterval(t);

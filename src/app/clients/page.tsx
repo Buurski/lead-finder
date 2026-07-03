@@ -2,6 +2,7 @@ import { getClients } from "@/lib/sheets";
 import ClientCard from "@/components/ClientCard";
 import AddClientForm from "@/components/AddClientForm";
 import PageHeader from "@/components/shell/PageHeader";
+import WarnBanner from "@/components/WarnBanner";
 
 export const revalidate = 0;
 
@@ -38,16 +39,9 @@ export default async function ClientsPage() {
       <AddClientForm />
 
       {!sheetsOk ? (
-        <div
-          className="cc-card cc-card-pad"
-          role="status"
-          style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}
-        >
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke nå Google Sheets lige nu — dine klienter er der stadig. Genindlæs om et øjeblik.
-          </span>
-        </div>
+        <WarnBanner>
+          Kunne ikke nå Google Sheets lige nu — dine klienter er der stadig. Genindlæs om et øjeblik.
+        </WarnBanner>
       ) : clients.length === 0 ? (
         <div style={{
           border: "1px dashed var(--border-light)",
