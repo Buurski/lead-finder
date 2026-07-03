@@ -1,5 +1,6 @@
 import PageHeader from "@/components/shell/PageHeader";
 import SeoClient from "./SeoClient";
+import SeoTjekFunnel from "./SeoTjekFunnel";
 import { getClients } from "@/lib/sheets";
 import type { Client } from "@/lib/sheets";
 
@@ -24,7 +25,10 @@ export default async function SeoPage() {
         title="SEO"
         subtitle="Søgning og AI-synlighed pr. klient. Schema-scan kører altid; index + AI-synlighed på fuld-niveau (fx VIDA)."
       />
-      <SeoClient clients={rows} ok={ok} />
+      <div style={{ display: "grid", gap: 18, gridTemplateColumns: "minmax(0, 1fr)" }}>
+        <SeoTjekFunnel />
+        <SeoClient clients={rows} ok={ok} />
+      </div>
     </div>
   );
 }

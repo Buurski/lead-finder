@@ -8,6 +8,9 @@ import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
+// approve-many på en stor kø: én kø-skrivning + op til flere hundrede
+// best-effort Sheets-registreringer i hold — skal have luft til at løbe færdig.
+export const maxDuration = 300;
 
 // GET /api/approve/queue — return all drafts (newest first).
 export async function GET() {
@@ -20,6 +23,7 @@ interface ActionBody {
   id?: string;
   action?:
     | "approve"
+    | "approve-many"
     | "edit"
     | "reject"
     | "unapprove"
@@ -27,6 +31,7 @@ interface ActionBody {
     | "set-sender"
     | "reset-sent"
     | "cleanup-no-email";
+  ids?: string[];
   subject?: string;
   body?: string;
   demoPair?: Demo[];
@@ -77,6 +82,30 @@ export async function POST(req: Request) {
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, rejected });
+  }
+
+  // Bulk-godkend: klienten sendte før ét POST pr. draft ("Godkend alle" på 490
+  // udkast = 490 requests = minutter). Én kø-skrivning her; Sheets-registrering
+  // er best-effort i hold af 10 så en rate-limit aldrig blokerer godkendelsen.
+  if (action === "approve-many") {
+    const ids = Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === "string") : [];
+    if (ids.length === 0) return NextResponse.json({ error: "ids required" }, { status: 400 });
+    const drafts = await readQueue();
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const approved = drafts.filter((d) => idSet.has(d.id) && d.status === "pending");
+    for (const d of approved) {
+      d.status = "approved";
+      d.updatedAt = now;
+    }
+    await writeQueue(drafts);
+    let synced = 0;
+    for (let i = 0; i < approved.length; i += 10) {
+      const chunk = approved.slice(i, i + 10);
+      const res = await Promise.allSettled(chunk.map((d) => registerDraftApproved(d)));
+      synced += res.filter((r) => r.status === "fulfilled").length;
+    }
+    return NextResponse.json({ ok: true, approved: approved.length, synced, note: "marked approved — not sent" });
   }
 
   if (!id || !action) {

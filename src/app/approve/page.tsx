@@ -238,12 +238,25 @@ export default function ApprovePage() {
     }
   }, [sendBusy, counts.approved, load]);
 
+  // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
+  const [q, setQ] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const branches = useMemo(
+    () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
+    [drafts]
+  );
+
   const visible = useMemo(() => {
-    if (filter === "pending") return drafts.filter((d) => d.status === "pending");
-    if (filter === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
-    if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
-    return drafts;
-  }, [drafts, filter]);
+    let base: QueueDraft[];
+    if (filter === "pending") base = drafts.filter((d) => d.status === "pending");
+    else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
+    else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
+    else base = drafts;
+    if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
+    const needle = q.trim().toLowerCase();
+    if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
+    return base;
+  }, [drafts, filter, branchFilter, q]);
 
   // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
   // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
@@ -321,15 +334,23 @@ export default function ApprovePage() {
     if (pendings.length === 0) return;
     if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
-    let failed = 0;
-    for (const d of pendings) {
-      // sequential keeps the queue file writes ordered + avoids a write race
-      const r = await actOn(d.id, "approve");
-      if (!r.ok) failed++;
+    try {
+      // Én bulk-request i stedet for ét POST pr. draft (490 requests = minutter).
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: pendings.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < pendings.length) window.alert(`${data.approved} af ${pendings.length} godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setBulkBusy(false);
     }
-    setBulkBusy(false);
-    if (failed > 0) window.alert(`${failed} af ${pendings.length} udkast kunne ikke godkendes — de står stadig som afventende.`);
-  }, [drafts, actOn]);
+  }, [drafts, load]);
 
   // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
   const toggleSelect = useCallback((id: string) => {
@@ -360,16 +381,23 @@ export default function ApprovePage() {
     if (targets.length === 0) return;
     if (!window.confirm(`Godkend ${targets.length} valgte udkast? De markeres til afsendelse. Intet sendes.`)) return;
     setSelBusy(true);
-    let failed = 0;
-    for (const d of targets) {
-      // sequential keeps the queue file writes ordered + avoids a write race
-      const r = await actOn(d.id, "approve");
-      if (!r.ok) failed++;
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < targets.length) window.alert(`${data.approved} af ${targets.length} valgte godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setSelBusy(false);
+      setSelected(new Set());
     }
-    setSelBusy(false);
-    setSelected(new Set());
-    if (failed > 0) window.alert(`${failed} af ${targets.length} valgte udkast kunne ikke godkendes. De står stadig som afventende.`);
-  }, [selectedPending, actOn]);
+  }, [selectedPending, load]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -387,6 +415,36 @@ export default function ApprovePage() {
         onSelectAll={selectAllVisible}
         onClearSelection={clearSelection}
       />
+
+      {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
+      {drafts.length > 10 && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setShownCount(LIST_PAGE); }}
+            placeholder="Søg navn, by eller emne…"
+            aria-label="Søg i udkast"
+            style={{ flex: "1 1 220px", minWidth: 0, maxWidth: 340, border: "1px solid var(--border)", borderRadius: 9, padding: "8px 12px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+          />
+          {branches.length > 1 && (
+            <select
+              value={branchFilter}
+              onChange={(e) => { setBranchFilter(e.target.value); setShownCount(LIST_PAGE); }}
+              aria-label="Filtrér på branche"
+              style={{ border: "1px solid var(--border)", borderRadius: 9, padding: "8px 10px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+            >
+              <option value="all">Alle brancher</option>
+              {branches.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+          {(q.trim() || branchFilter !== "all") && (
+            <span className="cc-dim" style={{ fontSize: 12.5 }}>{visible.length} match</span>
+          )}
+        </div>
+      )}
 
       {/* Send step — the missing piece. Approved = ready; this actually sends. */}
       {counts.approved > 0 && (
@@ -534,6 +592,7 @@ function Header({
           <span><span className="cc-kbd">a</span> godkend</span>
           <span><span className="cc-kbd">r</span> skip</span>
           <span><span className="cc-kbd">e</span> redigér</span>
+          <span><span className="cc-kbd">space</span> vælg</span>
         </p>
       </div>
 

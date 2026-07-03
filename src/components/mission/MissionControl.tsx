@@ -98,6 +98,9 @@ function MorningVitals() {
               <span className="cc-dim" style={{ fontSize: 12 }}>
                 {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
               </span>
+              {v.task === "leadgen" && v.status !== "fresh" && (
+                <Link href="/leadgen" className="cc-link" style={{ fontSize: 12, fontWeight: 600 }}>Åbn Lead-gen →</Link>
+              )}
             </div>
           ))}
         </div>
