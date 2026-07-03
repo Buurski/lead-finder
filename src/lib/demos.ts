@@ -33,13 +33,14 @@ const D = {
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
   vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
+  midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
 // branch family it best represents. Read-only; the engine still routes via
 // pickDemoPair below.
 export interface DemoEntry extends Demo {
-  branch: "mad" | "skønhed" | "håndværk" | "foto" | "service";
+  branch: "mad" | "skønhed" | "håndværk" | "foto" | "service" | "professionel";
 }
 export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.underKlippen, branch: "mad" },
@@ -51,6 +52,7 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.ktvvs, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   { ...D.vestfjends, branch: "service" },
+  { ...D.midtadvokaterne, branch: "professionel" },
 ];
 
 const FOOD_INTL =
@@ -70,6 +72,9 @@ const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entr
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
 const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
+// Professionelle rådgivere (advokat/revisor/bogholder/mægler) → midtadvokaterne.
+// Bevidst UDEN fysioterapeut/tandlæge o.l. — de er medicinsk-ekskluderet ved send.
+const PROFESSIONAL = /advokat|jurist|jura|revisor|revision|bogholder|regnskab|ejendomsmægler|ejendomsmaegler|mægler|maegler|rådgiv|raadgiv|forsikring|finansiel/i;
 
 // Returns the demos that best match the lead's branch. Most branches return
 // 2 demos; CLINIC (skønhedsklinik) returns a single demo (vida-klinik.dk) per
@@ -91,6 +96,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
+  if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.denlillemaler, D.ktvvs];
   if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];

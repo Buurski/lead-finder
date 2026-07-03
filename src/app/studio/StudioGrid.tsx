@@ -11,6 +11,7 @@ const BRANCHES: { id: DemoEntry["branch"] | "alle"; label: string }[] = [
   { id: "håndværk", label: "Håndværk" },
   { id: "foto", label: "Foto" },
   { id: "service", label: "Service" },
+  { id: "professionel", label: "Professionel" },
 ];
 
 export default function StudioGrid() {

@@ -128,7 +128,39 @@ export default function ApprovePage() {
   const sendApproved = useCallback(async () => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
     if (counts.approved === 0) return;
-    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
+
+    // Preflight (GET på send-ruten): kører alle guards uden at sende, så
+    // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
+    // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
+    // vi tilbage til den gamle dialog.
+    let confirmText = `Send ${counts.approved} godkendte udkast?`;
+    try {
+      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      if (pf && pf.ok) {
+        if (pf.paused) { setSendMsg(`Afsendelse er på pause${pf.until ? ` til ${pf.until}` : ""}.`); return; }
+        if (pf.busy) { setSendMsg("Afsendelse kører allerede — vent til den er færdig."); return; }
+        if (!pf.senders?.lucas && !pf.senders?.charlie) { setSendMsg("Ingen mail-creds sat — der kan ikke sendes."); return; }
+        if (pf.wouldSend === 0) {
+          const why = (pf.skipped ?? []).slice(0, 5).map((s: { name: string; reason: string }) => `· ${s.name}: ${s.reason}`).join("\n");
+          setSendMsg(`Ingen af de ${pf.approved} godkendte kan sendes.${why ? `\n${why}` : ""}`);
+          return;
+        }
+        const reasonCounts = new Map<string, number>();
+        for (const s of (pf.skipped ?? []) as { reason: string }[]) {
+          reasonCounts.set(s.reason, (reasonCounts.get(s.reason) ?? 0) + 1);
+        }
+        const skipLine = [...reasonCounts.entries()].map(([r, n]) => `${n}× ${r}`).join(", ");
+        confirmText = [
+          `Klar til at sende:`,
+          `· ${pf.wouldSend} sendes nu`,
+          pf.capped > 0 ? `· ${pf.capped} venter til næste klik (max ${pf.cap} pr. klik)` : "",
+          (pf.skipped?.length ?? 0) > 0 ? `· ${pf.skipped.length} springes over (${skipLine})` : "",
+          !pf.sheetsOk ? `· OBS: Sheets kunne ikke nås — dedup kører kun på kø-historikken` : "",
+        ].filter(Boolean).join("\n");
+      }
+    } catch { /* preflight er best-effort */ }
+
+    if (!window.confirm(`${confirmText}\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
     setSendBusy(true);
     setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");

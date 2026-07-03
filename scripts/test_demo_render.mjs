@@ -76,6 +76,11 @@ for (const [label, r] of [["full", full], ["medium", medium], ["low", low]]) {
   const clinic = demos.pickDemos("Hudpleje", "Klinik Ro");
   check("Clinic → single vida demo", clinic.length === 1 && /vida/.test(clinic[0].url));
   check("pickDemos always returns 1-2 demos", [demos.pickDemos("Bar", "A"), demos.pickDemos("Frisør", "B"), clinic].every((p) => p.length >= 1 && p.length <= 2));
+  // Professionelle rådgivere → midtadvokaterne (2026-07-03, tynd non-food dækning)
+  check("Advokat → midtadvokaterne", demos.pickDemos("Advokat", "Advokathuset Midt").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Revisor → midtadvokaterne", demos.pickDemos("Revisor", "Tal & Regnskab").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Ejendomsmægler → midtadvokaterne", demos.pickDemos("Ejendomsmægler", "Bolig Midt").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Advokat er ikke i medicinsk-rute (2 demos)", demos.pickDemos("Advokat", "Advokathuset Midt").length === 2);
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all demo-render checks ok");
