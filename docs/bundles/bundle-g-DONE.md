@@ -75,11 +75,58 @@ Droppet (og hvorfor):
 
 ## Council-fund inkorporeret
 
-(udfyldes efter council)
+4-lens council (Opus 4.8 risici, Sonnet 5 upside + wildcard, Haiku 4.5
+hold-fast). Fixet med det samme:
+
+- **Delte hrefs (B1/B2):** Compare/Prompt-gen under både SEO og Studio
+  auto-åbnede begge accordions og gav breadcrumb "SEO · Compare" på
+  /studio/compare. Ny `ownerGroupFor()` i nav-config (gruppens egen
+  href-prefix vinder) deles af sidebar og breadcrumbs. Verificeret via SSR:
+  1 åben gruppe, "Studio · Compare".
+- **Dobbelt-signatur (fundet selv, bekræftet af council C):** stripSignature
+  dækkede kun fornavne, så formatSignature-closing ("Mvh, Lucas Buur") blev
+  aldrig strippet og send-ruten dobbelt-signerede. Mønster udvidet + 3
+  regressionstests.
+- **B3:** m/g/s/l-navigation bailer når chat-docken er åben.
+- **B5:** Bell-backdrop z-index løftet over ChatDock-FAB.
+- **B6:** MaalWidget optimistisk toggle flipper kun første match (som
+  serveren).
+- **Lens A:** palette dedup pr. href+label (så "Svar · Messenger-indbakke"
+  kan findes), Bell lukker på Esc, Space/x vælger fokuseret udkast til
+  batch-godkend (+ linje i ?-overlayet), accordion-toggles overlever reload
+  (localStorage). Shift-klik-range på checkbokse droppet (kompleksitet vs.
+  "Vælg alle" + Space dækker behovet).
+- **Lens D (wildcard, IKKE implementeret — til overvejelse):** (1) fold
+  /replies ind i /approve som filter-tab (én beslutningsflade i stedet for
+  to), (2) drop sidebaren helt og lad ⌘K være eneste navigation. Begge
+  strider mod den eksplicit bestilte nav-model A, så de er kun noteret.
+- **Lens C (hold fast):** NAV_TREE som eneste IA-kilde; alle signaturer
+  gennem formatSignature; batch-valg forbliver client-only (persistering
+  ville kunne dobbelt-sende); nye signatur-formater SKAL ind i
+  stripSignature-mønstrene før de shippes.
+
+## Bonus-bugfix
+
+`/api/goals` toggle/remove fejlede med "fandt ikke det mål" på et lokalt
+Windows-checkout af vaulten: CRLF-linjer matcher ikke CHECKBOX_RE (`.` kan
+ikke matche `\r`). `toLines()` stripper nu `\r` før parse+edit. Prod (LF via
+GitHub-API) var ikke ramt.
 
 ## Verifikation
 
-(udfyldes: build, test-suiter, browser-check)
+- `npm run build`: clean (kun preexisting NFT-warning fra engine's fs-læs).
+- `node scripts/test_all.mjs`: alle suiter grønne (inkl. 4 nye
+  messenger-signatur-checks).
+- `npm test` (node --test): 39 pass, 0 fail (inkl. 3 nye stripSignature-
+  regressionstests).
+- `npm run lint`: 0 errors (11 preexisting warnings urørt).
+- Browser (Playwright mod `next start`): dropdowns folder ud/ind, badge
+  flytter fra parent til barn ved udfoldning, ?-overlay åbner/lukker, `g`
+  navigerer til /approve, breadcrumb "Godkendelse · Email", checkbokse +
+  "Vælg alle" på /approve, MaalWidget viser 5 rigtige vault-mål og
+  toggle-payload når API'et (write stopper lokalt kun på manglende
+  GITHUB_TOKEN, som er sat i prod).
+- E2E signatur: lucas → "Mvh, Lucas Buur", charlie → "Mvh, Charlie Nielsen".
 
 ## Filer
 
