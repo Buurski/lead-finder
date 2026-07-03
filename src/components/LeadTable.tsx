@@ -352,7 +352,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
         </span>
       </div>
 
-      <div className="flex gap-5" style={{ minHeight: "calc(100vh - 220px)" }}>
+      <div className="flex gap-5 cc-leads-split" style={{ minHeight: "calc(100vh - 220px)" }}>
 
         {/* Table */}
         <div className="flex-1 min-w-0" style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", overflowX: "auto" }}>
@@ -463,7 +463,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
 
         {/* Side panel */}
         {selected && (
-          <div style={{
+          <div className="cc-leads-panel" style={{
             width: 300,
             flexShrink: 0,
             background: "var(--surface)",

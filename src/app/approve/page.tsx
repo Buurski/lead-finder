@@ -513,7 +513,7 @@ function Header({
         </p>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
         {counts.pending > 0 && (
           <button
             onClick={onSelectAll}
@@ -552,7 +552,7 @@ function Header({
             {bulkBusy ? "Godkender…" : `Godkend alle (${counts.pending})`}
           </button>
         )}
-        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3 }}>
+        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3, maxWidth: "100%", overflowX: "auto" }}>
           {tabs.map((t) => {
             const active = filter === t.key;
             return (
@@ -777,7 +777,7 @@ function DraftLetter({
             style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "var(--green)" }}
           />
         )}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h2
             style={{
               fontFamily: "var(--font-fraunces), serif",

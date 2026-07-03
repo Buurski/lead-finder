@@ -352,6 +352,13 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 
 .cc-menu-btn { display: none; padding: 0 10px; }
 
+/* Leads: table + detail panel stack on narrow screens (side-by-side overflowed
+   375px viewports when a lead was selected — panel is 300px fixed). */
+@media (max-width: 860px) {
+  .cc-leads-split { flex-direction: column; }
+  .cc-leads-panel { width: 100% !important; position: static !important; }
+}
+
 /* --- Hermes page ------------------------------------------------------ */
 .hermes-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
 .hermes-chat { display: flex; flex-direction: column; min-height: 540px; }

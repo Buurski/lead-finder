@@ -39,7 +39,9 @@ export default async function GoalsPage() {
         subtitle={roadmap.ok ? `Fra vaulten (${roadmap.source}) · ${roadmap.frontmatter.horizon ?? "90 dage"}` : "Vaulten er ikke koblet på — viser skelet."}
       />
 
-      <div style={{ display: "grid", gap: 18 }}>
+      {/* minmax(0,1fr): flex-headers med nowrap-chips må ikke tvinge kolonnen
+          bredere end viewporten på mobil (6px-overflow ved 375px). */}
+      <div style={{ display: "grid", gap: 18, gridTemplateColumns: "minmax(0, 1fr)" }}>
         {roadmap.ok && goals.length > 0 ? (
           <GoalsClient initialGoals={goals} />
         ) : (
