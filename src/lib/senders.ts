@@ -363,7 +363,10 @@ export function stripSignature(body: string): string {
   let t = (body || "").replace(/\s+$/, "");
   const patterns: RegExp[] = [
     /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\n\+?[\d\s]{6,})?\s*$/i,
+    // "Mvh, Lucas" OG "Mvh, Lucas Buur" / "Mvh, Charlie Nielsen" — efternavnet
+    // manglede før Bundle G, så closing-linjen fra formatSignature ("Mvh,
+    // Lucas Buur") blev aldrig strippet og send-ruten dobbelt-signerede.
+    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
     /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
   ];

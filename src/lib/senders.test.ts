@@ -363,3 +363,26 @@ test("pickHybridSender: 14-dags hybrid allokering med Lucas tie-break", async ()
     clearCharlieEnv();
   }
 });
+// ---------------------------------------------------------------------------
+// stripSignature: fulde navne (Bundle G-regression)
+// ---------------------------------------------------------------------------
+// formatSignature().closing er "Mvh, Lucas Buur" / "Mvh, Charlie Nielsen".
+// Foer Bundle G daekkede Mvh-mønstret kun fornavne, saa closing-linjen blev
+// aldrig strippet og applySignature dobbelt-signerede ved send.
+
+test("stripSignature: fjerner 'Mvh, Lucas Buur' (fuldt navn)", async () => {
+  const { stripSignature } = await import("./senders.ts");
+  assert.equal(stripSignature("Hej\n\ntekst.\n\nMvh, Lucas Buur"), "Hej\n\ntekst.");
+});
+
+test("stripSignature: fjerner 'Mvh, Charlie Nielsen' (fuldt navn)", async () => {
+  const { stripSignature } = await import("./senders.ts");
+  assert.equal(stripSignature("Hej\n\ntekst.\n\nMvh, Charlie Nielsen"), "Hej\n\ntekst.");
+});
+
+test("applySignature: ingen dobbelt-signatur oven paa closing-linje", async () => {
+  const { applySignature } = await import("./senders.ts");
+  const out = applySignature("Hej\n\ntekst.\n\nMvh, Lucas Buur", "lucas");
+  assert.equal((out.match(/Mvh|Lucas/g) || []).length <= 2, true);
+  assert.equal(/Mvh, Lucas Buur[\s\S]*Lucas Buur/.test(out), false);
+});

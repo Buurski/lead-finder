@@ -42,6 +42,13 @@ check("draft ends signature", draft.text.endsWith("Mvh, Lucas"));
 check("draft passes validation", validateMessengerDraft(draft.text).length === 0);
 check("pattern B uses city", buildMessengerDraft({ name: "X", branch: "café", city: "Odense", reviews: 60, pattern: "B" }).text.includes("Odense"));
 
+// --- sender-aware signatur (Bundle G) ---
+const charlieDraft = buildMessengerDraft({ name: "Salon Lumière", branch: "frisør", city: "Aarhus", reviews: 132, pattern: "A" }, "charlie");
+check("charlie draft ends charlie signature", charlieDraft.text.endsWith("Mvh, Charlie Nielsen"));
+check("charlie draft passes charlie validation", validateMessengerDraft(charlieDraft.text, "charlie").length === 0);
+check("charlie draft fails lucas validation", validateMessengerDraft(charlieDraft.text).includes("missing signature"));
+check("no double signature", (charlieDraft.text.match(/Mvh,/g) || []).length === 1);
+
 // --- nameVerdict ---
 check("cheap keyword dropped", nameVerdict("Billig Frisør").hardDrop === true);
 check("known personal name dropped", nameVerdict("Adnan").hardDrop === true);

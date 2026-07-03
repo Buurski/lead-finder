@@ -84,14 +84,25 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
   return "lokal virksomhed";
 }
 
+// Pattern-kroppene er UDEN underskrift — buildMessengerDraft sætter selv
+// "Mvh, {afsender}" på til sidst (Bundle G: post-generation signatur-injection,
+// samme princip som draft.ts). Bemærk: kroppene indeholder "salgselev" (Lucas'
+// differentiator), så Messenger-drafts er Lucas-only indtil der findes
+// Charlie-varianter af teksterne.
 function patternA(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
+  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
 }
 function patternB(city: string, branchDisp: string, demoUrl: string): string {
-  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Helt uforpligtende selvfølgelig :)\n\nMvh, Lucas`;
+  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Helt uforpligtende selvfølgelig :)`;
 }
 function patternC(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)\n\nMvh, Lucas`;
+  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Her er et eksempel jeg lavede til en anden ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
+}
+
+/** Signaturnavn pr. afsender. Bevidst kort fornavn for Lucas (uændret output
+ *  ift. før Bundle G) og fuldt navn for Charlie, jf. formatSignature-closing. */
+function messengerSignatureName(sender: "lucas" | "charlie"): string {
+  return sender === "lucas" ? "Lucas" : "Charlie Nielsen";
 }
 
 export const MSG_PATTERNS = ["A", "B", "C"] as const;
@@ -113,23 +124,27 @@ export interface MessengerDraft {
   group: MsgGroup;
 }
 
-export function buildMessengerDraft(lead: MessengerDraftInput): MessengerDraft {
+export function buildMessengerDraft(
+  lead: MessengerDraftInput,
+  sender: "lucas" | "charlie" = "lucas",
+): MessengerDraft {
   const group = branchGroupFor(lead.branch, lead.name);
   const demoUrl = demoUrlFor(group, lead.branch, lead.name);
   const branchDisp = branchDisplayFor(group, lead.branch, lead.name);
-  const text =
+  const body =
     lead.pattern === "A" ? patternA(lead.reviews, branchDisp, demoUrl)
     : lead.pattern === "B" ? patternB(lead.city, branchDisp, demoUrl)
     : patternC(lead.reviews, branchDisp, demoUrl);
+  const text = `${body}\n\nMvh, ${messengerSignatureName(sender)}`;
   return { text, pattern: lead.pattern, demoUrl, branchDisp, group };
 }
 
 /** Mirror of the script's validateDraft — guards tone/price/CTA/signature. */
-export function validateMessengerDraft(text: string): string[] {
+export function validateMessengerDraft(text: string, sender: "lucas" | "charlie" = "lucas"): string[] {
   const issues: string[] = [];
   if (text.length > 650) issues.push(`too long (${text.length} chars)`);
   if (/\d+\s*k(?:r|R)\b|\d+\.\d{3}\s*kr|alt\s+inklusiv|\bfra\s+\d|prisvenlig/.test(text)) issues.push("contains price/kr");
   if (/skriv\s+bare|send\s+(?:mig\s+)?mockup|svar\s+ja|\b200\+\s*kund/i.test(text)) issues.push("hard-sell CTA");
-  if (!text.endsWith("Mvh, Lucas")) issues.push("missing signature");
+  if (!text.endsWith(`Mvh, ${messengerSignatureName(sender)}`)) issues.push("missing signature");
   return issues;
 }

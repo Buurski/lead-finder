@@ -1,4 +1,4 @@
-# Buurski — intern brand-identitet
+# AgenticOS — intern brand-identitet
 
 Intern identitet for Lucas + Charlies værktøjer (Command Center, buur-cms
 /master-admin, fremtidige interne flader). ALDRIG kunde-synlig: kundeflader
@@ -6,15 +6,19 @@ Intern identitet for Lucas + Charlies værktøjer (Command Center, buur-cms
 Formålet er genkendelighed og lidt hygge for de to daglige brugere — ikke
 et salgsbrand.
 
+Omdøbt fra "buurski" 2026-07-03 (Bundle G). Selve mærket (naboerne) og alle
+farve-tokens/fonte er uændrede — kun navnet skiftede.
+
 ## Navn
 
-**buurski** — altid små bogstaver i ordbilledet. I løbende tekst: Buurski.
+**AgenticOS** — stort A, stort OS, ét ord. I løbende tekst: AgenticOS.
 
 ## Mærket: "naboerne"
 
 Buur = nabo. To afrundede blokke side om side: den fyldte (sage) og den
 tegnede kontur — de to mennesker i firmaet. Prikken over mellemrummet er
-agenten/lyset, arvet fra den gamle sidebar-glødeprik.
+agenten/lyset, arvet fra den gamle sidebar-glødeprik. Mærket overlever
+navneskiftet uændret.
 
 - `logo-mark.svg` — kun mærket (sidebar, avatarer, stempler)
 - `logo-wordmark.svg` — kun ordbilledet med signatur-prik
@@ -58,3 +62,6 @@ Begge er allerede indlæst i både lead-system og buur-cms via next/font.
 4. Wordmark-SVG'erne bruger lokal Fraunces/Georgia via `<text>` — de er til
    interne flader og docs, ikke til miljøer uden fonte (mail-signaturer
    bruger ren tekst).
+5. Interne mails (digest, statusrapporter til buur.aigro) signeres
+   "AgenticOS" i ren tekst. Kunde-mails (cold outreach, seo-tjek) bruger
+   afsenderens personlige signatur og rører aldrig dette brand.

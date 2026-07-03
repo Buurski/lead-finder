@@ -193,6 +193,28 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   background: var(--accent); color: #fff;
 }
 
+/* Nav-model A (Bundle G): accordion dropdowns i sidebaren */
+.cc-navparent {
+  width: 100%; background: none; border: none; cursor: pointer;
+  font-family: inherit; text-align: left;
+}
+.cc-navparent .cc-chevron {
+  margin-left: auto; width: 13px; height: 13px; color: var(--text-dim);
+  transition: transform 160ms ease;
+}
+.cc-navparent .cc-count + .cc-chevron { margin-left: 6px; }
+.cc-navparent .cc-chevron[data-open="true"] { transform: rotate(180deg); }
+.cc-navchildren {
+  display: grid; gap: 1px; margin: 1px 0 3px;
+  padding-left: 14px; position: relative;
+}
+.cc-navchildren::before {
+  content: ""; position: absolute; left: 17px; top: 4px; bottom: 4px;
+  width: 1px; background: var(--border);
+}
+.cc-navlink.cc-navchild { height: 30px; font-size: 13px; padding-left: 12px; }
+.cc-navlink.cc-navchild svg { width: 14px; height: 14px; }
+
 /* --- main column ---------------------------------------------------- */
 .cc-main { display: flex; flex-direction: column; min-width: 0; }
 .cc-topbar {

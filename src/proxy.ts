@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 // Proxy (Next 16's renamed middleware) — shared-password access for Lucas +
-// Charlie (one code, same access), plus a gentle first-run redirect to /welcome.
+// Charlie (one code, same access).
 //
 // Hardened in Block 6 (Security council):
 //  - Constant-time comparison (Edge-safe, no Node `timingSafeEqual`).
@@ -204,7 +204,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
     // Mint/refresh session cookie on success.
     const fresh = await issueSession(USER, SECRET);
-    const res = passThroughWelcome(req, NextResponse.next());
+    const res = NextResponse.next();
     res.cookies.set(SESSION_COOKIE, fresh, {
       httpOnly: true,
       secure: true,
@@ -215,15 +215,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     return res;
   }
 
-  return passThroughWelcome(req, NextResponse.next());
-}
-
-function passThroughWelcome(req: NextRequest, res: NextResponse): NextResponse {
-  const url = req.nextUrl;
-  if (url.pathname === "/" && !req.cookies.get("cc_welcomed")) {
-    const dest = url.clone();
-    dest.pathname = "/welcome";
-    return NextResponse.redirect(dest) as unknown as NextResponse;
-  }
-  return res;
+  // /welcome-first-run-redirectet blev fjernet i Bundle G (2026-07-03) sammen
+  // med selve /welcome-siden — internt værktøj, ingen onboarding-flows.
+  return NextResponse.next();
 }

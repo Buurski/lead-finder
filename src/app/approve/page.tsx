@@ -63,6 +63,7 @@ export default function ApprovePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("pending");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchQueue = useCallback(async (): Promise<QueueDraft[]> => {
     const res = await fetch("/api/approve/queue", { cache: "no-store" });
@@ -282,6 +283,16 @@ export default function ApprovePage() {
         e.preventDefault();
         document.getElementById(`draft-body-${cur.id}`)?.focus();
       }
+      else if (cur && cur.status === "pending" && (e.key === " " || k === "x")) {
+        // space/x: vaelg/fravaelg fokuseret udkast til batch-godkend
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(cur.id)) next.delete(cur.id);
+          else next.add(cur.id);
+          return next;
+        });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -304,6 +315,46 @@ export default function ApprovePage() {
     if (failed > 0) window.alert(`${failed} af ${pendings.length} udkast kunne ikke godkendes — de står stadig som afventende.`);
   }, [drafts, actOn]);
 
+  // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Only ids that are still pending count — a draft decided via its own
+  // buttons (or keyboard) simply falls out of the selection.
+  const selectedPending = useMemo(
+    () => drafts.filter((d) => d.status === "pending" && selected.has(d.id)),
+    [drafts, selected]
+  );
+
+  const selectAllVisible = useCallback(() => {
+    setSelected(new Set(visible.filter((d) => d.status === "pending").map((d) => d.id)));
+  }, [visible]);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  const [selBusy, setSelBusy] = useState(false);
+  const approveSelected = useCallback(async () => {
+    const targets = selectedPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Godkend ${targets.length} valgte udkast? De markeres til afsendelse. Intet sendes.`)) return;
+    setSelBusy(true);
+    let failed = 0;
+    for (const d of targets) {
+      // sequential keeps the queue file writes ordered + avoids a write race
+      const r = await actOn(d.id, "approve");
+      if (!r.ok) failed++;
+    }
+    setSelBusy(false);
+    setSelected(new Set());
+    if (failed > 0) window.alert(`${failed} af ${targets.length} valgte udkast kunne ikke godkendes. De står stadig som afventende.`);
+  }, [selectedPending, actOn]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
@@ -314,6 +365,11 @@ export default function ApprovePage() {
         loading={loading}
         onBulkApprove={bulkApprove}
         bulkBusy={bulkBusy}
+        selectedCount={selectedPending.length}
+        selBusy={selBusy}
+        onApproveSelected={approveSelected}
+        onSelectAll={selectAllVisible}
+        onClearSelection={clearSelection}
       />
 
       {/* Send step — the missing piece. Approved = ready; this actually sends. */}
@@ -379,7 +435,15 @@ export default function ApprovePage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {visible.map((d, i) => (
-            <DraftLetter key={d.id} draft={d} onAct={actOn} focused={i === focusIdx} onFocusRequest={() => setFocusIdx(i)} />
+            <DraftLetter
+              key={d.id}
+              draft={d}
+              onAct={actOn}
+              focused={i === focusIdx}
+              onFocusRequest={() => setFocusIdx(i)}
+              selected={selected.has(d.id)}
+              onToggleSelect={() => toggleSelect(d.id)}
+            />
           ))}
         </div>
       )}
@@ -395,6 +459,11 @@ function Header({
   loading,
   onBulkApprove,
   bulkBusy,
+  selectedCount,
+  selBusy,
+  onApproveSelected,
+  onSelectAll,
+  onClearSelection,
 }: {
   counts: { pending: number; approved: number; decided: number; all: number };
   filter: Filter;
@@ -403,6 +472,11 @@ function Header({
   loading: boolean;
   onBulkApprove: () => void;
   bulkBusy: boolean;
+  selectedCount: number;
+  selBusy: boolean;
+  onApproveSelected: () => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
@@ -440,6 +514,34 @@ function Header({
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {counts.pending > 0 && (
+          <button
+            onClick={onSelectAll}
+            title="Sæt kryds ved alle afventende udkast i listen"
+            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
+          >
+            Vælg alle
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
+            onClick={onClearSelection}
+            title="Fjern alle kryds"
+            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
+          >
+            Ryd valg
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
+            onClick={onApproveSelected}
+            disabled={selBusy}
+            title="Godkend kun de udkast du har sat kryds ved"
+            style={{ ...btnBase, background: selBusy ? "var(--green-dim)" : "var(--green)", color: selBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+          >
+            {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
+          </button>
+        )}
         {counts.pending > 0 && (
           <button
             onClick={onBulkApprove}
@@ -548,11 +650,15 @@ function DraftLetter({
   onAct,
   focused,
   onFocusRequest,
+  selected,
+  onToggleSelect,
 }: {
   draft: QueueDraft;
   onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
@@ -661,7 +767,17 @@ function DraftLetter({
     >
       {/* identity row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div>
+        {draft.status === "pending" && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Vælg ${draft.name}`}
+            title="Vælg til 'Godkend valgte'"
+            style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "var(--green)" }}
+          />
+        )}
+        <div style={{ flex: 1 }}>
           <h2
             style={{
               fontFamily: "var(--font-fraunces), serif",

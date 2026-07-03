@@ -15,7 +15,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Command Center · buurski",
+  title: "Command Center · AgenticOS",
   description: "Lucas's agentic OS — lead & client command center",
 };
 
