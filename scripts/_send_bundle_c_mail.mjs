@@ -3,10 +3,11 @@
 // Usage: node scripts/_send_bundle_c_mail.mjs <previewUrl>
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
-const nodemailer = (await import(pathToFileURL(path.join(REPO_ROOT, "node_modules", "nodemailer", "lib", "nodemailer.js")).href)).default;
+const require = createRequire(path.join(REPO_ROOT, "package.json"));
+const nodemailer = require("nodemailer");
 
 const envRaw = fs.readFileSync(path.join(REPO_ROOT, ".env.local"), "utf-8");
 const env = {};
@@ -49,10 +50,15 @@ TRACKING
 VAERN
 Per-IP graense 3 tjek/time, globalt loft 50 tjek/dag (SEO_TJEK_DAILY_CAP), 24 timers dedupe paa url+mail, SSRF-guard paa URL-feltet, stoerrelses-loft paa side-hentning.
 
+LIVE-TEST KOERT PAA PREVIEW
+Submit -> rapport -> day 0-mail -> afmeld, alt verificeret. Day 0-mailen for trend-cut.dk ligger allerede i denne indbakke. Bemaerk: score-cirklerne viser "?" paa preview, fordi PAGESPEED_API_KEY kun er sat til Production i Vercel. Saet flueben i "Preview" paa den env-var i dashboardet, saa virker scores ogsaa der. De vedhaeftede rapporter (koert lokalt) viser de rigtige tal.
+
 DU SKAL SELV (naar du vil live)
 1. Saet SEO_TJEK_BOOKING_URL i Vercel prod (din Cal.com-link). Ellers falder CTA tilbage til mailto.
-2. PAGESPEED_API_KEY findes kun i prod-miljoeet, saa preview bruger gratis-kvoten - fint til test.
+2. Giv PAGESPEED_API_KEY preview-target hvis du vil have scores paa preview (valgfrit).
 3. Merge branchen naar du har godkendt.
+
+BEKLAGER COLLABORATOR-MAILEN fra Vercel: den kom fra et CLI-deploy-forsoeg fra min session (forkert konto). Bare afvis den. Reglen "kun git-push, aldrig Vercel CLI" er nu gemt i min hukommelse.
 
 Council-noter: kold-email-forbedringerne er parkeret i docs/backlog/cold-email-hardening.md som aftalt. Day 7-mailen naevner ingen pris - kan testes senere.
 
