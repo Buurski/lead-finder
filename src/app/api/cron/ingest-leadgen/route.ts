@@ -6,6 +6,7 @@ import type { ComposeLead } from "@/lib/compose";
 import { getLeads } from "@/lib/sheets";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
+import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -110,14 +111,21 @@ export async function GET(req: Request) {
     }
   }
 
-  const now = Date.now();
-
-  let file: LeadgenFile;
+  // withCronLog records every run (ok/error/duration) so /api/cron/health shows
+  // the truth — before this the scheduled cron left no trace at all.
   try {
-    file = await fetchLeadgen(now);
+    const payload = await ingest();
+    return NextResponse.json(payload);
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 502 });
   }
+}
+
+async function ingest() {
+  return withCronLog("ingest-leadgen", async () => {
+  const now = Date.now();
+
+  const file = await fetchLeadgen(now);
   const items = Array.isArray(file.items) ? file.items : [];
 
   const queue = await readQueue();
@@ -227,7 +235,7 @@ export async function GET(req: Request) {
 
   if (drafts.length > 0) await appendDrafts(drafts, now);
 
-  return NextResponse.json({
+  const result = {
     ok: true,
     fetchedAt: file.at ?? null,
     candidates: items.length,
@@ -238,5 +246,11 @@ export async function GET(req: Request) {
     skippedInvalid,
     sheetsDedup: sheetsOk,
     note: "kø fyldt — ingen mail sendt",
+  };
+  return {
+    result,
+    note: `${items.length} kandidater · ${drafts.length} nye drafts · ${backfilled} backfilled`,
+    meta: { candidates: items.length, added: drafts.length, backfilled, skippedSuppressed },
+  };
   });
 }

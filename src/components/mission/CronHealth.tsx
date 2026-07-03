@@ -74,7 +74,9 @@ export default function CronHealth() {
     setRunning(name);
     setToast(null);
     try {
-      const r = await fetch(`/api/cron/run/${name}`, { method: "POST" });
+      // Via /api/ops (basic-auth covered) — /api/cron/run requires the CRON_SECRET
+      // bearer, which the browser must never hold.
+      const r = await fetch(`/api/ops/run-cron/${name}`, { method: "POST" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.ok === false) {
         let msg = j.error || `HTTP ${r.status}`;
