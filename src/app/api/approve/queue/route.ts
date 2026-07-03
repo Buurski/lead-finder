@@ -24,6 +24,7 @@ interface ActionBody {
   action?:
     | "approve"
     | "approve-many"
+    | "reject-many"
     | "edit"
     | "reject"
     | "unapprove"
@@ -106,6 +107,27 @@ export async function POST(req: Request) {
       synced += res.filter((r) => r.status === "fulfilled").length;
     }
     return NextResponse.json({ ok: true, approved: approved.length, synced, note: "marked approved — not sent" });
+  }
+
+  // Bulk-afvis (symmetri med approve-many, council-fund): 30 dårlige leads
+  // skal ikke afvises ét klik ad gangen. Kun pending kan bulk-afvises —
+  // godkendte skal gennem unapprove-flowet (Sheets-cleanup + 14-dages-blok).
+  if (action === "reject-many") {
+    const ids = Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === "string") : [];
+    if (ids.length === 0) return NextResponse.json({ error: "ids required" }, { status: 400 });
+    const drafts = await readQueue();
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    let rejected = 0;
+    for (const d of drafts) {
+      if (idSet.has(d.id) && d.status === "pending") {
+        d.status = "rejected";
+        d.updatedAt = now;
+        rejected++;
+      }
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, rejected });
   }
 
   if (!id || !action) {

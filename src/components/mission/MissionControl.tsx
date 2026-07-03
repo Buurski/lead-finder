@@ -98,8 +98,14 @@ function MorningVitals() {
               <span className="cc-dim" style={{ fontSize: 12 }}>
                 {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
               </span>
-              {v.task === "leadgen" && v.status !== "fresh" && (
-                <Link href="/leadgen" className="cc-link" style={{ fontSize: 12, fontWeight: 600 }}>Åbn Lead-gen →</Link>
+              {v.status !== "fresh" && (
+                <Link
+                  href={v.task === "leadgen" ? "/leadgen" : v.task === "messenger" ? "/messenger" : "/replies"}
+                  className="cc-link"
+                  style={{ fontSize: 12, fontWeight: 600 }}
+                >
+                  Åbn →
+                </Link>
               )}
             </div>
           ))}
@@ -194,7 +200,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
       {spendAlert && (
         <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
           <Icon name="CircleDollarSign" style={{ width: 17, height: 17, color: "var(--amber)" }} />
-          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Detaljer under Agents-fanen.</span>
+          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Åbn Detaljer → Agents for tallene.</span>
         </div>
       )}
 

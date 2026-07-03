@@ -328,11 +328,20 @@ export default function ApprovePage() {
   }, [visible, focusIdx, actOn, shownCount]);
 
   // ---- bulk-approve all currently-pending "safe" drafts -------------------
+  // Council-fund (wild card): bulk følger det AKTIVE filter — et søge-/branche-
+  // filter er dermed også et sikkerhedshegn, ikke kun navigation. Confirm-
+  // dialogen viser branche-miks så en skæv batch (fx 100% restauranter) ses
+  // FØR man godkender i bulk, ikke efter.
   const [bulkBusy, setBulkBusy] = useState(false);
   const bulkApprove = useCallback(async () => {
-    const pendings = drafts.filter((d) => d.status === "pending");
+    const pendings = visible.filter((d) => d.status === "pending");
     if (pendings.length === 0) return;
-    if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
+    const byBranch = new Map<string, number>();
+    for (const d of pendings) byBranch.set(d.branch || "ukendt", (byBranch.get(d.branch || "ukendt") ?? 0) + 1);
+    const mix = [...byBranch.entries()].sort((a, b) => b[1] - a[1]);
+    const mixLine = mix.slice(0, 4).map(([b, n]) => `${n} ${b}`).join(", ") + (mix.length > 4 ? ` + ${mix.slice(4).reduce((a, [, n]) => a + n, 0)} andre` : "");
+    const scopeNote = pendings.length < counts.pending ? ` (filtreret — ${counts.pending - pendings.length} udenfor filteret røres ikke)` : "";
+    if (!window.confirm(`Godkend ${pendings.length} afventende udkast${scopeNote}?\n\nBranche-miks: ${mixLine}.\n\nDe markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
     try {
       // Én bulk-request i stedet for ét POST pr. draft (490 requests = minutter).
@@ -350,7 +359,7 @@ export default function ApprovePage() {
     } finally {
       setBulkBusy(false);
     }
-  }, [drafts, load]);
+  }, [visible, counts.pending, load]);
 
   // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
   const toggleSelect = useCallback((id: string) => {
@@ -399,6 +408,30 @@ export default function ApprovePage() {
     }
   }, [selectedPending, load]);
 
+  // Bulk-afvis de valgte (symmetri med "Godkend valgte" — council-fund).
+  const [rejBusy, setRejBusy] = useState(false);
+  const rejectSelected = useCallback(async () => {
+    const targets = selectedPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Afvis ${targets.length} valgte udkast? De ryger ud af køen (lead'en blokeres 14 dage).`)) return;
+    setRejBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke afvise: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setRejBusy(false);
+      setSelected(new Set());
+    }
+  }, [selectedPending, load]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
@@ -414,6 +447,9 @@ export default function ApprovePage() {
         onApproveSelected={approveSelected}
         onSelectAll={selectAllVisible}
         onClearSelection={clearSelection}
+        onRejectSelected={rejectSelected}
+        rejBusy={rejBusy}
+        visiblePending={visible.filter((d) => d.status === "pending").length}
       />
 
       {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
@@ -546,6 +582,9 @@ function Header({
   onApproveSelected,
   onSelectAll,
   onClearSelection,
+  onRejectSelected,
+  rejBusy,
+  visiblePending,
 }: {
   counts: { pending: number; approved: number; decided: number; all: number };
   filter: Filter;
@@ -559,6 +598,9 @@ function Header({
   onApproveSelected: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
+  onRejectSelected: () => void;
+  rejBusy: boolean;
+  visiblePending: number;
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
@@ -600,10 +642,12 @@ function Header({
         {counts.pending > 0 && (
           <button
             onClick={onSelectAll}
-            title="Sæt kryds ved alle afventende udkast i listen"
+            title={visiblePending < counts.pending
+              ? `Sæt kryds ved de ${visiblePending} afventende der matcher filteret (ikke alle ${counts.pending})`
+              : "Sæt kryds ved alle afventende udkast i listen"}
             style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
           >
-            Vælg alle
+            {visiblePending < counts.pending ? `Vælg filtrerede (${visiblePending})` : "Vælg alle"}
           </button>
         )}
         {selectedCount > 0 && (
@@ -617,6 +661,16 @@ function Header({
         )}
         {selectedCount > 0 && (
           <button
+            onClick={onRejectSelected}
+            disabled={rejBusy}
+            title="Afvis de udkast du har sat kryds ved — lead'en blokeres 14 dage"
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--danger, #b3402e)", opacity: rejBusy ? 0.6 : 1 }}
+          >
+            {rejBusy ? "Afviser…" : `Afvis valgte (${selectedCount})`}
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
             onClick={onApproveSelected}
             disabled={selBusy}
             title="Godkend kun de udkast du har sat kryds ved"
@@ -625,14 +679,16 @@ function Header({
             {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
           </button>
         )}
-        {counts.pending > 0 && (
+        {visiblePending > 0 && (
           <button
             onClick={onBulkApprove}
             disabled={bulkBusy}
-            title="Godkend alle afventende udkast"
+            title={visiblePending < counts.pending
+              ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
+              : "Godkend alle afventende udkast"}
             style={{ ...btnBase, background: bulkBusy ? "var(--green-dim)" : "var(--green)", color: bulkBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
           >
-            {bulkBusy ? "Godkender…" : `Godkend alle (${counts.pending})`}
+            {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
           </button>
         )}
         <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3, maxWidth: "100%", overflowX: "auto" }}>
