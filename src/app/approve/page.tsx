@@ -238,12 +238,36 @@ export default function ApprovePage() {
     }
   }, [sendBusy, counts.approved, load]);
 
+  // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
+  const [q, setQ] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const branches = useMemo(
+    () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
+    [drafts]
+  );
+
   const visible = useMemo(() => {
-    if (filter === "pending") return drafts.filter((d) => d.status === "pending");
-    if (filter === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
-    if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
-    return drafts;
-  }, [drafts, filter]);
+    let base: QueueDraft[];
+    if (filter === "pending") base = drafts.filter((d) => d.status === "pending");
+    else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
+    else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
+    else base = drafts;
+    if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
+    const needle = q.trim().toLowerCase();
+    if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
+    return base;
+  }, [drafts, filter, branchFilter, q]);
+
+  // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
+  // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
+  // "Vælg alle" arbejder stadig på HELE listen, ikke kun de viste.
+  const LIST_PAGE = 30;
+  const [shownCount, setShownCount] = useState(LIST_PAGE);
+  const changeFilter = useCallback((f: Filter) => {
+    setFilter(f);
+    setShownCount(LIST_PAGE);
+  }, []);
+  const shownList = useMemo(() => visible.slice(0, shownCount), [visible, shownCount]);
 
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
@@ -275,7 +299,12 @@ export default function ApprovePage() {
       if (document.querySelector(".cc-palette")) return;
       const cur = visible[focusIdx];
       const k = e.key.toLowerCase();
-      if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => Math.min(i + 1, visible.length - 1)); }
+      if (k === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = Math.min(focusIdx + 1, visible.length - 1);
+        if (next >= shownCount) setShownCount((c) => c + LIST_PAGE);
+        setFocusIdx(next);
+      }
       else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(i - 1, 0)); }
       else if (cur && cur.status === "pending" && k === "a") { e.preventDefault(); actOn(cur.id, "approve"); }
       else if (cur && cur.status === "pending" && k === "r") { e.preventDefault(); actOn(cur.id, "reject"); }
@@ -296,24 +325,41 @@ export default function ApprovePage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, focusIdx, actOn]);
+  }, [visible, focusIdx, actOn, shownCount]);
 
   // ---- bulk-approve all currently-pending "safe" drafts -------------------
+  // Council-fund (wild card): bulk følger det AKTIVE filter — et søge-/branche-
+  // filter er dermed også et sikkerhedshegn, ikke kun navigation. Confirm-
+  // dialogen viser branche-miks så en skæv batch (fx 100% restauranter) ses
+  // FØR man godkender i bulk, ikke efter.
   const [bulkBusy, setBulkBusy] = useState(false);
   const bulkApprove = useCallback(async () => {
-    const pendings = drafts.filter((d) => d.status === "pending");
+    const pendings = visible.filter((d) => d.status === "pending");
     if (pendings.length === 0) return;
-    if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
+    const byBranch = new Map<string, number>();
+    for (const d of pendings) byBranch.set(d.branch || "ukendt", (byBranch.get(d.branch || "ukendt") ?? 0) + 1);
+    const mix = [...byBranch.entries()].sort((a, b) => b[1] - a[1]);
+    const mixLine = mix.slice(0, 4).map(([b, n]) => `${n} ${b}`).join(", ") + (mix.length > 4 ? ` + ${mix.slice(4).reduce((a, [, n]) => a + n, 0)} andre` : "");
+    const scopeNote = pendings.length < counts.pending ? ` (filtreret — ${counts.pending - pendings.length} udenfor filteret røres ikke)` : "";
+    if (!window.confirm(`Godkend ${pendings.length} afventende udkast${scopeNote}?\n\nBranche-miks: ${mixLine}.\n\nDe markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
-    let failed = 0;
-    for (const d of pendings) {
-      // sequential keeps the queue file writes ordered + avoids a write race
-      const r = await actOn(d.id, "approve");
-      if (!r.ok) failed++;
+    try {
+      // Én bulk-request i stedet for ét POST pr. draft (490 requests = minutter).
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: pendings.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < pendings.length) window.alert(`${data.approved} af ${pendings.length} godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setBulkBusy(false);
     }
-    setBulkBusy(false);
-    if (failed > 0) window.alert(`${failed} af ${pendings.length} udkast kunne ikke godkendes — de står stadig som afventende.`);
-  }, [drafts, actOn]);
+  }, [visible, counts.pending, load]);
 
   // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
   const toggleSelect = useCallback((id: string) => {
@@ -344,23 +390,54 @@ export default function ApprovePage() {
     if (targets.length === 0) return;
     if (!window.confirm(`Godkend ${targets.length} valgte udkast? De markeres til afsendelse. Intet sendes.`)) return;
     setSelBusy(true);
-    let failed = 0;
-    for (const d of targets) {
-      // sequential keeps the queue file writes ordered + avoids a write race
-      const r = await actOn(d.id, "approve");
-      if (!r.ok) failed++;
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < targets.length) window.alert(`${data.approved} af ${targets.length} valgte godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setSelBusy(false);
+      setSelected(new Set());
     }
-    setSelBusy(false);
-    setSelected(new Set());
-    if (failed > 0) window.alert(`${failed} af ${targets.length} valgte udkast kunne ikke godkendes. De står stadig som afventende.`);
-  }, [selectedPending, actOn]);
+  }, [selectedPending, load]);
+
+  // Bulk-afvis de valgte (symmetri med "Godkend valgte" — council-fund).
+  const [rejBusy, setRejBusy] = useState(false);
+  const rejectSelected = useCallback(async () => {
+    const targets = selectedPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Afvis ${targets.length} valgte udkast? De ryger ud af køen (lead'en blokeres 14 dage).`)) return;
+    setRejBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke afvise: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setRejBusy(false);
+      setSelected(new Set());
+    }
+  }, [selectedPending, load]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
         counts={counts}
         filter={filter}
-        setFilter={setFilter}
+        setFilter={changeFilter}
         onRefresh={load}
         loading={loading}
         onBulkApprove={bulkApprove}
@@ -370,7 +447,40 @@ export default function ApprovePage() {
         onApproveSelected={approveSelected}
         onSelectAll={selectAllVisible}
         onClearSelection={clearSelection}
+        onRejectSelected={rejectSelected}
+        rejBusy={rejBusy}
+        visiblePending={visible.filter((d) => d.status === "pending").length}
       />
+
+      {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
+      {drafts.length > 10 && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setShownCount(LIST_PAGE); }}
+            placeholder="Søg navn, by eller emne…"
+            aria-label="Søg i udkast"
+            style={{ flex: "1 1 220px", minWidth: 0, maxWidth: 340, border: "1px solid var(--border)", borderRadius: 9, padding: "8px 12px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+          />
+          {branches.length > 1 && (
+            <select
+              value={branchFilter}
+              onChange={(e) => { setBranchFilter(e.target.value); setShownCount(LIST_PAGE); }}
+              aria-label="Filtrér på branche"
+              style={{ border: "1px solid var(--border)", borderRadius: 9, padding: "8px 10px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+            >
+              <option value="all">Alle brancher</option>
+              {branches.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+          {(q.trim() || branchFilter !== "all") && (
+            <span className="cc-dim" style={{ fontSize: 12.5 }}>{visible.length} match</span>
+          )}
+        </div>
+      )}
 
       {/* Send step — the missing piece. Approved = ready; this actually sends. */}
       {counts.approved > 0 && (
@@ -434,7 +544,7 @@ export default function ApprovePage() {
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {visible.map((d, i) => (
+          {shownList.map((d, i) => (
             <DraftLetter
               key={d.id}
               draft={d}
@@ -445,6 +555,14 @@ export default function ApprovePage() {
               onToggleSelect={() => toggleSelect(d.id)}
             />
           ))}
+          {visible.length > shownList.length && (
+            <button
+              onClick={() => setShownCount((c) => c + LIST_PAGE)}
+              style={{ ...btnGhost, alignSelf: "center", padding: "10px 22px", fontSize: 13 }}
+            >
+              Vis {Math.min(LIST_PAGE, visible.length - shownList.length)} flere ({visible.length - shownList.length} tilbage)
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -464,6 +582,9 @@ function Header({
   onApproveSelected,
   onSelectAll,
   onClearSelection,
+  onRejectSelected,
+  rejBusy,
+  visiblePending,
 }: {
   counts: { pending: number; approved: number; decided: number; all: number };
   filter: Filter;
@@ -477,6 +598,9 @@ function Header({
   onApproveSelected: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
+  onRejectSelected: () => void;
+  rejBusy: boolean;
+  visiblePending: number;
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
@@ -510,17 +634,20 @@ function Header({
           <span><span className="cc-kbd">a</span> godkend</span>
           <span><span className="cc-kbd">r</span> skip</span>
           <span><span className="cc-kbd">e</span> redigér</span>
+          <span><span className="cc-kbd">space</span> vælg</span>
         </p>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
         {counts.pending > 0 && (
           <button
             onClick={onSelectAll}
-            title="Sæt kryds ved alle afventende udkast i listen"
+            title={visiblePending < counts.pending
+              ? `Sæt kryds ved de ${visiblePending} afventende der matcher filteret (ikke alle ${counts.pending})`
+              : "Sæt kryds ved alle afventende udkast i listen"}
             style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
           >
-            Vælg alle
+            {visiblePending < counts.pending ? `Vælg filtrerede (${visiblePending})` : "Vælg alle"}
           </button>
         )}
         {selectedCount > 0 && (
@@ -534,6 +661,16 @@ function Header({
         )}
         {selectedCount > 0 && (
           <button
+            onClick={onRejectSelected}
+            disabled={rejBusy}
+            title="Afvis de udkast du har sat kryds ved — lead'en blokeres 14 dage"
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--danger, #b3402e)", opacity: rejBusy ? 0.6 : 1 }}
+          >
+            {rejBusy ? "Afviser…" : `Afvis valgte (${selectedCount})`}
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
             onClick={onApproveSelected}
             disabled={selBusy}
             title="Godkend kun de udkast du har sat kryds ved"
@@ -542,17 +679,19 @@ function Header({
             {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
           </button>
         )}
-        {counts.pending > 0 && (
+        {visiblePending > 0 && (
           <button
             onClick={onBulkApprove}
             disabled={bulkBusy}
-            title="Godkend alle afventende udkast"
+            title={visiblePending < counts.pending
+              ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
+              : "Godkend alle afventende udkast"}
             style={{ ...btnBase, background: bulkBusy ? "var(--green-dim)" : "var(--green)", color: bulkBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
           >
-            {bulkBusy ? "Godkender…" : `Godkend alle (${counts.pending})`}
+            {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
           </button>
         )}
-        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3 }}>
+        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3, maxWidth: "100%", overflowX: "auto" }}>
           {tabs.map((t) => {
             const active = filter === t.key;
             return (
@@ -777,7 +916,7 @@ function DraftLetter({
             style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "var(--green)" }}
           />
         )}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h2
             style={{
               fontFamily: "var(--font-fraunces), serif",

@@ -193,11 +193,12 @@ export async function POST(req: Request) {
   const res = await generate({
     task: "research",
     system:
-      "Du er Claude i Lucas's Command Center — en rolig, skarp assistent for hans lead-CRM og agentic OS. " +
+      "Du er Claude i AgenticOS Command Center — en rolig, skarp assistent for lead-CRM'et og det agentiske OS. " +
+      "Brugeren er en af de to operatører (Lucas eller Charlie) — antag ikke hvem. " +
       "Svar kort og konkret på dansk. Du rådgiver og forklarer. Hvis brugeren vil markere en lead eller gemme en note, " +
       "så bed dem skrive fx 'marker <virksomhed> som ikke interesseret' eller 'noter: ...'. " +
       "Mål på /goals kan ændres med 'tilføj mål: ...', 'fjern mål: ...' eller 'mål klaret: ...'. " +
-      "Henvis til de rigtige sider (/approve, /replies, /leads, /clients, /seo, /studio, /settings — plus /leadgen, /messenger og /goals som stadig findes men er ude af sidebaren)." +
+      "Henvis til de rigtige sider (/approve, /replies, /leads, /leadgen, /clients, /seo, /seo-tjek, /studio, /messenger, /goals, /settings)." +
       (state ? `\n\nNuværende tilstand: ${state}.` : ""),
     prompt: message,
     maxTokens: 600,

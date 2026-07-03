@@ -19,7 +19,10 @@ const DAY7_MS = 7 * 24 * 60 * 60 * 1000;
 function baseUrl(): string {
   const env = (process.env.APP_URL || "").trim();
   if (env) return env.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  // Cron-kald rammer per-deployment-URL'en, så der er ingen brugbar
+  // forwarded-host her. VERCEL_URL i mails er skrøbelig (skifter pr. deploy)
+  // — brug det stabile offentlige domæne som fallback indtil APP_URL sættes.
+  if (process.env.VERCEL) return "https://lead-finder-three-beta.vercel.app";
   return "http://localhost:3000";
 }
 

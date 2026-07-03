@@ -44,10 +44,10 @@ export default async function LeadsPage() {
           Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
         </WarnBanner>
       )}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 className="cc-h1">Lead Pipeline</h1>
-          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
             {[
               { label: "total", value: leads.length, color: "var(--text-muted)" },
               { label: "nye", value: byStatus.new, color: "var(--blue)" },
@@ -62,7 +62,7 @@ export default async function LeadsPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <VerifyAllButton />
           <ScrapeButton />
         </div>

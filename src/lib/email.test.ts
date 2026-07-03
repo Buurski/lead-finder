@@ -23,7 +23,7 @@ const baseLead = {
 
 // Gmail-vars sættes via et objekt for at omgå Hermes safety-parser (som ellers
 // erstatter process.env.GMAIL_APP_PASSWORD med ***).
-function setEnv(map) {
+function setEnv(map: Record<string, string | number | undefined | null>) {
   for (const [k, v] of Object.entries(map)) {
     if (v === undefined || v === null) delete process.env[k];
     else process.env[k] = String(v);
