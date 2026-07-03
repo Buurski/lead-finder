@@ -92,16 +92,19 @@ export const NAV_TREE: NavNode[] = [
 ];
 
 // Flat list for the command palette + keyboard nav: leaves only (a parent's
-// own href always duplicates its primary child), deduped by href so shared
-// destinations (fx Compare under både SEO og Studio) appear once.
+// own href always duplicates its primary child). Dedup pr. href+label — IKKE
+// kun href: samme destination under to forældre ("Godkendelse · Messenger" og
+// "Svar · Messenger-indbakke") skal begge kunne findes i paletten, ellers
+// rammer en søgning på "svar messenger" ingenting (council-fund, Bundle G).
 export const NAV_FLAT: NavItem[] = (() => {
   const seen = new Set<string>();
   const out: NavItem[] = [];
   for (const node of NAV_TREE) {
     const leaves = node.children ?? [node];
     for (const leaf of leaves) {
-      if (seen.has(leaf.href)) continue;
-      seen.add(leaf.href);
+      const key = `${leaf.href}|${leaf.paletteLabel ?? leaf.label}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       out.push(leaf);
     }
   }
@@ -111,3 +114,24 @@ export const NAV_FLAT: NavItem[] = (() => {
 // Back-compat: a couple of tests/components import NAV (grouped). Keep a thin
 // alias so nothing breaks while the tree is the real source of truth.
 export const NAV = NAV_TREE;
+
+// ---- Delte hjælpere (sidebar + breadcrumbs) --------------------------------
+
+export function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+/** Ejer-gruppe for en rute: først gruppen hvis EGEN href er prefix af stien
+ *  (Studio ejer /studio/compare selvom SEO også linker dertil), ellers første
+ *  gruppe med et aktivt barn. Delte hrefs må hverken folde to sektioner ud
+ *  eller give tvetydige breadcrumbs (council-fund B1/B2, Bundle G). */
+export function ownerGroupFor(pathname: string): NavNode | null {
+  for (const node of NAV_TREE) {
+    if (node.children && isNavActive(pathname, node.href)) return node;
+  }
+  for (const node of NAV_TREE) {
+    if (node.children && node.children.some((c) => isNavActive(pathname, c.href))) return node;
+  }
+  return null;
+}

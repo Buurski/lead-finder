@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { NAV_TREE, type NavItem, type NavNode } from "@/lib/nav-config";
+import { NAV_TREE, ownerGroupFor, type NavItem } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 interface Counts {
@@ -15,9 +15,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function groupIsActive(pathname: string, node: NavNode): boolean {
-  return (node.children ?? []).some((c) => isActive(pathname, c.href));
-}
+// (groupIsActive/ownerGroupFor bor i nav-config.ts — delt med breadcrumbs.)
 
 function countFor(item: NavItem, counts: Counts): number | undefined {
   return item.badge === "queue" ? counts.queue : item.badge === "needs" ? counts.needs : undefined;
@@ -64,34 +62,44 @@ export default function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  // Accordion state — user toggles persist; the group holding the active route
-  // opens automatically on navigation (never force-closes the others).
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
-    const s = new Set<string>();
-    for (const node of NAV_TREE) if (node.children && groupIsActive(pathname, node)) s.add(node.label);
-    return s;
-  });
+  // Accordion-model (Bundle G, council-hærdet): expanded er AFLEDT, ikke
+  // navigations-styret state. En gruppe er åben hvis brugeren eksplicit har
+  // åbnet den (userChoice=true), eller hvis den EJER den aktive rute og
+  // brugeren ikke eksplicit har lukket den. Delte hrefs (Compare under både
+  // SEO og Studio) folder derfor kun ejer-gruppen ud (B1), og der er ingen
+  // setState-i-effect ved rute-skift. userChoice gemmes i localStorage fra
+  // toggle-handleren (overlever reload); gendannes efter mount for at undgå
+  // hydration-mismatch.
+  const [userChoice, setUserChoice] = useState<Record<string, boolean>>({});
+  const owner = ownerGroupFor(pathname);
+  const isExpanded = (label: string): boolean => userChoice[label] ?? owner?.label === label;
 
   useEffect(() => {
-    setOpenGroups((prev) => {
-      let next: Set<string> | null = null;
-      for (const node of NAV_TREE) {
-        if (node.children && groupIsActive(pathname, node) && !prev.has(node.label)) {
-          next = next ?? new Set(prev);
-          next.add(node.label);
-        }
-      }
-      return next ?? prev;
-    });
-  }, [pathname]);
+    let saved: unknown;
+    try {
+      saved = JSON.parse(window.localStorage.getItem("cc-nav-choice") ?? "{}");
+    } catch {
+      return; // korrupt storage — behold defaults
+    }
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return;
+    const clean: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(saved as Record<string, unknown>)) {
+      if (typeof v === "boolean") clean[k] = v;
+    }
+    if (Object.keys(clean).length === 0) return;
+    // rAF: undgå synkron setState i effekten (react-hooks/set-state-in-effect)
+    const raf = requestAnimationFrame(() => setUserChoice((prev) => ({ ...clean, ...prev })));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   function toggle(label: string) {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+    const next = { ...userChoice, [label]: !isExpanded(label) };
+    setUserChoice(next);
+    try {
+      window.localStorage.setItem("cc-nav-choice", JSON.stringify(next));
+    } catch {
+      /* private mode etc. — persistens er nice-to-have */
+    }
   }
 
   return (
@@ -113,8 +121,9 @@ export default function Sidebar({
           if (!node.children) {
             return <NavLeaf key={node.href} item={node} counts={counts} pathname={pathname} onNavigate={onNavigate} />;
           }
-          const expanded = openGroups.has(node.label);
-          const active = groupIsActive(pathname, node);
+          const expanded = isExpanded(node.label);
+          // Parent markeres kun aktiv for EJER-gruppen (delte hrefs, B1).
+          const active = owner?.label === node.label;
           const count = countFor(node, counts);
           return (
             <div key={node.label}>

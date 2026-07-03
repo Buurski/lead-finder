@@ -78,7 +78,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
           {results.length === 0 && <div className="cc-palette-empty">Ingen match for “{q}”.</div>}
           {results.map((item, i) => (
             <div
-              key={item.href}
+              key={`${item.href}|${item.paletteLabel ?? item.label}`}
               className="cc-palette-item"
               data-active={i === idx}
               role="option"

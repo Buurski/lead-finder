@@ -283,6 +283,16 @@ export default function ApprovePage() {
         e.preventDefault();
         document.getElementById(`draft-body-${cur.id}`)?.focus();
       }
+      else if (cur && cur.status === "pending" && (e.key === " " || k === "x")) {
+        // space/x: vaelg/fravaelg fokuseret udkast til batch-godkend
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(cur.id)) next.delete(cur.id);
+          else next.add(cur.id);
+          return next;
+        });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

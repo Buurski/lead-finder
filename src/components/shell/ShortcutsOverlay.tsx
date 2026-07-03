@@ -18,6 +18,7 @@ const APPROVE = [
   { keys: "A", what: "Godkend fokuseret udkast" },
   { keys: "R", what: "Afvis fokuseret udkast" },
   { keys: "E", what: "Redigér fokuseret udkast" },
+  { keys: "Space", what: "Vælg/fravælg til batch-godkend" },
 ];
 
 export default function ShortcutsOverlay({ onClose }: { onClose: () => void }) {

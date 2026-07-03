@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { NAV_FLAT } from "@/lib/nav-config";
+import { NAV_FLAT, ownerGroupFor } from "@/lib/nav-config";
 import Sidebar from "./Sidebar";
 import Clock from "./Clock";
 import CommandPalette from "./CommandPalette";
@@ -40,8 +40,12 @@ interface Crumb {
 // prettificeret (ids og slugs som de er — operatøren kender sine egne data).
 function crumbsFor(pathname: string): Crumb[] {
   if (pathname === "/") return [{ label: "Mission Control" }];
+  // Delte hrefs (Compare under både SEO og Studio): ejer-gruppens leaf vinder,
+  // så /studio/compare hedder "Studio · Compare", ikke "SEO · Compare" (B2).
+  const owner = ownerGroupFor(pathname);
+  const pool = owner?.children ?? NAV_FLAT;
   let best: (typeof NAV_FLAT)[number] | undefined;
-  for (const i of NAV_FLAT) {
+  for (const i of pool) {
     if (i.href === "/") continue;
     if (pathname === i.href || pathname.startsWith(i.href + "/")) {
       if (!best || i.href.length > best.href.length) best = i;
@@ -100,6 +104,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const dest = KEY_NAV[e.key.toLowerCase()];
       if (dest && !e.shiftKey) {
         // /approve har sin egen j/k/a/r/e-triage — m/g/s/l kolliderer ikke.
+        // Bail hvis chat-docken er åben: navigation under en åben dialog er
+        // desorienterende, selv når dock-inputtet ikke har fokus (council B3).
+        if (document.querySelector(".cc-chatdock")) return;
         e.preventDefault();
         router.push(dest);
       }

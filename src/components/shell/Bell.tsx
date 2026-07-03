@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "./Icon";
 
@@ -13,6 +13,19 @@ interface Counts {
 // deck-summary som sidebar-badges bruger, saa de kan aldrig drifte.
 export default function Bell({ counts }: { counts: Counts }) {
   const [open, setOpen] = useState(false);
+
+  // Esc lukker dropdownen (tastatur-brugere forventer det; backdrop-klik
+  // dækker kun mus). stopPropagation ikke nødvendig — AppShell's Esc-handler
+  // lukker kun shortcuts-overlayet.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const queue = counts.queue ?? 0;
   const needs = counts.needs ?? 0;
   const total = queue + needs;
@@ -47,14 +60,14 @@ export default function Bell({ counts }: { counts: Counts }) {
           <div
             role="presentation"
             onClick={() => setOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+            style={{ position: "fixed", inset: 0, zIndex: 45 }}
           />
           <div
             className="cc-card"
             role="menu"
             aria-label="Ventende ting"
             style={{
-              position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 41,
+              position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 46,
               width: 250, padding: 8, display: "grid", gap: 2,
               boxShadow: "0 8px 28px oklch(24% 0.02 70 / 0.14)",
             }}

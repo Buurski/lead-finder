@@ -38,7 +38,10 @@ export default function MaalWidget() {
     setBusy(true);
     setError(null);
     const prev = goals;
-    setGoals(goals.map((g) => (g.text === text ? { ...g, done: !g.done } : g)));
+    // Flip kun FØRSTE match — serveren toggler også kun den første linje med
+    // den tekst, så optimistisk UI og servertilstand følges ad (council B6).
+    const idx = goals.findIndex((g) => g.text === text);
+    setGoals(goals.map((g, i) => (i === idx ? { ...g, done: !g.done } : g)));
     try {
       const res = await fetch("/api/goals", {
         method: "POST",
