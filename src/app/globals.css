@@ -340,14 +340,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 .cc-tab-full { display: inline; }
 .cc-tabs-scroll { max-width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .cc-tabs-scroll::-webkit-scrollbar { display: none; }
-.cc-tabs-secondary { display: none; }       /* shown only on mobile */
-.cc-tabs-header { display: inline-flex; }     /* hidden on mobile */
-
 @media (max-width: 640px) {
   .cc-card-pad { padding: 14px 16px; }
   .cc-today-cols { grid-template-columns: 1fr !important; }
-  .cc-tabs-header { display: none; }
-  .cc-tabs-secondary { display: block; margin-top: 6px; }
   .cc-tab-full { display: none; }
   .cc-tab-short { display: inline; }
   .cc-tab { padding: 0 13px; }

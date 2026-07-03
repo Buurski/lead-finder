@@ -64,8 +64,7 @@ export const NAV_TREE: NavNode[] = [
     icon: "Search",
     children: [
       { href: "/seo", label: "Overblik", paletteLabel: "SEO · Overblik", icon: "Search", hint: "Søgning pr. klient" },
-      { href: "/studio/compare", label: "Compare", paletteLabel: "SEO · Compare", icon: "Columns2", hint: "Side-om-side sammenligning" },
-      { href: "/studio/prompt-gen", label: "Prompt-gen", paletteLabel: "SEO · Prompt-gen", icon: "Wand", hint: "Recon → prompt → dispatch" },
+      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt" },
     ],
   },
   {
