@@ -11,7 +11,7 @@ import type { ResearchResult, ResearchLead } from "./research.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead } from "./tone-mixer.ts";
-import { formatSignature, type SenderId } from "./senders.ts";
+import { formatSignature, stripSignature, type SenderId } from "./senders.ts";
 
 export interface Draft {
   subject: string;
@@ -312,6 +312,11 @@ export async function draft_personal_message(
           const demos = research.demoPair;
           const urlsOk = demos.every((d) => body.includes(d.url));
           if (validateDraft(body).ok && urlsOk) {
+            // Post-generation signatur-injection (Bundle G): prompten LOVER at
+            // pipelinen tilføjer signaturen, så gør det faktisk. stripSignature
+            // fjerner et eventuelt modellen-improviseret "Mvh …" først, så vi
+            // aldrig ender med dobbelt underskrift eller forkert afsender.
+            body = `${stripSignature(body)}\n\n${formatSignature(sender).closing}`;
             return { subject: `En lille hilsen til ${firstName(lead.name)}`, body, demoPair: research.demoPair };
           }
     }

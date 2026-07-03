@@ -143,7 +143,7 @@ function loadVoiceGuide(): string {
   try {
     return fs.readFileSync(path.join(process.cwd(), "src", "lib", "voice-guide.md"), "utf-8");
   } catch {
-    return "Voice: humble hobby salgselev, warm, no price/kr, no robot-CTA, 2 demos, end 'Mvh, Lucas'.";
+    return "Voice: humble hobby salgselev, warm, no price/kr, no robot-CTA, 2 demos. Do NOT sign — the pipeline appends the sender's signature.";
   }
 }
 
