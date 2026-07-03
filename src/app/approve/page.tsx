@@ -245,6 +245,17 @@ export default function ApprovePage() {
     return drafts;
   }, [drafts, filter]);
 
+  // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
+  // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
+  // "Vælg alle" arbejder stadig på HELE listen, ikke kun de viste.
+  const LIST_PAGE = 30;
+  const [shownCount, setShownCount] = useState(LIST_PAGE);
+  const changeFilter = useCallback((f: Filter) => {
+    setFilter(f);
+    setShownCount(LIST_PAGE);
+  }, []);
+  const shownList = useMemo(() => visible.slice(0, shownCount), [visible, shownCount]);
+
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
     async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }): Promise<{ ok: boolean; violations?: string[] }> => {
@@ -275,7 +286,12 @@ export default function ApprovePage() {
       if (document.querySelector(".cc-palette")) return;
       const cur = visible[focusIdx];
       const k = e.key.toLowerCase();
-      if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => Math.min(i + 1, visible.length - 1)); }
+      if (k === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = Math.min(focusIdx + 1, visible.length - 1);
+        if (next >= shownCount) setShownCount((c) => c + LIST_PAGE);
+        setFocusIdx(next);
+      }
       else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(i - 1, 0)); }
       else if (cur && cur.status === "pending" && k === "a") { e.preventDefault(); actOn(cur.id, "approve"); }
       else if (cur && cur.status === "pending" && k === "r") { e.preventDefault(); actOn(cur.id, "reject"); }
@@ -296,7 +312,7 @@ export default function ApprovePage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, focusIdx, actOn]);
+  }, [visible, focusIdx, actOn, shownCount]);
 
   // ---- bulk-approve all currently-pending "safe" drafts -------------------
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -360,7 +376,7 @@ export default function ApprovePage() {
       <Header
         counts={counts}
         filter={filter}
-        setFilter={setFilter}
+        setFilter={changeFilter}
         onRefresh={load}
         loading={loading}
         onBulkApprove={bulkApprove}
@@ -434,7 +450,7 @@ export default function ApprovePage() {
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {visible.map((d, i) => (
+          {shownList.map((d, i) => (
             <DraftLetter
               key={d.id}
               draft={d}
@@ -445,6 +461,14 @@ export default function ApprovePage() {
               onToggleSelect={() => toggleSelect(d.id)}
             />
           ))}
+          {visible.length > shownList.length && (
+            <button
+              onClick={() => setShownCount((c) => c + LIST_PAGE)}
+              style={{ ...btnGhost, alignSelf: "center", padding: "10px 22px", fontSize: 13 }}
+            >
+              Vis {Math.min(LIST_PAGE, visible.length - shownList.length)} flere ({visible.length - shownList.length} tilbage)
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -16,7 +16,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Command Center · AgenticOS",
-  description: "Lucas's agentic OS — lead & client command center",
+  description: "AgenticOS — lead & client command center",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
