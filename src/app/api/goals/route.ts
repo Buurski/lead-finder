@@ -18,9 +18,17 @@ export const maxDuration = 30;
 const NOTE = "wiki/os/roadmap-naeste-skridt";
 const CHECKBOX_RE = /^(\s*-\s*\[)([ xX])(\]\s+)(.*)$/;
 
+// Split til linjer og strip trailing \r — et lokalt Windows-checkout af vaulten
+// har CRLF, og `.` i CHECKBOX_RE kan ikke matche \r, så toggle/remove ramte
+// "fandt ikke det mål" lokalt selvom GET viste målet (Bundle G-fund).
+// Writes joiner med \n, så noten normaliseres til LF ved første redigering.
+function toLines(md: string): string[] {
+  return md.split("\n").map((l) => l.replace(/\r$/, ""));
+}
+
 function parseGoals(md: string): { done: boolean; text: string }[] {
   const out: { done: boolean; text: string }[] = [];
-  for (const line of md.split("\n")) {
+  for (const line of toLines(md)) {
     const m = line.match(CHECKBOX_RE);
     if (m) out.push({ done: m[2].toLowerCase() === "x", text: m[4].trim() });
   }
@@ -53,7 +61,7 @@ export async function POST(req: Request) {
   const note = await readVaultNote(NOTE, { preferRemote: true });
   if (!note.ok) return NextResponse.json({ ok: false, error: note.reason }, { status: 502 });
 
-  const lines = note.raw.split("\n");
+  const lines = toLines(note.raw);
   let changed = false;
   let commitVerb = "";
 
