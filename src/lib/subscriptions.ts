@@ -33,13 +33,15 @@ export const RATES: Record<Currency, number> = { DKK: 1, USD: 6.9, EUR: 7.46 };
 // Google "Betaling modtaget" 3/7, Contabo ordre 15069280). Kie.ai holdt ude —
 // uregelmæssige kredit-køb, tages op hvis det bliver månedligt.
 export const SUBSCRIPTIONS: Subscription[] = [
-  { name: "Claude Max (Lucas)", amount: 100, currency: "USD", period: "md", share: "lucas", payer: "lucas", personal: true, estimate: true, note: "Egen plan — kvittering ligger i shadowporo-mail" },
+  { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
   { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
+  { name: "Wispr Flow (Lucas)", amount: 15, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, note: "Tale-til-tekst — kvittering 28/6, fornyes 28. hver md" },
   { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Hosting — $40 + 25% moms, kvittering 3/7" },
   { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
   { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", note: "Hjernen — fælles" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — ~$50 i juni, intet siden 10/6" },
   { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
+  { name: "Anthropic API-kreditter", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Topups ~€13 ad gangen (lead-system drafts) — apr–jun, ~snit" },
 ];
 
 /** Normaliseret månedspris i DKK. */
