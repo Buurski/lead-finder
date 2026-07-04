@@ -22,6 +22,8 @@ export interface Subscription {
   payer: "lucas" | "charlie";
   /** egen plan — udenfor total og split */
   personal?: boolean;
+  /** dag i måneden hvor beløbet trækkes (fra kvitteringer); udeladt = uregelmæssig */
+  renewalDay?: number;
   estimate?: boolean; // beløb ikke bekræftet mod kvittering
   note?: string;
 }
@@ -33,12 +35,12 @@ export const RATES: Record<Currency, number> = { DKK: 1, USD: 6.9, EUR: 7.46 };
 // Google "Betaling modtaget" 3/7, Contabo ordre 15069280). Kie.ai holdt ude —
 // uregelmæssige kredit-køb, tages op hvis det bliver månedligt.
 export const SUBSCRIPTIONS: Subscription[] = [
-  { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
-  { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
-  { name: "Wispr Flow (Lucas)", amount: 15, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, note: "Tale-til-tekst — kvittering 28/6, fornyes 28. hver md" },
-  { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Hosting — $40 + 25% moms, kvittering 3/7" },
-  { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
-  { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", note: "Hjernen — fælles" },
+  { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 6, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
+  { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, renewalDay: 1, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
+  { name: "Wispr Flow (Lucas)", amount: 15, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 28, note: "Tale-til-tekst — kvittering 28/6, fornyes 28. hver md" },
+  { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "Hosting — $40 + 25% moms, kvittering 3/7" },
+  { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
+  { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", renewalDay: 10, note: "Hjernen — fælles, oprettet 10/6" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — ~$50 i juni, intet siden 10/6" },
   { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
   { name: "Anthropic API-kreditter", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Topups ~€13 ad gangen (lead-system drafts) — apr–jun, ~snit" },
@@ -76,6 +78,12 @@ export function computeSplit(subs: Subscription[] = SUBSCRIPTIONS): SplitTotals 
     owedCharlie: charlie + selskab / 2,
     total: lucas + charlie + selskab,
   };
+}
+
+/** Tidligste træk-dag blandt fælles poster — Charlie bør overføre inden denne dag. */
+export function earliestSharedRenewal(subs: Subscription[] = SUBSCRIPTIONS): number | null {
+  const days = subs.filter((s) => !s.personal && s.renewalDay).map((s) => s.renewalDay!);
+  return days.length ? Math.min(...days) : null;
 }
 
 /** Personlige planer for én person (vises på person-kortet, udenfor splittet). */
