@@ -85,6 +85,7 @@ export const NAV_TREE: NavNode[] = [
       { href: "/claude", label: "Claude", icon: "Bot", hint: "Claude-chat" },
       { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent på VPS" },
       { href: "/goals", label: "Goals", icon: "Target", hint: "90-dages mål (vault)" },
+      { href: "/okonomi", label: "Økonomi", icon: "Wallet", hint: "Abonnementer & split" },
     ],
   },
   { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence" },
