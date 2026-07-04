@@ -26,14 +26,16 @@ export interface Subscription {
 // ponytail: faste kurser, ret dem hvis de skrider — præcision på øre-niveau er ligegyldig her
 export const RATES: Record<Currency, number> = { DKK: 1, USD: 6.9, EUR: 7.46 };
 
+// Beløb verificeret mod kvitteringer i buur.aigro 2026-07-04 (Vercel #2006-3513,
+// Google "Betaling modtaget" 3/7, Contabo ordre 15069280). Claude Max-kvitteringer
+// ligger i personlige indbakker — beløb kendt ($100/md pr. plan).
 export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Claude Max (Lucas)", amount: 100, currency: "USD", period: "md", share: "lucas", payer: "lucas", note: "Personlig plan" },
   { name: "Claude Max (Charlie)", amount: 100, currency: "USD", period: "md", share: "charlie", payer: "charlie", note: "Personlig plan" },
-  { name: "Vercel Pro", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Hosting lead-system + demoer + buur-cms" },
-  { name: "Google Cloud (Places API m.m.)", amount: 150, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Variabel — budget-guard 1500 kald/dag" },
-  { name: "Contabo VPS (Hermes)", amount: 8, currency: "EUR", period: "md", share: "lucas", payer: "lucas", estimate: true, note: "Hjernen — Charlie ikke med endnu" },
-  { name: "Kie.ai (billede/video-gen)", amount: 50, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Forbrugsbaseret" },
-  { name: "Domæner (.dk)", amount: 300, currency: "DKK", period: "år", share: "selskab", payer: "lucas", estimate: true, note: "vida-klinik.dk m.fl." },
+  { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Hosting — $40 + 25% moms, kvittering 3/7" },
+  { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
+  { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "lucas", payer: "lucas", note: "Hjernen — Charlie ikke med endnu" },
+  { name: "Kie.ai (billede/video-gen)", amount: 50, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Uregelmæssige kredit-køb, ~snit" },
 ];
 
 /** Normaliseret månedspris i DKK. */
