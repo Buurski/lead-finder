@@ -39,6 +39,7 @@ export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
   { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", note: "Hjernen — fælles" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — ~$50 i juni, intet siden 10/6" },
+  { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
 ];
 
 /** Normaliseret månedspris i DKK. */
