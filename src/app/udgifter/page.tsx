@@ -1,6 +1,6 @@
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
-import { SUBSCRIPTIONS, computeSplit, monthlyDkk, personalFor, type Share, type Subscription } from "@/lib/subscriptions";
+import { SUBSCRIPTIONS, computeSplit, monthlyDkk, personalFor, earliestSharedRenewal, type Share, type Subscription } from "@/lib/subscriptions";
 import PaymentsClient from "./PaymentsClient";
 
 export const metadata = { title: "Udgifter · Command Center" };
@@ -45,6 +45,7 @@ function SubRow({ s, max }: { s: Subscription; max: number }) {
             {s.name}
             <span className="cc-dim" style={{ fontWeight: 400, fontSize: 12 }}>
               {s.amount} {s.currency}/{s.period}{s.estimate ? " · ~estimat" : ""}
+              {s.renewalDay ? ` · trækkes d. ${s.renewalDay}.` : " · uregelmæssig"}
             </span>
           </div>
           {s.note && <div className="cc-dim" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.note}</div>}
@@ -135,7 +136,7 @@ export default function OkonomiPage() {
         </div>
 
         {/* Overførsler */}
-        <PaymentsClient owedPerMonth={split.owedCharlie} />
+        <PaymentsClient owedPerMonth={split.owedCharlie} dueDay={earliestSharedRenewal()} />
 
         {/* Tjenester */}
         <section className="cc-card cc-card-pad">

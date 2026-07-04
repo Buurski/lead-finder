@@ -17,7 +17,7 @@ const inputStyle: React.CSSProperties = {
   background: "var(--surface)", color: "var(--text)", fontFamily: "inherit",
 };
 
-export default function PaymentsClient({ owedPerMonth }: { owedPerMonth: number }) {
+export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth: number; dueDay: number | null }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
@@ -75,6 +75,25 @@ export default function PaymentsClient({ owedPerMonth }: { owedPerMonth: number 
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Overførsler</h2>
         <span className="cc-chip" style={{ marginLeft: "auto" }}>Charlie i alt: {kr(charlieTotal)}</span>
       </div>
+
+      {/* Anbefalet overførselsdag: 2 dage før tidligste fælles træk */}
+      {dueDay !== null && (() => {
+        const payBy = Math.max(1, dueDay - 2);
+        const today = new Date().getDate();
+        const covered = charlieThisMonth >= owedPerMonth;
+        const overdue = !covered && today >= dueDay;
+        const bg = covered ? "var(--accent-soft)" : overdue ? "var(--red-dim)" : "var(--amber-dim)";
+        const fg = covered ? "var(--accent-ink)" : overdue ? "var(--red)" : "var(--amber)";
+        return (
+          <div style={{ background: bg, color: fg, borderRadius: 10, padding: "9px 12px", fontSize: 12.5, marginBottom: 12, fontWeight: 500 }}>
+            {covered
+              ? `✓ Denne måned er dækket — næste overførsel: senest d. ${payBy}. næste måned.`
+              : overdue
+                ? `Første fælles træk (d. ${dueDay}.) er passeret — Charlie mangler ${kr(owedPerMonth - charlieThisMonth)} for denne måned.`
+                : `Charlie overfører ${kr(owedPerMonth)} senest d. ${payBy}. — første fælles træk er d. ${dueDay}. (Vercel + Google).`}
+          </div>
+        );
+      })()}
 
       {/* Denne måned: Charlie's ½ selskab */}
       <div style={{ marginBottom: 14 }}>
