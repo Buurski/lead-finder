@@ -27,7 +27,7 @@ export default function PaymentsClient({ owedPerMonth }: { owedPerMonth: number 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/okonomi/payments")
+    fetch("/api/udgifter/payments")
       .then((r) => r.json())
       .then((d) => setPayments(d.payments ?? []))
       .catch(() => setError("Kunne ikke hente overførsler"))
@@ -40,7 +40,7 @@ export default function PaymentsClient({ owedPerMonth }: { owedPerMonth: number 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/okonomi/payments", {
+      const res = await fetch("/api/udgifter/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: val, from, note: note || undefined }),
@@ -59,7 +59,7 @@ export default function PaymentsClient({ owedPerMonth }: { owedPerMonth: number 
 
   async function remove(id: string) {
     setPayments((p) => p.filter((x) => x.id !== id));
-    await fetch(`/api/okonomi/payments?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+    await fetch(`/api/udgifter/payments?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
   }
 
   const month = new Date().toISOString().slice(0, 7);

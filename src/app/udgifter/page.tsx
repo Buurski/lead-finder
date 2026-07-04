@@ -3,7 +3,7 @@ import Icon from "@/components/shell/Icon";
 import { SUBSCRIPTIONS, computeSplit, monthlyDkk, personalFor, type Share, type Subscription } from "@/lib/subscriptions";
 import PaymentsClient from "./PaymentsClient";
 
-export const metadata = { title: "Økonomi · Command Center" };
+export const metadata = { title: "Udgifter · Command Center" };
 export const dynamic = "force-dynamic";
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("da-DK")} kr`;
@@ -112,7 +112,7 @@ export default function OkonomiPage() {
     <div className="cc-fade">
       <PageHeader
         icon="Wallet"
-        title="Økonomi"
+        title="Udgifter"
         subtitle="Fælles abonnementer, split og overførsler. Redigér poster i src/lib/subscriptions.ts."
       />
 
