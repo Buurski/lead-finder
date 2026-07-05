@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Nail Studio · Premium manicure &amp; pedicure i København</title>
+<meta name="description" content="The Nail Studio er en negleklinik i hjertet af København. Smukke, velplejede negle — manicure, pedicure, gel og nail art i rolige, premium rammer. Book tid i dag." />
+<meta name="theme-color" content="#f5e1d3" />
+
+<!-- Preconnect for fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin />
+
+<!-- Non-render-blocking Google Fonts -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500;600&display=swap" />
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500;600&display=swap" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500;600&display=swap" /></noscript>
+
+<!-- Preload hero -->
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=900&h=600&fit=cover&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=600&h=420&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=900&h=600&fit=cover&output=webp&q=75 900w"
+  imagesizes="(max-width: 700px) 100vw, 560px" />
+
+<style>
+:root{
+  /* Brand — from The Nail Studio recon */
+  --rose:#dd9696;        /* dusty rose — decorative accent (dots, underlines) */
+  --rose-deep:#c97a7a;   /* mid rose — hover surfaces (large blocks only) */
+  --rose-text:#974a4a;   /* deep rose — AA-safe for small text & button labels */
+  --ink:#32373c;         /* dark slate — body text (AA on cream) */
+  --ink-soft:#5b6068;    /* muted ink */
+  --cream:#f5e1d3;       /* warm cream — page bg */
+  --sand:#efd7c6;        /* deeper sand panel */
+  --paper:#fbf3ec;       /* lightest card surface */
+  --line:#e2c9b8;
+  --maxw:1120px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--cream);color:var(--ink);
+  font-family:"Manrope",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-weight:400;line-height:1.65;-webkit-font-smoothing:antialiased;
+  font-size:17px;
+}
+h1,h2,h3{font-family:"Cormorant Garamond",Georgia,serif;font-weight:500;line-height:1.1;color:var(--ink);margin:0}
+h1{font-size:clamp(2.6rem,7vw,4.6rem)}
+h2{font-size:clamp(2rem,5vw,3.1rem)}
+h3{font-size:1.5rem}
+p{margin:0 0 1em}
+a{color:inherit}
+img{display:block;max-width:100%;height:auto}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+.eyebrow{font-family:"Manrope";font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:.72rem;color:var(--rose-text)}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(245,225,211,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .row{display:flex;align-items:center;justify-content:space-between;height:66px}
+.brand{font-family:"Cormorant Garamond",serif;font-size:1.5rem;font-weight:600;letter-spacing:.01em;text-decoration:none}
+.brand span{color:var(--rose-text)}
+.navlinks{display:none;gap:30px;align-items:center}
+.navlinks a{text-decoration:none;font-size:.93rem;font-weight:500;color:var(--ink-soft)}
+.navlinks a:hover{color:var(--ink)}
+.btn{display:inline-block;background:var(--ink);color:var(--paper);text-decoration:none;
+  padding:13px 26px;border-radius:999px;font-weight:600;font-size:.92rem;letter-spacing:.02em;transition:transform .2s ease,background .2s ease}
+.btn:hover{transform:translateY(-2px)}
+.btn-rose{background:var(--rose-text);color:#fff}
+.btn-rose:hover{background:var(--ink)}
+@media(min-width:860px){.navlinks{display:flex}}
+
+/* Hero */
+.hero{padding:64px 0 30px}
+.hero-grid{display:grid;gap:36px;align-items:center}
+.hero h1{margin-bottom:18px}
+.hero .lead{font-size:1.18rem;color:var(--ink-soft);max-width:34ch;margin-bottom:30px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.hero-photo{position:relative;border-radius:22px;overflow:hidden;box-shadow:0 30px 60px -30px rgba(50,55,60,.4)}
+.hero-photo img{width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
+.hero-badge{position:absolute;left:18px;bottom:18px;background:rgba(251,243,236,.92);
+  padding:10px 16px;border-radius:14px;font-size:.82rem;font-weight:600;color:var(--ink);box-shadow:0 8px 24px -12px rgba(50,55,60,.5)}
+@media(min-width:860px){.hero-grid{grid-template-columns:1fr 1fr}.hero{padding:84px 0 48px}}
+
+/* Pause / storytelling */
+.pause{padding:54px 0;text-align:center}
+.pause p{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(1.6rem,3.6vw,2.4rem);
+  line-height:1.32;max-width:24ch;margin:0 auto;color:var(--ink)}
+.rule{width:54px;height:1px;background:var(--rose-deep);margin:26px auto 0;opacity:.7}
+
+/* Section base */
+section{scroll-margin-top:80px}
+.sec{padding:60px 0}
+.sec-head{max-width:50ch;margin-bottom:38px}
+.sec-head h2{margin:10px 0 12px}
+.sec-head p{color:var(--ink-soft)}
+
+/* Treatments */
+.cards{display:grid;gap:18px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:26px 24px}
+.card h3{margin-bottom:8px}
+.card p{color:var(--ink-soft);font-size:.98rem;margin:0}
+.card .tag{display:inline-block;margin-top:14px;font-size:.78rem;font-weight:600;letter-spacing:.04em;color:var(--rose-text)}
+@media(min-width:680px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.cards{grid-template-columns:repeat(4,1fr)}}
+
+/* Gallery — oversized */
+.gallery{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+.gallery figure{margin:0;border-radius:16px;overflow:hidden;background:var(--sand)}
+.gallery img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+.gallery figure:hover img{transform:scale(1.05)}
+.g-tall{grid-row:span 2}
+@media(min-width:760px){.gallery{grid-template-columns:repeat(4,1fr);gap:18px}}
+
+/* About */
+.about-grid{display:grid;gap:34px;align-items:center}
+.about-photo{border-radius:22px;overflow:hidden;box-shadow:0 26px 50px -30px rgba(50,55,60,.4)}
+.about-photo img{width:100%;aspect-ratio:4/5;object-fit:cover}
+.about ul{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:12px}
+.about li{padding-left:26px;position:relative;color:var(--ink-soft)}
+.about li::before{content:"";position:absolute;left:0;top:.62em;width:9px;height:9px;border-radius:50%;background:var(--rose)}
+@media(min-width:860px){.about-grid{grid-template-columns:.8fr 1fr}}
+
+/* Contact */
+.contact{background:var(--sand);border-radius:26px;padding:42px 26px;margin-bottom:64px}
+.contact-grid{display:grid;gap:30px}
+.contact h2{margin-bottom:14px}
+.info{display:grid;gap:14px;margin-top:8px}
+.info div{display:flex;gap:12px;align-items:flex-start}
+.info .lbl{font-weight:600;min-width:88px;color:var(--ink)}
+.info a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rose)}
+.map{border-radius:16px;overflow:hidden;border:1px solid var(--line);min-height:260px}
+.map iframe{width:100%;height:100%;min-height:260px;border:0;display:block}
+@media(min-width:860px){.contact-grid{grid-template-columns:1fr 1fr}.contact{padding:54px}}
+
+/* Footer */
+footer{text-align:center;padding:30px 0 40px;color:var(--ink-soft);font-size:.86rem}
+footer .brand{font-size:1.2rem;display:inline-block;margin-bottom:8px}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+  .gallery figure:hover img{transform:none}
+  .btn:hover{transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap row">
+    <a class="brand" href="#top">The Nail <span>Studio</span></a>
+    <nav class="navlinks" aria-label="Hovedmenu">
+      <a href="#behandlinger">Behandlinger</a>
+      <a href="#galleri">Galleri</a>
+      <a href="#om">Om os</a>
+      <a href="#kontakt">Kontakt</a>
+      <a class="btn btn-rose" href="#kontakt">Book tid</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Negleklinik · København</p>
+        <h1>Velplejede negle,<br>i ro og fred.</h1>
+        <p class="lead">Premium manicure og pedicure i hjertet af København — smukke negle, der får dig til at se godt ud og have det godt.</p>
+        <div class="hero-cta">
+          <a class="btn btn-rose" href="#kontakt">Book tid</a>
+          <a class="btn" href="#behandlinger" style="background:transparent;color:var(--ink);border:1px solid var(--ink)">Se behandlinger</a>
+        </div>
+      </div>
+      <div class="hero-photo">
+        <img
+          src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=900&h=600&fit=cover&output=webp&q=75"
+          srcset="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=600&h=420&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FThe-Nail-Studio-Copenhagen-About-Us.jpg%3Fmedia%3D1751542446&w=900&h=600&fit=cover&output=webp&q=75 900w"
+          sizes="(max-width: 700px) 100vw, 560px"
+          width="900" height="600" fetchpriority="high"
+          alt="Nærbillede af velplejede hænder med naturlig manicure fra The Nail Studio i København" />
+        <span class="hero-badge">Håndlavet omhu · København K</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STORYTELLING PAUSE -->
+  <section class="pause">
+    <div class="wrap">
+      <p>Et øjeblik for dig selv. En halv time, hvor hænderne får al opmærksomheden.</p>
+      <div class="rule"></div>
+    </div>
+  </section>
+
+  <!-- TREATMENTS -->
+  <section id="behandlinger" class="sec">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <p class="eyebrow">Behandlinger</p>
+        <h2>Det vi laver bedst</h2>
+        <p>Hver behandling udføres roligt og grundigt — fra den klassiske franske manicure til farverig gel og fin nail art.</p>
+      </div>
+      <div class="cards">
+        <article class="card reveal">
+          <h3>Manicure</h3>
+          <p>Formning, neglebånd og pleje af hænderne — afsluttet med en ren, blank finish, der holder.</p>
+          <span class="tag">Klassisk &amp; fransk</span>
+        </article>
+        <article class="card reveal">
+          <h3>Pedicure</h3>
+          <p>Grundig fodpleje i rolige rammer, så fødderne føles lette og velplejede — hele året rundt.</p>
+          <span class="tag">Pleje &amp; finish</span>
+        </article>
+        <article class="card reveal">
+          <h3>Gel-negle</h3>
+          <p>Holdbar gel i naturlige nuancer og klare farver, der bevarer glansen i ugevis uden at skalle.</p>
+          <span class="tag">Naturlig &amp; farve</span>
+        </article>
+        <article class="card reveal">
+          <h3>Nail art</h3>
+          <p>Fine detaljer, french tips og personlige design — fra det diskrete til det udtryksfulde.</p>
+          <span class="tag">Design efter ønske</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="galleri" class="sec">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <p class="eyebrow">Galleri</p>
+        <h2>Glimt fra studiet</h2>
+        <p>Et udvalg af negle, vi har lavet — ægte resultater fra The Nail Studio.</p>
+      </div>
+      <div class="gallery reveal">
+        <figure class="g-tall">
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Kobenhavn-Classic-French-Tip-150x150.jpg%3Fmedia%3D1751542446&w=500&h=1020&fit=cover&output=webp&q=75"
+            width="500" height="1020" loading="lazy" decoding="async"
+            alt="Klassisk fransk french tip-manicure med hvid spids" />
+        </figure>
+        <figure>
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Copenhagen-5-Pink-Color-150x150.jpg%3Fmedia%3D1751542446&w=500&h=500&fit=cover&output=webp&q=75"
+            width="500" height="500" loading="lazy" decoding="async"
+            alt="Gel-negle i blød lyserød farve" />
+        </figure>
+        <figure>
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Copenhagen-6-Natural-Gel-Color-150x150.jpg%3Fmedia%3D1751542446&w=500&h=500&fit=cover&output=webp&q=75"
+            width="500" height="500" loading="lazy" decoding="async"
+            alt="Naturlig gel-manicure i nude-nuance" />
+        </figure>
+        <figure>
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Copenhagen-Brown-French-Color-Tip-150x150.jpg%3Fmedia%3D1751542446&w=500&h=500&fit=cover&output=webp&q=75"
+            width="500" height="500" loading="lazy" decoding="async"
+            alt="French tip i varm brun farvetone" />
+        </figure>
+        <figure>
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Copenhagen-3-White-Color-150x150.jpg%3Fmedia%3D1751542446&w=500&h=500&fit=cover&output=webp&q=75"
+            width="500" height="500" loading="lazy" decoding="async"
+            alt="Rene hvide negle med blank finish" />
+        </figure>
+        <figure>
+          <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2022%2F02%2FThe-Nail-Studio-Copenhagen-4-Pink-Color-150x150.jpg%3Fmedia%3D1751542446&w=500&h=500&fit=cover&output=webp&q=75"
+            width="500" height="500" loading="lazy" decoding="async"
+            alt="Gel-negle i dyb lyserød nuance" />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT / BRAND STORY -->
+  <section id="om" class="sec about">
+    <div class="wrap about-grid">
+      <div class="about-photo reveal">
+        <img src="https://images.weserv.nl/?url=usercontent.one%2Fwp%2Fwww.thenailstudio.dk%2Fwp-content%2Fuploads%2F2023%2F03%2FNail-School.jpg%3Fmedia%3D1751542446&w=560&h=700&fit=cover&output=webp&q=75"
+          width="560" height="700" loading="lazy" decoding="async"
+          alt="Neglestylist i arbejde i The Nail Studios lokale i København" />
+      </div>
+      <div class="reveal">
+        <p class="eyebrow">Om os</p>
+        <h2>Et roligt studie midt i byen</h2>
+        <p>The Nail Studio er en negleklinik i København, hvor vi tager os tid til hver enkelt gæst. Vores mål er enkelt: smukke negle, der får dig til at se godt ud og have det godt.</p>
+        <p>Vi arbejder med omhu, gode produkter og en sans for detaljen — uanset om du kommer til en hurtig manicure eller en hel forkælelse.</p>
+        <ul>
+          <li>Personlig behandling i rolige rammer</li>
+          <li>Erfarne neglestylister med øje for detaljen</li>
+          <li>Naturlige nuancer og klare farver — og french tips i topklasse</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="kontakt" class="sec">
+    <div class="wrap">
+      <div class="contact reveal">
+        <div class="contact-grid">
+          <div>
+            <p class="eyebrow">Kontakt &amp; book</p>
+            <h2>Book din tid</h2>
+            <p>Skriv eller ring, så finder vi en tid, der passer dig. Vi glæder os til at byde dig velkommen.</p>
+            <div class="info">
+              <div><span class="lbl">Adresse</span><span>København K</span></div>
+              <div><span class="lbl">Telefon</span><a href="tel:+45">Ring til os</a></div>
+              <div><span class="lbl">Web</span><a href="https://thenailstudio.dk" rel="noopener">thenailstudio.dk</a></div>
+            </div>
+            <p style="margin-top:24px"><a class="btn btn-rose" href="https://thenailstudio.dk" rel="noopener">Book tid online</a></p>
+          </div>
+          <div class="map">
+            <iframe
+              title="Kort over The Nail Studio i København"
+              src="https://www.google.com/maps?q=K%C3%B8benhavn%20K&output=embed"
+              loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top">The Nail <span>Studio</span></a>
+    <p>Premium manicure &amp; pedicure · København<br>© 2026 The Nail Studio</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    els.forEach(function(e){e.classList.add('in')});
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}
+    });
+  },{rootMargin:'0px 0px -10% 0px',threshold:0.08});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV } from "@/lib/nav-config";
+import { useEffect, useState } from "react";
+import { NAV_TREE, ownerGroupFor, type NavItem } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 interface Counts {
@@ -14,6 +15,43 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
+// (groupIsActive/ownerGroupFor bor i nav-config.ts — delt med breadcrumbs.)
+
+function countFor(item: NavItem, counts: Counts): number | undefined {
+  return item.badge === "queue" ? counts.queue : item.badge === "needs" ? counts.needs : undefined;
+}
+
+function NavLeaf({
+  item,
+  counts,
+  pathname,
+  onNavigate,
+  child,
+}: {
+  item: NavItem;
+  counts: Counts;
+  pathname: string;
+  onNavigate?: () => void;
+  child?: boolean;
+}) {
+  const active = isActive(pathname, item.href);
+  const count = countFor(item, counts);
+  return (
+    <Link
+      href={item.href}
+      className={`cc-navlink cc-focus${child ? " cc-navchild" : ""}`}
+      data-active={active}
+      aria-current={active ? "page" : undefined}
+      onClick={onNavigate}
+    >
+      <Icon name={item.icon} />
+      <span>{item.label}</span>
+      {item.soon && <span className="cc-soon">snart</span>}
+      {!item.soon && count ? <span className="cc-count">{count}</span> : null}
+    </Link>
+  );
+}
+
 export default function Sidebar({
   open,
   counts,
@@ -24,43 +62,101 @@ export default function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  // Accordion-model (Bundle G, council-hærdet): expanded er AFLEDT, ikke
+  // navigations-styret state. En gruppe er åben hvis brugeren eksplicit har
+  // åbnet den (userChoice=true), eller hvis den EJER den aktive rute og
+  // brugeren ikke eksplicit har lukket den. Delte hrefs (Compare under både
+  // SEO og Studio) folder derfor kun ejer-gruppen ud (B1), og der er ingen
+  // setState-i-effect ved rute-skift. userChoice gemmes i localStorage fra
+  // toggle-handleren (overlever reload); gendannes efter mount for at undgå
+  // hydration-mismatch.
+  const [userChoice, setUserChoice] = useState<Record<string, boolean>>({});
+  const owner = ownerGroupFor(pathname);
+  const isExpanded = (label: string): boolean => userChoice[label] ?? owner?.label === label;
+
+  useEffect(() => {
+    let saved: unknown;
+    try {
+      saved = JSON.parse(window.localStorage.getItem("cc-nav-choice") ?? "{}");
+    } catch {
+      return; // korrupt storage — behold defaults
+    }
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return;
+    const clean: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(saved as Record<string, unknown>)) {
+      if (typeof v === "boolean") clean[k] = v;
+    }
+    if (Object.keys(clean).length === 0) return;
+    // rAF: undgå synkron setState i effekten (react-hooks/set-state-in-effect)
+    const raf = requestAnimationFrame(() => setUserChoice((prev) => ({ ...clean, ...prev })));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  function toggle(label: string) {
+    const next = { ...userChoice, [label]: !isExpanded(label) };
+    setUserChoice(next);
+    try {
+      window.localStorage.setItem("cc-nav-choice", JSON.stringify(next));
+    } catch {
+      /* private mode etc. — persistens er nice-to-have */
+    }
+  }
+
   return (
     <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
       <div className="cc-brand">
-        <span className="cc-brand-mark" aria-hidden style={{ display: "grid", placeItems: "center" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 10px var(--accent)", display: "block" }} />
-        </span>
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden style={{ flexShrink: 0 }}>
+          <rect x="8" y="24" width="22" height="28" rx="7" fill="var(--accent-ink)" />
+          <rect x="35.75" y="25.75" width="18.5" height="24.5" rx="5.5" fill="none" stroke="var(--text)" strokeWidth="3.5" />
+          <circle cx="32" cy="12.5" r="5" fill="#C8A97E" />
+        </svg>
         <span>
-          <span className="cc-brand-name">Command Center</span>
-          <span className="cc-brand-sub" style={{ display: "block" }}>agentic OS</span>
+          <span className="cc-brand-name">AgenticOS</span>
+          <span className="cc-brand-sub" style={{ display: "block" }}>Command Center</span>
         </span>
       </div>
 
-      {NAV.map((group) => (
-        <nav key={group.id} className="cc-navgroup" aria-label={group.label}>
-          <div className="cc-navgroup-label">{group.label}</div>
-          {group.items.map((item) => {
-            const active = isActive(pathname, item.href);
-            const count =
-              item.badge === "queue" ? counts.queue : item.badge === "needs" ? counts.needs : undefined;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="cc-navlink cc-focus"
-                data-active={active}
-                aria-current={active ? "page" : undefined}
-                onClick={onNavigate}
+      <nav className="cc-navgroup" aria-label="Navigation">
+        {NAV_TREE.map((node) => {
+          if (!node.children) {
+            return <NavLeaf key={node.href} item={node} counts={counts} pathname={pathname} onNavigate={onNavigate} />;
+          }
+          const expanded = isExpanded(node.label);
+          // Parent markeres kun aktiv for EJER-gruppen (delte hrefs, B1).
+          const active = owner?.label === node.label;
+          const count = countFor(node, counts);
+          return (
+            <div key={node.label}>
+              <button
+                type="button"
+                className="cc-navlink cc-focus cc-navparent"
+                data-active={active && !expanded}
+                aria-expanded={expanded}
+                onClick={() => toggle(node.label)}
               >
-                <Icon name={item.icon} />
-                <span>{item.label}</span>
-                {item.soon && <span className="cc-soon">snart</span>}
-                {!item.soon && count ? <span className="cc-count">{count}</span> : null}
-              </Link>
-            );
-          })}
-        </nav>
-      ))}
+                <Icon name={node.icon} />
+                <span>{node.label}</span>
+                {!expanded && count ? <span className="cc-count">{count}</span> : null}
+                <Icon name="ChevronDown" className="cc-chevron" data-open={expanded} />
+              </button>
+              {expanded && (
+                <div className="cc-navchildren">
+                  {node.children.map((item, i) => (
+                    <NavLeaf
+                      key={`${item.href}-${i}`}
+                      item={item}
+                      counts={counts}
+                      pathname={pathname}
+                      onNavigate={onNavigate}
+                      child
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
 
       <div style={{ marginTop: "auto", paddingTop: 16 }}>
         <div className="cc-navgroup-label" style={{ paddingBottom: 2 }}>Status</div>

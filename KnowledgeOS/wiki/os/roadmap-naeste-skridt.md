@@ -1,6 +1,6 @@
 ---
 title: Roadmap — næste skridt
-updated: 2026-06-04
+updated: 2026-06-15
 horizon: 90 dage
 ---
 
@@ -22,4 +22,4 @@ horizon: 90 dage
 
 - Stærkere åbnere (tillykke + konkret teknisk problem) — se OUTREACH_ANALYSIS.
 - Follow-up nede på 7 dage.
-- Demo-factory i daglig brug fra Studio.
+- [x] Demo-factory i daglig brug fra Studio — **leveret 2026-06-15**: `/demo/[slug]`-route fikset, 6 arketyper matcher de rigtige sites, animations-kit + per-arketype motion-budget. Se [[studio-demo-factory]].

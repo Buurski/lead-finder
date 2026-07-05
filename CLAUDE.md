@@ -31,6 +31,23 @@ itself. So: **diversify the PICK** — restaurants + beauty/personal-care +
 service/trades/retail/professional, with beauty weighted up. The demo library is
 thin on non-food branches — note when a demo is a weak branch match.
 
+## Hermes (24/7-agent på VPS — live 2026-06-11)
+
+**Hermes Agent** (Nous Research, v0.16) kører 24/7 på Contabo-VPS'en
+(`ssh hermes-vps`). Telegram-gateway + natligt "dreaming"-cron (02:00) der
+skriver analyser til vaulten (`daily/<dato>-*.md`). Website-kanal: `/hermes`
+chatter synkront via **hermes-api-shimmen** (`vps/hermes_api.py`, port 8787,
+HMAC-auth; klient: `src/lib/hermes.ts`). Tre profiler: default ("Hjernen") /
+lucas / charlie. Samtalehistorik gemmes website-side i KV; "Gem i vault"
+eksporterer til `wiki/os/sessions/`.
+
+**Regler:** Hermes sender ALDRIG selv eksterne beskeder (kun drafts), og
+Claude rører ALDRIG Hermes' cron-config/.env — cron-idéer lægges i vaulten
+(`wiki/os/hermes-cron-ideer.md`), Lucas opretter selv. Shim-redeploy:
+se `vps/README.md`. Env: `HERMES_API_URL` + `HERMES_API_SECRET`.
+Fejlsøgning: `/api/hermes/status` er offentlig (uden basic auth) og viser
+`shimStatus` (0=ingen forbindelse, 401=forkert secret) + secret-fingerprint.
+
 ## Søsterprojekt: buur-cms (kunde-CMS — planlagt 2026-06-07)
 
 Et multi-tenant CMS hvor kunder selv retter deres site (tekst, billeder,
@@ -41,12 +58,15 @@ arbejder SAMMEN, og dokumenterne findes BEVIDST begge steder:
   byggestart): CLAUDE.md (byggeplan), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md,
   CLIENT_CMS_BLUEPRINT.md, .env.local (Anthropic+Google-nøgler kopieret
   herfra; Mongo/Vercel-placeholders).
-- **Kopier her i lead-system:** CMS_CLAUDE_CODE_PLAN.md (= buur-cms'
-  CLAUDE.md), CMS_MASTERPLAN.md, CMS_LUCAS_TODO.md, CLIENT_CMS_BLUEPRINT.md.
+- **De delte CMS-docs bor KUN i vaulten:**
+  `KnowledgeOS/wiki/os/cms/` (CMS_MASTERPLAN.md, CMS_CLAUDE_CODE_PLAN.md,
+  CMS_LUCAS_TODO.md, CLIENT_CMS_BLUEPRINT.md + README.md med regler).
+  Konsolideret 2026-07-02 (Bundle A) — den gamle synk-regel med kopier i
+  begge repos var allerede brudt (kopierne divergerede 7.-11. juni).
 
-**SYNK-REGEL:** ret du et CMS-dokument ét sted → kopiér det STRAKS til
-det andet sted. Agenter i buur-cms SKAL læse denne CLAUDE.md (denne
-sektion + arkitektur/mønstre); agenter her bør kende buur-cms/CLAUDE.md.
+**REGEL:** ret CMS-dokumenter i vaulten, aldrig via repo-kopier. Agenter i
+buur-cms SKAL læse denne CLAUDE.md (denne sektion + arkitektur/mønstre);
+agenter her bør kende buur-cms/CLAUDE.md (repo-lokalt operating brief).
 
 **Obsidian er hovedhukommelsen:** vault-noten er
 `KnowledgeOS/wiki/os/buur-cms.md`; beslutninger i

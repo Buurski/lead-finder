@@ -4,10 +4,13 @@ import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
-import { leadChannel } from "@/lib/leads/channel";
+import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
+// approve-many på en stor kø: én kø-skrivning + op til flere hundrede
+// best-effort Sheets-registreringer i hold — skal have luft til at løbe færdig.
+export const maxDuration = 300;
 
 // GET /api/approve/queue — return all drafts (newest first).
 export async function GET() {
@@ -20,15 +23,20 @@ interface ActionBody {
   id?: string;
   action?:
     | "approve"
+    | "approve-many"
+    | "reject-many"
     | "edit"
     | "reject"
     | "unapprove"
     | "set-demos"
+    | "set-sender"
     | "reset-sent"
     | "cleanup-no-email";
+  ids?: string[];
   subject?: string;
   body?: string;
   demoPair?: Demo[];
+  sender?: "lucas" | "charlie";
 }
 
 // POST /api/approve/queue — approve | edit | reject a draft.
@@ -56,19 +64,67 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, reset });
   }
 
-  // One-time cleanup (no id): reject any pending/approved draft whose lead has no
-  // usable email — those should never have been email-drafts (they're Messenger/SMS
-  // leads). Keeps godkendelse email-only.
+  // One-time cleanup (no id): reject any pending/approved draft whose
+  // recipientEmail is set-but-blocked (bureau mail, placeholder, junk). Drafts
+  // WITHOUT any email stay in the queue so find-emails cron can fill them later.
+  // See /api/cron/cleanup-no-email/route.ts for full rationale.
   if (action === "cleanup-no-email") {
-    const [drafts, leads] = await Promise.all([readQueue(), getLeads().catch(() => [])]);
-    const byId = new Map(leads.map((l) => [l.id, l]));
+    const drafts = await readQueue();
     let rejected = 0;
     for (const d of drafts) {
       if (d.status !== "pending" && d.status !== "approved") continue;
-      // Resolve by leadId ONLY — a name fallback could reject a valid same-named
-      // lead's draft (duplicate names are common in Sheets).
-      const lead = d.leadId ? byId.get(d.leadId) : undefined;
-      if (lead && leadChannel(lead) !== "email") { d.status = "rejected"; d.updatedAt = new Date().toISOString(); rejected++; }
+      const email = (d.recipientEmail || "").trim();
+      if (!email) continue;                       // no email → keep for find-emails
+      if (hasUsableEmail(email)) continue;       // good email → keep
+      if (!isBlockedEmail(email)) continue;      // malformed but not blocked → keep
+      d.status = "rejected";
+      d.updatedAt = new Date().toISOString();
+      rejected++;
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, rejected });
+  }
+
+  // Bulk-godkend: klienten sendte før ét POST pr. draft ("Godkend alle" på 490
+  // udkast = 490 requests = minutter). Én kø-skrivning her; Sheets-registrering
+  // er best-effort i hold af 10 så en rate-limit aldrig blokerer godkendelsen.
+  if (action === "approve-many") {
+    const ids = Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === "string") : [];
+    if (ids.length === 0) return NextResponse.json({ error: "ids required" }, { status: 400 });
+    const drafts = await readQueue();
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const approved = drafts.filter((d) => idSet.has(d.id) && d.status === "pending");
+    for (const d of approved) {
+      d.status = "approved";
+      d.updatedAt = now;
+    }
+    await writeQueue(drafts);
+    let synced = 0;
+    for (let i = 0; i < approved.length; i += 10) {
+      const chunk = approved.slice(i, i + 10);
+      const res = await Promise.allSettled(chunk.map((d) => registerDraftApproved(d)));
+      synced += res.filter((r) => r.status === "fulfilled").length;
+    }
+    return NextResponse.json({ ok: true, approved: approved.length, synced, note: "marked approved — not sent" });
+  }
+
+  // Bulk-afvis (symmetri med approve-many, council-fund): 30 dårlige leads
+  // skal ikke afvises ét klik ad gangen. Kun pending kan bulk-afvises —
+  // godkendte skal gennem unapprove-flowet (Sheets-cleanup + 14-dages-blok).
+  if (action === "reject-many") {
+    const ids = Array.isArray(payload.ids) ? payload.ids.filter((x): x is string => typeof x === "string") : [];
+    if (ids.length === 0) return NextResponse.json({ error: "ids required" }, { status: 400 });
+    const drafts = await readQueue();
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    let rejected = 0;
+    for (const d of drafts) {
+      if (idSet.has(d.id) && d.status === "pending") {
+        d.status = "rejected";
+        d.updatedAt = now;
+        rejected++;
+      }
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, rejected });
@@ -130,8 +186,11 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
+    // FIX A: "Gem rettelse + godkend" skal lande i godkendt-tab'en, ikke
+    // forsvinde som "edited". Status="approved" så den vises under
+    // Godkendt og kan sendes uden yderligere klik.
     const updated = await updateDraft(id, {
-      status: "edited",
+      status: "approved",
       subject: payload.subject,
       body: payload.body,
     });
@@ -151,6 +210,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "voice-guide violation", violations: check.errors }, { status: 422 });
     }
     const updated = await updateDraft(id, { demoPair: pair, body: payload.body });
+    if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    return NextResponse.json({ draft: updated });
+  }
+
+  if (action === "set-sender") {
+    // Per-lead afsender-valg (Lucas/Charlie) på /godkendelse. Ændrer KUN hvem
+    // mailen sendes fra + underskriften ved afsendelse — ikke draft-status. Må
+    // vælges på pending/approved/edited (også efter godkendelse), aldrig sent.
+    const sender = payload.sender === "charlie" ? "charlie" : "lucas";
+    const existing = await readQueue();
+    const target = existing.find((d) => d.id === id);
+    if (!target) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    if (target.status === "sent") {
+      return NextResponse.json({ error: "draft already sent — afsender kan ikke ændres", status: target.status }, { status: 409 });
+    }
+    const updated = await updateDraft(id, { sender });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }

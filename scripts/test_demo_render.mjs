@@ -61,16 +61,26 @@ for (const [label, r] of [["full", full], ["medium", medium], ["low", low]]) {
   check("requireMinData still allows no-URL template build", templateOnly !== null);
 }
 
-// ---- pickDemoPair routing: bar/grill/pub → food demos, not service default ----
+// ---- pickDemos routing: bar/grill/pub → food demos, not service default ----
+// (pickDemoPair blev til pickDemos 2026-06-23: CLINIC giver bevidst 1 demo.)
 {
   const isFood = (pair) => pair.every((d) => /zaytoon|under-klippen/.test(d.url));
-  check("Bar → food demos (not vestfjends)", isFood(demos.pickDemoPair("Bar", "Andy's")) && !demos.pickDemoPair("Bar", "Andy's").some((d) => /vestfjends/.test(d.url)));
-  check("Grill → food demos", isFood(demos.pickDemoPair("Grill", "Byens Grill")));
-  check("Pub → food demos", isFood(demos.pickDemoPair("Pub", "The Old Pub")));
-  check("Bodega → food demos", isFood(demos.pickDemoPair("Bodega", "Hjørnets Bodega")));
+  check("Bar → food demos (not vestfjends)", isFood(demos.pickDemos("Bar", "Andy's")) && !demos.pickDemos("Bar", "Andy's").some((d) => /vestfjends/.test(d.url)));
+  check("Grill → food demos", isFood(demos.pickDemos("Grill", "Byens Grill")));
+  check("Pub → food demos", isFood(demos.pickDemos("Pub", "The Old Pub")));
+  check("Bodega → food demos", isFood(demos.pickDemos("Bodega", "Hjørnets Bodega")));
   // regressions: barber still barber, beauty still beauty (word-boundary \bbar\b)
-  check("Barber still → streetcut (not food)", demos.pickDemoPair("Barber", "Tony's Barbershop").some((d) => /streetcut/.test(d.url)));
-  check("Frisør still → salon", demos.pickDemoPair("Frisør", "Salon X").some((d) => /salon-artec/.test(d.url)));
+  check("Barber still → streetcut (not food)", demos.pickDemos("Barber", "Tony's Barbershop").some((d) => /streetcut/.test(d.url)));
+  check("Frisør still → salon", demos.pickDemos("Frisør", "Salon X").some((d) => /salon-artec/.test(d.url)));
+  // CLINIC = bevidst single-demo (vida) — 1-2 demos er kontrakten
+  const clinic = demos.pickDemos("Hudpleje", "Klinik Ro");
+  check("Clinic → single vida demo", clinic.length === 1 && /vida/.test(clinic[0].url));
+  check("pickDemos always returns 1-2 demos", [demos.pickDemos("Bar", "A"), demos.pickDemos("Frisør", "B"), clinic].every((p) => p.length >= 1 && p.length <= 2));
+  // Professionelle rådgivere → midtadvokaterne (2026-07-03, tynd non-food dækning)
+  check("Advokat → midtadvokaterne", demos.pickDemos("Advokat", "Advokathuset Midt").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Revisor → midtadvokaterne", demos.pickDemos("Revisor", "Tal & Regnskab").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Ejendomsmægler → midtadvokaterne", demos.pickDemos("Ejendomsmægler", "Bolig Midt").some((d) => /midtadvokaterne/.test(d.url)));
+  check("Advokat er ikke i medicinsk-rute (2 demos)", demos.pickDemos("Advokat", "Advokathuset Midt").length === 2);
 }
 
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all demo-render checks ok");

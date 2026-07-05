@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guðrun's Goodies · Islandsk café på Sankt Peders Stræde</title>
+<meta name="description" content="Islandsk café i hjertet af København. Hjemmebag fra den gamle Reykjavík-tradition, brunch hele dagen og veganervenlige godter. Velkomin. Kom for smagen, bliv for varmen." />
+
+<!-- Preconnect to image + font origins -->
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="dns-prefetch" href="https://www.gudrunsgoodies.dk" />
+<link rel="dns-prefetch" href="https://gudrunsgoodies.odoo.com" />
+
+<!-- Hero preload: responsive WebP via weserv -->
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w"
+  imagesizes="(max-width:760px) 100vw, 52vw" />
+
+<!-- Fonts: warm geometric serif (Fraunces) display + clean Nordic sans (Schibsted Grotesk) body. Non-render-blocking. -->
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
+  onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" /></noscript>
+
+<style>
+  :root{
+    /* ---- Palette: Icelandic nature, mapped FIRST, blended with the real GG logo-orange (amber/rav) ---- */
+    --basalt:#1c1a18;          /* volcanic basalt, near-black warm */
+    --basalt-2:#24201c;        /* second basalt panel */
+    --tundra:#f4ede1;          /* tundra / pale lichen base */
+    --tundra-2:#ece1cf;        /* warmer tundra panel */
+    --mos:#5a6a4f;             /* moss green, muted */
+    --mos-deep:#3f4c38;        /* deep moss for text-on-light */
+    --rav:#e0772b;             /* rav / amber: the real GG logo orange */
+    --rav-deep:#b85614;        /* darker amber for small text on light (AA) */
+    --rav-soft:#f0a965;        /* warm amber glow on dark */
+    --gletsjer:#7da6ad;        /* glacier-blue, cool counterpoint */
+    --gletsjer-deep:#4d7980;   /* deeper glacier for accents */
+
+    --bg:var(--tundra);
+    --ink:#2a2520;             /* roasted dark ink on tundra */
+    --ink-soft:#6a5f51;        /* muted */
+    --line:rgba(42,37,32,.13);
+    --line-dark:rgba(244,237,225,.16);
+    --shadow:0 22px 60px -28px rgba(28,26,24,.55);
+    --maxw:1180px;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Schibsted Grotesk',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);color:var(--ink);background:var(--bg);
+    line-height:1.7;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:var(--serif);font-weight:500;line-height:1.06;letter-spacing:-.012em}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 1.5rem}
+
+  .isl{font-family:var(--serif);font-style:italic;color:var(--rav-deep)}
+  .eyebrow{
+    font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.26em;
+    text-transform:uppercase;color:var(--mos-deep);display:inline-flex;align-items:center;gap:.6rem;
+  }
+  .eyebrow svg{flex:0 0 auto}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:.55rem;font-family:var(--sans);
+    font-weight:600;font-size:.95rem;padding:.9rem 1.6rem;border-radius:2px;cursor:pointer;
+    transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease;
+  }
+  .btn svg{flex:0 0 auto}
+  .btn-primary{background:var(--rav-deep);color:#fff;box-shadow:0 12px 30px -14px rgba(184,86,20,.85)}
+  .btn-primary:hover{transform:translateY(-2px);background:#9d480f}
+  .btn-ghost{border:1.5px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--rav-deep);color:var(--rav-deep)}
+  .btn-light{border:1.5px solid var(--line-dark);color:var(--tundra)}
+  .btn-light:hover{border-color:var(--rav-soft);color:var(--rav-soft)}
+
+  /* ---------- HEADER ---------- */
+  header{
+    position:sticky;top:0;z-index:60;background:rgba(244,237,225,.88);
+    backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;height:74px}
+  .brand{display:flex;align-items:center;gap:.7rem}
+  .brand img{height:40px;width:auto}
+  .brand b{font-family:var(--serif);font-size:1.28rem;font-weight:600;letter-spacing:-.02em}
+  .nav-links{display:flex;align-items:center;gap:2.1rem;font-size:.93rem;font-weight:500}
+  .nav-links a{color:var(--ink-soft);transition:color .2s}
+  .nav-links a:hover{color:var(--rav-deep)}
+  .nav .btn{padding:.6rem 1.25rem;font-size:.86rem}
+  .menu-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);padding:.4rem}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;overflow:hidden;background:var(--basalt);color:var(--tundra)}
+  /* aurora (nordlys) gradient veil over basalt */
+  .aurora{position:absolute;inset:-20% -10% auto -10%;height:130%;pointer-events:none;opacity:.6;z-index:0}
+  .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.04fr .96fr;gap:0;align-items:stretch;min-height:min(86vh,720px)}
+  .hero-copy{padding:5.5rem 3.2rem 5.5rem 0;max-width:600px;margin-left:auto;align-self:center}
+  .hero-copy .inner{max-width:540px}
+  .hero .greet{font-family:var(--serif);font-style:italic;font-size:1.15rem;color:var(--rav-soft);margin-bottom:.6rem}
+  .hero h1{font-size:clamp(2.8rem,6.4vw,4.8rem);margin:.2rem 0 1.3rem;color:var(--tundra)}
+  .hero h1 .isl{color:var(--rav-soft)}
+  .hero p.lead{font-size:1.14rem;color:rgba(244,237,225,.82);margin-bottom:2.2rem;font-weight:400}
+  .hero-cta{display:flex;gap:.9rem;flex-wrap:wrap}
+  .hero-media{position:relative;min-height:440px}
+  .hero-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* basalt fade into image on the copy side */
+  .hero-media::after{content:"";position:absolute;inset:0;background:linear-gradient(95deg,var(--basalt) 0%,rgba(28,26,24,.35) 30%,transparent 60%)}
+  .hero-meta{position:relative;z-index:2;border-top:1px solid var(--line-dark);background:rgba(28,26,24,.55)}
+  .hero-meta .wrap{display:flex;flex-wrap:wrap;gap:1.4rem 2.6rem;padding-top:1.1rem;padding-bottom:1.1rem}
+  .hero-meta .item{display:flex;align-items:center;gap:.6rem;font-size:.9rem;color:rgba(244,237,225,.82)}
+  .hero-meta .item svg{color:var(--rav-soft)}
+  .hero-meta .item b{color:var(--tundra);font-weight:600}
+
+  /* ---------- SECTION SHELL ---------- */
+  section{position:relative}
+  .pad{padding:6rem 0}
+  .sec-head{max-width:660px;margin-bottom:3.2rem}
+  .sec-head h2{font-size:clamp(2.1rem,4.4vw,3.1rem);margin:.8rem 0 .9rem}
+  .sec-head p{color:var(--ink-soft);font-size:1.06rem}
+
+  /* basalt column texture, used as subtle background detail */
+  .basalt-tex{position:absolute;inset:0;opacity:.05;pointer-events:none;z-index:0}
+
+  /* ---------- STORY (scrollytelling, alternating full-bleed) ---------- */
+  .story{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;min-height:520px}
+  .story.flip .story-media{order:2}
+  .story-media{position:relative;overflow:hidden;min-height:380px}
+  .story-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.4s ease}
+  .story:hover .story-media img{transform:scale(1.05)}
+  .story-copy{display:flex;flex-direction:column;justify-content:center;padding:5rem 4.5rem}
+  .story-copy h2{font-size:clamp(1.9rem,3.6vw,2.7rem);margin:.9rem 0 1.1rem}
+  .story-copy p{color:var(--ink-soft);font-size:1.06rem;margin-bottom:1.05rem}
+  .story-copy p:last-child{margin-bottom:0}
+  .story.dark{background:var(--basalt-2);color:var(--tundra)}
+  .story.dark .story-copy p{color:rgba(244,237,225,.8)}
+  .story.dark .eyebrow{color:var(--gletsjer)}
+  .story.moss{background:var(--mos);color:var(--tundra)}
+  .story.moss .story-copy p{color:rgba(244,237,225,.86)}
+  .story.moss .eyebrow{color:var(--tundra)}
+
+  /* ---------- MENU (the visual centrepiece, not a card grid) ---------- */
+  .menu{background:var(--basalt);color:var(--tundra);overflow:hidden}
+  .menu .sec-head h2{color:var(--tundra)}
+  .menu .sec-head p{color:rgba(244,237,225,.78)}
+  .menu .eyebrow{color:var(--rav-soft)}
+  .menu-lead{display:grid;grid-template-columns:1.1fr .9fr;gap:3.5rem;align-items:start}
+  .menu-list{list-style:none}
+  .menu-list li{display:flex;align-items:baseline;gap:1rem;padding:1.15rem 0;border-bottom:1px solid var(--line-dark)}
+  .menu-list li:first-child{padding-top:0}
+  .menu-list .nm{font-family:var(--serif);font-size:1.42rem;font-weight:500;color:var(--tundra);flex:0 0 auto}
+  .menu-list .nm .sub{display:block;font-family:var(--sans);font-size:.84rem;font-weight:400;font-style:normal;color:rgba(244,237,225,.6);margin-top:.15rem;letter-spacing:0}
+  .menu-list .dots{flex:1 1 auto;border-bottom:1px dotted rgba(244,237,225,.3);transform:translateY(-.35rem)}
+  .menu-list .pr{font-family:var(--sans);font-weight:600;font-size:1.02rem;color:var(--rav-soft);flex:0 0 auto}
+  .menu-card{background:var(--basalt-2);border:1px solid var(--line-dark);border-radius:4px;overflow:hidden}
+  .menu-card img{width:100%;height:230px;object-fit:cover}
+  .menu-card .mc-body{padding:1.5rem 1.6rem}
+  .menu-card h3{font-size:1.4rem;color:var(--tundra);margin-bottom:.5rem}
+  .menu-card p{color:rgba(244,237,225,.74);font-size:.95rem;margin-bottom:1.2rem}
+  .menu-langs{display:flex;gap:.5rem;flex-wrap:wrap}
+  .lang-pill{font-size:.78rem;font-weight:600;padding:.35rem .8rem;border:1px solid var(--line-dark);border-radius:2px;color:rgba(244,237,225,.85)}
+
+  /* ---------- BOOK / VISIT band ---------- */
+  .visit{background:var(--tundra-2)}
+  .visit-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center}
+  .visit h2{font-size:clamp(2rem,4vw,2.8rem);margin-bottom:1rem}
+  .visit p{color:var(--ink-soft);font-size:1.06rem;margin-bottom:1.6rem}
+  .hours{list-style:none;border-top:1px solid var(--line)}
+  .hours li{display:flex;justify-content:space-between;gap:1rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.98rem}
+  .hours li span:first-child{color:var(--ink);font-weight:500}
+  .hours li span:last-child{color:var(--ink-soft)}
+  .hours .ca{display:block;font-size:.84rem;color:var(--ink-soft);margin-top:.9rem}
+  .info-card{background:#fff;border:1px solid var(--line);border-radius:4px;padding:2rem}
+  .info-card .row{display:flex;gap:.85rem;padding:.9rem 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .info-card .row:last-child{border-bottom:none}
+  .info-card .row svg{color:var(--rav-deep);flex:0 0 auto;margin-top:.15rem}
+  .info-card .row b{display:block;font-weight:600;margin-bottom:.1rem}
+  .info-card .row span{color:var(--ink-soft);font-size:.95rem}
+  .map-frame{margin-top:1.4rem;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+  .map-frame iframe{display:block;width:100%;height:230px;border:0;filter:grayscale(.25) sepia(.08)}
+
+  /* ---------- GALLERY ---------- */
+  .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem}
+  .gallery-grid a{position:relative;overflow:hidden;border-radius:3px;display:block}
+  .gallery-grid img{width:100%;height:210px;object-fit:cover;transition:transform .8s ease}
+  .gallery-grid a:hover img{transform:scale(1.08)}
+  .gallery-grid .tall{grid-row:span 2}
+  .gallery-grid .tall img{height:100%}
+
+  /* ---------- FOOTER ---------- */
+  footer{background:var(--basalt);color:rgba(244,237,225,.8);position:relative;overflow:hidden}
+  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:3rem;padding:5rem 0 3rem;position:relative;z-index:2}
+  .foot-brand b{font-family:var(--serif);font-size:1.5rem;color:var(--tundra);display:block;margin-bottom:.7rem}
+  .foot-brand p{font-size:.97rem;max-width:34ch}
+  .foot-col h4{font-family:var(--sans);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--rav-soft);margin-bottom:1.1rem}
+  .foot-col a,.foot-col p{display:block;font-size:.96rem;color:rgba(244,237,225,.78);margin-bottom:.6rem}
+  .foot-col a:hover{color:var(--rav-soft)}
+  .foot-bottom{border-top:1px solid var(--line-dark);padding:1.6rem 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;font-size:.85rem;color:rgba(244,237,225,.55);position:relative;z-index:2}
+  .foot-bottom .isl{color:var(--rav-soft)}
+
+  /* runic divider, custom inline-SVG motif */
+  .rune-divider{display:flex;align-items:center;gap:1.2rem;justify-content:center;padding:0 0 .5rem;color:var(--rav-soft);opacity:.8}
+  .rune-divider .ln{height:1px;width:min(90px,18vw);background:currentColor;opacity:.4}
+
+  /* reveal animation */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:880px){
+    .nav-links{display:none}
+    .menu-toggle{display:inline-flex}
+    .hero-grid{grid-template-columns:1fr;min-height:auto}
+    .hero-copy{padding:3.5rem 0 3rem;max-width:none}
+    .hero-media{min-height:300px;order:-1}
+    .hero-media::after{background:linear-gradient(0deg,var(--basalt) 0%,transparent 55%)}
+    .story{grid-template-columns:1fr}
+    .story.flip .story-media{order:-1}
+    .story-media{order:-1;min-height:260px}
+    .story-copy{padding:3rem 1.5rem}
+    .menu-lead,.visit-grid{grid-template-columns:1fr;gap:2.4rem}
+    .gallery-grid{grid-template-columns:repeat(2,1fr)}
+    .gallery-grid .tall{grid-row:span 1}
+    .gallery-grid .tall img{height:210px}
+    .foot-grid{grid-template-columns:1fr;gap:2.2rem;padding:3.5rem 0 2.5rem}
+    .pad{padding:4rem 0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{scroll-behavior:auto!important}
+    .reveal{opacity:1;transform:none;transition:none}
+    .story:hover .story-media img,.gallery-grid a:hover img,.menu-card:hover img{transform:none}
+    .aurora{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Guðrun's Goodies forside">
+      <img src="https://images.weserv.nl/?url=gudrunsgoodies.odoo.com%2Fweb%2Fimage%2F409-4778285d%2FGG%2520logo%2520orange.png&w=80&h=80&fit=inside&output=webp&q=80" alt="Guðrun's Goodies logo" width="40" height="40" loading="eager" />
+      <b>Guðrun's Goodies</b>
+    </a>
+    <nav class="nav-links" aria-label="Hovedmenu">
+      <a href="#historie">Historie</a>
+      <a href="#menu">Menu</a>
+      <a href="#besog">Besøg os</a>
+      <a href="#galleri">Galleri</a>
+    </nav>
+    <a class="btn btn-primary" href="#besog">Find vej</a>
+    <button class="menu-toggle" id="navToggle" aria-label="Åbn menu" aria-expanded="false">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <!-- Aurora (nordlys) gradient motif: inline SVG over basalt -->
+    <svg class="aurora" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="au1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7da6ad" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#5a6a4f" stop-opacity=".5"/>
+          <stop offset="1" stop-color="#7da6ad" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="au2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#9fd0c4" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#9fd0c4" stop-opacity=".45"/>
+          <stop offset="1" stop-color="#e0772b" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>
+      </defs>
+      <g filter="url(#blur)">
+        <path d="M-100 180 C 250 60, 450 280, 700 150 S 1150 90, 1350 220 L 1350 380 C 1100 250, 800 420, 560 300 S 150 360, -100 320 Z" fill="url(#au1)"/>
+        <path d="M-100 260 C 300 160, 520 360, 780 240 S 1200 200, 1350 300 L 1350 440 C 1050 360, 760 500, 500 400 S 120 440, -100 410 Z" fill="url(#au2)"/>
+      </g>
+    </svg>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="inner reveal">
+          <p class="greet">Velkomin · Góðan dag</p>
+          <h1>Et stykke <span class="isl">Reykjavík</span> på Sankt Peders Stræde</h1>
+          <p class="lead">En lille islandsk café midt i København. Hjemmebag fra den gamle Reykjavík-tradition, brunch hele dagen og veganervenlige godter. Kom for smagen, bliv for varmen.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#menu">Se menuen
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="btn btn-light" href="#besog">Besøg os</a>
+          </div>
+        </div>
+      </div>
+      <div class="hero-media">
+        <img
+          src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75"
+          srcset="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=600&h=400&fit=cover&a=attention&output=webp&q=75 600w, https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=900&h=600&fit=cover&a=attention&output=webp&q=75 900w"
+          sizes="(max-width:760px) 100vw, 52vw"
+          alt="Islandsk hjemmebag og kaffe på cafébordet hos Guðrun's Goodies"
+          width="900" height="600" fetchpriority="high" decoding="async" />
+      </div>
+    </div>
+
+    <div class="hero-meta">
+      <div class="wrap">
+        <div class="item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+          <span><b>Sankt Peders Stræde 35</b>, 1453 København K</span>
+        </div>
+        <div class="item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span>Brunch <b>hele dagen</b></span>
+        </div>
+        <div class="item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 20c-1.7 0-3-1.3-3-3 0-2.2 2-3.4 2-5.5A4 4 0 0 1 12 7.5"/><path d="M12 7.5a4 4 0 0 1 6 4c0 2.1 2 3.3 2 5.5 0 1.7-1.3 3-3 3"/><path d="M9 20h6"/></svg>
+          <span>Veganervenlige <b>godter</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STORY 1: morning bake ===================== -->
+  <section id="historie" class="story">
+    <div class="story-media">
+      <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=760&h=720&fit=cover&a=attention&output=webp&q=75" alt="Friskbagte islandske kager stillet frem om morgenen" width="760" height="720" loading="lazy" decoding="async" />
+    </div>
+    <div class="story-copy reveal">
+      <span class="eyebrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11h16M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M5 11l1 8a2 2 0 0 0 2 1.6h8A2 2 0 0 0 18 19l1-8"/></svg>
+        Hver morgen
+      </span>
+      <h2>Når ovnen klokker op, vågner stedet</h2>
+      <p>Hver morgen klokker ovnen op, og duften af kardemomme og smør lægger sig over de små borde. Vi bager efter opskrifter, vi har taget med hjemmefra Island. Nogle af dem er ældre end caféen selv.</p>
+      <p>Vi tror på langsom morgenmad. På at en kop kaffe og et stykke nybagt kage er grund nok til at sætte sig ned. Góðan dag, som vi siger derhjemme.</p>
+    </div>
+  </section>
+
+  <!-- ===================== STORY 2: family / Iceland (dark + basalt texture) ===================== -->
+  <section class="story flip dark">
+    <!-- volcanic basalt column texture as subtle background detail -->
+    <svg class="basalt-tex" viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="none" stroke="#f4ede1" stroke-width="2">
+        <path d="M0 80 L60 80 L75 140 L40 200 L80 260 L30 320 L70 380 L20 440 L60 500 L25 560"/>
+        <path d="M120 0 L120 60 L160 110 L130 180 L175 240 L140 300 L185 360 L150 420 L190 480 L155 560"/>
+        <path d="M240 40 L300 40 L285 110 L320 170 L280 230 L325 290 L290 350 L330 410 L295 470 L335 540"/>
+        <path d="M400 0 L400 70 L440 120 L410 190 L455 250 L420 310 L460 370 L425 430 L465 490 L430 560"/>
+        <path d="M520 60 L580 60 L565 130 L600 190"/>
+        <path d="M0 80 L120 60 M60 140 L120 180 M40 200 L130 180 M80 260 L175 240 M30 320 L140 300 M70 380 L185 360 M20 440 L150 420 M60 500 L190 480"/>
+        <path d="M120 60 L240 40 M130 180 L280 230 M175 240 L290 230 M140 300 L290 350 M185 360 L295 350 M150 420 L295 470 M190 480 L295 470"/>
+        <path d="M300 40 L400 70 M320 170 L410 190 M325 290 L420 310 M330 410 L425 430 M335 540 L430 560"/>
+        <path d="M400 70 L520 60 M455 250 L565 130 M460 370 L600 190"/>
+      </g>
+    </svg>
+    <div class="story-media">
+      <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1162-96e5df38%2FFood%2520Danish.png&w=760&h=720&fit=cover&output=webp&q=78" alt="Udvalg af islandske bagværk og brunchretter fra menuen" width="760" height="720" loading="lazy" decoding="async" />
+    </div>
+    <div class="story-copy reveal">
+      <span class="eyebrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21V10l9-6 9 6v11"/><path d="M9 21v-6h6v6"/></svg>
+        Fra Island til København
+      </span>
+      <h2>Opskrifter, der rejste med os hjemmefra</h2>
+      <p>Guðrun's Goodies begyndte med en længsel efter smagen fra hjemme. Det varme brød, kanelsnurrene, den tætte chokoladekage man kun finder i et islandsk køkken. Vi tog opskrifterne med, da vi flyttede til byen.</p>
+      <p>I dag er caféen et lille stykke Reykjavík i Indre By. Et sted hvor man kan dele et bord, varme hænderne om en kop og mærke den hjemlige ro, vi voksede op med.</p>
+    </div>
+  </section>
+
+  <!-- ===================== STORY 3: warmth / fjord-light (moss) ===================== -->
+  <section class="story moss">
+    <div class="story-media">
+      <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1163-7ae06703%2FDrink%2520Danish.png&w=760&h=720&fit=cover&output=webp&q=78" alt="Varme drikke fra Guðrun's Goodies' drikkemenu" width="760" height="720" loading="lazy" decoding="async" />
+    </div>
+    <div class="story-copy reveal">
+      <span class="eyebrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19h16M6 12c2-3 4-3 6 0s4 3 6 0"/><path d="M5 8c1.7-2.4 3.3-2.4 5 0"/></svg>
+        Kom for smagen, bliv for varmen
+      </span>
+      <h2>Et fjordlys af ro midt i bymylderet</h2>
+      <p>Udenfor render byen forbi. Indenfor er der dæmpet lys, lune farver og plads til at trække vejret. Vi har bygget caféen som et islandsk hjem: uld, træ og en kande kaffe, der altid står klar.</p>
+      <p>Om du kommer alene med en bog eller fylder bordet med venner, er du velkommen. Takk fordi du kigger forbi.</p>
+    </div>
+  </section>
+
+  <!-- ===================== MENU (centrepiece) ===================== -->
+  <section id="menu" class="menu pad">
+    <!-- basalt texture, faint -->
+    <svg class="basalt-tex" viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="none" stroke="#f4ede1" stroke-width="2">
+        <path d="M0 80 L60 80 L75 140 L40 200 L80 260 L30 320 L70 380 L20 440 L60 500"/>
+        <path d="M160 0 L160 70 L200 130 L170 200 L215 260 L180 320 L220 380 L185 440 L225 500"/>
+        <path d="M320 40 L380 40 L365 110 L400 170 L360 230 L405 290 L370 350 L410 410 L375 470"/>
+        <path d="M480 0 L480 70 L520 120 L490 190 L535 250 L500 310 L540 370 L505 430"/>
+        <path d="M60 80 L160 70 M80 260 L215 260 M70 380 L220 380 M60 500 L225 500"/>
+        <path d="M160 70 L320 40 M170 200 L360 230 M180 320 L370 350 M185 440 L375 470"/>
+        <path d="M380 40 L480 70 M400 170 L490 190 M405 290 L500 310 M410 410 L505 430"/>
+      </g>
+    </svg>
+    <div class="wrap" style="position:relative;z-index:2">
+      <div class="sec-head reveal">
+        <span class="eyebrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v18M8 9h4a3 3 0 0 0 0-6H8M16 3v18"/></svg>
+          Matseðill · Menukort
+        </span>
+        <h2>Et udpluk fra dagens bord</h2>
+        <p>Vi bager om morgenen og fylder op gennem dagen. Her er nogle af de faste favoritter. Det fulde menukort står klar i caféen på dansk, engelsk og islandsk.</p>
+      </div>
+
+      <div class="menu-lead">
+        <ul class="menu-list reveal" aria-label="Udvalgte retter">
+          <li>
+            <span class="nm">Kanelsnurre<span class="sub">Islandsk snúður med kardemomme</span></span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="pr">fra ca. 38 kr.</span>
+          </li>
+          <li>
+            <span class="nm">Brunchtallerken<span class="sub">Brunch hele dagen, også veganer</span></span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="pr">fra ca. 145 kr.</span>
+          </li>
+          <li>
+            <span class="nm">Dagens hjemmebag<span class="sub">Skiftende kage fra ovnen</span></span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="pr">fra ca. 45 kr.</span>
+          </li>
+          <li>
+            <span class="nm">Kaffe &amp; varme drikke<span class="sub">Bryg, latte og islandsk kakao</span></span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="pr">fra ca. 32 kr.</span>
+          </li>
+        </ul>
+
+        <div class="menu-card reveal">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1160-2903088d%2FFood%2520Englsih.png&w=560&h=460&fit=cover&output=webp&q=78" alt="Madmenu fra Guðrun's Goodies" width="560" height="230" loading="lazy" decoding="async" />
+          <div class="mc-body">
+            <h3>Det fulde menukort</h3>
+            <p>Mad og drikke står fremme i caféen, så du kan kigge i ro. Vi har det på tre sprog, fordi gæsterne kommer fra hele byen.</p>
+            <div class="menu-langs">
+              <span class="lang-pill">Dansk</span>
+              <span class="lang-pill">English</span>
+              <span class="lang-pill">Íslenska</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VISIT / HOURS / MAP ===================== -->
+  <section id="besog" class="visit pad">
+    <div class="wrap">
+      <div class="visit-grid">
+        <div class="reveal">
+          <span class="eyebrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+            Besøg os
+          </span>
+          <h2>Kig forbi på Sankt Peders Stræde</h2>
+          <p>Vi ligger i en af de gamle, brostensbelagte gader i Indre By. Sæt dig ned, find ro, og lad os tage os af resten. Velkomin.</p>
+          <ul class="hours">
+            <li><span>Mandag til fredag</span><span>ca. 08.00 til 17.00</span></li>
+            <li><span>Lørdag</span><span>ca. 09.00 til 17.00</span></li>
+            <li><span>Søndag</span><span>ca. 09.00 til 16.00</span></li>
+          </ul>
+          <span class="ca">Åbningstiderne er vejledende (ca.). Ring gerne eller skriv på Instagram, hvis du vil være sikker.</span>
+        </div>
+
+        <div class="reveal">
+          <div class="info-card">
+            <div class="row">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+              <span><b>Adresse</b>Sankt Peders Stræde 35, 1453 København K</span>
+            </div>
+            <div class="row">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 7c.5 2 1.7 3.7 3.3 5.3S15.7 15 17.7 15.5l1.3-2.2 2.5.8a1 1 0 0 1 .7 1.2c-.6 2.5-3 4-5.4 3.4C12 17.6 7.6 13.2 6 8.3 5.4 5.9 6.9 3.6 9.4 3a1 1 0 0 1 1.2.7l.8 2.5L9.2 7Z"/></svg>
+              <span><b>Kontakt</b>Skriv til os på Instagram for booking og spørgsmål</span>
+            </div>
+            <div class="row">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+              <span><b>Følg med</b>Se dagens bag og nyt fra køkkenet på Instagram</span>
+            </div>
+            <div class="map-frame">
+              <iframe title="Kort over Guðrun's Goodies på Sankt Peders Stræde 35" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                src="https://www.google.com/maps?q=Sankt+Peders+Str%C3%A6de+35,+1453+K%C3%B8benhavn&output=embed"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== GALLERY ===================== -->
+  <section id="galleri" class="pad">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M4 18l5-4 4 3 3-3 4 4"/></svg>
+          Fra caféen
+        </span>
+        <h2>Smag, varme og hjemlig hygge</h2>
+      </div>
+      <div class="gallery-grid">
+        <a class="tall" href="#galleri" aria-label="Islandsk hjemmebag på bordet">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F411-8246194b%2F295318954_598796748647168_8251588518835795647_n.jpg&w=500&h=620&fit=cover&a=attention&output=webp&q=75" alt="Islandsk hjemmebag og kaffe stillet frem på cafébordet" width="500" height="620" loading="lazy" decoding="async" />
+        </a>
+        <a href="#galleri" aria-label="Madmenu">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1160-2903088d%2FFood%2520Englsih.png&w=500&h=300&fit=cover&output=webp&q=78" alt="Udvalg af mad fra menuen" width="500" height="210" loading="lazy" decoding="async" />
+        </a>
+        <a href="#galleri" aria-label="Drikkemenu">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1161-b1810f11%2FDrink%2520English.png&w=500&h=300&fit=cover&output=webp&q=78" alt="Varme og kolde drikke fra caféen" width="500" height="210" loading="lazy" decoding="async" />
+        </a>
+        <a href="#galleri" aria-label="Islandsk menukort">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1164-dcb20a69%2FFood%2520Icelandic.png&w=500&h=300&fit=cover&output=webp&q=78" alt="Menukort på islandsk" width="500" height="210" loading="lazy" decoding="async" />
+        </a>
+        <a href="#galleri" aria-label="Dansk madmenu">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1162-96e5df38%2FFood%2520Danish.png&w=500&h=300&fit=cover&output=webp&q=78" alt="Dansk madmenu fra Guðrun's Goodies" width="500" height="210" loading="lazy" decoding="async" />
+        </a>
+        <a href="#galleri" aria-label="Dansk drikkemenu">
+          <img src="https://images.weserv.nl/?url=www.gudrunsgoodies.dk%2Fweb%2Fimage%2F1163-7ae06703%2FDrink%2520Danish.png&w=500&h=300&fit=cover&output=webp&q=78" alt="Dansk drikkemenu fra caféen" width="500" height="210" loading="lazy" decoding="async" />
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <svg class="basalt-tex" viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true">
+    <g fill="none" stroke="#f4ede1" stroke-width="2">
+      <path d="M0 40 L60 40 L75 100 L40 160 L80 220 L30 280"/>
+      <path d="M160 0 L160 70 L200 130 L170 200 L215 260"/>
+      <path d="M320 20 L380 20 L365 90 L400 150 L360 210 L405 270"/>
+      <path d="M480 0 L480 70 L520 120 L490 190 L535 250"/>
+      <path d="M60 40 L160 70 M80 220 L215 260 M320 20 L380 20 M360 210 L405 270 M480 70 L520 120"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <div class="rune-divider" aria-hidden="true">
+      <span class="ln"></span>
+      <!-- custom runic motif: stylised bind-rune -->
+      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M20 4v32M20 12l9-6M20 12l-9-6M20 26l9 6M20 26l-9 6"/>
+      </svg>
+      <span class="ln"></span>
+    </div>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <b>Guðrun's Goodies</b>
+        <p>En islandsk café i hjertet af København. Hjemmebag, brunch hele dagen og varme. Velkomin, og takk fordi du kigger forbi.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Find os</h4>
+        <p>Sankt Peders Stræde 35</p>
+        <p>1453 København K</p>
+        <a href="https://www.google.com/maps?q=Sankt+Peders+Str%C3%A6de+35,+1453+K%C3%B8benhavn" target="_blank" rel="noopener">Vis på kort</a>
+      </div>
+      <div class="foot-col">
+        <h4>Genveje</h4>
+        <a href="#historie">Vores historie</a>
+        <a href="#menu">Menu</a>
+        <a href="#besog">Åbningstider</a>
+        <a href="#galleri">Galleri</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>Guðrun's Goodies, København. <span class="isl">Takk fyrir</span>.</span>
+      <span>Demo-visning. Ikke den endelige hjemmeside.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile nav toggle (progressive)
+  (function(){
+    var t=document.getElementById('navToggle');
+    var links=document.querySelector('.nav-links');
+    if(t&&links){
+      t.addEventListener('click',function(){
+        var open=links.style.display==='flex';
+        links.style.display=open?'':'flex';
+        if(!open){links.style.position='absolute';links.style.top='74px';links.style.left='0';links.style.right='0';links.style.flexDirection='column';links.style.background='rgba(244,237,225,.98)';links.style.padding='1.2rem 1.5rem';links.style.gap='1rem';links.style.borderBottom='1px solid var(--line)';}
+        t.setAttribute('aria-expanded',String(!open));
+      });
+    }
+  })();
+
+  // Reveal on scroll, reduced-motion safe
+  (function(){
+    var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els=document.querySelectorAll('.reveal');
+    if(rm||!('IntersectionObserver'in window)){els.forEach(function(e){e.classList.add('in')});return;}
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+    },{threshold:.16});
+    els.forEach(function(e){io.observe(e)});
+  })();
+</script>
+</body>
+</html>

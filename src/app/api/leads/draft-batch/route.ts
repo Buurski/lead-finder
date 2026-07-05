@@ -10,10 +10,33 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const limit = Math.min(25, Math.max(1, parseInt(new URL(req.url).searchParams.get("limit") || "12", 10) || 12));
+  // Two shapes:
+  //   POST ?limit=N            → draft the top-N contactable un-worked leads.
+  //   POST { names: string[] } → draft EXACTLY these hand-picked rows (the /leadgen
+  //                              "Lav udkast på valgte" button). Email-channel only.
+  let names: string[] | undefined;
   try {
-    const summary = await runEngine({ limit, persist: true });
-    return NextResponse.json({ ok: true, drafted: summary.drafted, written: summary.written, note: "udkast lagt i godkendelse — ingen mail sendt" });
+    const body = await req.json().catch(() => null);
+    if (body && Array.isArray(body.names)) {
+      names = body.names.map((n: unknown) => String(n)).filter((n: string) => n.trim()).slice(0, 25);
+    }
+  } catch { /* no body → top-N path */ }
+
+  const limit = names && names.length
+    ? names.length
+    : Math.min(25, Math.max(1, parseInt(new URL(req.url).searchParams.get("limit") || "12", 10) || 12));
+  try {
+    const summary = await runEngine(
+      names && names.length ? { limit, allowNames: names, persist: true } : { limit, persist: true }
+    );
+    return NextResponse.json({
+      ok: true,
+      drafted: summary.drafted,
+      written: summary.written,
+      requested: names ? names.length : limit,
+      skipped: summary.skipped,
+      note: "udkast lagt i godkendelse — ingen mail sendt",
+    });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }

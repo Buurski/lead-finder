@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frisør Alex — Roskildes barber for mænd | Algade 46A</title>
+<meta name="description" content="Frisør Alex i Roskilde. Herreklip, fade, skæg og børneklip hos brødrene Alex og Mo. 9,8 i Google-rating på 462 anmeldelser. Book tid på Algade 46A.">
+
+<!-- Perf: preconnect -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.weserv.nl">
+
+<!-- Hero image preload -->
+<link rel="preload" as="image" fetchpriority="high"
+  href="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=900&h=600&fit=cover&output=webp&q=75"
+  imagesrcset="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=900&h=600&fit=cover&output=webp&q=75 900w"
+  imagesizes="(max-width: 700px) 100vw, 50vw">
+
+<!-- Fonts non-render-blocking -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap"></noscript>
+
+<style>
+:root{
+  --bone:#EFE8DA;
+  --bone-2:#E5DCC9;
+  --ink:#121C2B;        /* deep navy — text & dark sections */
+  --ink-soft:#2A3850;
+  --brass:#B0824F;      /* warm metal accent */
+  --brass-deep:#8A6438;
+  --red:#9E2B25;        /* barber-pole warm red, used sparingly */
+  --cream:#F7F3EA;
+  --line:rgba(18,28,43,.14);
+  --shadow:0 18px 50px -22px rgba(18,28,43,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Inter Tight",system-ui,sans-serif;
+  background:var(--bone);
+  color:var(--ink);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,.display{font-family:"EB Garamond",Georgia,serif;font-weight:600;line-height:1.08;letter-spacing:-.01em}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 22px}
+.eyebrow{font-family:"Inter Tight";font-size:.74rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-deep)}
+
+/* ---- Buttons ---- */
+.btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;font-size:1rem;
+  padding:.95rem 1.6rem;border-radius:2px;transition:transform .25s ease,background .25s ease,color .25s ease;border:1.5px solid transparent;cursor:pointer}
+.btn-primary{background:var(--ink);color:var(--cream)}
+.btn-primary:hover{background:var(--brass-deep);transform:translateY(-2px)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--ink)}
+.btn-ghost:hover{background:var(--ink);color:var(--cream);transform:translateY(-2px)}
+
+/* ---- Header ---- */
+header{position:sticky;top:0;z-index:50;background:rgba(239,232,218,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+.brand{display:flex;align-items:center;gap:.7rem;font-family:"EB Garamond";font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.brand img{height:34px;width:auto}
+.nav-links{display:none;gap:2rem;font-size:.95rem;font-weight:500}
+.nav-links a{position:relative;padding:.2rem 0}
+.nav-links a::after{content:"";position:absolute;left:0;bottom:-2px;width:0;height:1.5px;background:var(--brass);transition:width .3s}
+.nav-links a:hover::after{width:100%}
+.nav-cta{display:none}
+@media(min-width:820px){.nav-links{display:flex}.nav-cta{display:inline-flex}}
+
+/* ---- Hero ---- */
+.hero{padding:clamp(2.4rem,6vw,4.5rem) 0 clamp(2.4rem,5vw,4rem)}
+.hero-grid{display:grid;gap:clamp(1.8rem,4vw,3rem);align-items:center}
+@media(min-width:820px){.hero-grid{grid-template-columns:1.05fr .95fr}}
+.hero h1{font-size:clamp(2.6rem,8vw,4.4rem);margin:.7rem 0 1.1rem}
+.hero h1 em{font-style:italic;color:var(--brass-deep)}
+.hero p.lead{font-size:1.18rem;max-width:30ch;color:var(--ink-soft)}
+.hero-cta{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:1.7rem}
+.trust{display:flex;align-items:center;gap:1rem;margin-top:1.9rem;padding-top:1.5rem;border-top:1px solid var(--line)}
+.trust .score{font-family:"EB Garamond";font-size:2.5rem;font-weight:700;line-height:1;color:var(--ink)}
+.stars{color:var(--brass);font-size:1rem;letter-spacing:2px}
+.trust .sub{font-size:.88rem;color:var(--ink-soft)}
+.hero-media{position:relative}
+.hero-media img{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:3px;box-shadow:var(--shadow)}
+.hero-badge{position:absolute;bottom:-18px;left:-10px;background:var(--ink);color:var(--cream);
+  padding:.85rem 1.2rem;border-radius:2px;font-family:"EB Garamond";font-size:1.05rem;font-weight:600;box-shadow:var(--shadow);max-width:14rem}
+.hero-badge span{display:block;font-family:"Inter Tight";font-size:.72rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);margin-bottom:.2rem}
+
+/* ---- Section base ---- */
+section{padding:clamp(3rem,7vw,5.5rem) 0}
+.sec-head{max-width:46ch;margin-bottom:2.6rem}
+.sec-head h2{font-size:clamp(2rem,5vw,3rem);margin:.5rem 0 .7rem}
+.sec-head p{color:var(--ink-soft);font-size:1.05rem}
+
+/* ---- Ydelser ---- */
+.services{background:var(--cream);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.svc-grid{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+@media(min-width:640px){.svc-grid{grid-template-columns:1fr 1fr}}
+.svc{background:var(--cream);padding:1.7rem 1.6rem;display:flex;flex-direction:column;gap:.5rem;transition:background .3s}
+.svc:hover{background:var(--bone)}
+.svc-top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}
+.svc h3{font-size:1.45rem}
+.svc .tag{font-family:"Inter Tight";font-size:.74rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--brass-deep);white-space:nowrap}
+.svc p{font-size:.96rem;color:var(--ink-soft)}
+
+/* ---- Galleri ---- */
+.gallery-grid{display:grid;gap:14px;grid-template-columns:1fr;}
+@media(min-width:640px){.gallery-grid{grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr}}
+.gallery-grid figure{margin:0;overflow:hidden;border-radius:3px;box-shadow:var(--shadow)}
+.gallery-grid img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+.gallery-grid .tall{aspect-ratio:3/4}
+.gallery-grid .wide{aspect-ratio:3/2}
+@media(min-width:640px){.gallery-grid .span2{grid-column:span 2}}
+.gallery-grid figure:hover img{transform:scale(1.05)}
+
+/* ---- Om salonen ---- */
+.about{background:var(--ink);color:var(--cream)}
+.about .eyebrow{color:var(--brass)}
+.about-grid{display:grid;gap:clamp(1.8rem,4vw,3rem);align-items:center}
+@media(min-width:820px){.about-grid{grid-template-columns:.9fr 1.1fr}}
+.about h2{font-size:clamp(2rem,5vw,3rem);color:var(--cream);margin:.6rem 0 1.2rem}
+.about p{color:rgba(247,243,234,.82);font-size:1.08rem;margin-bottom:1.1rem}
+.about .motto{font-family:"EB Garamond";font-style:italic;font-size:1.5rem;color:var(--brass);border-left:3px solid var(--brass);padding-left:1.1rem;margin:1.6rem 0 0}
+.about-media img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:3px}
+.brothers{display:flex;gap:1.5rem;margin-top:1.5rem;flex-wrap:wrap}
+.brothers div{flex:1;min-width:8rem}
+.brothers strong{display:block;font-family:"EB Garamond";font-size:1.3rem;color:var(--cream)}
+.brothers span{font-size:.85rem;color:var(--brass)}
+
+/* ---- Find vej ---- */
+.findvej-grid{display:grid;gap:clamp(1.6rem,4vw,2.6rem)}
+@media(min-width:820px){.findvej-grid{grid-template-columns:1fr 1fr}}
+.info-card{background:var(--cream);border:1px solid var(--line);border-radius:3px;padding:1.8rem}
+.info-card h3{font-size:1.4rem;margin-bottom:1rem}
+.hours{list-style:none;font-size:1rem}
+.hours li{display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.hours li:last-child{border-bottom:0}
+.hours .day{font-weight:500}
+.hours .closed{color:var(--brass-deep)}
+.flag{display:inline-block;font-size:.78rem;color:var(--ink-soft);margin-top:.8rem;font-style:italic}
+.addr-line{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:1.1rem;font-size:1.02rem}
+.addr-line .ic{color:var(--brass-deep);font-weight:700;font-size:1.1rem;line-height:1.4}
+.map-frame{border:0;width:100%;height:100%;min-height:300px;border-radius:3px;filter:grayscale(.2) contrast(1.05)}
+.map-wrap{border-radius:3px;overflow:hidden;border:1px solid var(--line);min-height:300px}
+
+/* ---- Book CTA ---- */
+.book{background:var(--brass);color:var(--ink);text-align:center}
+.book h2{font-size:clamp(2.2rem,6vw,3.4rem);margin-bottom:.8rem;color:var(--ink)}
+.book p{font-size:1.15rem;max-width:36ch;margin:0 auto 1.8rem;color:var(--ink-soft)}
+.book .btn-primary{background:var(--ink);color:var(--cream)}
+.book .btn-primary:hover{background:var(--ink-soft)}
+.book .btn-ghost{border-color:var(--ink);color:var(--ink)}
+.book .btn-ghost:hover{background:var(--ink);color:var(--cream)}
+.book-cta{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center}
+
+/* ---- Footer ---- */
+footer{background:var(--ink);color:rgba(247,243,234,.7);padding:2.6rem 0;font-size:.9rem}
+.foot{display:flex;flex-wrap:wrap;gap:1.4rem;justify-content:space-between;align-items:center}
+.foot .brand{color:var(--cream)}
+.foot a:hover{color:var(--brass)}
+.foot-links{display:flex;gap:1.5rem;flex-wrap:wrap}
+
+/* ---- Reveal ---- */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+  .gallery-grid img,.btn{transition:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="#top" class="brand" aria-label="Frisør Alex — forside">
+      <img src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2025%2F03%2FFrisoer-alex-nyt-logo-sort.png&w=80&output=webp&q=80" width="40" height="34" alt="" loading="eager">
+      <span>Frisør Alex</span>
+    </a>
+    <nav class="nav-links" aria-label="Hovedmenu">
+      <a href="#ydelser">Ydelser</a>
+      <a href="#galleri">Galleri</a>
+      <a href="#salonen">Salonen</a>
+      <a href="#findvej">Find vej</a>
+    </nav>
+    <a href="#book" class="btn btn-primary nav-cta">Book tid</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Herrefrisør · Roskilde</p>
+        <h1>Du kommer som kunde<br>— og går som <em>ven</em>.</h1>
+        <p class="lead">Skarpe klip, rene fades og veltrimmet skæg midt i Roskilde. Drevet af brødrene Alex og Mo på Algade 46A.</p>
+        <div class="hero-cta">
+          <a href="#book" class="btn btn-primary">Book tid online</a>
+          <a href="tel:+4551515649" class="btn btn-ghost" aria-label="Ring til Frisør Alex på 51 51 56 49">Ring 51 51 56 49</a>
+        </div>
+        <div class="trust">
+          <div class="score" aria-hidden="true">9,8</div>
+          <div>
+            <div class="stars" aria-hidden="true">★★★★★</div>
+            <div class="sub"><strong>9,8 i Google-rating</strong> på 462 anmeldelser</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-media reveal">
+        <img
+          src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=900&h=600&fit=cover&output=webp&q=75"
+          srcset="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=600&h=400&fit=cover&output=webp&q=75 600w, https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=900&h=600&fit=cover&output=webp&q=75 900w"
+          sizes="(max-width: 700px) 100vw, 50vw"
+          width="900" height="600" fetchpriority="high"
+          alt="Frisør Alex salonen i Roskilde med barberstol og spejl">
+        <div class="hero-badge"><span>Algade 46A</span>Roskildes herresalon</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- YDELSER -->
+  <section id="ydelser" class="services">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <p class="eyebrow">Hvad vi laver</p>
+        <h2>Ydelser med en sikker hånd</h2>
+        <p>Fra det klassiske herreklip til den helt rene fade — vi tager os tid til at gøre det rigtigt, hver gang.</p>
+      </div>
+      <div class="svc-grid reveal">
+        <div class="svc">
+          <div class="svc-top"><h3>Herreklip</h3><span class="tag">Klassiker</span></div>
+          <p>Klip tilpasset dit hår og din stil — med vask, finish og en snak undervejs.</p>
+        </div>
+        <div class="svc">
+          <div class="svc-top"><h3>Fade &amp; skin fade</h3><span class="tag">Signatur</span></div>
+          <p>Rene overgange skåret i hånden, fra blød taper til skarp skin fade.</p>
+        </div>
+        <div class="svc">
+          <div class="svc-top"><h3>Skæg &amp; trim</h3><span class="tag">Pleje</span></div>
+          <p>Formet, trimmet og barberet med varmt håndklæde, så linjerne sidder knivskarpt.</p>
+        </div>
+        <div class="svc">
+          <div class="svc-top"><h3>Børneklip</h3><span class="tag">Til de unge</span></div>
+          <p>Tryg og hurtig klipning for de mindste — uden ventetid og dramatik.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERI -->
+  <section id="galleri">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <p class="eyebrow">Galleri</p>
+        <h2>Et kig ind i salonen</h2>
+        <p>Detaljer, værktøj og stemning fra hverdagen på Algade 46A.</p>
+      </div>
+      <div class="gallery-grid reveal">
+        <figure class="span2 wide">
+          <img src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=700&h=466&fit=cover&output=webp&q=75" width="700" height="466" loading="lazy" decoding="async" alt="Interiør hos Frisør Alex med barberstole og spejle">
+        </figure>
+        <figure class="tall" style="background:var(--ink);display:flex;align-items:center;justify-content:center;padding:1.5rem">
+          <img src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2025%2F03%2FFrisoer-alex-nyt-logo.png&w=320&output=webp&q=85" width="220" height="220" loading="lazy" decoding="async" alt="Frisør Alex logo" style="height:auto;object-fit:contain;width:80%">
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- OM SALONEN -->
+  <section id="salonen" class="about">
+    <div class="wrap about-grid">
+      <div class="about-media reveal">
+        <img src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2024%2F01%2Fc5e15020-5ecd-5e56-8d80-4138773cc6c7-w1000-h1000-x0000-y0000.jpg&w=500&h=625&fit=cover&output=webp&q=75" width="500" height="625" loading="lazy" decoding="async" alt="Brødrene bag Frisør Alex i salonen">
+      </div>
+      <div class="about-copy reveal">
+        <p class="eyebrow">Om salonen</p>
+        <h2>To brødre, én barberstol-filosofi</h2>
+        <p>Frisør Alex drives af brødrene Bashar — som de fleste kender som Alex — og Mohammad, kaldet Mo. Sammen har de gjort salonen på Algade til et af Roskildes bedst anmeldte steder at få klippet hår.</p>
+        <p>Her handler det ikke kun om klippet. Det handler om stemningen, snakken og følelsen af at være i gode hænder, hver gang du sætter dig i stolen.</p>
+        <p class="motto">»Her kommer du som kunde — og går som ven.«</p>
+        <div class="brothers">
+          <div><strong>Alex</strong><span>Bashar · medindehaver</span></div>
+          <div><strong>Mo</strong><span>Mohammad · medindehaver</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIND VEJ + ÅBNINGSTIDER -->
+  <section id="findvej">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <p class="eyebrow">Find vej</p>
+        <h2>Vi holder til midt i Roskilde</h2>
+        <p>På Algade 46A — nemt at nå, både til fods og med bil i nærheden.</p>
+      </div>
+      <div class="findvej-grid">
+        <div class="info-card reveal">
+          <h3>Kontakt &amp; adresse</h3>
+          <div class="addr-line"><span class="ic" aria-hidden="true">⌖</span><span>Algade 46A<br>4000 Roskilde</span></div>
+          <div class="addr-line"><span class="ic" aria-hidden="true">☎</span><a href="tel:+4551515649">+45 51 51 56 49</a></div>
+          <h3 style="margin-top:1.6rem">Åbningstider</h3>
+          <ul class="hours">
+            <li><span class="day">Man – fre</span><span>09 – 18</span></li>
+            <li><span class="day">Lørdag</span><span>09 – 15</span></li>
+            <li><span class="day">Søndag</span><span class="closed">Lukket</span></li>
+          </ul>
+          <span class="flag">Åbningstider er vejledende — ring eller book online for at være sikker.</span>
+        </div>
+        <div class="map-wrap reveal">
+          <iframe class="map-frame" title="Kort over Frisør Alex på Algade 46A i Roskilde" loading="lazy"
+            src="https://www.google.com/maps?q=Algade+46A,+4000+Roskilde&output=embed"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOK NU -->
+  <section id="book" class="book">
+    <div class="wrap reveal">
+      <p class="eyebrow" style="color:var(--brass-deep)">Book nu</p>
+      <h2>Klar til et nyt klip?</h2>
+      <p>Book tid direkte og uden besvær — eller ring, hvis du hellere vil høre stemmen i den anden ende.</p>
+      <div class="book-cta">
+        <a href="tel:+4551515649" class="btn btn-primary">Ring 51 51 56 49</a>
+        <a href="#top" class="btn btn-ghost">Book tid online</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a href="#top" class="brand">
+      <img src="https://images.weserv.nl/?url=xn--frisr-alex-3cb.dk%2Fwp-content%2Fuploads%2F2025%2F03%2FFrisoer-alex-nyt-logo.png&w=80&output=webp&q=80" width="36" height="30" alt="" loading="lazy" style="height:30px;width:auto">
+      <span>Frisør Alex</span>
+    </a>
+    <div class="foot-links">
+      <a href="#ydelser">Ydelser</a>
+      <a href="#salonen">Salonen</a>
+      <a href="tel:+4551515649">51 51 56 49</a>
+      <span>Algade 46A, 4000 Roskilde</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var els=document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver'in window)||window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    els.forEach(function(e){e.classList.add('in')});return;
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+  },{threshold:.14,rootMargin:'0px 0px -8% 0px'});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@
 
 import { isProfessionalEnough } from "./qualify.ts";
 import type { QualifyVerdict, QualifyLead } from "./qualify.ts";
-import { pickDemoPair } from "./demos.ts";
+import { pickDemos } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { achievementStrings } from "./achievements.ts";
@@ -26,7 +26,7 @@ export interface ResearchResult {
   hooks: string[];
   professionalismVerdict: QualifyVerdict;
   branch: string;
-  demoPair: [Demo, Demo];
+  demoPair: Demo[];
   sources: string[];
   achievements: string[]; // awards/titles for the "Tillykke" opener (Block 3)
 }
@@ -342,7 +342,7 @@ export async function research_lead(lead: ResearchLead, opts: ResearchOptions = 
     hooks,
     professionalismVerdict: verdict,
     branch: lead.branch,
-    demoPair: pickDemoPair(lead.branch, lead.name),
+    demoPair: pickDemos(lead.branch, lead.name),
     sources: [...new Set(sources)],
     achievements,
   };

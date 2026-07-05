@@ -1,0 +1,92 @@
+// subscriptions.ts — faste abonnementer + hvem der bærer udgiften.
+// Redigér listen her; /okonomi renderer den direkte. Ingen DB — beløb
+// ændrer sig sjældent, og en kodeændring er et fint audit-trail.
+//
+// share-model:
+//   "lucas" / "charlie" — bæres af én person alene
+//   "selskab"           — selskabsudgift; indtil selskabet betaler selv, splittes 50/50
+// personal: true        — egen plan (fx Claude Max). Vises pr. person, men indgår
+//                         IKKE i totalen eller splittet (Lucas' beslutning 2026-07-04).
+
+export type Share = "lucas" | "charlie" | "selskab";
+export type Period = "md" | "år";
+export type Currency = "DKK" | "USD" | "EUR";
+
+export interface Subscription {
+  name: string;
+  amount: number;
+  currency: Currency;
+  period: Period;
+  share: Share;
+  /** hvem der pt. har kortet i */
+  payer: "lucas" | "charlie";
+  /** egen plan — udenfor total og split */
+  personal?: boolean;
+  /** dag i måneden hvor beløbet trækkes (fra kvitteringer); udeladt = uregelmæssig */
+  renewalDay?: number;
+  estimate?: boolean; // beløb ikke bekræftet mod kvittering
+  note?: string;
+}
+
+// ponytail: faste kurser, ret dem hvis de skrider — præcision på øre-niveau er ligegyldig her
+export const RATES: Record<Currency, number> = { DKK: 1, USD: 6.9, EUR: 7.46 };
+
+// Beløb verificeret mod kvitteringer i buur.aigro 2026-07-04 (Vercel #2006-3513,
+// Google "Betaling modtaget" 3/7, Contabo ordre 15069280). Kie.ai holdt ude —
+// uregelmæssige kredit-køb, tages op hvis det bliver månedligt.
+export const SUBSCRIPTIONS: Subscription[] = [
+  { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 6, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
+  { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, renewalDay: 1, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
+  { name: "Wispr Flow (Lucas)", amount: 15, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 28, note: "Tale-til-tekst — kvittering 28/6, fornyes 28. hver md" },
+  { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "Hosting — $40 + 25% moms, kvittering 3/7" },
+  { name: "Google Cloud (Places API m.m.)", amount: 100, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "Betaling 100 kr 3/7 — variabel, budget-guard aktiv" },
+  { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", renewalDay: 10, note: "Hjernen — fælles, oprettet 10/6" },
+  { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — ~$50 i juni, intet siden 10/6" },
+  { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
+  { name: "Anthropic API-kreditter", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Topups ~€13 ad gangen (lead-system drafts) — apr–jun, ~snit" },
+];
+
+/** Normaliseret månedspris i DKK. */
+export function monthlyDkk(s: Subscription): number {
+  const dkk = s.amount * RATES[s.currency];
+  return s.period === "år" ? dkk / 12 : dkk;
+}
+
+export interface SplitTotals {
+  lucas: number;
+  charlie: number;
+  selskab: number;
+  /** hvad hver betaler ind i det fælles pr. md (egne delte poster + ½ selskab) */
+  owedLucas: number;
+  owedCharlie: number;
+  /** fælles total — personlige planer er IKKE med */
+  total: number;
+}
+
+export function computeSplit(subs: Subscription[] = SUBSCRIPTIONS): SplitTotals {
+  let lucas = 0, charlie = 0, selskab = 0;
+  for (const s of subs) {
+    if (s.personal) continue;
+    const m = monthlyDkk(s);
+    if (s.share === "lucas") lucas += m;
+    else if (s.share === "charlie") charlie += m;
+    else selskab += m;
+  }
+  return {
+    lucas, charlie, selskab,
+    owedLucas: lucas + selskab / 2,
+    owedCharlie: charlie + selskab / 2,
+    total: lucas + charlie + selskab,
+  };
+}
+
+/** Tidligste træk-dag blandt fælles poster — Charlie bør overføre inden denne dag. */
+export function earliestSharedRenewal(subs: Subscription[] = SUBSCRIPTIONS): number | null {
+  const days = subs.filter((s) => !s.personal && s.renewalDay).map((s) => s.renewalDay!);
+  return days.length ? Math.min(...days) : null;
+}
+
+/** Personlige planer for én person (vises på person-kortet, udenfor splittet). */
+export function personalFor(who: "lucas" | "charlie", subs: Subscription[] = SUBSCRIPTIONS): Subscription[] {
+  return subs.filter((s) => s.personal && s.share === who);
+}

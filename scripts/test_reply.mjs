@@ -59,7 +59,8 @@ for (const [text] of cases) {
   if (d.suggestedReply) {
     const v = validateDraft(d.suggestedReply);
     check(`  reply passes validateDraft for "${text.slice(0, 18)}…"`, v.ok === true);
-    check(`  reply ends Mvh, Lucas for "${text.slice(0, 18)}…"`, /Mvh, Lucas\s*$/.test(d.suggestedReply));
+    // Sender-profiler (2026-06-26): deterministisk signatur er nu fulde navn.
+    check(`  reply ends Mvh, Lucas for "${text.slice(0, 18)}…"`, /Mvh, Lucas( Buur)?\s*$/.test(d.suggestedReply));
   }
 }
 

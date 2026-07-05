@@ -87,6 +87,54 @@ async function readRemote(rel: string): Promise<string | null> {
   }
 }
 
+// writeVaultNote — commit a note to the LIVE vault (GitHub contents API).
+// The remote repo is the sync hub (Obsidian Git pulls it, the VPS clone pulls
+// it), so writes go there — never to the stale in-repo mirror. Best-effort:
+// returns ok:false with a reason instead of throwing, like the readers.
+export async function writeVaultNote(
+  relInput: string,
+  content: string,
+  message: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const token = process.env.GITHUB_TOKEN || process.env.VAULT_GITHUB_TOKEN;
+  if (!token) return { ok: false, reason: "GITHUB_TOKEN mangler — kan ikke skrive til vaulten" };
+  const rel = safeRel(relInput.endsWith(".md") ? relInput : relInput + ".md");
+  const url = `https://api.github.com/repos/${REPO}/contents/${rel.split("/").map(encodeURIComponent).join("/")}`;
+  try {
+    // current sha (required by the contents API when updating an existing file)
+    let sha: string | undefined;
+    const head = await fetch(`${url}?ref=${BRANCH}`, {
+      headers: ghHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (head.ok) {
+      const meta = (await head.json()) as { sha?: string };
+      sha = meta.sha;
+    }
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { ...ghHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        content: Buffer.from(content, "utf-8").toString("base64"),
+        branch: BRANCH,
+        ...(sha ? { sha } : {}),
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      return { ok: false, reason: `GitHub svarede ${res.status}: ${detail.slice(0, 160)}` };
+    }
+    // bust the read cache so the next read sees the new content
+    cache.delete("r:" + rel);
+    cache.delete("l:" + rel);
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "netværksfejl mod GitHub" };
+  }
+}
+
 // readVaultNote options.
 //   preferRemote — try the live GitHub vault FIRST, local mirror only as offline
 //   fallback. Used for daily/ notes: the in-repo mirror is a stale snapshot, so

@@ -27,8 +27,18 @@ function detectIntent(text: string):
   | { kind: "note"; bucket: string; note: string }
   | { kind: "unapprove-draft" }
   | { kind: "suppress" }
+  | { kind: "goal"; action: "add" | "remove" | "toggle"; text: string }
   | null {
   const t = text.toLowerCase();
+  // GOALS — "tilføj mål: …", "nyt mål …", "fjern mål …", "mål klaret: …",
+  // "marker mål … som klaret". Edits the vault roadmap note via /api/goals.
+  const goalAdd = text.match(/^\s*(?:tilføj|tilfoej|nyt)\s+m[åa]l\b[:\-\s]+(.+)/i);
+  if (goalAdd) return { kind: "goal", action: "add", text: goalAdd[1].trim() };
+  const goalRemove = text.match(/^\s*(?:fjern|slet)\s+m[åa]l(?:et)?\b[:\-\s]+(.+)/i);
+  if (goalRemove) return { kind: "goal", action: "remove", text: goalRemove[1].trim() };
+  const goalDone = text.match(/^\s*m[åa]l\s+(?:klaret|done|færdigt?)\b[:\-\s]+(.+)/i)
+    ?? text.match(/^\s*marker\s+m[åa]l(?:et)?\s+(.+?)\s+som\s+(?:klaret|done|færdigt?)\s*$/i);
+  if (goalDone) return { kind: "goal", action: "toggle", text: goalDone[1].trim() };
   const noteM = text.match(/^\s*(noter|note|husk|skriv ned)\b[:\-\s]+(.+)/i);
   if (noteM) {
     const note = noteM[2].trim();
@@ -82,6 +92,15 @@ export async function POST(req: Request) {
   if (!message) return NextResponse.json({ error: "Tom besked." }, { status: 400 });
 
   const intent = detectIntent(message);
+
+  // GOAL action — edits the vault roadmap note after confirmation.
+  if (intent && intent.kind === "goal") {
+    const verb = intent.action === "add" ? "Tilføj mål" : intent.action === "remove" ? "Fjern mål" : "Marker mål som klaret/åbent";
+    return NextResponse.json({
+      action: { type: "goal", args: { action: intent.action, text: intent.text }, label: `${verb}: "${intent.text.slice(0, 80)}"` },
+      humanText: `${verb}: "${intent.text}" — det committes til vaulten (roadmap-naeste-skridt.md). OK?`,
+    });
+  }
 
   // NOTE action — no lead lookup needed.
   if (intent && intent.kind === "note") {
@@ -174,10 +193,12 @@ export async function POST(req: Request) {
   const res = await generate({
     task: "research",
     system:
-      "Du er Claude i Lucas's Command Center — en rolig, skarp assistent for hans lead-CRM og agentic OS. " +
+      "Du er Claude i AgenticOS Command Center — en rolig, skarp assistent for lead-CRM'et og det agentiske OS. " +
+      "Brugeren er en af de to operatører (Lucas eller Charlie) — antag ikke hvem. " +
       "Svar kort og konkret på dansk. Du rådgiver og forklarer. Hvis brugeren vil markere en lead eller gemme en note, " +
       "så bed dem skrive fx 'marker <virksomhed> som ikke interesseret' eller 'noter: ...'. " +
-      "Henvis til de rigtige sider (/leads, /leadgen, /approve, /replies, /messenger, /clients, /spend)." +
+      "Mål på /goals kan ændres med 'tilføj mål: ...', 'fjern mål: ...' eller 'mål klaret: ...'. " +
+      "Henvis til de rigtige sider (/approve, /replies, /leads, /leadgen, /clients, /seo, /seo-tjek, /studio, /messenger, /goals, /settings)." +
       (state ? `\n\nNuværende tilstand: ${state}.` : ""),
     prompt: message,
     maxTokens: 600,

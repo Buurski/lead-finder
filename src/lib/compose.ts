@@ -9,7 +9,7 @@
 
 import { mixForLead } from "./tone-mixer.ts";
 import type { MixLead, OpenerKind } from "./tone-mixer.ts";
-import { pickDemoPair } from "./demos.ts";
+import { pickDemos } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { validateDraft } from "./draft.ts";
 
@@ -25,7 +25,7 @@ export interface ComposedEmail {
   html: string;
   comboId: string;
   openerKind: OpenerKind;
-  demoPair: [Demo, Demo];
+  demoPair: Demo[];
 }
 
 function esc(s: string): string {
@@ -39,29 +39,61 @@ function pickSubject(name: string, seed: string): string {
   return opts[h % opts.length];
 }
 
-function tailorLine(name: string): string {
-  return `Det er bare eksempler — en rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`;
+// For single-demo leads (skønhedsklinikker) the line becomes a softer
+// "Eksempel på en hjemmeside for en kunde"-framing — gentaget demo-pair virker
+// spam-agtigt for klinik-segmentet (Lucas 2026-06-23).
+function demoLeadLine(demos: Demo[]): string[] {
+  if (demos.length <= 1) {
+    const d = demos[0];
+    if (!d) return [];
+    return [`Eksempel på en hjemmeside for en kunde:`, `→ ${d.url}`];
+  }
+  return [`→ ${demos[0].url}`, `→ ${demos[1].url}`];
 }
 
-function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: [Demo, Demo], closing: string): string {
+function tailorLine(name: string): string {
+  return pickVariant(name + "t", [
+    `Det er bare eksempler. En rigtig version til ${name} ville selvfølgelig matche jeres egen stil og farver.`,
+    `Det er kun for at vise idéen. En rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
+  ]);
+}
+
+function pickVariant(seed: string, variants: string[]): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return variants[h % variants.length];
+}
+
+// The "you deserve a real site" value paragraph (Lucas, 2026-06-19). Makes the
+// cold mail a touch longer + more personal, leaning on the lead's reputation and
+// customer base, with the angle: a site that CREATES new customers, not just keeps
+// the current ones. Varied per business via the name seed. MUST stay voice-safe
+// (no price/kr/gratis/robot-CTA) — composeColdEmail validates the whole body.
+function valueLine(name: string): string {
+  return pickVariant(name + "v", [
+    `En virksomhed med jeres kundebase, erfaring og drive fortjener en ny og fungerende hjemmeside. En der skaber flere kunder, ikke bare beholder de nuværende.`,
+    `Med det ry og de anmeldelser I har bygget op, fortjener I et website der matcher niveauet. Et der henter nye kunder ind, frem for bare at vise de nuværende vej.`,
+    `Med den kundebase I har, giver det god mening med en side der er lige så stærk som jeres ry. En der skaber nye henvendelser, ikke bare bevarer det I allerede har.`,
+  ]);
+}
+
+function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: Demo[], closing: string, valueText?: string): string {
   return [
     `Hej ${name},`,
     ``,
     `${opener} ${disclosure}`,
+    ...(valueText ? [``, valueText] : []),
     ``,
     demoIntro,
-    `→ ${demos[0].url}`,
-    `→ ${demos[1].url}`,
+    ...demoLeadLine(demos),
     ``,
     tailorLine(name),
     ``,
     closing,
-    ``,
-    `Mvh, Lucas`,
   ].join("\n");
 }
 
-function textToHtml(text: string, demos: [Demo, Demo]): string {
+function textToHtml(text: string, demos: Demo[]): string {
   const paras = text.split("\n\n").map((block) => {
     const lines = block.split("\n").map((l) => {
       const m = l.match(/^→\s*(\S+)$/);
@@ -77,8 +109,8 @@ function textToHtml(text: string, demos: [Demo, Demo]): string {
 // Compose a cold email once. Throws if the body breaks a HARD voice rule.
 export function composeColdEmail(lead: ComposeLead): ComposedEmail {
   const mix = mixForLead(lead);
-  const demos = pickDemoPair(lead.branch, lead.name);
-  const text = buildText(lead.name, mix.opener, mix.disclosure, mix.demoIntro, demos, mix.closing);
+  const demos = pickDemos(lead.branch, lead.name);
+  const text = buildText(lead.name, mix.opener, mix.disclosure, mix.demoIntro, demos, mix.closing, valueLine(lead.name));
 
   const check = validateDraft(text);
   if (!check.ok) {
@@ -103,8 +135,8 @@ export function composeFollowupEmail(lead: ComposeLead, previousOpenerKind?: Ope
   for (let i = 1; i <= 4 && previousOpenerKind && chosen.openerKind === previousOpenerKind; i++) {
     chosen = mixForLead({ ...lead, name: `${lead.name}${"·".repeat(i)}` });
   }
-  const demos = pickDemoPair(lead.branch, lead.name);
-  const followIntro = "Lille opfølgning — jeg ville bare lige høre om det kunne være noget.";
+  const demos = pickDemos(lead.branch, lead.name);
+  const followIntro = "Lille opfølgning. Jeg ville bare lige høre om det kunne være noget.";
   const text = buildText(lead.name, chosen.opener, `${chosen.disclosure} ${followIntro}`, chosen.demoIntro, demos, chosen.closing);
 
   const check = validateDraft(text);

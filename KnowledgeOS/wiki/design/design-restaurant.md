@@ -3,15 +3,19 @@
 > Auto-genereret fra src/lib/design-templates.ts. Rediger TS-filen, ikke denne.
 
 ## Typografi
-- Display: **Fraunces**
-- Brødtekst: **Inter**
-- Appetitvækkende display, neutral brødtekst til menu.
+- Display: **Cormorant Garamond**
+- Brødtekst: **Outfit**
+- Lyrical display serif + readable Outfit. Warm atmosphere, not cold.
 
 ## Palet
-- bg `oklch(96% 0.014 60)`
-- ink `oklch(22% 0.02 50)`
-- accent `oklch(55% 0.11 35)` (ink: `oklch(42% 0.11 35)`)
-- Dyb, varm rød/rust — mad-venlig.
+- bg `oklch(14% 0.03 55)`
+- ink `oklch(91% 0.014 75)`
+- accent `oklch(72% 0.09 70)` (ink: `oklch(58% 0.09 70)`)
+- Warm brown/near-black bg + cream ink + gold accent — like candlelight.
+
+**Hex-palet (real site):** bg `#1a1208` · ink `#e7ca93` · accent `#c8a87a`
+
+**Layout-arketype:** menu
 
 ## Sektion-rækkefølge
 1. hero m. stemningsbillede

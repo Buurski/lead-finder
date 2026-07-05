@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 
-import { planRowDeletions } from "./leads/row-plan.ts";
+import { planRowDeletionRanges } from "./leads/row-plan.ts";
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -576,29 +576,40 @@ async function getLeadsSheetId(): Promise<number> {
 
 // Delete rows by sheet row number (1-based). Must be called with the actual sheet row numbers
 // (i.e. lead.id values, which equal sheet row number). Deletes in reverse order to avoid index shift.
+// Max deleteDimension requests per batchUpdate call. A mass cleanup can produce
+// thousands of rows; coalescing into ranges (planRowDeletionRanges) collapses
+// most of that, and this cap chunks whatever ranges remain so a single API call
+// never carries an oversized payload or risks a timeout. Chunks run highest-row
+// first, so deleting one chunk never shifts an index still queued in a later one.
+const DELETE_BATCH_LIMIT = 500;
+
 export async function deleteLeadRows(sheetRowNumbers: number[]): Promise<void> {
-  // Dedupe + sort descending + drop header/invalid rows (see row-plan.ts) so a
-  // batched delete never shifts an index under a queued deletion, double-deletes
-  // a neighbour, or removes the header row.
-  const sorted = planRowDeletions(sheetRowNumbers);
-  if (sorted.length === 0) return;
+  // Dedupe + sort descending + drop header/invalid rows, then coalesce into
+  // contiguous ranges (see row-plan.ts) so a batched delete never shifts an
+  // index under a queued deletion, double-deletes a neighbour, or removes the
+  // header row — and a 5000-row purge becomes a handful of range deletes.
+  const ranges = planRowDeletionRanges(sheetRowNumbers);
+  if (ranges.length === 0) return;
   const sheetId = await getLeadsSheetId();
   const sheets = getSheetsClient();
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SPREADSHEET_ID,
-    requestBody: {
-      requests: sorted.map((row) => ({
-        deleteDimension: {
-          range: {
-            sheetId,
-            dimension: "ROWS",
-            startIndex: row - 1, // row is 1-based sheet row; startIndex is 0-based
-            endIndex: row,
+  for (let i = 0; i < ranges.length; i += DELETE_BATCH_LIMIT) {
+    const chunk = ranges.slice(i, i + DELETE_BATCH_LIMIT);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: chunk.map((r) => ({
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: r.startIndex, // 0-based; covers sheet rows startIndex+1..endIndex
+              endIndex: r.endIndex,
+            },
           },
-        },
-      })),
-    },
-  });
+        })),
+      },
+    });
+  }
 }
 
 // ===== Dead Leads tab =====

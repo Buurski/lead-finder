@@ -25,7 +25,8 @@ hvis interesseret. **Aldrig** "professionelt bureau", aldrig sælgende.
    kunne fornærme).
 3. **2 demoer** — vis variation, vælg de 2 mest relevante for branchen. Ren URL.
 4. Varm soft-close: "sig endelig til hvis I vil se hvordan jeres kunne se ud".
-5. Slut "Mvh, Lucas".
+5. Slut UDEN underskrift — pipelinen tilføjer selv "Mvh, {afsender}" (Lucas
+   eller Charlie) efter generering, så navnet altid matcher den valgte afsender.
 
 ## HARD RULES (brydes ALDRIG — håndhæves af validateDraft)
 
@@ -51,5 +52,5 @@ hvis interesseret. **Aldrig** "professionelt bureau", aldrig sælgende.
 > [demo 1]
 > [demo 2]
 > Sig endelig til hvis I vil se hvordan jeres kunne se ud — ellers ingen skade sket.
->
-> Mvh, Lucas
+
+(Signaturen "Mvh, {afsender}" sættes på af pipelinen — skriv den ikke selv.)

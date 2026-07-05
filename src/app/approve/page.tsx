@@ -2,6 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
+import { previewSignature } from "@/lib/leads/signature-preview";
+import WarnBanner from "@/components/WarnBanner";
+
+// Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
+// ikke trækker server-only env-vars; serveren (senders.ts) er source of
+// truth ved faktisk afsendelse. Hold disse i sync med LUCAS_SENDER_PHONE /
+// CHARLIE_SENDER_PHONE i Vercel-env.
+const PREVIEW_LUCAS_PHONE = "+45 23 24 24 82";
+const PREVIEW_CHARLIE_PHONE = "+45 42 25 32 62";
 
 // Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
 // has no server-only imports.
@@ -25,6 +34,8 @@ interface QueueDraft {
   source: string;
   createdAt: string;
   updatedAt: string;
+  sender?: "lucas" | "charlie";
+  sentBy?: "lucas" | "charlie";
 }
 
 type Filter = "pending" | "approved" | "decided" | "all";
@@ -52,9 +63,11 @@ export default function ApprovePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("pending");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchQueue = useCallback(async (): Promise<QueueDraft[]> => {
     const res = await fetch("/api/approve/queue", { cache: "no-store" });
+    if (!res.ok) throw new Error(`køen svarede ${res.status}`);
     const data = await res.json();
     return Array.isArray(data.drafts) ? (data.drafts as QueueDraft[]) : [];
   }, []);
@@ -65,8 +78,8 @@ export default function ApprovePage() {
     try {
       setDrafts(await fetchQueue());
       setError(null);
-    } catch {
-      setError("Kunne ikke hente køen.");
+    } catch (e) {
+      setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
     } finally {
       setLoading(false);
     }
@@ -83,8 +96,8 @@ export default function ApprovePage() {
           setDrafts(drafts);
           setError(null);
         }
-      } catch {
-        if (!cancelled) setError("Kunne ikke hente køen.");
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -100,31 +113,123 @@ export default function ApprovePage() {
 
   const counts = useMemo(() => {
     const pending = drafts.filter((d) => d.status === "pending").length;
-    const approved = drafts.filter((d) => d.status === "approved").length;
+    const approvedList = drafts.filter((d) => d.status === "approved");
+    const approved = approvedList.length;
+    const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
+    const approvedLucas = approved - approvedCharlie;
     const decided = drafts.length - pending;
-    return { pending, approved, decided, all: drafts.length };
+    return { pending, approved, approvedLucas, approvedCharlie, decided, all: drafts.length };
   }, [drafts]);
 
-  // Send the approved drafts (TEST-mode → buur.aigro; nothing reaches a lead).
+  // Send the approved drafts. The route streams SSE progress, so the UI shows a
+  // live "i/N · sender…" line while it works (a run takes minutes — paced sends).
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
+  const [sendProg, setSendProg] = useState<{ processed: number; total: number; sent: number; failed: number; line: string } | null>(null);
   const sendApproved = useCallback(async () => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
     if (counts.approved === 0) return;
-    if (!window.confirm(`Send ${counts.approved} godkendte udkast?\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
+
+    // Preflight (GET på send-ruten): kører alle guards uden at sende, så
+    // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
+    // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
+    // vi tilbage til den gamle dialog.
+    let confirmText = `Send ${counts.approved} godkendte udkast?`;
+    try {
+      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      if (pf && pf.ok) {
+        if (pf.paused) { setSendMsg(`Afsendelse er på pause${pf.until ? ` til ${pf.until}` : ""}.`); return; }
+        if (pf.busy) { setSendMsg("Afsendelse kører allerede — vent til den er færdig."); return; }
+        if (!pf.senders?.lucas && !pf.senders?.charlie) { setSendMsg("Ingen mail-creds sat — der kan ikke sendes."); return; }
+        if (pf.wouldSend === 0) {
+          const why = (pf.skipped ?? []).slice(0, 5).map((s: { name: string; reason: string }) => `· ${s.name}: ${s.reason}`).join("\n");
+          setSendMsg(`Ingen af de ${pf.approved} godkendte kan sendes.${why ? `\n${why}` : ""}`);
+          return;
+        }
+        const reasonCounts = new Map<string, number>();
+        for (const s of (pf.skipped ?? []) as { reason: string }[]) {
+          reasonCounts.set(s.reason, (reasonCounts.get(s.reason) ?? 0) + 1);
+        }
+        const skipLine = [...reasonCounts.entries()].map(([r, n]) => `${n}× ${r}`).join(", ");
+        confirmText = [
+          `Klar til at sende:`,
+          `· ${pf.wouldSend} sendes nu`,
+          pf.capped > 0 ? `· ${pf.capped} venter til næste klik (max ${pf.cap} pr. klik)` : "",
+          (pf.skipped?.length ?? 0) > 0 ? `· ${pf.skipped.length} springes over (${skipLine})` : "",
+          !pf.sheetsOk ? `· OBS: Sheets kunne ikke nås — dedup kører kun på kø-historikken` : "",
+        ].filter(Boolean).join("\n");
+      }
+    } catch { /* preflight er best-effort */ }
+
+    if (!window.confirm(`${confirmText}\n\nDette sender RIGTIGE mails til virksomhederne. Det tager et par minutter (mailene sendes med pause imellem, så de ser naturlige ud) — luk ikke siden imens.\n\nTryk kun én gang: systemet sender hver mail præcis én gang, uanset hvor mange gange du trykker.`)) return;
     setSendBusy(true);
+    setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
     try {
       const res = await fetch("/api/approve/send", { method: "POST" });
-      const d = await res.json();
-      const msg = d.paused
-        ? (d.error ?? "Afsendelse er på pause.")
-        : d.busy
-          ? (d.error ?? "Afsendelse kører allerede — vent til den er færdig.")
-          : res.ok
-            ? `${d.sent ?? 0} sendt${d.failed ? ` · ${d.failed} fejlede` : ""}${d.remaining ? ` · ${d.remaining} venter — tryk Send igen for næste hold` : ""}${Array.isArray(d.skipped) && d.skipped.length ? ` · ${d.skipped.length} sprunget over (${d.skipped.slice(0, 3).map((s: { name: string; reason: string }) => `${s.name}: ${s.reason}`).join("; ")}${d.skipped.length > 3 ? "…" : ""})` : ""}.`
-            : (d.error ?? "Kunne ikke sende.");
-      setSendMsg(msg);
+      const ct = res.headers.get("content-type") || "";
+
+      // Pre-flight guards (pause / busy / no-creds / nothing-to-send) return JSON.
+      if (ct.includes("application/json") || !res.body) {
+        const d = await res.json().catch(() => ({}));
+        const msg = d.paused
+          ? (d.error ?? "Afsendelse er på pause.")
+          : d.busy
+            ? (d.error ?? "Afsendelse kører allerede — vent til den er færdig.")
+            : res.ok
+              ? `${d.sent ?? 0} sendt${d.note ? ` — ${d.note}` : ""}.`
+              : (d.error ?? "Kunne ikke sende.");
+        setSendMsg(msg);
+        await load();
+        return;
+      }
+
+      // SSE stream — parse "data: {...}" frames and update the progress line live.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let sent = 0, failed = 0, processed = 0, total = 0;
+      const skippedNames: { name: string; reason: string }[] = [];
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split("\n\n");
+        buf = frames.pop() ?? "";
+        for (const frame of frames) {
+          const line = frame.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          let ev: Record<string, unknown>;
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          const t = ev.type as string;
+          if (t === "start") {
+            total = Number(ev.total) || 0;
+            setSendProg({ processed: 0, total, sent: 0, failed: 0, line: `0/${total} · starter…` });
+          } else if (t === "sending") {
+            processed = Number(ev.index) || processed;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · sender til ${ev.name}…` });
+          } else if (t === "sent") {
+            processed = Number(ev.index) || processed; sent = Number(ev.n) || sent + 1;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} sendt ✓` });
+          } else if (t === "failed") {
+            processed = Number(ev.index) || processed; failed++;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} fejlede ✗` });
+          } else if (t === "skipped" || t === "capped") {
+            processed = Number(ev.index) || processed;
+            if (t === "skipped") skippedNames.push({ name: String(ev.name), reason: String(ev.reason ?? "") });
+            const tail = t === "capped" ? "venter (næste hold)" : `sprunget over (${ev.reason})`;
+            setSendProg({ processed, total, sent, failed, line: `${processed}/${total} · ${ev.name} ${tail}` });
+          } else if (t === "done") {
+            const dSent = Number(ev.sent) || sent;
+            const dFailed = Number(ev.failed) || failed;
+            const dRemaining = Number(ev.remaining) || 0;
+            const sk = Array.isArray(ev.skipped) ? (ev.skipped as { name: string; reason: string }[]) : skippedNames;
+            const msg = `${dSent} sendt${dFailed ? ` · ${dFailed} fejlede` : ""}${dRemaining ? ` · ${dRemaining} venter — tryk Send igen for næste hold` : ""}${sk.length ? ` · ${sk.length} sprunget over (${sk.slice(0, 3).map((s) => `${s.name}: ${s.reason}`).join("; ")}${sk.length > 3 ? "…" : ""})` : ""}.`;
+            setSendMsg(msg);
+            setSendProg({ processed: total, total, sent: dSent, failed: dFailed, line: `${total}/${total} · færdig` });
+          }
+        }
+      }
       await load();
     } catch {
       setSendMsg("Netværksfejl ved afsendelse.");
@@ -133,20 +238,44 @@ export default function ApprovePage() {
     }
   }, [sendBusy, counts.approved, load]);
 
+  // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
+  const [q, setQ] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const branches = useMemo(
+    () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
+    [drafts]
+  );
+
   const visible = useMemo(() => {
-    if (filter === "pending") return drafts.filter((d) => d.status === "pending");
-    if (filter === "approved") return drafts.filter((d) => d.status === "approved");
-    if (filter === "decided") return drafts.filter((d) => d.status !== "pending");
-    return drafts;
-  }, [drafts, filter]);
+    let base: QueueDraft[];
+    if (filter === "pending") base = drafts.filter((d) => d.status === "pending");
+    else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
+    else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
+    else base = drafts;
+    if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
+    const needle = q.trim().toLowerCase();
+    if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
+    return base;
+  }, [drafts, filter, branchFilter, q]);
+
+  // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
+  // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
+  // "Vælg alle" arbejder stadig på HELE listen, ikke kun de viste.
+  const LIST_PAGE = 30;
+  const [shownCount, setShownCount] = useState(LIST_PAGE);
+  const changeFilter = useCallback((f: Filter) => {
+    setFilter(f);
+    setShownCount(LIST_PAGE);
+  }, []);
+  const shownList = useMemo(() => visible.slice(0, shownCount), [visible, shownCount]);
 
   // ---- shared action (used by buttons AND keyboard triage) ----------------
   const actOn = useCallback(
-    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }): Promise<{ ok: boolean; violations?: string[] }> => {
+    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }): Promise<{ ok: boolean; violations?: string[] }> => {
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify((action === "edit" || action === "set-demos") && payload ? { id, action, ...payload } : { id, action }),
+        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -170,7 +299,12 @@ export default function ApprovePage() {
       if (document.querySelector(".cc-palette")) return;
       const cur = visible[focusIdx];
       const k = e.key.toLowerCase();
-      if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => Math.min(i + 1, visible.length - 1)); }
+      if (k === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = Math.min(focusIdx + 1, visible.length - 1);
+        if (next >= shownCount) setShownCount((c) => c + LIST_PAGE);
+        setFocusIdx(next);
+      }
       else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(i - 1, 0)); }
       else if (cur && cur.status === "pending" && k === "a") { e.preventDefault(); actOn(cur.id, "approve"); }
       else if (cur && cur.status === "pending" && k === "r") { e.preventDefault(); actOn(cur.id, "reject"); }
@@ -178,46 +312,196 @@ export default function ApprovePage() {
         e.preventDefault();
         document.getElementById(`draft-body-${cur.id}`)?.focus();
       }
+      else if (cur && cur.status === "pending" && (e.key === " " || k === "x")) {
+        // space/x: vaelg/fravaelg fokuseret udkast til batch-godkend
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(cur.id)) next.delete(cur.id);
+          else next.add(cur.id);
+          return next;
+        });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, focusIdx, actOn]);
+  }, [visible, focusIdx, actOn, shownCount]);
 
   // ---- bulk-approve all currently-pending "safe" drafts -------------------
+  // Council-fund (wild card): bulk følger det AKTIVE filter — et søge-/branche-
+  // filter er dermed også et sikkerhedshegn, ikke kun navigation. Confirm-
+  // dialogen viser branche-miks så en skæv batch (fx 100% restauranter) ses
+  // FØR man godkender i bulk, ikke efter.
   const [bulkBusy, setBulkBusy] = useState(false);
   const bulkApprove = useCallback(async () => {
-    const pendings = drafts.filter((d) => d.status === "pending");
+    const pendings = visible.filter((d) => d.status === "pending");
     if (pendings.length === 0) return;
-    if (!window.confirm(`Godkend ${pendings.length} afventende udkast? De markeres til afsendelse — intet sendes.`)) return;
+    const byBranch = new Map<string, number>();
+    for (const d of pendings) byBranch.set(d.branch || "ukendt", (byBranch.get(d.branch || "ukendt") ?? 0) + 1);
+    const mix = [...byBranch.entries()].sort((a, b) => b[1] - a[1]);
+    const mixLine = mix.slice(0, 4).map(([b, n]) => `${n} ${b}`).join(", ") + (mix.length > 4 ? ` + ${mix.slice(4).reduce((a, [, n]) => a + n, 0)} andre` : "");
+    const scopeNote = pendings.length < counts.pending ? ` (filtreret — ${counts.pending - pendings.length} udenfor filteret røres ikke)` : "";
+    if (!window.confirm(`Godkend ${pendings.length} afventende udkast${scopeNote}?\n\nBranche-miks: ${mixLine}.\n\nDe markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
-    for (const d of pendings) {
-      // sequential keeps the queue file writes ordered + avoids a write race
-      await actOn(d.id, "approve");
+    try {
+      // Én bulk-request i stedet for ét POST pr. draft (490 requests = minutter).
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: pendings.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < pendings.length) window.alert(`${data.approved} af ${pendings.length} godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setBulkBusy(false);
     }
-    setBulkBusy(false);
-  }, [drafts, actOn]);
+  }, [visible, counts.pending, load]);
+
+  // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Only ids that are still pending count — a draft decided via its own
+  // buttons (or keyboard) simply falls out of the selection.
+  const selectedPending = useMemo(
+    () => drafts.filter((d) => d.status === "pending" && selected.has(d.id)),
+    [drafts, selected]
+  );
+
+  const selectAllVisible = useCallback(() => {
+    setSelected(new Set(visible.filter((d) => d.status === "pending").map((d) => d.id)));
+  }, [visible]);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  const [selBusy, setSelBusy] = useState(false);
+  const approveSelected = useCallback(async () => {
+    const targets = selectedPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Godkend ${targets.length} valgte udkast? De markeres til afsendelse. Intet sendes.`)) return;
+    setSelBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke godkende: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      else if (data.approved < targets.length) window.alert(`${data.approved} af ${targets.length} valgte godkendt — resten var ikke længere afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setSelBusy(false);
+      setSelected(new Set());
+    }
+  }, [selectedPending, load]);
+
+  // Bulk-afvis de valgte (symmetri med "Godkend valgte" — council-fund).
+  const [rejBusy, setRejBusy] = useState(false);
+  const rejectSelected = useCallback(async () => {
+    const targets = selectedPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Afvis ${targets.length} valgte udkast? De ryger ud af køen (lead'en blokeres 14 dage).`)) return;
+    setRejBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke afvise: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setRejBusy(false);
+      setSelected(new Set());
+    }
+  }, [selectedPending, load]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
         counts={counts}
         filter={filter}
-        setFilter={setFilter}
+        setFilter={changeFilter}
         onRefresh={load}
         loading={loading}
         onBulkApprove={bulkApprove}
         bulkBusy={bulkBusy}
+        selectedCount={selectedPending.length}
+        selBusy={selBusy}
+        onApproveSelected={approveSelected}
+        onSelectAll={selectAllVisible}
+        onClearSelection={clearSelection}
+        onRejectSelected={rejectSelected}
+        rejBusy={rejBusy}
+        visiblePending={visible.filter((d) => d.status === "pending").length}
       />
+
+      {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
+      {drafts.length > 10 && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setShownCount(LIST_PAGE); }}
+            placeholder="Søg navn, by eller emne…"
+            aria-label="Søg i udkast"
+            style={{ flex: "1 1 220px", minWidth: 0, maxWidth: 340, border: "1px solid var(--border)", borderRadius: 9, padding: "8px 12px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+          />
+          {branches.length > 1 && (
+            <select
+              value={branchFilter}
+              onChange={(e) => { setBranchFilter(e.target.value); setShownCount(LIST_PAGE); }}
+              aria-label="Filtrér på branche"
+              style={{ border: "1px solid var(--border)", borderRadius: 9, padding: "8px 10px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+            >
+              <option value="all">Alle brancher</option>
+              {branches.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+          {(q.trim() || branchFilter !== "all") && (
+            <span className="cc-dim" style={{ fontSize: 12.5 }}>{visible.length} match</span>
+          )}
+        </div>
+      )}
 
       {/* Send step — the missing piece. Approved = ready; this actually sends. */}
       {counts.approved > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--green-dim)", border: "1px solid var(--green)" }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse{counts.approvedCharlie > 0 ? ` · Lucas ${counts.approvedLucas} · Charlie ${counts.approvedCharlie}` : ""}</div>
             <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
               Godkendt = markeret. Tryk Send for at sende <strong>rigtige mails</strong> til virksomhederne. Pause/halt-flag + kontaktet-tjek blokerer automatisk.
-              {sendMsg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
+              {sendMsg && !sendProg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
             </div>
+            {sendProg && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ height: 7, borderRadius: 99, background: "var(--bg-2)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${sendProg.total ? Math.round((sendProg.processed / sendProg.total) * 100) : 0}%`, background: "var(--green)", transition: "width .3s ease" }} />
+                </div>
+                <div style={{ display: "flex", gap: 10, fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                  <span style={{ color: "var(--text)", fontWeight: 600 }}>{sendProg.line}</span>
+                  <span>· {sendProg.sent} sendt{sendProg.failed ? ` · ${sendProg.failed} fejlede` : ""}</span>
+                </div>
+              </div>
+            )}
           </div>
           <button onClick={sendApproved} disabled={sendBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
             {sendBusy ? "Sender…" : `Send godkendte (${counts.approved})`}
@@ -232,17 +516,53 @@ export default function ApprovePage() {
         </div>
       )}
 
-      {error && (
-        <p style={{ color: "var(--red)", fontSize: 14 }}>{error}</p>
-      )}
-
-      {!loading && visible.length === 0 ? (
+      {loading && drafts.length === 0 ? (
+        // Skeleton only on the first load — a manual refresh keeps the list
+        // visible instead of flashing back to shimmer.
+        <div style={{ display: "grid", gap: 18 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="cc-skel" style={{ height: 180, borderRadius: 14 }} />
+          ))}
+        </div>
+      ) : error ? (
+        // A failed fetch must not masquerade as an empty queue — show the error
+        // with a retry instead of "Køen er tom".
+        <WarnBanner
+          role="alert"
+          action={
+            <button onClick={load} disabled={loading} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", opacity: loading ? 0.6 : 1 }}>
+              {loading ? "Henter…" : "Prøv igen"}
+            </button>
+          }
+        >
+          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>{error}</div>
+          <div style={{ fontSize: 12.5, marginTop: 2 }}>
+            Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
+          </div>
+        </WarnBanner>
+      ) : visible.length === 0 ? (
         <EmptyState filter={filter} total={drafts.length} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {visible.map((d, i) => (
-            <DraftLetter key={d.id} draft={d} onAct={actOn} focused={i === focusIdx} onFocusRequest={() => setFocusIdx(i)} />
+          {shownList.map((d, i) => (
+            <DraftLetter
+              key={d.id}
+              draft={d}
+              onAct={actOn}
+              focused={i === focusIdx}
+              onFocusRequest={() => setFocusIdx(i)}
+              selected={selected.has(d.id)}
+              onToggleSelect={() => toggleSelect(d.id)}
+            />
           ))}
+          {visible.length > shownList.length && (
+            <button
+              onClick={() => setShownCount((c) => c + LIST_PAGE)}
+              style={{ ...btnGhost, alignSelf: "center", padding: "10px 22px", fontSize: 13 }}
+            >
+              Vis {Math.min(LIST_PAGE, visible.length - shownList.length)} flere ({visible.length - shownList.length} tilbage)
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -257,6 +577,14 @@ function Header({
   loading,
   onBulkApprove,
   bulkBusy,
+  selectedCount,
+  selBusy,
+  onApproveSelected,
+  onSelectAll,
+  onClearSelection,
+  onRejectSelected,
+  rejBusy,
+  visiblePending,
 }: {
   counts: { pending: number; approved: number; decided: number; all: number };
   filter: Filter;
@@ -265,6 +593,14 @@ function Header({
   loading: boolean;
   onBulkApprove: () => void;
   bulkBusy: boolean;
+  selectedCount: number;
+  selBusy: boolean;
+  onApproveSelected: () => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+  onRejectSelected: () => void;
+  rejBusy: boolean;
+  visiblePending: number;
 }) {
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
@@ -298,21 +634,64 @@ function Header({
           <span><span className="cc-kbd">a</span> godkend</span>
           <span><span className="cc-kbd">r</span> skip</span>
           <span><span className="cc-kbd">e</span> redigér</span>
+          <span><span className="cc-kbd">space</span> vælg</span>
         </p>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
         {counts.pending > 0 && (
+          <button
+            onClick={onSelectAll}
+            title={visiblePending < counts.pending
+              ? `Sæt kryds ved de ${visiblePending} afventende der matcher filteret (ikke alle ${counts.pending})`
+              : "Sæt kryds ved alle afventende udkast i listen"}
+            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
+          >
+            {visiblePending < counts.pending ? `Vælg filtrerede (${visiblePending})` : "Vælg alle"}
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
+            onClick={onClearSelection}
+            title="Fjern alle kryds"
+            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
+          >
+            Ryd valg
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
+            onClick={onRejectSelected}
+            disabled={rejBusy}
+            title="Afvis de udkast du har sat kryds ved — lead'en blokeres 14 dage"
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--danger, #b3402e)", opacity: rejBusy ? 0.6 : 1 }}
+          >
+            {rejBusy ? "Afviser…" : `Afvis valgte (${selectedCount})`}
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <button
+            onClick={onApproveSelected}
+            disabled={selBusy}
+            title="Godkend kun de udkast du har sat kryds ved"
+            style={{ ...btnBase, background: selBusy ? "var(--green-dim)" : "var(--green)", color: selBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+          >
+            {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
+          </button>
+        )}
+        {visiblePending > 0 && (
           <button
             onClick={onBulkApprove}
             disabled={bulkBusy}
-            title="Godkend alle afventende udkast"
+            title={visiblePending < counts.pending
+              ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
+              : "Godkend alle afventende udkast"}
             style={{ ...btnBase, background: bulkBusy ? "var(--green-dim)" : "var(--green)", color: bulkBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
           >
-            {bulkBusy ? "Godkender…" : `Godkend alle (${counts.pending})`}
+            {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
           </button>
         )}
-        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3 }}>
+        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3, maxWidth: "100%", overflowX: "auto" }}>
           {tabs.map((t) => {
             const active = filter === t.key;
             return (
@@ -410,15 +789,37 @@ function DraftLetter({
   onAct,
   focused,
   onFocusRequest,
+  selected,
+  onToggleSelect,
 }: {
   draft: QueueDraft;
-  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos", payload?: { subject?: string; body?: string; demoPair?: Demo[] }) => Promise<{ ok: boolean; violations?: string[] }>;
+  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
+  const [sender, setSender] = useState<"lucas" | "charlie">(draft.sender ?? "lucas");
+
+  // Per-lead afsender-valg. Persists immediately; the send route routes the mail
+  // to the matching Gmail account + re-signs the body at send time.
+  //
+  // 2026-06-26: re-sign body CLIENT-SIDE too, så det body-felt brugeren ser i
+  // /godkendelse matcher den nye afsender. Før denne fix blev signaturen i
+  // bunden ikke opdateret når man skiftede afsender (kun top-preview'et
+  // "SLUTNING AF MAILEN" opdaterede sig), hvilket var forvirrende. Body
+  // gemmes først i databasen ved Godkend/Redigér — her opdaterer vi kun den
+  // lokale state så det visuelle er konsistent.
+  async function chooseSender(next: "lucas" | "charlie") {
+    if (next === sender) return;
+    const resignBody = previewSignature(body, next, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE);
+    setBody(resignBody);
+    setSender(next);
+    await onAct(draft.id, "set-sender", { sender: next });
+  }
   const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "unapprove" | "set-demos">(null);
   const [violations, setViolations] = useState<string[]>([]);
 
@@ -505,7 +906,17 @@ function DraftLetter({
     >
       {/* identity row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div>
+        {draft.status === "pending" && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Vælg ${draft.name}`}
+            title="Vælg til 'Godkend valgte'"
+            style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "var(--green)" }}
+          />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h2
             style={{
               fontFamily: "var(--font-fraunces), serif",
@@ -539,6 +950,88 @@ function DraftLetter({
         >
           {meta.label}
         </span>
+      </div>
+
+      {/* afsender — hvem mailen sendes fra (Lucas/Charlie). Read-only når sendt. */}
+      {draft.status === "sent" ? (
+        <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)" }}>
+          Sendt som <strong style={{ color: "var(--text)" }}>{(draft.sentBy ?? draft.sender ?? "lucas") === "charlie" ? "Charlie" : "Lucas"}</strong>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Afsender</span>
+          <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
+            {(["lucas", "charlie"] as const).map((s) => {
+              const active = sender === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => chooseSender(s)}
+                  style={{
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "5px 13px",
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    color: active ? "var(--text)" : "var(--text-muted)",
+                    background: active ? "var(--surface)" : "transparent",
+                    boxShadow: active ? "0 1px 2px oklch(0% 0 0 / 0.08)" : "none",
+                  }}
+                >
+                  {s === "lucas" ? "Lucas" : "Charlie"}
+                </button>
+              );
+            })}
+          </div>
+          <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+            Konto + underskrift sættes automatisk ved afsendelse.
+          </span>
+        </div>
+      )}
+
+      {/* sign-off preview — what the email's last lines will look like with the
+          chosen sender. Updates live when Lucas/Charlie is toggled, so the
+          preview always matches what the send route will emit. (2026-06-22) */}
+      <div
+        style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          background: "var(--bg-2)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "var(--text-muted)",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: "var(--text-dim)",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            marginBottom: 4,
+          }}
+        >
+          Slutning af mailen — sendes som {sender === "lucas" ? "Lucas" : "Charlie"}
+        </div>
+        <pre
+          style={{
+            margin: 0,
+            fontFamily: "inherit",
+            whiteSpace: "pre-wrap",
+            color: "var(--text)",
+            lineHeight: 1.5,
+          }}
+        >
+          {previewSignature(body, sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE)
+            .split("\n")
+            .slice(-3)
+            .join("\n")}
+        </pre>
       </div>
 
       {/* hooks */}
@@ -655,11 +1148,11 @@ function DraftLetter({
 
       {/* actions */}
       {!decided && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
           <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
             {busy === "approve" ? "Godkender…" : "Godkend"}
           </button>
-          {dirty && !demosDirty && (
+          {dirty && (
             <button onClick={() => act("edit")} disabled={busy !== null} style={btnSecondary}>
               {busy === "edit" ? "Gemmer…" : "Gem rettelse + godkend"}
             </button>
@@ -682,7 +1175,7 @@ function DraftLetter({
             {busy === "unapprove" ? "Fjerner…" : "Fjern fra godkendt"}
           </button>
           <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-            Markeres som afvist + lead'en blokeres i 14 dage så motoren ikke re-vælger.
+            Markeres som afvist + lead&apos;en blokeres i 14 dage så motoren ikke re-vælger.
           </span>
         </div>
       )}

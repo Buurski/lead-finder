@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readSettings, writeSettings, copenhagenNow } from "@/lib/settings";
 import { runEngine } from "@/lib/engine";
+import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/engine — the morning auto-run hook for Vercel Cron (Pro).
 //
@@ -12,6 +13,9 @@ import { runEngine } from "@/lib/engine";
 //      double-fire in the armed hour can't double-fill the queue.
 // It only ever fills the approval queue — it never sends mail. ?force=1 (with a
 // valid secret) bypasses the hour + idempotency gates for manual testing.
+//
+// All outcomes (skipped, gated, ran, failed) are recorded via withCronLog so
+// /api/cron/health can show the truth on the Mission Control widget.
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
@@ -29,6 +33,10 @@ export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get("force") === "1";
   const s = await readSettings();
   if (!s.autoEngine) {
+    withCronLog("engine", async () => ({
+      result: { ok: true } as { ok: true },
+      note: "auto-engine slukket i settings — ingen kørsel",
+    })).catch(() => {});
     return NextResponse.json({ ok: true, ran: false, reason: "auto-engine slukket i settings" });
   }
 
@@ -47,8 +55,12 @@ export async function GET(req: Request) {
   // itself fails we revert the stamp so a later legitimate retry can still run.
   const prevStamp = s.lastAutoRunDate ?? "";
   await writeSettings({ lastAutoRunDate: date });
+
   try {
-    const summary = await runEngine({ limit: s.dailyLimit, persist: true });
+    const summary = await withCronLog("engine", async () => {
+      const r = await runEngine({ limit: s.dailyLimit, persist: true });
+      return { result: r, note: `draftet ${r.drafted} · skrevet ${r.written}`, meta: { drafted: r.drafted, written: r.written } };
+    });
     return NextResponse.json({ ok: true, ran: true, drafted: summary.drafted, written: summary.written, note: "kø fyldt — ingen mail sendt" });
   } catch (err) {
     await writeSettings({ lastAutoRunDate: prevStamp }).catch(() => {});

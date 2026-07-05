@@ -34,6 +34,11 @@ export interface LeadgenItem {
   rating: number;
   reviews: number;
   channel?: "email" | "messenger" | "sms" | "none";
+  // Independent reachability flags for the /leadgen multi-select filters (a lead can
+  // have more than one). channel is the priority pick; these are the raw "has X".
+  hasEmail?: boolean;
+  hasMessenger?: boolean;
+  hasPhone?: boolean;
 }
 
 export interface LeadgenRun {

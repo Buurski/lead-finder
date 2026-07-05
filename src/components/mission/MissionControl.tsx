@@ -6,7 +6,10 @@ import Icon from "@/components/shell/Icon";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
+import CronHealth from "./CronHealth";
+import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
+import MaalWidget from "./MaalWidget";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
 
@@ -95,6 +98,15 @@ function MorningVitals() {
               <span className="cc-dim" style={{ fontSize: 12 }}>
                 {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
               </span>
+              {v.status !== "fresh" && (
+                <Link
+                  href={v.task === "leadgen" ? "/leadgen" : v.task === "messenger" ? "/messenger" : "/replies"}
+                  className="cc-link"
+                  style={{ fontSize: 12, fontWeight: 600 }}
+                >
+                  Åbn →
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -112,8 +124,20 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
+// The single most important thing to do right now — replies beat drafts beat
+// new leads. Shown as the header's NEXT-ACTION so the answer to "hvad nu?"
+// never requires scanning the page.
+function nextAction(s: DeckSummary): { label: string; href: string } {
+  if (s.numbers.repliesPending > 0)
+    return { label: `Besvar ${s.numbers.repliesPending} svar`, href: "/replies" };
+  if (s.queue.pending > 0)
+    return { label: `Godkend ${s.queue.pending} udkast`, href: "/approve" };
+  return { label: "Find nye leads", href: "/leadgen" };
+}
+
 export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null }) {
   const [tab, setTab] = useState<Tab>("today");
+  const [details, setDetails] = useState(false);
   const [hello, setHello] = useState("Velkommen");
 
   useEffect(() => {
@@ -123,23 +147,46 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
     setHello(greeting(new Date()));
   }, []);
 
+  const act = nextAction(summary);
+
+  // Closing details returns to the Today view so the extra tabs never linger.
+  function toggleDetails() {
+    setDetails((d) => {
+      if (d) setTab("today");
+      return !d;
+    });
+  }
+
   return (
     <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="cc-h1">{hello}, Lucas.</h1>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="cc-h1">{hello}.</h1>
           <p className="cc-sub">{summaryLine(summary)}</p>
         </div>
-        {/* On wider screens the tabs sit in the header; on mobile they move below
-            the Today content (secondary nav) so the screen leads with what matters. */}
-        <div className="cc-tabs-header"><TabNav tab={tab} setTab={setTab} /></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <Link
+            href={act.href}
+            className="cc-card"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 16px", textDecoration: "none", color: "var(--accent-ink)", fontWeight: 600, fontSize: 13.5, background: "var(--accent-soft)" }}
+          >
+            {act.label}
+            <Icon name="ArrowRight" style={{ width: 14, height: 14 }} />
+          </Link>
+          <button
+            onClick={toggleDetails}
+            aria-expanded={details}
+            className="cc-card"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 13px", cursor: "pointer", background: "transparent", color: "var(--text-dim)", fontWeight: 600, fontSize: 12.5, font: "inherit" }}
+          >
+            Detaljer
+            <Icon name={details ? "ChevronUp" : "ChevronDown"} style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
       </header>
 
-      {/* On mobile the header tabs are hidden — show the view switcher at the TOP,
-          right under the greeting (not at the bottom of the page). */}
-      <div className="cc-tabs-secondary">
-        <TabNav tab={tab} setTab={setTab} secondary />
-      </div>
+      {/* Pipeline / Goals / Agents are detail views — hidden until asked for. */}
+      {details && <TabNav tab={tab} setTab={setTab} secondary />}
 
       {!summary.ok && (
         <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
@@ -151,10 +198,10 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
       )}
 
       {spendAlert && (
-        <Link href="/spend" className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)", textDecoration: "none", color: "inherit" }}>
+        <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
           <Icon name="CircleDollarSign" style={{ width: 17, height: 17, color: "var(--amber)" }} />
-          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Se AI Spend →</span>
-        </Link>
+          <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Åbn Detaljer → Agents for tallene.</span>
+        </div>
       )}
 
       <MorningVitals />
@@ -167,11 +214,12 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
   );
 }
 
+// Day-at-a-glance one-liner: only the two numbers that drive the day —
+// drafts waiting for approval and replies waiting for an answer.
 function summaryLine(s: DeckSummary): string {
   const bits: string[] = [];
-  if (s.needsYou.length) bits.push(`${s.needsYou.length} kræver dig`);
-  if (s.queue.pending) bits.push(`${s.queue.pending} i kø`);
-  if (s.pulse.length) bits.push(`${s.pulse.length} kunder at følge op`);
+  if (s.queue.pending) bits.push(`${s.queue.pending} udkast venter`);
+  if (s.numbers.repliesPending) bits.push(`${s.numbers.repliesPending} svar venter`);
   if (!bits.length) return "Alt er roligt. Intet kræver dig lige nu.";
   return bits.join(" · ");
 }
@@ -214,8 +262,11 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
         <div style={{ display: "grid", gap: 18 }}>
           <QueueCard s={s} />
           <PipelineMini s={s} />
+          <MaalWidget />
         </div>
       </div>
+      <CronHealth />
+      <HermesRuns />
       <PulseCard s={s} />
     </div>
   );
@@ -290,7 +341,6 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Hvad skal vi i dag</h2>
         {dateLabel && <span className="cc-dim" style={{ fontSize: 12.5, marginLeft: 2 }}>· {dateLabel}</span>}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/journal" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Journal →</Link>
           {brief?.ok && (
             <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Skjul" : "Vis"} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", display: "grid", placeItems: "center" }}>
               <Icon name={open ? "ChevronUp" : "ChevronDown"} style={{ width: 16, height: 16 }} />
@@ -311,9 +361,8 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
           <div style={{ maxHeight: 360, overflowY: "auto" }}>
             <MarkdownLite source={brief.body} />
           </div>
-          <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-            <span>kilde: {brief.source === "remote" ? "live vault" : brief.source}</span>
-            <Link href="/journal" className="cc-link" style={{ marginLeft: "auto", fontWeight: 600 }}>Åbn i Journal →</Link>
+          <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12 }}>
+            kilde: {brief.source === "remote" ? "live vault" : brief.source} · {brief.pathRel}
           </div>
         </div>
       ) : null}
@@ -430,7 +479,7 @@ function QueueCard({ s }: { s: DeckSummary }) {
             ))}
           </ul>
           <div style={{ padding: "12px 22px" }}>
-            <Link href="/approve" className="cc-btn" style={{ width: "100%", justifyContent: "center" }}>Åbn godkendelse</Link>
+            <Link href="/approve" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Åbn godkendelse →</Link>
           </div>
         </>
       )}
@@ -724,7 +773,6 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
           <Icon name="CircleDollarSign" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>AI-forbrug</h2>
-          <Link href="/spend" className="cc-link" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Detaljer →</Link>
         </div>
         {spendOn ? (
           <>

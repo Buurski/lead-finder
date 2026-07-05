@@ -19,3 +19,33 @@ export function planRowDeletions(sheetRowNumbers: number[]): number[] {
   }
   return [...seen].sort((a, b) => b - a);
 }
+
+// A half-open, 0-based row range for Sheets `deleteDimension`
+// (covers 1-based sheet rows `startIndex+1 .. endIndex`).
+export interface RowRange {
+  startIndex: number;
+  endIndex: number;
+}
+
+// Coalesce the safe descending row list into contiguous ranges. A mass cleanup
+// (e.g. 5000+ rows) is mostly consecutive, so this collapses thousands of
+// single-row `deleteDimension` requests into a handful of range deletes — well
+// under any batchUpdate payload/timeout limit. Ranges are returned highest-first
+// so applying them in order never shifts an index still queued for deletion
+// (deleting a higher range leaves all lower row numbers untouched).
+export function planRowDeletionRanges(sheetRowNumbers: number[]): RowRange[] {
+  const desc = planRowDeletions(sheetRowNumbers); // unique, descending, >= 2
+  const ranges: RowRange[] = [];
+  let i = 0;
+  while (i < desc.length) {
+    const hi = desc[i];
+    let lo = hi;
+    while (i + 1 < desc.length && desc[i + 1] === lo - 1) {
+      lo = desc[i + 1];
+      i++;
+    }
+    ranges.push({ startIndex: lo - 1, endIndex: hi });
+    i++;
+  }
+  return ranges;
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 268 64" width="268" height="64">
+  <title>AgenticOS wordmark</title>
+  <!-- Ordbillede: Fraunces (fallback Georgia). Prikken efter navnet er signaturen. -->
+  <text x="8" y="45" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="40" letter-spacing="-1" fill="#2E2A24">AgenticOS</text>
+  <circle cx="234" cy="41" r="5.5" fill="#5B8C72"/>
+</svg>

@@ -1,6 +1,4 @@
 import PageHeader from "@/components/shell/PageHeader";
-import Icon from "@/components/shell/Icon";
-import Link from "next/link";
 import FaseNote from "@/components/shell/FaseNote";
 import { aiStatus } from "@/lib/ai";
 import { vaultStatus } from "@/lib/vault";
@@ -57,14 +55,6 @@ export default async function ClaudePage() {
           ]}
         />
 
-        <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Icon name="Map" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Planen & historikken</div>
-            <div className="cc-dim" style={{ fontSize: 12.5 }}>Faser, beslutninger og guardrails ligger i Plan-historik.</div>
-          </div>
-          <Link href="/build-guide" className="cc-btn">Åbn Plan-historik</Link>
-        </section>
       </div>
     </div>
   );

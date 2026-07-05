@@ -2,6 +2,7 @@ import { getLeads } from "@/lib/sheets";
 import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
+import WarnBanner from "@/components/WarnBanner";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
 
 export const revalidate = 60;
@@ -39,21 +40,14 @@ export default async function LeadsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {!sheetsOk && (
-        <div
-          className="cc-card cc-card-pad"
-          role="status"
-          style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}
-        >
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
-          </span>
-        </div>
+        <WarnBanner>
+          Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
+        </WarnBanner>
       )}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 className="cc-h1">Lead Pipeline</h1>
-          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
             {[
               { label: "total", value: leads.length, color: "var(--text-muted)" },
               { label: "nye", value: byStatus.new, color: "var(--blue)" },
@@ -68,7 +62,7 @@ export default async function LeadsPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <VerifyAllButton />
           <ScrapeButton />
         </div>
@@ -82,7 +76,7 @@ export default async function LeadsPage() {
 
       <BulkEmailPanel />
 
-      <EmailDashboardClient leads={capped} />
+      <EmailDashboardClient leads={capped} sheetsOk={sheetsOk} />
     </div>
   );
 }

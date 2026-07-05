@@ -1,65 +1,75 @@
-import fs from "node:fs";
-import path from "node:path";
 import PageHeader from "@/components/shell/PageHeader";
-import FaseNote from "@/components/shell/FaseNote";
-import Icon from "@/components/shell/Icon";
-import MarkdownLite from "@/components/shell/MarkdownLite";
+import { hermesHealth, hermesCronList } from "@/lib/hermes";
+import { listVault, readVaultNote } from "@/lib/vault";
+import HermesClient from "./HermesClient";
 
 export const metadata = { title: "Hermes · Command Center" };
 export const dynamic = "force-dynamic";
 
-export default function HermesPage() {
-  const deployed = Boolean(process.env.HERMES_URL);
-  let setupDoc: string | null = null;
+// Latest dream note from the live vault (Hermes writes daily/<date>-dream.md
+// on the VPS clone and pushes; we read remote-first like the journal does).
+async function latestDream(): Promise<{ path: string; body: string } | null> {
   try {
-    setupDoc = fs.readFileSync(path.join(process.cwd(), "SETUP_HERMES.md"), "utf-8");
-  } catch {
-    setupDoc = null;
+    const { entries } = await listVault("daily", { preferRemote: true });
+    // Hermes names night-run files daily/<date>-<suffix>.md (fx -dream,
+    // -lead-analyse). Plain daily/<date>.md is the morning brief — skip it.
+    const dreams = entries
+      .map((e) => e.pathRel)
+      .filter((p) => /daily\/\d{4}-\d{2}-\d{2}-[^/]+\.md$/.test(p))
+      .sort()
+      .reverse();
+    if (!dreams.length) return null;
+    const note = await readVaultNote(dreams[0], { preferRemote: true });
+    if (!note?.body) return null;
+    return { path: dreams[0], body: note.body };
+  } catch (err) {
+    console.error("hermes: latestDream fejlede", err);
+    return null;
   }
+}
+
+export default async function HermesPage() {
+  const [health, jobs, dream] = await Promise.all([hermesHealth(), hermesCronList(), latestDream()]);
+
+  const statusLabel = !health.configured
+    ? "ikke konfigureret"
+    : health.reachable
+      ? "online"
+      : "offline";
+  const statusOn = health.configured && health.reachable;
 
   return (
     <div className="cc-fade">
       <PageHeader
         icon="Radio"
         title="Hermes"
-        subtitle="Den 24/7 baggrundsagent."
+        subtitle="Buur Agent — jeres 24/7 medstifter på VPS'en."
         action={
-          <span className="cc-chip" style={{ background: deployed ? "var(--accent-soft)" : "var(--bg-3)", color: deployed ? "var(--accent-ink)" : "var(--text-muted)" }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: deployed ? "var(--accent)" : "var(--border-strong)", display: "inline-block" }} />
-            {deployed ? "kører" : "klar til Railway-setup"}
+          <span
+            className="cc-chip"
+            style={{
+              background: statusOn ? "var(--accent-soft)" : "var(--bg-3)",
+              color: statusOn ? "var(--accent-ink)" : "var(--text-muted)",
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: statusOn ? "var(--accent)" : "var(--border-strong)",
+                display: "inline-block",
+              }}
+            />
+            {statusLabel}
           </span>
         }
       />
-
-      <div style={{ display: "grid", gap: 18 }}>
-        <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 13 }}>
-          <Icon name="Server" style={{ width: 20, height: 20, color: deployed ? "var(--accent-ink)" : "var(--text-dim)" }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{deployed ? "Hermes er deployet" : "Hermes er ikke deployet endnu"}</div>
-            <div className="cc-dim" style={{ fontSize: 12.5 }}>
-              {deployed ? process.env.HERMES_URL : "Skelettet ligger i hermes/. Følg trinene nedenfor på Railway — deploy er dit eget skridt."}
-            </div>
-          </div>
-        </section>
-
-        <FaseNote
-          phase="hermes/"
-          title="Hvad Hermes skal kunne"
-          points={[
-            "Telegram-styring: 'kør motoren' / 'hvad kræver mig?' — kun fra din egen chat.",
-            "Natlig vault-sweep der foreslår oprydning (ændrer aldrig kerne-filer selv).",
-            "Skriver til samme KnowledgeOS-vault som appen læser fra (mobil-noter dukker op her).",
-            "Kan ALDRIG sende mail uden din bekræftelse — samme guardrails som her.",
-          ]}
-        />
-
-        {setupDoc && (
-          <section className="cc-card cc-card-pad">
-            <div className="cc-kicker" style={{ marginBottom: 8 }}>SETUP_HERMES.md</div>
-            <MarkdownLite source={setupDoc} />
-          </section>
-        )}
-      </div>
+      <HermesClient
+        initialHealth={health}
+        initialJobs={jobs}
+        dream={dream}
+      />
     </div>
   );
 }

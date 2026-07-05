@@ -3,15 +3,19 @@
 > Auto-genereret fra src/lib/design-templates.ts. Rediger TS-filen, ikke denne.
 
 ## Typografi
-- Display: **Fraunces**
-- Brødtekst: **Plus Jakarta Sans**
-- Blødt serif-display + ren grotesk. Luft, ikke larm.
+- Display: **EB Garamond**
+- Brødtekst: **Inter Tight**
+- Urban antiqua-serif + condensed grotesk. Leaner and more masculine than Salon / Artec.
 
 ## Palet
-- bg `oklch(97% 0.012 70)`
-- ink `oklch(24% 0.02 60)`
-- accent `oklch(62% 0.09 25)` (ink: `oklch(46% 0.09 25)`)
-- Varm terrakotta-accent på creme.
+- bg `oklch(95% 0.01 75)`
+- ink `oklch(16% 0.04 245)`
+- accent `oklch(42% 0.06 75)` (ink: `oklch(32% 0.06 75)`)
+- Bone bg (#EFE8DA) + deep navy ink (#142235) — urban, not feminine.
+
+**Hex-palet (real site):** bg `#EFE8DA` · ink `#142235` · accent `#A37A4F`
+
+**Layout-arketype:** booking
 
 ## Sektion-rækkefølge
 1. hero m. booking-CTA

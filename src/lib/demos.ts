@@ -17,7 +17,8 @@ export const DEMO_SITES = {
   buurfoto: "https://buurfoto.vercel.app/",
   streetcut: "https://streetcut.vercel.app/",
   salonArtec: "https://salon-artec.vercel.app/Salon%20Artec.html",
-  vida: "https://vida-ten-gamma.vercel.app/",
+  // VIDA reference-projekt ligger på eget domæne siden 2026-06-17.
+  vida: "https://vida-klinik.dk/",
   vestfjends: "https://vestfjends.vercel.app/",
   midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
 } as const;
@@ -32,13 +33,14 @@ const D = {
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
   vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
+  midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
 // branch family it best represents. Read-only; the engine still routes via
 // pickDemoPair below.
 export interface DemoEntry extends Demo {
-  branch: "mad" | "skønhed" | "håndværk" | "foto" | "service";
+  branch: "mad" | "skønhed" | "håndværk" | "foto" | "service" | "professionel";
 }
 export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.underKlippen, branch: "mad" },
@@ -50,6 +52,7 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.ktvvs, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   { ...D.vestfjends, branch: "service" },
+  { ...D.midtadvokaterne, branch: "professionel" },
 ];
 
 const FOOD_INTL =
@@ -69,18 +72,31 @@ const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entr
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
 const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
+// Professionelle rådgivere (advokat/revisor/bogholder/mægler) → midtadvokaterne.
+// Bevidst UDEN fysioterapeut/tandlæge o.l. — de er medicinsk-ekskluderet ved send.
+const PROFESSIONAL = /advokat|jurist|jura|revisor|revision|bogholder|regnskab|ejendomsmægler|ejendomsmaegler|mægler|maegler|rådgiv|raadgiv|forsikring|finansiel/i;
 
-// Returns two distinct, branch-relevant demos. Photo is the one case that maps
-// to a single strong demo (we still return two by pairing with a neutral one).
-export function pickDemoPair(branch: string, name: string): [Demo, Demo] {
+// Returns the demos that best match the lead's branch. Most branches return
+// 2 demos; CLINIC (skønhedsklinik) returns a single demo (vida-klinik.dk) per
+// Lucas (2026-06-23) — lead-template shows a softer "Eksempel på en hjemmeside
+// for en kunde"-framing for single-demo leads. Photo also pairs with a neutral
+// one for visual variety.
+// Returns 1-2 demos for the branch. Per Lucas (2026-06-23): CLINIC (skønhedsklinik)
+// returns a SINGLE demo (vida-klinik.dk) — gentaget demo-pair lyder spam-agtigt.
+// Andre brancher får to demos for variation.
+export function pickDemos(branch: string, name: string): Demo[] {
   const t = `${name} ${branch}`.toLowerCase();
 
-  if (BARBER.test(t)) return [D.streetcut, D.salonArtec];
-  if (CLINIC.test(t)) return [D.vida, D.salonArtec];
-  if (BEAUTY.test(t)) return [D.salonArtec, D.vida];
+  // VIDA (reel kunde på eget domæne vida-klinik.dk) er altid hovedpunktet for
+  // skønhed/klinik. Andre demos er supplement — rækkefølgen i array er den
+  // rækkefølge de vises i mailen.
+  if (CLINIC.test(t)) return [D.vida];
+  if (BARBER.test(t)) return [D.salonArtec, D.streetcut];
+  if (BEAUTY.test(t)) return [D.vida, D.salonArtec];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
+  if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.denlillemaler, D.ktvvs];
   if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];

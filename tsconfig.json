@@ -23,6 +23,7 @@
       "@/*": ["./src/*"]
     }
   },
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "src/lib/**/*.bak"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",

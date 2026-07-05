@@ -26,8 +26,10 @@ import { draft_personal_message } from "./draft.ts";
 import { hardDrop } from "./qualify.ts";
 import { isBlacklisted } from "./tone-mixer.ts";
 import { composeColdEmail } from "./compose.ts";
-import { appendDrafts, newDraftId } from "./queue.ts";
+import { appendDrafts, newDraftId, readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
+import { pickHybridSender } from "./senders.ts";
+import type { SenderId } from "./senders.ts";
 import { compositeScore } from "./leads/composite-score.ts";
 import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
@@ -48,12 +50,19 @@ export interface EngineProgress {
   total: number; // target draft count (the limit)
   name?: string; // current lead
   reason?: string; // for "skip"
+  // Which Gmail identity the engine just assigned to this draft (hybrid
+  // allocation, see senders.ts). Populated on "collected" only.
+  sender?: SenderId;
 }
 
 export interface EngineOptions {
   limit?: number;
   dryRun?: boolean;
   leadName?: string;
+  // Restrict the daily-batch PICK to these exact lead names (lower-cased match).
+  // Used by /leadgen's "Lav udkast på valgte" — Lucas hand-picks rows in the feed
+  // and only those become drafts. Still email-channel only (the engine drafts emails).
+  allowNames?: string[];
   // When false, run the full loop but DO NOT write to the approval queue. Used by
   // the web "preview" action so Lucas can see what the engine would produce before
   // an explicit confirm. Defaults to true so the CLI keeps filling the queue.
@@ -134,7 +143,7 @@ function loadVoiceGuide(): string {
   try {
     return fs.readFileSync(path.join(process.cwd(), "src", "lib", "voice-guide.md"), "utf-8");
   } catch {
-    return "Voice: humble hobby salgselev, warm, no price/kr, no robot-CTA, 2 demos, end 'Mvh, Lucas'.";
+    return "Voice: humble hobby salgselev, warm, no price/kr, no robot-CTA, 2 demos. Do NOT sign — the pipeline appends the sender's signature.";
   }
 }
 
@@ -222,8 +231,13 @@ export function enrichedComposite(lead: Lead): number {
 
 // PICK — get candidate leads. Tries Sheets; falls back to fixture on any error.
 async function pickLeads(
-  leadName: string | undefined
+  leadName: string | undefined,
+  allowNames?: string[]
 ): Promise<{ leads: Array<ResearchLead & { id?: string }>; source: "sheets" | "fixture" }> {
+  // Exact-name allowlist (lower-cased) for the "draft selected" path.
+  const allow = allowNames && allowNames.length
+    ? new Set(allowNames.map((n) => n.trim().toLowerCase()))
+    : null;
   try {
     const { getLeads } = await import("./sheets.ts");
     const all = await getLeads();
@@ -250,13 +264,15 @@ async function pickLeads(
         // + email-channel only: the engine drafts EMAILS, so a lead must have a
         // usable email. No-email leads (Facebook → Messenger, phone → SMS) are
         // handled by their own channels and must never become an email draft.
-        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email")
+        .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email"
+          && (!allow || allow.has(lead.name.trim().toLowerCase())))
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
       // Spread the batch across branch families so it's a MIX, not all one
       // branch — the single best lead still leads, then picks rotate branches.
-      candidates = diversifyByFamily(candidates, (c) => c.branch);
+      // Skip the family spread for an explicit allowlist: Lucas already chose the rows.
+      if (!allow) candidates = diversifyByFamily(candidates, (c) => c.branch);
     }
     return { leads: candidates, source: "sheets" };
   } catch {
@@ -275,7 +291,7 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   const useLLM = !dryRun; // LLM lift only on real runs (and only if a key is set; see ai.ts)
   const voice = loadVoiceGuide();
 
-  const { leads, source } = await pickLeads(opts.leadName);
+  const { leads, source } = await pickLeads(opts.leadName, opts.allowNames);
 
   // Safe progress emitter — never let an observer throw break a run.
   const emit = (ev: EngineProgress) => {
@@ -291,6 +307,22 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
   let picked = 0;
 
   emit({ phase: "pick", idx: 0, total: limit });
+
+  // Hybrid sender allocation (2026-06-17). Read the existing queue ONCE so
+  // we know who's already busy in the last 14 days, then for each draft
+  // re-evaluate including the drafts we've already assigned in THIS run —
+  // that way a single engine run balances itself too (one big batch doesn't
+  // dump 100 % on whichever sender had the lower recent count).
+  const existingQueue = await readQueue().catch(() => [] as QueueDraft[]);
+  const senderHistory = (d: { sender?: SenderId | null; status: string; updatedAt: string }) => ({
+    sender: d.sender ?? null,
+    status: d.status,
+    updatedAt: d.updatedAt,
+  });
+  const historyForPick = (): Array<{ sender: SenderId | null; status: string; updatedAt: string }> => [
+    ...existingQueue.map(senderHistory),
+    ...collected.map(senderHistory),
+  ];
 
   for (const lead of leads) {
     if (collected.length >= limit) break;
@@ -352,6 +384,9 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
 
     // COLLECT.
     const now = new Date().toISOString();
+    // Hybrid allokering: hent den Gmail-identity der har sendt færrest i
+    // de sidste 14 dage. Ties → Lucas (defaultSender), se senders.ts.
+    const sender = pickHybridSender(historyForPick());
     collected.push({
       id: newDraftId(),
       leadId: (lead as { id?: string }).id ?? "",
@@ -369,8 +404,9 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
       updatedAt: now,
       comboId,
       openerKind,
+      sender,
     });
-    emit({ phase: "collected", idx: collected.length, total: limit, name: lead.name });
+    emit({ phase: "collected", idx: collected.length, total: limit, name: lead.name, sender });
   }
 
   emit({ phase: "done", idx: collected.length, total: limit });
