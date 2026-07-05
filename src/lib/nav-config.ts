@@ -59,6 +59,16 @@ export const NAV_TREE: NavNode[] = [
   },
   { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
   {
+    href: "/okonomi",
+    label: "Forretning",
+    icon: "CircleDollarSign",
+    children: [
+      { href: "/okonomi", label: "Økonomi", paletteLabel: "Forretning · Økonomi", icon: "Target", hint: "Forecast & mål" },
+      { href: "/salg", label: "Salg", icon: "Workflow", hint: "Vægtet deal-pipeline" },
+      { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening & trends" },
+    ],
+  },
+  {
     href: "/seo",
     label: "SEO",
     icon: "Search",
