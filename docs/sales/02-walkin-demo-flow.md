@@ -21,9 +21,10 @@ faktisk HAR forhåndsbygget den. Ellers sig:
 
 > Jeg kan vise dig på 30 sekunder hvordan jeres side kunne se ud.
 
-Og vis så et branche-match fra galleriet med ordene "det her er en jeg har
-bygget for en [branche] i nærheden, sådan kunne jeres blive". Bliv aldrig
-taget i at kalde en galleri-demo for deres egen.
+Og vis så et branche-match fra galleriet med ordene "sådan kan din hjemmeside
+se ud — det her er et eksempel vi selv har bygget til en [branche], sådan
+kunne jeres blive". Demoerne er fiktive eksempler, ikke kundecases — sig det
+ærligt, og bliv aldrig taget i at kalde en galleri-demo for deres egen.
 
 Hvis ejeren ikke er der:
 
@@ -57,26 +58,26 @@ Nu åbner du iPad'en. To veje, vælg efter situationen:
 
 Hvis nettet driller midt i det (hav linjen klar i mundhukommelsen):
 
-> Nettet driller lige herinde. Men her er en jeg har bygget til en lignende
-> [branche], så kan du se stilen, og så sender jeg jeres egen demo i dag.
+> Nettet driller lige herinde. Men her er et eksempel jeg selv har bygget til
+> en [branche], så kan du se stilen, og så sender jeg jeres egen demo i dag.
 
 **Vej 2, forhåndsbygget demo (hurtigst, hvis der ikke er tid til at bygge):**
 Vis en fra galleriet der matcher deres branche:
 
 - Salon/frisør: Salon Artec https://salon-artec.vercel.app/Salon%20Artec.html
-  eller Streetcut https://streetcut.vercel.app/ (barber)
-- Cafe/dansk mad: Under Klippen https://under-klippen.vercel.app/
-- Restaurant/takeaway: Zaytoon https://zaytoon-six.vercel.app/
+  eller Klip & Karl https://streetcut.vercel.app/ (barber)
+- Cafe/dansk mad: Restaurant Kornmark https://under-klippen.vercel.app/
+- Restaurant/takeaway: Restaurant Oliven https://zaytoon-six.vercel.app/
 - Håndværker/maler: Den Lille Maler https://denlillemaler.vercel.app/
-- VVS/blik: KT VVS https://ktvvs.vercel.app/
+- VVS/blik: Nordvang VVS https://ktvvs.vercel.app/
 - Foto/kreativ: Buur Foto https://buurfoto.vercel.app/
 - Klinik/skønhed: Vida https://vida-ten-gamma.vercel.app/
 
 Sig mens du ruller:
 
-> Sådan her kunne jeres se ud. Det her er en jeg har bygget for en [branche] i
-> nærheden. Læg mærke til hvor hurtigt den er på mobil, det er der de fleste af
-> jeres kunder kigger.
+> Sådan her kunne jeres se ud. Det her er et eksempel jeg selv har bygget til
+> en [branche]. Læg mærke til hvor hurtigt den er på mobil, det er der de
+> fleste af jeres kunder kigger.
 
 Peg på det konkrete: telefonnummer der ringer med et tryk, ruteknap til Google
 Maps, åbningstider, book-knap. Lad dem holde iPad'en selv hvis de vil.
@@ -181,11 +182,11 @@ mig, ikke et bureau, til en fair pris. Du ejer 100% af din side, ingen binding.
 **Se eksempler (kig på mobil):**
 - Vida Skønhedsklinik: vida-ten-gamma.vercel.app
 - Salon Artec: salon-artec.vercel.app
-- Streetcut: streetcut.vercel.app
-- Under Klippen: under-klippen.vercel.app
-- Zaytoon: zaytoon-six.vercel.app
+- Klip & Karl: streetcut.vercel.app
+- Restaurant Kornmark: under-klippen.vercel.app
+- Restaurant Oliven: zaytoon-six.vercel.app
 - Den Lille Maler: denlillemaler.vercel.app
-- KT VVS: ktvvs.vercel.app
+- Nordvang VVS: ktvvs.vercel.app
 - Buur Foto: buurfoto.vercel.app
 
 **Hvad det koster:**

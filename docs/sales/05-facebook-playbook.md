@@ -43,16 +43,16 @@ respekterer du det.
 
 ---
 
-## Opslag-template 1: før/efter demo-case
+## Opslag-template 1: demo-eksempler
 
-> Sjovt lille projekt jeg lige har lavet. En lokal [branche] havde en
-> gammel side der var langsom på mobil og svær at finde på Google.
+> Sjovt lille projekt. Jeg har bygget et par eksempel-hjemmesider for at
+> vise hvordan en lokal [branche]-side kan se ud: hurtig, tydelig, virker
+> på telefonen, med de ting kunderne rent faktisk leder efter
+> (åbningstider, kontakt, billeder).
 >
-> Jeg byggede en ny: hurtig, tydelig, virker på telefonen, med de ting
-> kunderne rent faktisk leder efter (åbningstider, kontakt, billeder).
->
-> I kan se den slags jeg laver her: https://under-klippen.vercel.app/
-> (café) og https://salon-artec.vercel.app/ (salon).
+> Det er eksempler jeg selv har bygget, ikke kundesider — sådan kan jeres
+> side se ud: https://under-klippen.vercel.app/ (café) og
+> https://salon-artec.vercel.app/ (salon).
 >
 > Skriver mest for at vise at det ikke behøver koste en formue eller tage
 > måneder. Spørg løs hvis nogen sidder og roder med deres egen side.
