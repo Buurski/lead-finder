@@ -1,4 +1,5 @@
 import PageHeader from "@/components/shell/PageHeader";
+import { SheetsFallback } from "@/components/finance/FinanceUI";
 import { getClients, getTargets, type Client, type Target } from "@/lib/sheets";
 import { quarterOf } from "@/lib/finance";
 import OkonomiClient from "./OkonomiClient";
@@ -37,21 +38,14 @@ export default async function OkonomiPage() {
   return (
     <div className="cc-fade">
       <PageHeader
-        icon="CircleDollarSign"
+        icon="Target"
         title="Økonomi"
         subtitle={sheetsOk
-          ? `${quarter.key} · afledt af ${clients.length} klient-rækker i Sheets`
+          ? `${quarter.key} · forecast & mål, afledt af ${clients.length} klient-rækker i Sheets`
           : "Kunne ikke nå Google Sheets — prøv at genindlæse."}
       />
 
-      {!sheetsOk ? (
-        <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
-          <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke hente klient-data lige nu. Tallene her er afledt af Sheets — genindlæs om et øjeblik.
-          </span>
-        </div>
-      ) : (
+      {!sheetsOk ? <SheetsFallback /> : (
         <OkonomiClient
           clients={clients}
           target={target}
