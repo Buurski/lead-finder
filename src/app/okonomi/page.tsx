@@ -1,6 +1,6 @@
 import PageHeader from "@/components/shell/PageHeader";
 import { SheetsFallback } from "@/components/finance/FinanceUI";
-import { getClients, getTargets, type Client, type Target } from "@/lib/sheets";
+import { getClients, getTargets, getSnapshots, type Client, type Target, type Snapshot } from "@/lib/sheets";
 import { quarterOf } from "@/lib/finance";
 import OkonomiClient from "./OkonomiClient";
 
@@ -25,9 +25,10 @@ export default async function OkonomiPage() {
 
   let clients: Client[] = [];
   let targets: Target[] = [];
+  let snapshots: Snapshot[] = [];
   let sheetsOk = true;
   try {
-    [clients, targets] = await Promise.all([getClients(), getTargets()]);
+    [clients, targets, snapshots] = await Promise.all([getClients(), getTargets(), getSnapshots()]);
   } catch {
     sheetsOk = false;
   }
@@ -41,7 +42,7 @@ export default async function OkonomiPage() {
         icon="Target"
         title="Økonomi"
         subtitle={sheetsOk
-          ? `${quarter.key} · forecast & mål, afledt af ${clients.length} klient-rækker i Sheets`
+          ? `${quarter.key} · MRR, omsætning & mål · afledt af ${clients.length} klient-rækker + ${snapshots.length} snapshots`
           : "Kunne ikke nå Google Sheets — prøv at genindlæse."}
       />
 
@@ -50,6 +51,7 @@ export default async function OkonomiPage() {
           clients={clients}
           target={target}
           targetIsDefault={targetIsDefault}
+          snapshots={snapshots}
           nowISO={nowISO}
         />
       )}
