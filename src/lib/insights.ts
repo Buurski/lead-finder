@@ -5,9 +5,12 @@
 // economics, expected-close, segments, hygiene); Phase 3 adds period deltas,
 // growth decomposition and the plain-Danish rules engine.
 
+import type { Target } from "./sheets.ts";
 import {
   type DealInput, type Period, type Stage,
   STAGE_PROB, STAGE_LABELS_DA, stageOf, isOpen, num, parseDate, inPeriod,
+  mrrRunRate, liveClientCount, weightedPipeline, setupBooked,
+  monthPeriodAt, quarterOf, dkk,
 } from "./finance.ts";
 
 // A deal counts as "won" (closed-won) once it reaches won and through delivery
@@ -140,4 +143,182 @@ export function overdueDeals(deals: DealInput[], now: Date): OverdueDeal[] {
     out.push({ name: d.name ?? "", stage: stageOf(d), label: STAGE_LABELS_DA[stageOf(d)], expectedClose: d.expectedClose ?? "", daysOverdue });
   }
   return out.sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
+// ==========================================================================
+// Phase 3 — Indsigter: period comparison, growth decomposition, rules engine.
+// All period metrics are attributable from won_date / lost_date, so they're
+// comparable across periods without snapshots. Point-in-time ratios (ARPA,
+// coverage) get their DELTA from snapshots when history exists; the value now.
+// ==========================================================================
+
+// Average revenue per account = current MRR run-rate ÷ live clients.
+export function arpa(deals: DealInput[]): number {
+  const live = liveClientCount(deals);
+  return live > 0 ? mrrRunRate(deals) / live : 0;
+}
+
+export interface PeriodStats {
+  revenue: number;       // setup_fee booked (won_date in period) — the period-attributable one-off
+  newClients: number;    // deals won in period
+  avgDealValue: number;  // avg (setup + 12*mrr) over deals won in period
+  mrrAdded: number;      // Σ mrr of deals won in period
+  churnedMrr: number;    // Σ mrr of deals lost in period (needs lost_date)
+  netNewMrr: number;     // mrrAdded − churnedMrr
+  closedWon: number;
+  closedLost: number;
+  winRate: number | null; // among deals CLOSED in period
+}
+
+export function periodStats(deals: DealInput[], p: Period): PeriodStats {
+  const wonIn = deals.filter((d) => isWon(d) && inPeriod(d.wonDate, p));
+  const lostIn = deals.filter((d) => isLost(d) && inPeriod(d.lostDate, p));
+  const mrrAdded = wonIn.reduce((s, d) => s + num(d.monthlyFee), 0);
+  const churnedMrr = lostIn.reduce((s, d) => s + num(d.monthlyFee), 0);
+  const closedWon = wonIn.length, closedLost = lostIn.length;
+  return {
+    revenue: setupBooked(deals, p),
+    newClients: closedWon,
+    avgDealValue: closedWon ? wonIn.reduce((s, d) => s + dealValue(d), 0) / closedWon : 0,
+    mrrAdded,
+    churnedMrr,
+    netNewMrr: mrrAdded - churnedMrr,
+    closedWon,
+    closedLost,
+    winRate: closedWon + closedLost > 0 ? closedWon / (closedWon + closedLost) : null,
+  };
+}
+
+export interface Delta { abs: number; pct: number | null; }
+// pct is null when the baseline is 0 (avoid Infinity / a meaningless %).
+export function delta(current: number, previous: number): Delta {
+  return { abs: current - previous, pct: previous !== 0 ? (current - previous) / previous : null };
+}
+
+export interface PeriodComparison {
+  current: PeriodStats;
+  previous: PeriodStats;
+  deltas: Record<keyof PeriodStats, Delta>;
+}
+export function comparePeriods(deals: DealInput[], current: Period, previous: Period): PeriodComparison {
+  const cur = periodStats(deals, current);
+  const prev = periodStats(deals, previous);
+  const keys = Object.keys(cur) as (keyof PeriodStats)[];
+  const deltas = {} as Record<keyof PeriodStats, Delta>;
+  for (const k of keys) deltas[k] = delta(Number(cur[k] ?? 0), Number(prev[k] ?? 0));
+  return { current: cur, previous: prev, deltas };
+}
+
+// Growth decomposition: revenue Δ = volume effect + value effect, exactly.
+//   volume = (n1 − n0) · v0     value = n1 · (v1 − v0)     where v = rev / n
+// The two always sum to rev1 − rev0 (v defined as 0 when n = 0).
+export interface Decomposition { totalDelta: number; volumeEffect: number; valueEffect: number; n0: number; n1: number; v0: number; v1: number; }
+export function decomposeRevenue(current: PeriodStats, previous: PeriodStats): Decomposition {
+  const n1 = current.newClients, n0 = previous.newClients;
+  const rev1 = current.revenue, rev0 = previous.revenue;
+  const v1 = n1 > 0 ? rev1 / n1 : 0;
+  const v0 = n0 > 0 ? rev0 / n0 : 0;
+  return {
+    totalDelta: rev1 - rev0,
+    volumeEffect: (n1 - n0) * v0,
+    valueEffect: n1 * (v1 - v0),
+    n0, n1, v0, v1,
+  };
+}
+
+// Weighted pipeline ÷ what's still needed to hit the quarter target (remaining
+// setup + 12× remaining new-MRR). Returns null when the target is already met
+// (nothing left to cover) or unknown, so the UI can say "mål nået" vs a number.
+export function pipelineCoverage(deals: DealInput[], target: Target | null, now: Date): number | null {
+  if (!target) return null;
+  const q = quarterOf(now);
+  const remainingSetup = Math.max(target.target_setup_revenue - setupBooked(deals, q), 0);
+  const mrrAddedQ = deals.filter((d) => isWon(d) && inPeriod(d.wonDate, q)).reduce((s, d) => s + num(d.monthlyFee), 0);
+  const remainingMrr = Math.max(target.target_mrr_added - mrrAddedQ, 0);
+  const remainingValue = remainingSetup + 12 * remainingMrr;
+  if (remainingValue <= 0) return null; // target met
+  return weightedPipeline(deals).total / remainingValue;
+}
+
+// Monthly won-deal series (from won_date) for the trend charts — reliable
+// without snapshots. revenue = setup booked that month; avgDealValue = avg
+// (setup+12*mrr) of deals won that month.
+export interface MonthSales { key: string; label: string; wonCount: number; revenue: number; avgDealValue: number; }
+const MONTHS_DA = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+export function monthlySalesSeries(deals: DealInput[], now: Date, months = 6): MonthSales[] {
+  const out: MonthSales[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const p = monthPeriodAt(d.getFullYear(), d.getMonth());
+    const wonIn = deals.filter((x) => isWon(x) && inPeriod(x.wonDate, p));
+    out.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: MONTHS_DA[d.getMonth()],
+      wonCount: wonIn.length,
+      revenue: setupBooked(deals, p),
+      avgDealValue: wonIn.length ? wonIn.reduce((s, x) => s + dealValue(x), 0) / wonIn.length : 0,
+    });
+  }
+  return out;
+}
+
+// ---- rules engine (deterministic plain-Danish insights) -------------------
+// Every sentence's numbers come from the metrics passed in — nothing invented.
+// LLM phrasing can be layered on later via the existing "Spørg Claude" path.
+
+export type Tone = "positive" | "neutral" | "warning";
+export interface Insight { tone: Tone; icon: string; text: string; }
+
+export interface InsightInput {
+  periodLabel: string;       // "måned" | "kvartal" | "år"
+  comparison: PeriodComparison;
+  pipelineCoverage: number | null;
+  overdueCount: number;
+  hasHistory: boolean;
+}
+
+const pctText = (p: number) => `${Math.round(Math.abs(p) * 100)}%`;
+
+export function keyInsights(input: InsightInput): Insight[] {
+  const { periodLabel: L, comparison: c, pipelineCoverage: cov, overdueCount } = input;
+  const cur = c.current, prev = c.previous;
+  const out: Insight[] = [];
+
+  // Revenue trend
+  const rev = c.deltas.revenue;
+  if (rev.pct != null && rev.pct >= 0.1) out.push({ tone: "positive", icon: "TrendingUp", text: `Omsætningen steg ${pctText(rev.pct)} til ${dkk(cur.revenue)} denne ${L}.` });
+  else if (rev.pct != null && rev.pct <= -0.1) out.push({ tone: "warning", icon: "TrendingDown", text: `Omsætningen faldt ${pctText(rev.pct)} til ${dkk(cur.revenue)} denne ${L}.` });
+
+  // Churn / net-new MRR
+  if (cur.churnedMrr > 0) out.push({ tone: "warning", icon: "AlertTriangle", text: `Du mistede ${dkk(cur.churnedMrr)}/md i churn (${cur.closedLost} kunde${cur.closedLost === 1 ? "" : "r"}) — netto ny MRR ${dkk(cur.netNewMrr)}/md.` });
+  else if (cur.mrrAdded > 0) out.push({ tone: "positive", icon: "Sparkles", text: `Ingen churn denne ${L} — ${dkk(cur.mrrAdded)}/md ny MRR tilføjet.` });
+
+  // Win rate
+  if (cur.winRate != null && cur.winRate >= 0.5) out.push({ tone: "positive", icon: "Trophy", text: `Stærk win rate: ${pctText(cur.winRate)} (${cur.closedWon}/${cur.closedWon + cur.closedLost} lukkede).` });
+  else if (cur.winRate != null && cur.winRate < 0.3 && cur.closedWon + cur.closedLost >= 3) out.push({ tone: "warning", icon: "AlertTriangle", text: `Lav win rate: ${pctText(cur.winRate)} — kig på hvad de tabte deals havde til fælles.` });
+
+  // Pipeline coverage
+  if (cov != null && cov < 1) out.push({ tone: "warning", icon: "Filter", text: `Pipelinen dækker kun ${pctText(cov)} af det resterende kvartalsmål — fyld toppen af tragten.` });
+  else if (cov != null && cov >= 1.5) out.push({ tone: "positive", icon: "ShieldCheck", text: `Solid pipeline-dækning (${cov.toFixed(1)}×) af resten af kvartalet.` });
+
+  // Avg deal value
+  const adv = c.deltas.avgDealValue;
+  if (adv.pct != null && adv.pct >= 0.1) out.push({ tone: "positive", icon: "TrendingUp", text: `Gns. dealværdi op ${pctText(adv.pct)} til ${dkk(cur.avgDealValue)}.` });
+  else if (adv.pct != null && adv.pct <= -0.15) out.push({ tone: "neutral", icon: "TrendingDown", text: `Gns. dealværdi ned ${pctText(adv.pct)} til ${dkk(cur.avgDealValue)}.` });
+
+  // No new clients
+  if (cur.newClients === 0 && prev.newClients > 0) out.push({ tone: "warning", icon: "AlertTriangle", text: `Ingen nye kunder lukket denne ${L} (sidste ${L}: ${prev.newClients}).` });
+
+  // Overdue hygiene
+  if (overdueCount > 0) out.push({ tone: "warning", icon: "Clock", text: `${overdueCount} deal${overdueCount === 1 ? "" : "s"} er forbi den forventede lukkedato — følg op.` });
+
+  // Order: warnings, positive, neutral. Cap at 6.
+  const rank: Record<Tone, number> = { warning: 0, positive: 1, neutral: 2 };
+  const sorted = out.sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 6);
+
+  // Sparse-history footnote when there's little to say.
+  if (!input.hasHistory && sorted.length < 3) {
+    sorted.push({ tone: "neutral", icon: "Hourglass", text: "Bygger historik — indsigterne bliver skarpere efterhånden som de daglige snapshots samler sig." });
+  }
+  return sorted;
 }
