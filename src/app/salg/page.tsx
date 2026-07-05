@@ -7,6 +7,7 @@ export const metadata = { title: "Salg · Command Center" };
 export const dynamic = "force-dynamic";
 
 export default async function SalgPage() {
+  const nowISO = new Date().toISOString();
   let clients: Client[] = [];
   let sheetsOk = true;
   try {
@@ -25,7 +26,7 @@ export default async function SalgPage() {
           : "Kunne ikke nå Google Sheets — prøv at genindlæse."}
       />
 
-      {!sheetsOk ? <SheetsFallback /> : <SalgClient clients={clients} />}
+      {!sheetsOk ? <SheetsFallback /> : <SalgClient clients={clients} nowISO={nowISO} />}
     </div>
   );
 }

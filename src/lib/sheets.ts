@@ -84,13 +84,14 @@ export interface Client {
   source: string;        // column L — outreach|inbound|referral
   owner: string;         // column M — charlie|lucas
   package: string;       // column N — basis|standard|custom
+  lostDate: string;      // column O — YYYY-MM-DD, stamped when stage first hits lost (for churn/win-rate)
 }
 
 // Bumped from A2:U to A2:V to include the new skipReason column. Existing
 // rows that haven't been touched will just return undefined → "" via the ??
 // fallback below, so this is backwards-compatible.
 const LEADS_RANGE = "Leads!A2:V";
-const CLIENTS_RANGE = "Clients!A2:N";
+const CLIENTS_RANGE = "Clients!A2:O";
 
 export async function getLeads(): Promise<Lead[]> {
   const sheets = getSheetsClient();
@@ -167,6 +168,7 @@ export async function getClients(): Promise<Client[]> {
     source: row[11] ?? "",
     owner: row[12] ?? "",
     package: row[13] ?? "",
+    lostDate: row[14] ?? "",
   }));
 }
 
@@ -252,10 +254,11 @@ export interface ClientDealPatch {
   source?: string;     // col L
   owner?: string;      // col M
   package?: string;    // col N
+  lostDate?: string;   // col O
 }
 const DEAL_COLUMN: Record<keyof ClientDealPatch, string> = {
   monthlyFee: "G", setupFee: "H", stage: "I", wonDate: "J",
-  expectedClose: "K", source: "L", owner: "M", package: "N",
+  expectedClose: "K", source: "L", owner: "M", package: "N", lostDate: "O",
 };
 
 export async function updateClientDeal(clientId: string, patch: ClientDealPatch): Promise<void> {
@@ -362,6 +365,110 @@ export async function upsertTarget(t: Target): Promise<void> {
       requestBody: { values },
     });
   }
+}
+
+// ---- Snapshots (daily history) --------------------------------------------
+// Clients is current-state only, so month-vs-month STATE metrics (MRR growth,
+// churn, live-count trend) can't be reconstructed after the fact. A daily
+// snapshot row fixes that. Stored in a dedicated "Snapshots" tab (one row/day),
+// same auto-create pattern as Targets. Written by /api/cron/snapshot.
+
+export interface Snapshot {
+  date: string;                   // YYYY-MM-DD (Copenhagen day)
+  mrr_runrate: number;
+  open_pipeline_weighted: number;
+  open_deal_count: number;
+  clients_live: number;
+  new_clients_mtd: number;
+  setup_revenue_mtd: number;
+  leads_total: number;
+}
+
+const SNAPSHOTS_RANGE = "Snapshots!A2:H";
+const SNAPSHOT_HEADER = [
+  "date", "mrr_runrate", "open_pipeline_weighted", "open_deal_count",
+  "clients_live", "new_clients_mtd", "setup_revenue_mtd", "leads_total",
+];
+
+function toSnapshot(r: string[]): Snapshot {
+  const n = (v: string | undefined) => Number(v) || 0;
+  return {
+    date: r[0] ?? "",
+    mrr_runrate: n(r[1]),
+    open_pipeline_weighted: n(r[2]),
+    open_deal_count: n(r[3]),
+    clients_live: n(r[4]),
+    new_clients_mtd: n(r[5]),
+    setup_revenue_mtd: n(r[6]),
+    leads_total: n(r[7]),
+  };
+}
+
+// Read every snapshot, oldest-first. Tolerates a missing tab (returns []) so
+// charts degrade to a quiet "bygger historik" note instead of crashing.
+export async function getSnapshots(): Promise<Snapshot[]> {
+  const sheets = getSheetsClient();
+  try {
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: SNAPSHOTS_RANGE });
+    return (res.data.values ?? [])
+      .filter((r) => (r[0] ?? "").trim())
+      .map((r) => toSnapshot(r as string[]))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return []; // tab doesn't exist yet
+  }
+}
+
+async function ensureSnapshotsTab(): Promise<void> {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: "sheets.properties(title)" });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === "Snapshots");
+  if (exists) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title: "Snapshots" } } }] },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Snapshots!A1:H1",
+    valueInputOption: "RAW",
+    requestBody: { values: [SNAPSHOT_HEADER] },
+  });
+}
+
+// Idempotent by date: updates today's row if it already exists, else appends —
+// so re-running the cron the same day refreshes the numbers rather than
+// creating a duplicate. Guarantees exactly one row per day. Creates the tab
+// on first write. Returns whether a new row was appended (vs updated).
+export async function appendSnapshot(s: Snapshot): Promise<{ appended: boolean }> {
+  const date = s.date.trim();
+  if (!date) throw new Error("snapshot date required");
+  await ensureSnapshotsTab();
+  const sheets = getSheetsClient();
+  const values = [[
+    date, s.mrr_runrate, s.open_pipeline_weighted, s.open_deal_count,
+    s.clients_live, s.new_clients_mtd, s.setup_revenue_mtd, s.leads_total,
+  ]];
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: SNAPSHOTS_RANGE });
+  const rows = res.data.values ?? [];
+  const idx = rows.findIndex((r) => (r[0] ?? "").trim() === date);
+  if (idx === -1) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "Snapshots!A:H",
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+    return { appended: true };
+  }
+  const sheetRow = idx + 2; // SNAPSHOTS_RANGE starts at row 2
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `Snapshots!A${sheetRow}:H${sheetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values },
+  });
+  return { appended: false };
 }
 
 export async function updateClientFolder(

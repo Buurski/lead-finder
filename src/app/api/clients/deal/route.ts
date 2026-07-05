@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { updateClientDeal, type ClientDealPatch } from "@/lib/sheets";
 import { normalizeFeeInput } from "@/lib/money";
 
-// POST { id, stage?, monthlyFee?, setupFee?, wonDate?, expectedClose?, source?,
-//        owner?, package?, markWon? } — deal/forecast update for one client.
-// Same store + write path as /api/clients/fees (Google Sheets Clients row); only
-// the supplied fields are written. `markWon: true` is the one-click "vundet"
-// action: it sets stage=won and stamps wonDate=today (unless a wonDate is given).
+// POST { id, stage?, monthlyFee?, setupFee?, wonDate?, expectedClose?, lostDate?,
+//        source?, owner?, package?, markWon?, markLost? } — deal/forecast update
+// for one client. Same store + write path as /api/clients/fees (Google Sheets
+// Clients row); only the supplied fields are written. `markWon: true` sets
+// stage=won + stamps wonDate=today; `markLost: true` sets stage=lost + stamps
+// lostDate=today (both unless the corresponding date is given explicitly).
 export const dynamic = "force-dynamic";
 
 const VALID_STAGES = new Set([
@@ -38,10 +39,16 @@ export async function POST(req: Request) {
 
     let stage: string | undefined = body.stage !== undefined ? String(body.stage).trim().toLowerCase() : undefined;
 
-    // markWon: one-click convenience. Sets stage=won + stamps today's date.
+    // markWon / markLost: one-click convenience. Set the stage + stamp today's
+    // date on the matching column (won_date / lost_date) unless one was passed.
+    const today = new Date().toISOString().slice(0, 10);
     if (body.markWon) {
       stage = "won";
-      if (body.wonDate === undefined) patch.wonDate = new Date().toISOString().slice(0, 10);
+      if (body.wonDate === undefined) patch.wonDate = today;
+    }
+    if (body.markLost) {
+      stage = "lost";
+      if (body.lostDate === undefined) patch.lostDate = today;
     }
 
     if (stage !== undefined) {
@@ -49,7 +56,7 @@ export async function POST(req: Request) {
       patch.stage = stage;
     }
 
-    for (const key of ["wonDate", "expectedClose"] as const) {
+    for (const key of ["wonDate", "expectedClose", "lostDate"] as const) {
       if (body[key] !== undefined) {
         const v = String(body[key]).trim();
         if (v !== "" && !DATE_RE.test(v)) return NextResponse.json({ error: "bad_date", message: `${key} must be YYYY-MM-DD` }, { status: 400 });

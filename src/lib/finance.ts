@@ -21,6 +21,7 @@ export interface DealInput {
   websiteStatus?: string;
   wonDate?: string;       // YYYY-MM-DD
   expectedClose?: string; // YYYY-MM-DD
+  lostDate?: string;      // YYYY-MM-DD
   owner?: string;
   source?: string;
   package?: string;
@@ -101,7 +102,7 @@ export const isOpen = (d: DealInput): boolean => stageOf(d) in STAGE_PROB;
 
 export interface Period { start: Date; end: Date; }
 
-function parseDate(s: string | undefined): Date | null {
+export function parseDate(s: string | undefined): Date | null {
   if (!s) return null;
   const m = String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
@@ -109,7 +110,7 @@ function parseDate(s: string | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function inPeriod(s: string | undefined, p: Period): boolean {
+export function inPeriod(s: string | undefined, p: Period): boolean {
   const d = parseDate(s);
   if (!d) return false;
   return d >= startOfDay(p.start) && d <= endOfDay(p.end);
@@ -180,21 +181,34 @@ export function projectedEoqMrr(deals: DealInput[], quarterEnd: Date): number {
 
 export const annualised = (runRate: number): number => runRate * 12;
 
+// Setup fee booked (won_date in period). The single source of truth for
+// realized one-off revenue, reused by periodRevenue, bookedPerMonth, snapshots.
+export function setupBooked(deals: DealInput[], p: Period): number {
+  return deals.reduce((s, d) => (inPeriod(d.wonDate, p) ? s + setupOf(d) : s), 0);
+}
+
+// Number of currently-recurring clients (same stage set as MRR run-rate).
+export function liveClientCount(deals: DealInput[]): number {
+  return deals.reduce((n, d) => (RUN_RATE_STAGES.has(stageOf(d)) ? n + 1 : n), 0);
+}
+
 // Revenue in a period = setup_fee won in the period + current MRR run-rate.
 export function periodRevenue(deals: DealInput[], p: Period): number {
-  const setup = deals.reduce((s, d) => (inPeriod(d.wonDate, p) ? s + setupOf(d) : s), 0);
-  return setup + mrrRunRate(deals);
+  return setupBooked(deals, p) + mrrRunRate(deals);
 }
 
 // Setup booked per month for the last `months` months (the trend bars).
 export interface MonthBar { key: string; label: string; value: number; }
 const MONTHS_DA = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+export function monthPeriodAt(year: number, month: number): Period {
+  const d = new Date(year, month, 1);
+  return { start: startOfDay(d), end: endOfDay(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
+}
 export function bookedPerMonth(deals: DealInput[], now: Date, months = 6): MonthBar[] {
   const out: MonthBar[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const p: Period = { start: startOfDay(d), end: endOfDay(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
-    const value = deals.reduce((s, x) => (inPeriod(x.wonDate, p) ? s + setupOf(x) : s), 0);
+    const value = setupBooked(deals, monthPeriodAt(d.getFullYear(), d.getMonth()));
     out.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: MONTHS_DA[d.getMonth()], value });
   }
   return out;
