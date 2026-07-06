@@ -396,3 +396,33 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .cc-sidebar[data-open="true"] { transform: none; box-shadow: 0 0 60px oklch(30% 0.03 70 / 0.22); }
   .cc-content { padding: 18px; }
 }
+
+/* --- Forretning (finance suite) — presentational helpers -------------- */
+/* CSS-only tooltip: <el class="cc-tip" data-tip="…">. Kept dependency- and
+   JS-free so FinanceUI stays hook-free / server-safe. */
+.cc-tip { position: relative; }
+.cc-tip:hover::after, .cc-tip:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  font-size: 11px; font-weight: 600; letter-spacing: 0;
+  padding: 4px 9px; border-radius: 7px; white-space: nowrap;
+  pointer-events: none; z-index: 30;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Gentle draw-in for chart bars (respects the global reduced-motion rule). */
+@keyframes cc-grow-y { from { transform: scaleY(0); } }
+.cc-grow-y { transform-origin: bottom; animation: cc-grow-y 500ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes cc-grow-x { from { transform: scaleX(0); } }
+.cc-grow-x { transform-origin: left; animation: cc-grow-x 500ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Editable numbers: quiet by default, obvious on hover. */
+.cc-editable { border-radius: 6px; padding: 1px 4px; margin: -1px -4px; transition: background 150ms ease; }
+.cc-editable:hover, .cc-editable:focus-visible { background: var(--accent-soft); }
+.cc-editable .cc-editable-pen { opacity: 0.35; transition: opacity 150ms ease; }
+.cc-editable:hover .cc-editable-pen, .cc-editable:focus-visible .cc-editable-pen { opacity: 1; }
+
+/* Scannable list rows (deal rows, alert rows). */
+.cc-hoverrow { transition: background 150ms ease, border-color 150ms ease; }
+.cc-hoverrow:hover { background: var(--surface-2); }
