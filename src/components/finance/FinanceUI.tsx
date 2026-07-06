@@ -308,9 +308,13 @@ export function Funnel({ steps }: { steps: FunnelStepView[] }) {
     <div style={{ display: "grid", gap: 2 }}>
       {steps.map((s, i) => {
         const frac = s.count > 0 ? Math.max(s.count / max, 0.16) : 0.1;
+        // Conversion chip only once there's actual flow: hidden while BOTH
+        // adjacent stages are empty, so a fresh pipeline isn't littered with
+        // "↓ 0%" noise between blank bands.
+        const showRate = i > 0 && (steps[i - 1].count > 0 || s.count > 0);
         return (
           <div key={s.label}>
-            {i > 0 && (
+            {showRate && (
               <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 110px", alignItems: "center" }} aria-hidden>
                 <span />
                 <span style={{ justifySelf: "center", fontSize: 10, fontWeight: 700, color: DIM, padding: "1px 0" }}>
