@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, XCircle, ShieldCheck, Clock } from "lucide-react";
+import { Trophy, XCircle, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import type { Client } from "@/lib/sheets";
 import {
   weightedPipeline, dkk, stageOf, isOpen, STAGE_LABELS_DA,
@@ -28,6 +28,10 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
   const now = new Date(nowISO);
   const [deals, setDeals] = useState<Client[]>(clientsProp);
   const [banner, setBanner] = useState("");
+  // Deal-ids with a write in flight. Lives HERE (not in DealRow) because a fee
+  // save's optimistic update changes the row's key → remount → local state
+  // would lose the pending indicator mid-write.
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   // Reconcile local state when fresh server props arrive after a router.refresh()
   // (render-phase sync, not an effect — avoids clobbering a pending edit).
@@ -39,18 +43,23 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
 
   async function saveDeal(id: string, patch: Record<string, unknown>, optimistic: Partial<Client>) {
     const prev = deals;
+    setPendingIds((s) => new Set(s).add(id));
     setDeals((ds) => ds.map((d) => (d.id === id ? { ...d, ...optimistic } : d)));
     setBanner("");
-    const res = await fetch("/api/clients/deal", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    });
-    if (!res.ok) {
-      setDeals(prev);
-      setBanner("Kunne ikke gemme ændringen — prøv igen.");
-      throw new Error("deal save failed");
+    try {
+      const res = await fetch("/api/clients/deal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      if (!res.ok) {
+        setDeals(prev);
+        setBanner("Kunne ikke gemme ændringen — prøv igen.");
+        throw new Error("deal save failed");
+      }
+      router.refresh();
+    } finally {
+      setPendingIds((s) => { const n = new Set(s); n.delete(id); return n; });
     }
-    router.refresh();
   }
 
   const pipeline = weightedPipeline(deals);
@@ -111,7 +120,7 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
           {openDeals.length === 0 ? (
             <p style={{ fontSize: 12.5, color: DIM }}>Ingen åbne deals lige nu.</p>
           ) : openDeals.map((d) => (
-            <DealRow key={`${d.id}:${d.monthlyFee}:${d.setupFee}`} deal={d} onSave={saveDeal} />
+            <DealRow key={`${d.id}:${d.monthlyFee}:${d.setupFee}`} deal={d} onSave={saveDeal} saving={pendingIds.has(d.id)} />
           ))}
         </div>
       </section>
@@ -226,32 +235,44 @@ function SegmentTable({ title, segments, emptyNote }: { title: string; segments:
   );
 }
 
-function DealRow({ deal, onSave }: { deal: Client; onSave: (id: string, patch: Record<string, unknown>, optimistic: Partial<Client>) => Promise<void> }) {
+// Which write is in flight — drives the per-control spinner so the 3–4s
+// Sheets round-trip reads as "gemmer…" instead of a frozen row.
+type DealAction = "" | "stage" | "mrr" | "setup" | "won" | "lost";
+
+function DealRow({ deal, onSave, saving }: { deal: Client; onSave: (id: string, patch: Record<string, unknown>, optimistic: Partial<Client>) => Promise<void>; saving: boolean }) {
   const [mrr, setMrr] = useState(deal.monthlyFee || "");
   const [setup, setSetup] = useState(deal.setupFee || "");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<DealAction>("");
 
-  async function run(patch: Record<string, unknown>, optimistic: Partial<Client>) {
-    setBusy(true);
-    try { await onSave(deal.id, patch, optimistic); } catch { /* banner shown by parent */ } finally { setBusy(false); }
+  async function run(action: DealAction, patch: Record<string, unknown>, optimistic: Partial<Client>) {
+    setBusy(action);
+    try { await onSave(deal.id, patch, optimistic); } catch { /* banner shown by parent */ } finally { setBusy(""); }
   }
 
+  // `saving` (parent, keyed by id) survives the remount a fee edit triggers;
+  // `busy` adds which control is writing while the row stays mounted.
+  const isBusy = busy !== "" || saving;
   const today = new Date().toISOString().slice(0, 10);
   const stage = stageOf(deal);
   const feeStyle: React.CSSProperties = { width: 84, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 12.5, fontVariantNumeric: "tabular-nums lining-nums" };
-  const feeLabel: React.CSSProperties = { fontSize: 10, color: DIM, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" };
+  const feeLabel = (saving: boolean): React.CSSProperties => ({ fontSize: 10, color: saving ? "var(--accent-ink)" : DIM, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 4 });
 
   return (
-    <div className="cc-hoverrow" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 13px", boxShadow: "var(--shadow-card)", opacity: busy ? 0.7 : 1, transition: "opacity 150ms ease" }}>
+    <div className="cc-hoverrow" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 13px", boxShadow: "var(--shadow-card)" }}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 150, flex: "1 1 150px" }}>
         <span style={{ fontSize: 13.5, fontWeight: 600, fontFamily: "var(--font-display)" }}>{deal.name}</span>
         <StagePill stage={stage} />
+        {isBusy && (
+          <span aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, color: "var(--accent-ink)" }}>
+            <Loader2 size={11} className="cc-spin" aria-hidden /> gemmer…
+          </span>
+        )}
       </span>
 
       <label style={{ display: "grid", gap: 2 }}>
-        <span style={feeLabel}>Stadie</span>
-        <select value={stage} disabled={busy}
-          onChange={(e) => run({ stage: e.target.value }, { stage: e.target.value })}
+        <span style={feeLabel(busy === "stage")}>Stadie{busy === "stage" && <Loader2 size={9} className="cc-spin" aria-hidden />}</span>
+        <select value={stage} disabled={isBusy}
+          onChange={(e) => run("stage", { stage: e.target.value }, { stage: e.target.value })}
           aria-label={`Stadie for ${deal.name}`}
           className="cc-focus"
           style={{ padding: "6px 8px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 12.5, cursor: "pointer" }}>
@@ -260,30 +281,32 @@ function DealRow({ deal, onSave }: { deal: Client; onSave: (id: string, patch: R
       </label>
 
       <label style={{ display: "grid", gap: 2 }}>
-        <span style={feeLabel}>kr/md</span>
-        <input type="number" inputMode="numeric" value={mrr} placeholder="0" disabled={busy}
+        <span style={feeLabel(busy === "mrr")}>kr/md{busy === "mrr" && <Loader2 size={9} className="cc-spin" aria-hidden />}</span>
+        <input type="number" inputMode="numeric" value={mrr} placeholder="0" disabled={isBusy}
           onChange={(e) => setMrr(e.target.value)}
-          onBlur={() => { if (mrr !== (deal.monthlyFee || "")) run({ monthlyFee: mrr }, { monthlyFee: mrr }); }}
+          onBlur={() => { if (mrr !== (deal.monthlyFee || "")) run("mrr", { monthlyFee: mrr }, { monthlyFee: mrr }); }}
           className="cc-focus" style={feeStyle} />
       </label>
       <label style={{ display: "grid", gap: 2 }}>
-        <span style={feeLabel}>Setup kr</span>
-        <input type="number" inputMode="numeric" value={setup} placeholder="0" disabled={busy}
+        <span style={feeLabel(busy === "setup")}>Setup kr{busy === "setup" && <Loader2 size={9} className="cc-spin" aria-hidden />}</span>
+        <input type="number" inputMode="numeric" value={setup} placeholder="0" disabled={isBusy}
           onChange={(e) => setSetup(e.target.value)}
-          onBlur={() => { if (setup !== (deal.setupFee || "")) run({ setupFee: setup }, { setupFee: setup }); }}
+          onBlur={() => { if (setup !== (deal.setupFee || "")) run("setup", { setupFee: setup }, { setupFee: setup }); }}
           className="cc-focus" style={feeStyle} />
       </label>
 
       <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignSelf: "flex-end" }}>
-        <button className="cc-btn cc-btn-accent cc-focus" style={{ height: 32 }} disabled={busy}
-          onClick={() => run({ markWon: true }, { stage: "won", wonDate: today })}
+        <button className="cc-btn cc-btn-accent cc-focus" style={{ height: 32 }} disabled={isBusy}
+          onClick={() => run("won", { markWon: true }, { stage: "won", wonDate: today })}
           title="Markér som vundet (stempler dagens dato)">
-          <Trophy size={13} aria-hidden /> Vundet
+          {busy === "won" ? <Loader2 size={13} className="cc-spin" aria-hidden /> : <Trophy size={13} aria-hidden />}
+          {busy === "won" ? "Gemmer…" : "Vundet"}
         </button>
-        <button className="cc-btn cc-focus" style={{ height: 32, color: "var(--text-muted)" }} disabled={busy}
-          onClick={() => run({ markLost: true }, { stage: "lost", lostDate: today })}
+        <button className="cc-btn cc-focus" style={{ height: 32, color: "var(--text-muted)" }} disabled={isBusy}
+          onClick={() => run("lost", { markLost: true }, { stage: "lost", lostDate: today })}
           title="Markér som tabt (stempler dagens dato)">
-          <XCircle size={13} aria-hidden /> Tabt
+          {busy === "lost" ? <Loader2 size={13} className="cc-spin" aria-hidden /> : <XCircle size={13} aria-hidden />}
+          {busy === "lost" ? "Gemmer…" : "Tabt"}
         </button>
       </div>
     </div>

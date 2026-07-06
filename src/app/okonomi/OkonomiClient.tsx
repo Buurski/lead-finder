@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Loader2 } from "lucide-react";
 import type { Client, Target, Snapshot } from "@/lib/sheets";
 import {
   suggestTarget, dkk, mrrRunRate, annualised, setupBooked, periodRevenue,
@@ -30,38 +30,46 @@ function InlineNumber({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
-  const [saving, setSaving] = useState(false);
+  const [pending, setPending] = useState(false);
   const [err, setErr] = useState("");
 
   function open() { setDraft(String(value)); setErr(""); setEditing(true); }
-  async function commit() {
+  function commit() {
     const n = Number(draft);
     if (!Number.isFinite(n) || n < 0) { setErr("ugyldigt tal"); return; }
-    setSaving(true); setErr("");
-    try { await onSave(Math.round(n)); setEditing(false); }
-    catch { setErr("kunne ikke gemme"); }
-    finally { setSaving(false); }
+    // Optimistic-but-safe: close the editor immediately (the parent already
+    // shows the new value optimistically); a spinner marks the in-flight write.
+    // On failure the parent rolls the value back and we surface the error here.
+    setEditing(false); setErr(""); setPending(true);
+    onSave(Math.round(n))
+      .then(() => setPending(false))
+      .catch(() => { setPending(false); setErr("kunne ikke gemme"); });
   }
 
   if (!editing) {
     return (
-      <button onClick={open} aria-label={`Rediger ${ariaLabel}`} className="cc-editable cc-focus"
-        style={{ display: "inline-flex", alignItems: "baseline", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums lining-nums" }}>
-          {value.toLocaleString("da-DK")}{suffix ? ` ${suffix}` : ""}
-        </span>
-        <Pencil size={11} className="cc-editable-pen" style={{ color: "var(--accent-ink)", flexShrink: 0 }} aria-hidden />
-      </button>
+      <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+        <button onClick={open} aria-label={`Rediger ${ariaLabel}`} className="cc-editable cc-focus"
+          style={{ display: "inline-flex", alignItems: "baseline", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums lining-nums" }}>
+            {value.toLocaleString("da-DK")}{suffix ? ` ${suffix}` : ""}
+          </span>
+          {pending
+            ? <Loader2 size={11} className="cc-spin" style={{ color: "var(--accent-ink)", flexShrink: 0, alignSelf: "center" }} aria-label="gemmer" />
+            : <Pencil size={11} className="cc-editable-pen" style={{ color: "var(--accent-ink)", flexShrink: 0 }} aria-hidden />}
+        </button>
+        {err && <span role="alert" style={{ fontSize: 11, color: "var(--red)" }}>{err}</span>}
+      </span>
     );
   }
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-      <input autoFocus type="number" inputMode="numeric" value={draft} disabled={saving}
+      <input autoFocus type="number" inputMode="numeric" value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setErr(""); } }}
         style={{ width: 84, padding: "4px 7px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
-      <button onClick={commit} disabled={saving} aria-label="Gem" style={iconBtn("var(--accent)")}><Check size={13} color="#fff" /></button>
-      <button onClick={() => { setEditing(false); setErr(""); }} disabled={saving} aria-label="Annullér" style={iconBtn("var(--bg-3)")}><X size={13} /></button>
+      <button onClick={commit} aria-label="Gem" style={iconBtn("var(--accent)")}><Check size={13} color="#fff" /></button>
+      <button onClick={() => { setEditing(false); setErr(""); }} aria-label="Annullér" style={iconBtn("var(--bg-3)")}><X size={13} /></button>
       {err && <span style={{ fontSize: 11, color: "var(--red)" }}>{err}</span>}
     </span>
   );
@@ -110,6 +118,8 @@ export default function OkonomiClient({
 
   const [target, setTarget] = useState<Target>(targetProp);
   const [growth, setGrowth] = useState(1.15);
+  const [suggestPending, setSuggestPending] = useState(false);
+  const [suggestErr, setSuggestErr] = useState("");
   // Reconcile local (optimistic) target when fresh server props arrive.
   const [seed, setSeed] = useState(targetProp);
   if (seed !== targetProp) { setSeed(targetProp); setTarget(targetProp); }
@@ -245,10 +255,19 @@ export default function OkonomiClient({
                 Foreslået: <strong style={{ color: "var(--accent-ink)" }}>{suggestion.suggestedClients} kunder</strong>
                 {" "}· {dkk(suggestion.suggestedMrrAdded)}/md MRR · sidste 3 mdr. +{Math.round((growth - 1) * 100)}%
               </span>
-              <button className="cc-btn" style={{ height: 30, marginLeft: "auto" }}
-                onClick={() => saveTarget({ target_new_clients: suggestion.suggestedClients, target_mrr_added: suggestion.suggestedMrrAdded }).catch(() => {})}>
-                Brug forslag
-              </button>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                {suggestErr && <span role="alert" style={{ fontSize: 11, color: "var(--red)" }}>{suggestErr}</span>}
+                <button className="cc-btn" style={{ height: 30 }} disabled={suggestPending}
+                  onClick={() => {
+                    setSuggestPending(true); setSuggestErr("");
+                    saveTarget({ target_new_clients: suggestion.suggestedClients, target_mrr_added: suggestion.suggestedMrrAdded })
+                      .then(() => setSuggestPending(false))
+                      .catch(() => { setSuggestPending(false); setSuggestErr("kunne ikke gemme — prøv igen"); });
+                  }}>
+                  {suggestPending && <Loader2 size={12} className="cc-spin" aria-hidden />}
+                  {suggestPending ? "Gemmer…" : "Brug forslag"}
+                </button>
+              </span>
             </div>
           ) : (
             <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
