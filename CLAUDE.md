@@ -82,6 +82,14 @@ Genbrug mønstre (ai.ts-gateway, approval-kø, basic auth, Google-creds) —
 aldrig delt deploy. Vault: `KnowledgeOS/wiki/os/buur-cms.md`; beslutninger
 i `alle-beslutninger-log.md` (2026-06-07).
 
+## Arbejdsmetode (Fable 5-metoden — fuld version: KnowledgeOS/wiki/os/fable-5-arbejdsmetode.md)
+
+- Stærkeste model = orkestrator: planlægger, koder svær kode (API/sikkerhed/mail-logik) selv, verificerer selv.
+- Delegér: store mekaniske opgaver → Opus-klasse subagent; review → Sonnet-council (2-3 friske linser, rådata retur); opslag/greps → Haiku/cavecrew. Match model til hvor dyr en fejl er, ikke hvor stor opgaven er.
+- Bevis før "done": live-check/kørte tests > build grøn > agentens ord. Git-tag før destruktivt arbejde.
+- Token-disciplin: subagents som kontekst-firewall, baggrundskørsel frem for polling, målrettede reads, /caveman-tone i chat.
+- Efter større opgaver: status-note i vaultens `wiki/os/` + opdatér memory.
+
 ## Commit / deploy discipline
 
 Commit-only on feature branches; **never push/merge to main or deploy** unless
