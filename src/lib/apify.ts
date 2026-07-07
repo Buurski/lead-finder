@@ -18,6 +18,8 @@ export const BRANCHES = [
   "tømrer", "maler", "elektriker", "VVS-installatør", "blikkenslager", "tagdækker", "murermester",
   // Service
   "rengøringsvirksomhed", "vinduespudser", "anlægsgartner",
+  // Auto
+  "autoværksted", "bilværksted", "automekaniker",
   // Professionelle
   "advokat", "revisor", "fysioterapeut", "tandlæge", "optiker",
   // Mad & oplevelse
@@ -63,6 +65,7 @@ export const BRANCH_PRESETS: Record<string, string[]> = {
   food: ["restaurant", "café"],
   beauty: ["skønhedsklinik", "hudklinik", "negle & vippeextensions salon", "frisørsalon"],
   professional: ["advokat", "revisor", "fysioterapeut", "tandlæge", "optiker"],
+  auto: ["autoværksted", "bilværksted", "automekaniker"],
 };
 
 export function buildQueries(branches = BRANCHES, cities = CITIES): string[] {

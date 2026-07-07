@@ -10,7 +10,7 @@
 import type { ResearchResult, ResearchLead } from "./research.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
-import { mixForLead } from "./tone-mixer.ts";
+import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
 import { formatSignature, stripSignature, type SenderId } from "./senders.ts";
 
 export interface Draft {
@@ -161,6 +161,8 @@ function branchValueLine(branch: string): string {
     return `For en salon som jeres kunne sådan en side fx samle online booking ét sted og fremhæve jeres bedste anmeldelser, så nye kunder nemt finder vej.`;
   if (/restaurant|café|cafe|pizz|\bbar\b|\bpub\b|grill|\bkro\b|bistro|brasseri|bager|spise|køkken|food|takeaway|sushi|kebab|burger|bodega/.test(b))
     return `For et spisested kunne en rigtig side gøre menukort og bordbestilling nemt at finde og lade stemningen og jeres anmeldelser sælge, før gæsten er kommet.`;
+  if (/autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|mekaniker|automekanik|autoskade|pladeværksted/.test(b))
+    return `For et autoværksted kunne en rigtig side gøre det nemt at booke værkstedstid online, vise jeres anmeldelser og fortælle hvilke mærker og reparationer I klarer, så folk vælger jer når de søger et værksted i nærheden.`;
   if (/tømrer|tomrer|maler|murer|vvs|elektr|håndværk|\btag\b|snedker|smed|anlæg|entrepren|blik|kloak/.test(b))
     return `For et håndværksfirma kunne en side vise et galleri af jeres arbejde og gøre det nemt for kunder at sende en forespørgsel direkte, mens interessen er der.`;
   if (/foto|photo/.test(b))
@@ -266,9 +268,10 @@ async function composeWithLLM(
         `→ ${demos[1].url}`,
       ];
   const prompt = [
-    `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (${lead.branch}, ${lead.city}).`,
+    `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (en ${safeBranchNoun(lead.branch)} i ${lead.city}).`,
     research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet. Hold åbningen ærlig og lokal.`,
-    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for netop deres branche (fx booking/menukort/galleri/portfolio), ikke bare "her er to demoer".`,
+    `Påstå ALDRIG hvad de konkret laver eller tilbyder som et faktum, medmindre det står i detaljen ovenfor. Vi gætter deres branche fra en søgning, så et forkert gæt (fx "permanent makeup" til en der ikke laver det) ødelægger beskeden. Hold dig til brede, sikre formuleringer ("et sted som jeres", "en ${safeBranchNoun(lead.branch)} som jer").`,
+    `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for et sted som jeres (fx booking/galleri/at blive fundet i Google), ikke bare "her er to demoer".`,
     ...demoBlock,
     `Slut med en naturlig dansk sætning. Signaturen "${signature.closing}" tilføjes separat af pipeline.`,
     `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,  ].join("\n\n");

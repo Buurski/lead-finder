@@ -78,6 +78,22 @@ function cleanHook(hook: string): string {
   return h;
 }
 
+// lead.branch is the SEARCH TERM we scraped with ("permanent makeup"), not a
+// verified fact about the business. Stated as a claim ("51 anmeldelser for en
+// permanent makeup af jeres størrelse"), a wrong guess reads as "you didn't read
+// up" and kills the lead. So only emit a branch noun for BROAD buckets we're
+// confident the search term maps to; a narrow guess falls back to "virksomhed".
+// All returned nouns are en-words so they fit the "en ${x}" opener templates.
+export function safeBranchNoun(branch?: string): string {
+  const b = (branch || "").toLowerCase();
+  if (/frisør|frisor|salon|skønhed|skonhed|hud|negle|vippe|barber|kosmet|\bspa\b|wellness|massage|klinik|beauty|hair/.test(b)) return "salon";
+  if (/restaurant|café|cafe|pizz|\bbar\b|\bpub\b|grill|\bkro\b|bistro|brasseri|bager|spise|køkken|food|takeaway|sushi|kebab|burger|bodega/.test(b)) return "restaurant";
+  if (/autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|mekaniker|automekanik|autoskade|pladeværksted|\bdæk/.test(b)) return "mekaniker";
+  if (/tømrer|tomrer|maler|murer|vvs|elektr|håndværk|\btag\b|snedker|smed|anlæg|entrepren|blik|kloak/.test(b)) return "håndværker";
+  if (/foto|photo/.test(b)) return "fotograf";
+  return "virksomhed";
+}
+
 interface OpenerCandidate {
   kind: OpenerKind;
   text: string;
@@ -112,9 +128,9 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "lokation",
       text: pick(seed + "l", [
-        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
-        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
-        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
+        `For en ${safeBranchNoun(lead.branch)} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${safeBranchNoun(lead.branch)} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${safeBranchNoun(lead.branch)} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
       ]),
     });
   }
@@ -160,7 +176,7 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
       kind: "review-volume",
       text: pick(seed + "r", [
         `jeg sad og kiggede på jer i ${city}, og ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
-        `${lead.reviewsCount} anmeldelser for en ${lead.branch || "virksomhed"} af jeres størrelse er ærlig talt flot. Det siger noget om jer.`,
+        `${lead.reviewsCount} anmeldelser for en ${safeBranchNoun(lead.branch)} af jeres størrelse er ærlig talt flot. Det siger noget om jer.`,
       ]),
     });
   }
@@ -198,9 +214,9 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "brand", // reuses brand opener kind for now
       text: pick(seed + "l", [
-        `For en ${lead.branch} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
-        `Det jeg lagde mærke til med jer i ${lead.city}: en ${lead.branch} på det niveau, fortjener en hjemmeside der gør det samme.`,
-        `En ${lead.branch} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
+        `For en ${safeBranchNoun(lead.branch)} i ${lead.city} er det faktisk overraskende få der har en hjemmeside der matcher det de laver. Det er ærlig talt derfor jeg skriver.`,
+        `Det jeg lagde mærke til med jer i ${lead.city}: en ${safeBranchNoun(lead.branch)} på det niveau, fortjener en hjemmeside der gør det samme.`,
+        `En ${safeBranchNoun(lead.branch)} i ${lead.city} som jer er præcis den type jeg gerne vil bygge noget til. Det er derfor jeg skriver.`,
       ]),
     });
   }

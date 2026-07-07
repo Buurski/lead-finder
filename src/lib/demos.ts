@@ -19,6 +19,8 @@ export const DEMO_SITES = {
   salonArtec: "https://salon-artec.vercel.app/Salon%20Artec.html",
   // VIDA reference-projekt ligger på eget domæne siden 2026-06-17.
   vida: "https://vida-klinik.dk/",
+  // Ikast AutoService — reel kunde på eget domæne (autoværksted), live 2026-07-07.
+  ikastAutoservice: "https://ikastautoservice.dk/",
   vestfjends: "https://vestfjends.vercel.app/",
   midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
 } as const;
@@ -32,6 +34,7 @@ const D = {
   streetcut: { label: "Barber", url: DEMO_SITES.streetcut },
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
   vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
+  ikastAutoservice: { label: "Autoværksted", url: DEMO_SITES.ikastAutoservice },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
   midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
 } as const;
@@ -50,6 +53,7 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.streetcut, branch: "skønhed" },
   { ...D.denlillemaler, branch: "håndværk" },
   { ...D.ktvvs, branch: "håndværk" },
+  { ...D.ikastAutoservice, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   { ...D.vestfjends, branch: "service" },
   { ...D.midtadvokaterne, branch: "professionel" },
@@ -68,6 +72,8 @@ const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|lase
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
+// Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
+const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
@@ -97,6 +103,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
   if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
+  if (AUTO.test(t)) return [D.ikastAutoservice, D.ktvvs];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.denlillemaler, D.ktvvs];
   if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];

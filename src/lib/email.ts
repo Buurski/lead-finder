@@ -49,6 +49,7 @@ const BRANCH_GROUP_MAP: Record<string, string> = {
   tømrer: "craft", maler: "craft", elektriker: "craft",
   vvs: "craft", blikkenslager: "craft", tagdæk: "craft", murermester: "craft",
   mekaniker: "craft", smed: "craft", snedker: "craft",
+  autoværksted: "craft", bilværksted: "craft", automekaniker: "craft",
   // Service
   rengøringsvirksomhed: "service", vinduespudser: "service", anlægsgartner: "service",
   sundhed: "service", fitness: "service", træningscenter: "service",
@@ -99,6 +100,9 @@ const BRANCH_DISPLAY: Record<string, string> = {
   rengøringsvirksomhed: "rengøringsvirksomheder",
   vinduespudser: "vinduespoleringsvirksomheder",
   anlægsgartner: "anlægsgartnere",
+  autoværksted: "autoværksteder",
+  bilværksted: "bilværksteder",
+  automekaniker: "automekanikere",
   skønhedsklinik: "skønhedsklinikker",
   hudklinik: "hudklinikker",
   "negle & vippeextensions salon": "negle & vippeextensions saloner",
