@@ -7,6 +7,7 @@ import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
 import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
+import { validateDraft } from "@/lib/draft";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -344,15 +345,47 @@ export async function POST(req: Request) {
           // 4. Human spacing before each send (except the first).
           if (sent > 0) await sleep(randGap());
 
-          const { id: senderId, transport, from } = transportFor(d.sender);
+          // 5. FRISK LÆSNING (2026-07-16): en run tager minutter, og drafts kan
+          // redigeres/afvises/skifte afsender undervejs via /godkendelse. Uden
+          // genlæsning sendes det STALE snapshot fra run-start. Genlæs draften
+          // lige før afsendelse og respektér dens aktuelle body/subject/sender/
+          // status.
+          const fresh = (await readQueue()).find((q) => q.id === d.id) ?? d;
+          const freshOk = force
+            ? fresh.status === "approved" || fresh.status === "sent"
+            : fresh.status === "approved";
+          if (!freshOk) {
+            skipped.push({ name: d.name, reason: `status ændret undervejs (${fresh.status})` });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: `status ændret undervejs (${fresh.status})` });
+            continue;
+          }
+
+          // 6. SIDSTE HEGN (2026-07-16): validateDraft kørte før kun ved
+          // edit/set-demos — ren Godkend og bulk-godkend havde ingen server-
+          // validering. Alt passerer dette punkt, så hegnet fanger alle veje.
+          // Signatur-tjekket fanger enhver fremtidig stabling-regression.
+          const finalText = applySignature(fresh.body, transportFor(fresh.sender).id);
+          const check = validateDraft(fresh.body);
+          if (!check.ok) {
+            skipped.push({ name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
+            continue;
+          }
+          if ((finalText.match(/Med venlig hilsen/g) || []).length !== 1) {
+            skipped.push({ name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
+            continue;
+          }
+
+          const { id: senderId, transport, from } = transportFor(fresh.sender);
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({
               from,
               to: target,
-              subject: d.subject,
-              text: applySignature(d.body, senderId),
-              html: applySignatureHtml(d.body, senderId),
+              subject: fresh.subject,
+              text: finalText,
+              html: applySignatureHtml(fresh.body, senderId),
             });
             await updateDraft(d.id, { status: "sent", sentBy: senderId });
             // Add to the in-run ledgers so a same-business / same-address sibling
@@ -369,10 +402,10 @@ export async function POST(req: Request) {
               }
             }
             sent++;
-            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: d.sender ?? defaultSender() });
+            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: senderId });
           } catch (err) {
             failed++;
-            send({ type: "failed", index: processed, total, name: d.name, sender: d.sender ?? defaultSender(), error: String(err) });
+            send({ type: "failed", index: processed, total, name: d.name, sender: senderId, error: String(err) });
           }
         }
       } finally {
