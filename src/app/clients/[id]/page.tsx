@@ -8,6 +8,17 @@ import WarnBanner from "@/components/WarnBanner";
 import { getClients } from "@/lib/sheets";
 import { readVaultNote } from "@/lib/vault";
 import { clientNoteRel } from "@/lib/client-notes";
+import { listInvoicesFor, type InvoiceStatus } from "@/lib/invoices.ts";
+
+// ponytail: samme farve-mapping som FakturaClient.tsx — duplikeret 5 linjer
+// frem for et delt lib for to brugssteder.
+const STATUS_STYLE: Record<InvoiceStatus, { bg: string; fg: string; label: string }> = {
+  kladde: { bg: "var(--bg-3)", fg: "var(--text-dim)", label: "kladde" },
+  sendt: { bg: "var(--blue-soft, #1e3a5f)", fg: "var(--blue, #7cb7ff)", label: "sendt" },
+  betalt: { bg: "var(--accent-soft)", fg: "var(--accent-ink)", label: "betalt" },
+  forfalden: { bg: "var(--red-soft, #4a1f1f)", fg: "var(--red, #ff8a8a)", label: "forfalden" },
+  rykket: { bg: "var(--red-soft, #4a1f1f)", fg: "var(--red, #ff8a8a)", label: "rykket" },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +55,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const note = await readVaultNote(clientNoteRel(client.name).replace(/\.md$/, ""));
   const fm = note.ok ? note.frontmatter : {};
   const domain = fm.domain || "";
+  const invoices = await listInvoicesFor(client.name);
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="cc-fade">
@@ -91,6 +104,36 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div style={{ marginTop: 16 }}>
         <ClientSeoWidget name={client.name} domain={domain} />
       </div>
+
+      <Deliverable icon="Receipt" title="Fakturaer">
+        {invoices.length === 0 ? (
+          <span className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</span>
+        ) : (
+          <div style={{ display: "grid", gap: 6 }}>
+            {invoices.map((inv) => {
+              const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
+              const days = Math.round(
+                (new Date(inv.dueDate + "T00:00:00Z").getTime() - new Date(today + "T00:00:00Z").getTime()) / 86400000,
+              );
+              const style = STATUS_STYLE[inv.status];
+              return (
+                <div key={inv.number} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <span style={{ fontWeight: 600 }}>{inv.number}</span>
+                  <span className="cc-dim">{total.toLocaleString("da-DK")} kr</span>
+                  <span className="cc-chip" style={{ background: style.bg, color: style.fg, border: "none" }}>{style.label}</span>
+                  {inv.status !== "kladde" && inv.status !== "betalt" && (
+                    <span className="cc-dim" style={{ fontSize: 11.5 }}>
+                      {days >= 0 ? `forfalder om ${days} dage` : `${Math.abs(days)} dage forfalden`}
+                    </span>
+                  )}
+                  <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5 }}>PDF</a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
+      </Deliverable>
 
       <section className="cc-card cc-card-pad" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>

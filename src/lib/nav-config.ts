@@ -64,6 +64,8 @@ export const NAV_TREE: NavNode[] = [
     icon: "CircleDollarSign",
     children: [
       { href: "/okonomi", label: "Økonomi", paletteLabel: "Forretning · Økonomi", icon: "Target", hint: "Forecast & mål" },
+      { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
+      { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer, split & overførsler" },
       { href: "/salg", label: "Salg", icon: "Workflow", hint: "Vægtet deal-pipeline" },
       { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening & trends" },
     ],
@@ -95,7 +97,6 @@ export const NAV_TREE: NavNode[] = [
       { href: "/claude", label: "Claude", icon: "Bot", hint: "Claude-chat" },
       { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent på VPS" },
       { href: "/goals", label: "Goals", icon: "Target", hint: "90-dages mål (vault)" },
-      { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer, split & overførsler" },
     ],
   },
   { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence" },
