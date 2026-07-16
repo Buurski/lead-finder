@@ -26,7 +26,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
 
   try {
     const buf = await renderInvoicePdf(inv, biz);
-    const { url: pdfUrl } = await store.putAsset(`invoices/faktura-${number}.pdf`, buf, "application/pdf");
+    // Blob-arkivering er nice-to-have (mailen har PDF'en vedhæftet) — må ikke
+    // blokere send hvis BLOB_READ_WRITE_TOKEN mangler i miljøet.
+    let pdfUrl: string | undefined;
+    try {
+      ({ url: pdfUrl } = await store.putAsset(`invoices/faktura-${number}.pdf`, buf, "application/pdf"));
+    } catch (e) {
+      console.warn(`invoice ${number}: Blob-arkivering sprang over —`, e instanceof Error ? e.message : e);
+    }
 
     const { total } = invoiceTotal(inv);
     const month = new Date(inv.issueDate).toLocaleDateString("da-DK", { month: "long", year: "numeric" });
