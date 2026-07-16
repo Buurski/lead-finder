@@ -6,7 +6,7 @@ import { canSendTo } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
-import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, type SenderId } from "@/lib/senders";
+import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -352,6 +352,7 @@ export async function POST(req: Request) {
               to: target,
               subject: d.subject,
               text: applySignature(d.body, senderId),
+              html: applySignatureHtml(d.body, senderId),
             });
             await updateDraft(d.id, { status: "sent", sentBy: senderId });
             // Add to the in-run ledgers so a same-business / same-address sibling

@@ -345,11 +345,28 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
   }
 
+  // 2026-07-16: Kinly-brand i alle signaturer (Lucas + Charlies fælles firma).
+  // Text: "Kinly"-linje. HTML: logo-billede hostet på appen selv (.png er
+  // undtaget basic auth i proxy.ts). Ingen kinly.dk-link endnu — domænet er
+  // ikke bekræftet live, og døde links i kold mail skader mere end intet link.
+  textLines.push("Kinly");
+  htmlLines.push(
+    `<img src="${kinlyLogoUrl()}" alt="Kinly" width="110" height="44" style="display:block;margin-top:8px;border-radius:6px;" />`,
+  );
+
   return {
     text: textLines.join("\n"),
     html: htmlLines.join("<br>"),
     closing: `Mvh, ${trim(name)}`,
   };
+}
+
+/** Absolut URL til email-logoet. Mails læses hos modtageren, så URL'en skal
+ *  altid pege på det offentlige prod-domæne — aldrig localhost. */
+function kinlyLogoUrl(): string {
+  const env = (process.env.APP_URL || "").trim();
+  const base = env ? env.replace(/\/$/, "") : "https://lead-finder-three-beta.vercel.app";
+  return `${base}/brand/kinly-logo-email.png`;
 }
 
 // ---- Legacy applySignature helper ----------------------------------------
@@ -365,8 +382,32 @@ export { stripSignature } from "./leads/signature-preview.ts";
 import { stripSignature as _strip } from "./leads/signature-preview.ts";
 
 /** Re-sign a body for the chosen sender. Matcher preview-formatet på
- *  /godkendelse: "Med venlig hilsen\n<navn>\n[titel]\n<telefon>". */
+ *  /godkendelse: "Med venlig hilsen\n<navn>\n[titel]\n<telefon>\nKinly". */
 export function applySignature(body: string, id: SenderId): string {
   const sig = formatSignature(id);
   return `${_strip(body)}\n\nMed venlig hilsen\n${sig.text}`;
+}
+
+/** HTML-udgave af mailen til send-ruten: brødtekst (escaped, nl2br, URLs som
+ *  links) + HTML-signatur med Kinly-logo. Plain-text-delen (applySignature)
+ *  sendes altid ved siden af som multipart-alternativ. */
+export function applySignatureHtml(body: string, id: SenderId): string {
+  const sig = formatSignature(id);
+  const stripped = _strip(body);
+  const escaped = stripped
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const linked = escaped.replace(
+    /https?:\/\/[^\s<]+/g,
+    (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,
+  );
+  const paragraphs = linked
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, "<br>")}</p>`)
+    .join("\n");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f1f1f;max-width:620px;">
+${paragraphs}
+<p style="margin:18px 0 0 0;">Med venlig hilsen<br>${sig.html}</p>
+</div>`;
 }

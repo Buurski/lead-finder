@@ -18,13 +18,13 @@ export type SenderId = "lucas" | "charlie";
 
 // Kendte linjer der kan stå mellem navn og slut: titel/tagline (Charlie) og
 // telefonnummer. Holdes eksplicitte så vi aldrig æder rigtig brødtekst.
-const SIG_EXTRA_LINE = String.raw`(?:Senior Funding Manager[^\n]*|Web-design entusiast[^\n]*|\+?[\d\s]{6,})`;
+const SIG_EXTRA_LINE = String.raw`(?:Senior Funding Manager[^\n]*|Web-design entusiast[^\n]*|Kinly[^\n]*|\+?[\d\s]{6,})`;
 
 const SIGNATURE_PATTERNS: RegExp[] = [
   // "Med venlig hilsen" / "Mvh" + navn (evt. samme linje) + 0-3 kendte linjer.
-  new RegExp(String.raw`\n+(?:Med venlig hilsen|Mvh),?\s*\n*(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n${SIG_EXTRA_LINE}){0,3}\s*$`, "i"),
+  new RegExp(String.raw`\n+(?:Med venlig hilsen|Mvh),?\s*\n*(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n${SIG_EXTRA_LINE}){0,4}\s*$`, "i"),
   // Navn + evt. rolle-linje + telefon (uden hilsen-linje).
-  new RegExp(String.raw`\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n${SIG_EXTRA_LINE}){1,3}\s*$`, "i"),
+  new RegExp(String.raw`\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n${SIG_EXTRA_LINE}){1,4}\s*$`, "i"),
   // Bare navnet som sidste linje.
   /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
 ];
@@ -51,13 +51,15 @@ export function stripSignature(body: string): string {
  * Tomme felter filtres væk så vi aldrig emitterer blanke linjer.
  */
 function signatureFor(id: SenderId, lucasPhone: string, charliePhone: string): string {
+  // 2026-07-16: begge signerer nu som Kinly (Lucas + Charlies fælles firma).
+  // HTML-versionen (senders.ts) viser logoet; text-versionen denne brand-linje.
   if (id === "lucas") {
-    const lines = ["Lucas Buur", lucasPhone].map((s) => s.trim()).filter((s) => s.length > 0);
+    const lines = ["Lucas Buur", lucasPhone, "Kinly"].map((s) => s.trim()).filter((s) => s.length > 0);
     return `Med venlig hilsen\n${lines.join("\n")}`;
   }
   // Charlie: name + role ("Senior Funding Manager & Web-design entusiast") + phone.
   const role = ["Senior Funding Manager", "Web-design entusiast"].map((s) => s.trim()).filter((s) => s.length > 0).join(" & ");
-  const lines = ["Charlie Nielsen", role, charliePhone].map((s) => s.trim()).filter((s) => s.length > 0);
+  const lines = ["Charlie Nielsen", role, charliePhone, "Kinly"].map((s) => s.trim()).filter((s) => s.length > 0);
   return `Med venlig hilsen\n${lines.join("\n")}`;
 }
 
