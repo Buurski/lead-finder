@@ -354,18 +354,38 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   const siteUrl = (process.env.KINLY_SITE_URL || "").trim().replace(/\/$/, "");
   textLines.push(siteUrl ? `Kinly · ${siteUrl.replace(/^https?:\/\//, "")}` : "Kinly");
 
-  const ACCENT = "#c8501e"; // orange fra logoets i-prik
-  const logoImg = `<img src="${kinlyLogoUrl()}" alt="Kinly" width="96" height="45" style="display:block;border:0;border-radius:6px;" />`;
-  const roleLine = htmlLines.slice(1).filter((l) => !l.startsWith("<img"));
+  // 2026-07-16 (redesign efter Lucas-feedback): foto-kort i Kinly-sitets
+  // designsystem (paper #f6f3ee, ink #191713, ember #d4500f, Georgia-serif
+  // wordmark med ember-farvet i). Rundt teamfoto + tekst-wordmark = INGEN
+  // logo-fil at hoste; fotos ligger allerede live på kinly-site.vercel.app
+  // (15-26 KB, under 50 KB-standarden). Aldrig ren-billede-signatur: navn/
+  // rolle/telefon forbliver rigtig tekst (spamfiltre, blokerede billeder,
+  // søgbarhed). border-radius degraderer til firkant i gammel Outlook — ok.
+  const EMBER = "#d4500f";
+  const INK = "#191713";
+  const PAPER = "#f6f3ee";
+  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId}.jpg`;
+  const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
+  const wordmark = `<span style="font-family:Georgia,'Times New Roman',serif;color:${INK};">k<span style="color:${EMBER};">i</span>nly</span>`;
+  const domainCell = siteUrl
+    ? `<a href="${siteUrl}" style="color:${INK};text-decoration:none;">kinly.dk</a>`
+    : `kinly.dk`;
   const htmlTable = [
-    `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="font-family:Arial,Helvetica,sans-serif;">`,
-    `<tr><td style="font-size:14px;font-weight:bold;color:#1f1f1f;line-height:1.4;">${trim(name)}</td></tr>`,
-    ...roleLine.map((l) => `<tr><td style="font-size:12.5px;color:#666666;line-height:1.5;">${l}</td></tr>`),
-    `<tr><td style="padding:10px 0 0 0;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td width="36" style="border-top:2px solid ${ACCENT};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`,
-    `<tr><td style="padding:10px 0 0 0;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td></tr>`,
-    ...(siteUrl
-      ? [`<tr><td style="padding:6px 0 0 0;font-size:12.5px;line-height:1.5;"><a href="${siteUrl}" style="color:${ACCENT};text-decoration:none;font-weight:bold;">kinly.dk</a></td></tr>`]
-      : []),
+    `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:separate;">`,
+    `<tr><td style="background:${PAPER};border:1px solid #e9e2d5;border-radius:14px;padding:18px 24px 18px 18px;">`,
+    `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
+    `<td valign="middle" style="padding-right:18px;"><img src="${photoUrl}" alt="${trim(name)}" width="76" height="76" style="display:block;border-radius:50%;border:2px solid ${EMBER};" /></td>`,
+    `<td valign="middle" style="font-family:Arial,Helvetica,sans-serif;">`,
+    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:${INK};font-weight:bold;">${trim(name)}</div>`,
+    ...roleLines.map((l) => `<div style="font-size:12px;color:#6d675c;padding-top:1px;">${l}</div>`),
+    `<div style="font-size:12.5px;color:${INK};padding-top:8px;line-height:1.6;">`,
+    `<span style="color:${EMBER};font-weight:bold;">T:</span>&nbsp; ${trim(phone)}<br>`,
+    `<span style="color:${EMBER};font-weight:bold;">W:</span>&nbsp; ${domainCell}`,
+    `</div>`,
+    `</td>`,
+    `<td valign="bottom" style="padding-left:28px;"><div style="font-size:20px;line-height:1;">${wordmark}</div></td>`,
+    `</tr></table>`,
+    `</td></tr>`,
     `</table>`,
   ].join("\n");
 
@@ -376,13 +396,11 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   };
 }
 
-/** Absolut URL til email-logoet. Mails læses hos modtageren, så URL'en skal
- *  altid pege på det offentlige prod-domæne — aldrig localhost. */
-function kinlyLogoUrl(): string {
-  const env = (process.env.APP_URL || "").trim();
-  const base = env ? env.replace(/\/$/, "") : "https://lead-finder-three-beta.vercel.app";
-  return `${base}/brand/kinly-logo-email.png`;
-}
+/** Basen for brand-assets i mails (teamfotos m.m.). Bor på kinly-sitet —
+ *  IKKE på lead-systemets domæne — så billederne virker uafhængigt af dette
+ *  repos deploys og senere kan flytte med til kinly.dk. Fotos:
+ *  /img/team/lucas.jpg + /img/team/charlie.jpg (live, 15-26 KB). */
+const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
 // 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send
