@@ -366,7 +366,10 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   const PAPER = "#f6f3ee";
   const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId}.jpg`;
   const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
-  const wordmark = `<span style="font-family:Georgia,'Times New Roman',serif;color:${INK};">k<span style="color:${EMBER};">i</span>nly</span>`;
+  // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
+  // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
+  // = paper #f6f3ee = kortets bg → ingen synlig kant.
+  const logoImg = `<img src="${KINLY_ASSET_BASE}/img/brand/kinly-logo-email.png" alt="Kinly" width="96" height="47" style="display:block;border:0;" />`;
   const domainCell = siteUrl
     ? `<a href="${siteUrl}" style="color:${INK};text-decoration:none;">kinly.dk</a>`
     : `kinly.dk`;
@@ -383,7 +386,7 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     `<span style="color:${EMBER};font-weight:bold;">W:</span>&nbsp; ${domainCell}`,
     `</div>`,
     `</td>`,
-    `<td valign="bottom" style="padding-left:28px;"><div style="font-size:20px;line-height:1;">${wordmark}</div></td>`,
+    `<td valign="bottom" style="padding-left:28px;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td>`,
     `</tr></table>`,
     `</td></tr>`,
     `</table>`,
