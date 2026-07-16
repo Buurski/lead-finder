@@ -260,7 +260,7 @@ ${signature.text}`;
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, menu og farver helt.</p>
 <p>Hvis det er noget I bare lige vil høre mere om, så skriv eller ring.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -289,7 +289,7 @@ ${signature.text}`;
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup med jeres egne billeder og farver. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det helt urealistisk lige nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -324,7 +324,7 @@ ${signature.text}`;
 → <a href="${demo}">${demo}</a></p>
 <p>Den er kun en demo. en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -351,7 +351,7 @@ ${signature.text}`;
 → <a href="${demo}">${demo}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -384,7 +384,7 @@ ${signature.text}`;
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
 <p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til dig. dit udtryk, dine billeder, din stil.</p>
 <p>Ring eller skriv hvis du er nysgerrig.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -410,7 +410,7 @@ ${signature.text}`;
 → <a href="${DEMO_URLS.photo}">${DEMO_URLS.photo}</a></p>
 <p>Hvis du er nysgerrig, kan jeg lave en hurtig mockup med nogle af dine egne billeder. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -443,7 +443,7 @@ ${signature.text}`;
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
 <p>Det er kun en demo, men jeg laver en fuld version der passer specifikt til <strong>${v.name}</strong>.</p>
 <p>Ring eller skriv hvis du vil høre mere.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -469,7 +469,7 @@ ${signature.text}`;
 → <a href="${DEMO_URLS.professional}">${DEMO_URLS.professional}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup tilpasset <strong>${v.name}</strong>. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for. så respekterer jeg det.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -506,7 +506,7 @@ ${signature.text}`;
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Det er kun demoer. den fulde version til <strong>${v.name}</strong> ville selvfølgelig matche jeres stil, behandlinger og farver helt.</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -535,7 +535,7 @@ ${signature.text}`;
 → <a href="${demos.secondary}">${demos.secondary}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig mockup specifikt til jer med jeres egne billeder og behandlinger. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Er det ikke aktuelt nu, så er ét "nej tak" alt jeg har brug for.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -565,7 +565,7 @@ ${signature.text}`;
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Det er en demo til en fotograf. men jeg laver selvfølgelig en version der passer specifikt til <strong>${v.name}</strong> og jeres udtryk.</p>
 <p>Ring eller skriv hvis I vil se hvad det kunne se ud som.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -588,7 +588,7 @@ ${signature.text}`;
 <p>Se min demo:<br>
 → <a href="${DEMO_URLS.gallery}">${DEMO_URLS.gallery}</a></p>
 <p>Ring eller skriv.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },
@@ -613,7 +613,7 @@ ${signature.text}`;
 <p>${ws}</p>
 <p>Mange i ${v.city} søger lokale ${v.branchDisplay} online. en god hjemmeside er det første de ser.</p>
 <p>Skriv eller ring hvis du vil se hvad jeg kan lave til jer.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
     followup: (v) => {
@@ -631,7 +631,7 @@ ${signature.text}`;
 <p>Hej igen ${v.name},</p>
 <p>Jeg sendte en mail for ${v.daysSince} dage siden om en hjemmeside til jer. tilbuddet gælder stadig.</p>
 <p>Ring eller skriv.</p>
-<p>${signature.html}</p>`),
+${signature.html}`),
       };
     },
   },

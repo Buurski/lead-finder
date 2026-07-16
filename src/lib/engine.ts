@@ -24,6 +24,7 @@ import { research_lead } from "./research.ts";
 import type { ResearchLead } from "./research.ts";
 import { draft_personal_message } from "./draft.ts";
 import { hardDrop } from "./qualify.ts";
+import { isChain } from "./chains.ts";
 import { isBlacklisted } from "./tone-mixer.ts";
 import { composeColdEmail } from "./compose.ts";
 import { appendDrafts, newDraftId, readQueue } from "./queue.ts";
@@ -333,6 +334,15 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
     if (isBlacklisted(lead.name)) {
       skipped.push({ name: lead.name, reason: "hostile-blacklist" });
       emit({ phase: "skip", idx: collected.length, total: limit, name: lead.name, reason: "hostile-blacklist" });
+      continue;
+    }
+
+    // Kæder skal aldrig nå køen (2026-07-16) — før fangede kun canSendTo dem
+    // ved afsendelse, så de lå godkendbare i /godkendelse. "skriv til X"
+    // bypasser IKKE dette — kæder mailes aldrig.
+    if (isChain(lead.name)) {
+      skipped.push({ name: lead.name, reason: "kæde (isChain)" });
+      emit({ phase: "skip", idx: collected.length, total: limit, name: lead.name, reason: "kæde (isChain)" });
       continue;
     }
 

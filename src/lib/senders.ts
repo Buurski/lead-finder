@@ -346,17 +346,32 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   }
 
   // 2026-07-16: Kinly-brand i alle signaturer (Lucas + Charlies fælles firma).
-  // Text: "Kinly"-linje. HTML: logo-billede hostet på appen selv (.png er
-  // undtaget basic auth i proxy.ts). Ingen kinly.dk-link endnu — domænet er
-  // ikke bekræftet live, og døde links i kold mail skader mere end intet link.
-  textLines.push("Kinly");
-  htmlLines.push(
-    `<img src="${kinlyLogoUrl()}" alt="Kinly" width="110" height="44" style="display:block;margin-top:8px;border-radius:6px;" />`,
-  );
+  // Text-delen får en "Kinly"-linje; HTML-delen er en tabel-baseret signatur
+  // efter email-standard (inline CSS, web-safe font, hostet lille PNG, <600px)
+  // så den renderer ens i Gmail/Outlook/Apple Mail. kinly.dk-link og klikbart
+  // logo tændes via KINLY_SITE_URL når domænet er live — indtil da vises
+  // domænet som ren tekst (døde links i kold mail skader mere end intet link).
+  const siteUrl = (process.env.KINLY_SITE_URL || "").trim().replace(/\/$/, "");
+  textLines.push(siteUrl ? `Kinly · ${siteUrl.replace(/^https?:\/\//, "")}` : "Kinly");
+
+  const ACCENT = "#c8501e"; // orange fra logoets i-prik
+  const logoImg = `<img src="${kinlyLogoUrl()}" alt="Kinly" width="96" height="45" style="display:block;border:0;border-radius:6px;" />`;
+  const roleLine = htmlLines.slice(1).filter((l) => !l.startsWith("<img"));
+  const htmlTable = [
+    `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="font-family:Arial,Helvetica,sans-serif;">`,
+    `<tr><td style="font-size:14px;font-weight:bold;color:#1f1f1f;line-height:1.4;">${trim(name)}</td></tr>`,
+    ...roleLine.map((l) => `<tr><td style="font-size:12.5px;color:#666666;line-height:1.5;">${l}</td></tr>`),
+    `<tr><td style="padding:10px 0 0 0;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td width="36" style="border-top:2px solid ${ACCENT};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`,
+    `<tr><td style="padding:10px 0 0 0;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td></tr>`,
+    ...(siteUrl
+      ? [`<tr><td style="padding:6px 0 0 0;font-size:12.5px;line-height:1.5;"><a href="${siteUrl}" style="color:${ACCENT};text-decoration:none;font-weight:bold;">kinly.dk</a></td></tr>`]
+      : []),
+    `</table>`,
+  ].join("\n");
 
   return {
     text: textLines.join("\n"),
-    html: htmlLines.join("<br>"),
+    html: htmlTable,
     closing: `Mvh, ${trim(name)}`,
   };
 }
@@ -408,6 +423,7 @@ export function applySignatureHtml(body: string, id: SenderId): string {
     .join("\n");
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f1f1f;max-width:620px;">
 ${paragraphs}
-<p style="margin:18px 0 0 0;">Med venlig hilsen<br>${sig.html}</p>
+<p style="margin:18px 0 10px 0;">Med venlig hilsen</p>
+${sig.html}
 </div>`;
 }

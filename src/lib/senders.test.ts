@@ -71,7 +71,10 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
   withEnv(setLucasEnv, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
     assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82\nKinly");
-    assert.ok(sig.html.startsWith("<strong>Lucas Buur</strong><br>+45 23 24 24 82<br><img "));
+    assert.ok(sig.html.startsWith("<table"));
+    assert.ok(sig.html.includes("Lucas Buur"));
+    assert.ok(sig.html.includes("+45 23 24 24 82"));
+    assert.ok(sig.html.includes("kinly-logo-email.png"));
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
