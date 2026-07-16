@@ -31,6 +31,7 @@ interface ActionBody {
     | "set-demos"
     | "set-sender"
     | "reset-sent"
+    | "reset-approved"
     | "cleanup-no-email";
   ids?: string[];
   subject?: string;
@@ -62,6 +63,26 @@ export async function POST(req: Request) {
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, reset });
+  }
+
+  // Bulk-fortryd (no id): flyt ALLE godkendte (approved + legacy "edited")
+  // tilbage til afventer. Lucas's nødbremse mod gamle masse-godkendelser
+  // (fx de 221 "redigeret · godkendt" fra en tidligere test-session) — så
+  // intet sendes ved en fejl, og han kan re-godkende selektivt.
+  // Bevidst pending (ikke rejected): rejected udløser 14-dages engine-blok.
+  if (action === "reset-approved") {
+    const drafts = await readQueue();
+    let reset = 0;
+    const now = new Date().toISOString();
+    for (const d of drafts) {
+      if (d.status === "approved" || d.status === "edited") {
+        d.status = "pending";
+        d.updatedAt = now;
+        reset++;
+      }
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, reset, note: "godkendte flyttet til afventer — intet sendt" });
   }
 
   // One-time cleanup (no id): reject any pending/approved draft whose

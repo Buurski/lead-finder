@@ -113,7 +113,8 @@ export default function ApprovePage() {
 
   const counts = useMemo(() => {
     const pending = drafts.filter((d) => d.status === "pending").length;
-    const approvedList = drafts.filter((d) => d.status === "approved");
+    // "edited" = legacy redigeret·godkendt — tælles og sendes som godkendt.
+    const approvedList = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     const approved = approvedList.length;
     const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
     const approvedLucas = approved - approvedCharlie;
@@ -126,17 +127,22 @@ export default function ApprovePage() {
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendProg, setSendProg] = useState<{ processed: number; total: number; sent: number; failed: number; line: string } | null>(null);
-  const sendApproved = useCallback(async () => {
+  const sendApproved = useCallback(async (senderFilter?: "lucas" | "charlie") => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
-    if (counts.approved === 0) return;
+    const filterCount = senderFilter === "lucas" ? counts.approvedLucas
+      : senderFilter === "charlie" ? counts.approvedCharlie
+      : counts.approved;
+    if (filterCount === 0) return;
+    const qs = senderFilter ? `?sender=${senderFilter}` : "";
+    const who = senderFilter === "lucas" ? " (kun Lucas)" : senderFilter === "charlie" ? " (kun Charlie)" : "";
 
     // Preflight (GET på send-ruten): kører alle guards uden at sende, så
     // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
     // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
     // vi tilbage til den gamle dialog.
-    let confirmText = `Send ${counts.approved} godkendte udkast?`;
+    let confirmText = `Send ${filterCount} godkendte udkast${who}?`;
     try {
-      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      const pf = await fetch(`/api/approve/send${qs}`).then((r) => r.json());
       if (pf && pf.ok) {
         if (pf.paused) { setSendMsg(`Afsendelse er på pause${pf.until ? ` til ${pf.until}` : ""}.`); return; }
         if (pf.busy) { setSendMsg("Afsendelse kører allerede — vent til den er færdig."); return; }
@@ -152,7 +158,7 @@ export default function ApprovePage() {
         }
         const skipLine = [...reasonCounts.entries()].map(([r, n]) => `${n}× ${r}`).join(", ");
         confirmText = [
-          `Klar til at sende:`,
+          `Klar til at sende${who}:`,
           `· ${pf.wouldSend} sendes nu`,
           pf.capped > 0 ? `· ${pf.capped} venter til næste klik (max ${pf.cap} pr. klik)` : "",
           (pf.skipped?.length ?? 0) > 0 ? `· ${pf.skipped.length} springes over (${skipLine})` : "",
@@ -166,7 +172,7 @@ export default function ApprovePage() {
     setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
     try {
-      const res = await fetch("/api/approve/send", { method: "POST" });
+      const res = await fetch(`/api/approve/send${qs}`, { method: "POST" });
       const ct = res.headers.get("content-type") || "";
 
       // Pre-flight guards (pause / busy / no-creds / nothing-to-send) return JSON.
@@ -236,7 +242,30 @@ export default function ApprovePage() {
     } finally {
       setSendBusy(false);
     }
-  }, [sendBusy, counts.approved, load]);
+  }, [sendBusy, counts.approved, counts.approvedLucas, counts.approvedCharlie, load]);
+
+  // Nødbremse: flyt ALLE godkendte tilbage til afventer (intet sendes).
+  // Til gamle masse-godkendelser (fx 221 legacy "redigeret · godkendt").
+  const [resetBusy, setResetBusy] = useState(false);
+  const resetApproved = useCallback(async () => {
+    if (resetBusy || sendBusy || counts.approved === 0) return;
+    if (!window.confirm(`Flyt alle ${counts.approved} godkendte tilbage til Afventer?\n\nDer sendes INTET — du kan bagefter godkende dem igen enkeltvis eller i bulk.`)) return;
+    setResetBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset-approved" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setSendMsg(res.ok ? `${d.reset ?? 0} flyttet til afventer — intet sendt.` : (d.error ?? "Kunne ikke nulstille."));
+      await load();
+    } catch {
+      setSendMsg("Netværksfejl ved nulstilling.");
+    } finally {
+      setResetBusy(false);
+    }
+  }, [resetBusy, sendBusy, counts.approved, load]);
 
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
@@ -503,9 +532,24 @@ export default function ApprovePage() {
               </div>
             )}
           </div>
-          <button onClick={sendApproved} disabled={sendBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
-            {sendBusy ? "Sender…" : `Send godkendte (${counts.approved})`}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={() => sendApproved()} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
+              {sendBusy ? "Sender…" : `Send alle (${counts.approved})`}
+            </button>
+            {counts.approvedLucas > 0 && counts.approvedCharlie > 0 && (
+              <>
+                <button onClick={() => sendApproved("lucas")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                  Kun Lucas ({counts.approvedLucas})
+                </button>
+                <button onClick={() => sendApproved("charlie")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                  Kun Charlie ({counts.approvedCharlie})
+                </button>
+              </>
+            )}
+            <button onClick={resetApproved} disabled={sendBusy || resetBusy} title="Flyt alle godkendte tilbage til Afventer — der sendes intet" style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              {resetBusy ? "Nulstiller…" : "→ Afventer"}
+            </button>
+          </div>
         </div>
       )}
 

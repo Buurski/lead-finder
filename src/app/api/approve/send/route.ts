@@ -55,6 +55,22 @@ const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
   /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
 
+// "Godkendt" = approved ELLER edited. "edited" er legacy-status fra før
+// edit-actionen begyndte at sætte "approved" — UI'et viser begge som godkendt
+// ("redigeret · godkendt"), så send-ruten SKAL også kunne sende dem. Uden
+// dette sad 221 redigerede drafts fast: synlige som godkendt, aldrig sendt.
+const isApproved = (s: string) => s === "approved" || s === "edited";
+
+// Afsender-filter (?sender=lucas|charlie): send kun drafts der VILLE gå ud
+// som den valgte identitet. Samme opløsning som transportFor — manglende/
+// ukendt sender falder tilbage på defaultSender().
+const resolveSender = (sender?: string): SenderId =>
+  sender === "lucas" || sender === "charlie" ? sender : defaultSender();
+const parseSenderFilter = (req: Request): SenderId | null => {
+  const s = new URL(req.url).searchParams.get("sender");
+  return s === "lucas" || s === "charlie" ? s : null;
+};
+
 // GET /api/approve/send — PREFLIGHT. Sender INTET. Kører de samme guards som
 // send-løkken (samme rækkefølge, samme ledger-seeding) og svarer med hvad et
 // klik ville gøre: hvor mange sendes nu (SEND_CAP), hvor mange venter, hvem
@@ -67,6 +83,7 @@ export async function GET(req: Request) {
   // samme !force-gating af re-contact-guards, ellers under-rapporterer
   // dialogen på et force-run.
   const force = new URL(req.url).searchParams.get("force") === "1";
+  const senderFilter = parseSenderFilter(req);
   const senders = { lucas: isSenderAvailable("lucas"), charlie: isSenderAvailable("charlie") };
   const pause = await getPauseStatus("cold").catch(() => ({ paused: false as const, until: undefined as string | undefined }));
   const now = Date.now();
@@ -74,9 +91,10 @@ export async function GET(req: Request) {
   const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
 
   const drafts = await readQueue();
-  const candidates = force
-    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
-    : drafts.filter((d) => d.status === "approved");
+  const candidates = (force
+    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
+    : drafts.filter((d) => isApproved(d.status))
+  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
 
   const sentIds = new Set<string>();
   const sentKeys = new Set<string>();
@@ -174,6 +192,7 @@ export async function POST(req: Request) {
   // May limit-hit batch where emailSentAt was stamped optimistically but the mail
   // never actually went out (verified via Gmail). pause + canSendTo still apply.
   const force = new URL(req.url).searchParams.get("force") === "1";
+  const senderFilter = parseSenderFilter(req);
   // Accepter EITHER Lucas- eller Charlie-creds (hybrid allokering 2026-06-17).
   // Helt uden creds er eneste tilfælde hvor vi nægter at starte.
   if (!isSenderAvailable("lucas") && !isSenderAvailable("charlie")) {
@@ -209,9 +228,10 @@ export async function POST(req: Request) {
   // also re-included "sent" drafts (a one-time May-migration hack); that is what let
   // an already-sent draft go out again, so it is gone. Use ?force=1 to re-run the
   // legacy migration if ever needed.
-  const candidates = force
-    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
-    : drafts.filter((d) => d.status === "approved");
+  const candidates = (force
+    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
+    : drafts.filter((d) => isApproved(d.status))
+  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
 
   // Already-sent ledger from the queue itself: a business with a "sent" draft must
   // never be mailed again, even via a different draft. Covers ingest/leadgen leads
@@ -256,7 +276,7 @@ export async function POST(req: Request) {
   // /godkendelse-knappen). Manglende sender (legacy drafts) falder tilbage på
   // defaultSender(). Returnerer også det valgte id så vi kan re-signere body'en.
   const transportFor = (sender?: string) => {
-    const id: SenderId = (sender === "lucas" || sender === "charlie") ? sender : defaultSender();
+    const id = resolveSender(sender);
     return { id, transport: getTransporter(id), from: formatFrom(id) };
   };
 
@@ -352,8 +372,8 @@ export async function POST(req: Request) {
           // status.
           const fresh = (await readQueue()).find((q) => q.id === d.id) ?? d;
           const freshOk = force
-            ? fresh.status === "approved" || fresh.status === "sent"
-            : fresh.status === "approved";
+            ? isApproved(fresh.status) || fresh.status === "sent"
+            : isApproved(fresh.status);
           if (!freshOk) {
             skipped.push({ name: d.name, reason: `status ændret undervejs (${fresh.status})` });
             send({ type: "skipped", index: processed, total, name: d.name, reason: `status ændret undervejs (${fresh.status})` });
