@@ -103,6 +103,79 @@ export function isOverdue(inv: Pick<Invoice, "status" | "dueDate">, today: strin
   return inv.status === "sendt" && inv.dueDate < today;
 }
 
+const kr = (n: number) => `${n.toLocaleString("da-DK")} kr`;
+const daysBetween = (a: string, b: string) =>
+  Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000);
+
+// Markdown frem for JSON: writeVaultNote skriver .md, og briefen læses/skrives
+// af en LLM der har lettere ved prosa end ved rå JSON.
+export function buildStatusNote(invoices: Invoice[], subs: Subscription[], today: string): string {
+  const open = invoices.filter((i) => i.status !== "betalt");
+  const overdue = open.filter((i) => i.status === "forfalden" || i.status === "rykket");
+  const drafts = open.filter((i) => i.status === "kladde");
+  const awaiting = open.filter((i) => i.status === "sendt");
+
+  const line = (i: Invoice, extra: string) =>
+    `- **${i.number}** · ${i.clientName} · ${kr(invoiceTotal(i).total)} · ${extra}`;
+
+  const sections = [
+    `---
+title: Faktura-status (auto)
+tags: [faktura, auto, data]
+date: ${today}
+author: lead-system (cron)
+---
+
+# Faktura-status — opdateret ${today}
+
+> Auto-genereret af lead-systemets faktura-cron kl. 05:00 UTC. Rør den ikke manuelt —
+> den overskrives. Kilde: /fakturaer i Command Center. Er datoen ovenfor gammel,
+> er cronen ikke kørt — sig det i briefen frem for at gætte.`,
+  ];
+
+  sections.push(
+    `## Forfaldne (${overdue.length})`,
+    overdue.length
+      ? overdue.map((i) => line(i, `**${daysBetween(today, i.dueDate)} dage forfalden** (frist ${i.dueDate})${i.status === "rykket" ? " · rykker sendt" : ""}`)).join("\n")
+      : "Ingen. 🎉",
+  );
+
+  sections.push(
+    `## Kladder klar til send (${drafts.length})`,
+    drafts.length ? drafts.map((i) => line(i, `udstedt ${i.issueDate} — **ikke sendt endnu**`)).join("\n") : "Ingen.",
+  );
+
+  sections.push(
+    `## Sendt, venter betaling (${awaiting.length})`,
+    awaiting.length
+      ? awaiting.map((i) => {
+          const left = daysBetween(i.dueDate, today);
+          return line(i, left >= 0 ? `frist ${i.dueDate} (om ${left} dage)` : `frist ${i.dueDate}`);
+        }).join("\n")
+      : "Ingen.",
+  );
+
+  const upcoming = subs
+    .filter((s) => s.active)
+    .map((s) => ({ s, next: nextDueDate(s, today) }))
+    .sort((a, b) => (a.next < b.next ? -1 : 1));
+  sections.push(
+    `## Abonnementer (${upcoming.length} aktive)`,
+    upcoming.length
+      ? upcoming
+          .map(({ s, next }) => `- **${s.clientName}** · ${kr(invoiceTotal({ lines: s.lines, vatRate: 0 }).total)}/md · næste faktura **${next}** (om ${daysBetween(next, today)} dage)`)
+          .join("\n")
+      : "Ingen.",
+  );
+
+  const paidThisMonth = invoices
+    .filter((i) => i.status === "betalt" && i.paidAt?.slice(0, 7) === today.slice(0, 7))
+    .reduce((sum, i) => sum + invoiceTotal(i).total, 0);
+  sections.push(`## Betalt denne måned\n${kr(paidThisMonth)}`);
+
+  return sections.join("\n\n") + "\n";
+}
+
 // --- Store-backed funktioner (import { store } fra "./store.ts") ---
 
 // Lucas' format: "001", "002", ... — global fortløbende serie (matcher faktura 001 sendt 11/6).

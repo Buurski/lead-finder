@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import {
   getSubscriptions, listInvoices, saveInvoice, nextInvoiceNumber, addDays,
-  getBusinessSettings, subscriptionsDue, isOverdue,
+  getBusinessSettings, subscriptionsDue, isOverdue, buildStatusNote,
 } from "@/lib/invoices.ts";
+import { writeVaultNote } from "@/lib/vault.ts";
 
 // GET /api/cron/invoices — daglig cron (vercel.json, 05:00 UTC):
 //   (a) opretter kladder for abonnementer der er due (subscriptionsDue)
 //   (b) markerer sendte fakturaer med passeret dueDate som "forfalden"
+//   (c) skriver status til vaulten, så morgen-briefen kan læse den uden
+//       API-adgang/creds (samme kanal som resten af vault-data)
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -54,5 +57,13 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, created, overdue });
+  // Frisk læsning: created/overdue ovenfor har ændret state.
+  const current = await listInvoices();
+  const vault = await writeVaultNote(
+    "data/faktura-status",
+    buildStatusNote(current, subs, today),
+    `faktura-status ${today} (auto)`,
+  );
+
+  return NextResponse.json({ ok: true, created, overdue, vault });
 }

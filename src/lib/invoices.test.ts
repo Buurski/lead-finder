@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue } from "./invoices.ts";
+import { invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue, buildStatusNote, type Invoice } from "./invoices.ts";
 
 test("invoiceTotal — vatRate 0", () => {
   const r = invoiceTotal({ lines: [{ description: "a", amount: 1000 }, { description: "b", amount: 500 }], vatRate: 0 });
@@ -77,4 +77,49 @@ test("isOverdue — sendt men ikke passeret endnu", () => {
 
 test("isOverdue — betalt uanset dato", () => {
   assert.equal(isOverdue({ status: "betalt", dueDate: "2026-07-01" }, "2026-07-16"), false);
+});
+
+// --- buildStatusNote (vault-note til morgen-briefen) ---
+
+const inv = (over: Partial<Invoice>): Invoice => ({
+  number: "001", clientName: "VIDA", recipient: { name: "VIDA" },
+  issueDate: "2026-07-01", dueDate: "2026-07-15", lines: [{ description: "Hosting", amount: 250 }],
+  vatRate: 0, status: "kladde", payerType: "privat", ...over,
+});
+
+test("buildStatusNote: forfalden faktura tælles med dage og beløb", () => {
+  const note = buildStatusNote([inv({ status: "forfalden", dueDate: "2026-07-10" })], [], "2026-07-17");
+  assert.match(note, /## Forfaldne \(1\)/);
+  assert.match(note, /7 dage forfalden/);
+  assert.match(note, /250 kr/);
+});
+
+test("buildStatusNote: kladde og sendt havner i hver sin sektion", () => {
+  const note = buildStatusNote(
+    [inv({ number: "002", status: "kladde" }), inv({ number: "003", status: "sendt", dueDate: "2026-07-30" })],
+    [], "2026-07-17",
+  );
+  assert.match(note, /## Kladder klar til send \(1\)[\s\S]*\*\*002\*\*/);
+  assert.match(note, /## Sendt, venter betaling \(1\)[\s\S]*\*\*003\*\*[\s\S]*om 13 dage/);
+});
+
+test("buildStatusNote: betalte fakturaer holdes ude af åbne lister, men tælles for måneden", () => {
+  const note = buildStatusNote(
+    [inv({ status: "betalt", paidAt: "2026-07-05T10:00:00Z", lines: [{ description: "Setup", amount: 5000 }] })],
+    [], "2026-07-17",
+  );
+  assert.match(note, /## Forfaldne \(0\)/);
+  assert.match(note, /## Betalt denne måned\n5\.000 kr/);
+});
+
+test("buildStatusNote: aktivt abonnement viser næste fakturadato", () => {
+  const subs = [{ clientName: "VIDA", dayOfMonth: 1, active: true, lines: [{ description: "Hosting", amount: 250 }, { description: "CMS", amount: 500 }] }];
+  const note = buildStatusNote([], subs, "2026-07-17");
+  assert.match(note, /## Abonnementer \(1 aktive\)/);
+  assert.match(note, /750 kr\/md · næste faktura \*\*2026-08-01\*\* \(om 15 dage\)/);
+});
+
+test("buildStatusNote: inaktivt abonnement udelades", () => {
+  const subs = [{ clientName: "Gammel", dayOfMonth: 1, active: false, lines: [{ description: "x", amount: 1 }] }];
+  assert.match(buildStatusNote([], subs, "2026-07-17"), /## Abonnementer \(0 aktive\)\n\nIngen\./);
 });
