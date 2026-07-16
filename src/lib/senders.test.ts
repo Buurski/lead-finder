@@ -70,8 +70,11 @@ function clearCharlieEnv() {
 test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
   withEnv(setLucasEnv, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
-    assert.equal(sig.html, "<strong>Lucas Buur</strong><br>+45 23 24 24 82");
+    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82\nKinly");
+    assert.ok(sig.html.startsWith("<table"));
+    assert.ok(sig.html.includes("Lucas Buur"));
+    assert.ok(sig.html.includes("+45 23 24 24 82"));
+    assert.ok(sig.html.includes("/img/team/lucas-mail-v2.jpg"));
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
@@ -79,7 +82,7 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
 test("formatSignature: Lucas creds-missing fallback — defaults stadig active", () => {
   withEnv(clearLucasEnv, () => {}, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82");
+    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82\nKinly");
   });
 });
 
@@ -92,7 +95,7 @@ test("formatSignature: Charlie defaults — navn + titel+tagline-på-én-linje +
     const sig = formatSignature("charlie");
     assert.equal(
       sig.text,
-      "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62"
+      "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62\nKinly"
     );
     assert.equal(sig.closing, "Mvh, Charlie Nielsen");
     assert.ok(sig.html.includes("Charlie Nielsen"));
@@ -229,7 +232,7 @@ test("formatSignature: credsOverride tvinger bestemte værdier (test/dry-run)", 
     title: "QA-test",
     tagline: "",
   });
-  assert.equal(sig.text, "Charlie Test\nQA-test\n+45 00 00 00 00");
+  assert.equal(sig.text, "Charlie Test\nQA-test\n+45 00 00 00 00\nKinly");
   assert.equal(sig.closing, "Mvh, Charlie Test");
 });
 
@@ -383,6 +386,59 @@ test("stripSignature: fjerner 'Mvh, Charlie Nielsen' (fuldt navn)", async () => 
 test("applySignature: ingen dobbelt-signatur oven paa closing-linje", async () => {
   const { applySignature } = await import("./senders.ts");
   const out = applySignature("Hej\n\ntekst.\n\nMvh, Lucas Buur", "lucas");
-  assert.equal((out.match(/Mvh|Lucas/g) || []).length <= 2, true);
   assert.equal(/Mvh, Lucas Buur[\s\S]*Lucas Buur/.test(out), false);
+  assert.equal((out.match(/Lucas Buur/g) || []).length, 1);
+  assert.equal(/Med venlig hilsen\nLucas Buur/.test(out), true);
+  assert.equal(out.endsWith("\nKinly"), true);
+});
+
+// ---------------------------------------------------------------------------
+// stripSignature: Charlie-blok med rolle-linje + stablede blokke (toggle-bug
+// 2026-07-16). Foer fixet matchede ingen moenstre Charlies "Senior Funding
+// Manager & Web-design entusiast"-linje, saa toggle Lucas/Charlie paa
+// /godkendelse stablede en ny signaturblok pr. klik.
+// ---------------------------------------------------------------------------
+
+const CHARLIE_BLOCK = "Med venlig hilsen\nCharlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62\nKinly";
+const LUCAS_BLOCK = "Med venlig hilsen\nLucas Buur\n+45 23 24 24 82\nKinly";
+
+test("stripSignature: fjerner Charlie-blok med rolle-linje", async () => {
+  const { stripSignature } = await import("./senders.ts");
+  assert.equal(stripSignature(`Hej\n\ntekst.\n\n${CHARLIE_BLOCK}`), "Hej\n\ntekst.");
+});
+
+test("stripSignature: fjerner STABLEDE signaturblokke (toggle-bug)", async () => {
+  const { stripSignature } = await import("./senders.ts");
+  const stacked = `Hej\n\ntekst.\n\n${CHARLIE_BLOCK}\n\n${LUCAS_BLOCK}\n\n${CHARLIE_BLOCK}`;
+  assert.equal(stripSignature(stacked), "Hej\n\ntekst.");
+});
+
+test("previewSignature: toggle frem og tilbage stabler ikke", async () => {
+  const { previewSignature } = await import("./leads/signature-preview.ts");
+  let body = `Hej\n\ntekst.\n\n${LUCAS_BLOCK}`;
+  for (let i = 0; i < 5; i++) {
+    body = previewSignature(body, "charlie", "+45 23 24 24 82", "+45 42 25 32 62");
+    body = previewSignature(body, "lucas", "+45 23 24 24 82", "+45 42 25 32 62");
+  }
+  assert.equal((body.match(/Med venlig hilsen/g) || []).length, 1);
+  assert.equal(body, `Hej\n\ntekst.\n\n${LUCAS_BLOCK}`);
+});
+
+test("applySignature: matcher preview-formatet (Med venlig hilsen + blok)", async () => {
+  const { applySignature } = await import("./senders.ts");
+  const { previewSignature } = await import("./leads/signature-preview.ts");
+  const body = "Hej\n\ntekst.";
+  const sent = applySignature(body, "charlie");
+  const preview = previewSignature(body, "charlie", "+45 23 24 24 82", "+45 42 25 32 62");
+  assert.equal(sent, preview);
+});
+
+test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Hej <Vida>,\n\nSe https://demo.dk\n\nMvh, Lucas Buur", "lucas");
+  assert.equal(out.includes("&lt;Vida&gt;"), true);
+  assert.equal(out.includes('<a href="https://demo.dk"'), true);
+  assert.equal(out.includes("/img/team/lucas-mail-v2.jpg"), true);
+  assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
+  assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });

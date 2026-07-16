@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
-import { previewSignature } from "@/lib/leads/signature-preview";
+import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import WarnBanner from "@/components/WarnBanner";
 
 // Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
@@ -113,7 +113,8 @@ export default function ApprovePage() {
 
   const counts = useMemo(() => {
     const pending = drafts.filter((d) => d.status === "pending").length;
-    const approvedList = drafts.filter((d) => d.status === "approved");
+    // "edited" = legacy redigeret·godkendt — tælles og sendes som godkendt.
+    const approvedList = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     const approved = approvedList.length;
     const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
     const approvedLucas = approved - approvedCharlie;
@@ -126,17 +127,22 @@ export default function ApprovePage() {
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendProg, setSendProg] = useState<{ processed: number; total: number; sent: number; failed: number; line: string } | null>(null);
-  const sendApproved = useCallback(async () => {
+  const sendApproved = useCallback(async (senderFilter?: "lucas" | "charlie") => {
     if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
-    if (counts.approved === 0) return;
+    const filterCount = senderFilter === "lucas" ? counts.approvedLucas
+      : senderFilter === "charlie" ? counts.approvedCharlie
+      : counts.approved;
+    if (filterCount === 0) return;
+    const qs = senderFilter ? `?sender=${senderFilter}` : "";
+    const who = senderFilter === "lucas" ? " (kun Lucas)" : senderFilter === "charlie" ? " (kun Charlie)" : "";
 
     // Preflight (GET på send-ruten): kører alle guards uden at sende, så
     // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
     // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
     // vi tilbage til den gamle dialog.
-    let confirmText = `Send ${counts.approved} godkendte udkast?`;
+    let confirmText = `Send ${filterCount} godkendte udkast${who}?`;
     try {
-      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      const pf = await fetch(`/api/approve/send${qs}`).then((r) => r.json());
       if (pf && pf.ok) {
         if (pf.paused) { setSendMsg(`Afsendelse er på pause${pf.until ? ` til ${pf.until}` : ""}.`); return; }
         if (pf.busy) { setSendMsg("Afsendelse kører allerede — vent til den er færdig."); return; }
@@ -152,7 +158,7 @@ export default function ApprovePage() {
         }
         const skipLine = [...reasonCounts.entries()].map(([r, n]) => `${n}× ${r}`).join(", ");
         confirmText = [
-          `Klar til at sende:`,
+          `Klar til at sende${who}:`,
           `· ${pf.wouldSend} sendes nu`,
           pf.capped > 0 ? `· ${pf.capped} venter til næste klik (max ${pf.cap} pr. klik)` : "",
           (pf.skipped?.length ?? 0) > 0 ? `· ${pf.skipped.length} springes over (${skipLine})` : "",
@@ -166,7 +172,7 @@ export default function ApprovePage() {
     setSendProg(null);
     setSendMsg("Sender… det kan tage et par minutter. Luk ikke siden.");
     try {
-      const res = await fetch("/api/approve/send", { method: "POST" });
+      const res = await fetch(`/api/approve/send${qs}`, { method: "POST" });
       const ct = res.headers.get("content-type") || "";
 
       // Pre-flight guards (pause / busy / no-creds / nothing-to-send) return JSON.
@@ -236,7 +242,30 @@ export default function ApprovePage() {
     } finally {
       setSendBusy(false);
     }
-  }, [sendBusy, counts.approved, load]);
+  }, [sendBusy, counts.approved, counts.approvedLucas, counts.approvedCharlie, load]);
+
+  // Nødbremse: flyt ALLE godkendte tilbage til afventer (intet sendes).
+  // Til gamle masse-godkendelser (fx 221 legacy "redigeret · godkendt").
+  const [resetBusy, setResetBusy] = useState(false);
+  const resetApproved = useCallback(async () => {
+    if (resetBusy || sendBusy || counts.approved === 0) return;
+    if (!window.confirm(`Flyt alle ${counts.approved} godkendte tilbage til Afventer?\n\nDer sendes INTET — du kan bagefter godkende dem igen enkeltvis eller i bulk.`)) return;
+    setResetBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset-approved" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setSendMsg(res.ok ? `${d.reset ?? 0} flyttet til afventer — intet sendt.` : (d.error ?? "Kunne ikke nulstille."));
+      await load();
+    } catch {
+      setSendMsg("Netværksfejl ved nulstilling.");
+    } finally {
+      setResetBusy(false);
+    }
+  }, [resetBusy, sendBusy, counts.approved, load]);
 
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
@@ -503,9 +532,24 @@ export default function ApprovePage() {
               </div>
             )}
           </div>
-          <button onClick={sendApproved} disabled={sendBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
-            {sendBusy ? "Sender…" : `Send godkendte (${counts.approved})`}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button onClick={() => sendApproved()} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
+              {sendBusy ? "Sender…" : `Send alle (${counts.approved})`}
+            </button>
+            {counts.approvedLucas > 0 && counts.approvedCharlie > 0 && (
+              <>
+                <button onClick={() => sendApproved("lucas")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                  Kun Lucas ({counts.approvedLucas})
+                </button>
+                <button onClick={() => sendApproved("charlie")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                  Kun Charlie ({counts.approvedCharlie})
+                </button>
+              </>
+            )}
+            <button onClick={resetApproved} disabled={sendBusy || resetBusy} title="Flyt alle godkendte tilbage til Afventer — der sendes intet" style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              {resetBusy ? "Nulstiller…" : "→ Afventer"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -800,23 +844,20 @@ function DraftLetter({
   onToggleSelect: () => void;
 }) {
   const [subject, setSubject] = useState(draft.subject);
-  const [body, setBody] = useState(draft.body);
+  // 2026-07-16: body redigeres UDEN signatur. Signaturen er en låst blok under
+  // feltet og påføres først ved afsendelse (send-ruten re-signer altid). Det
+  // gør det STRUKTURELT umuligt at stable eller ødelægge signaturen i en
+  // redigering — hele fejlklassen fra toggle-bug'en er væk.
+  const strippedOriginal = useMemo(() => stripSignature(draft.body), [draft.body]);
+  const [body, setBody] = useState(strippedOriginal);
   const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
   const [sender, setSender] = useState<"lucas" | "charlie">(draft.sender ?? "lucas");
 
   // Per-lead afsender-valg. Persists immediately; the send route routes the mail
-  // to the matching Gmail account + re-signs the body at send time.
-  //
-  // 2026-06-26: re-sign body CLIENT-SIDE too, så det body-felt brugeren ser i
-  // /godkendelse matcher den nye afsender. Før denne fix blev signaturen i
-  // bunden ikke opdateret når man skiftede afsender (kun top-preview'et
-  // "SLUTNING AF MAILEN" opdaterede sig), hvilket var forvirrende. Body
-  // gemmes først i databasen ved Godkend/Redigér — her opdaterer vi kun den
-  // lokale state så det visuelle er konsistent.
+  // to the matching Gmail account + re-signs the body at send time. Body røres
+  // ikke længere ved toggle — signatur-blokken nedenfor følger `sender`-state.
   async function chooseSender(next: "lucas" | "charlie") {
     if (next === sender) return;
-    const resignBody = previewSignature(body, next, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE);
-    setBody(resignBody);
     setSender(next);
     await onAct(draft.id, "set-sender", { sender: next });
   }
@@ -847,7 +888,15 @@ function DraftLetter({
     }
   }
 
-  const dirty = subject !== draft.subject || body !== draft.body;
+  const dirty = subject !== draft.subject || body !== strippedOriginal;
+
+  // U-gemte rettelser må ikke tabes stille ved reload/luk-fane (council-fund).
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   const demosDirty = JSON.stringify(demos.map((d) => d.url)) !== JSON.stringify(draft.demoPair.map((d) => d.url));
 
   // Swap one demo slot: pick from the catalog, and rewrite that URL inside the body
@@ -890,6 +939,29 @@ function DraftLetter({
     },
     [draft.id, subject, body, onAct]
   );
+
+  // ÉN smart godkend-knap (2026-07-16, council-fund): før krævede en rettelse
+  // to klik ("Gem rettelse + godkend" mens "Godkend" bare blev grå), og et
+  // demo-skift uden "Gem demoer" blev tabt stille ved godkendelse. Nu gemmer
+  // knappen selv alt der er dirty (demoer → rettelse) og godkender i ét klik.
+  const approveSmart = useCallback(async () => {
+    setBusy("approve");
+    setViolations([]);
+    try {
+      if (demosDirty) {
+        const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
+        if (!r.ok) { setViolations(r.violations ?? ["Ukendt fejl"]); return; }
+      }
+      const r = dirty
+        ? await onAct(draft.id, "edit", { subject, body })
+        : await onAct(draft.id, "approve");
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
+  }, [draft.id, subject, body, demos, dirty, demosDirty, onAct]);
 
   return (
     <article
@@ -992,48 +1064,6 @@ function DraftLetter({
         </div>
       )}
 
-      {/* sign-off preview — what the email's last lines will look like with the
-          chosen sender. Updates live when Lucas/Charlie is toggled, so the
-          preview always matches what the send route will emit. (2026-06-22) */}
-      <div
-        style={{
-          marginTop: 8,
-          padding: "8px 12px",
-          background: "var(--bg-2)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          fontSize: 12,
-          color: "var(--text-muted)",
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            color: "var(--text-dim)",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-            marginBottom: 4,
-          }}
-        >
-          Slutning af mailen — sendes som {sender === "lucas" ? "Lucas" : "Charlie"}
-        </div>
-        <pre
-          style={{
-            margin: 0,
-            fontFamily: "inherit",
-            whiteSpace: "pre-wrap",
-            color: "var(--text)",
-            lineHeight: 1.5,
-          }}
-        >
-          {previewSignature(body, sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE)
-            .split("\n")
-            .slice(-3)
-            .join("\n")}
-        </pre>
-      </div>
-
       {/* hooks */}
       {draft.hooks.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
@@ -1086,6 +1116,28 @@ function DraftLetter({
             }}
           />
         </Field>
+
+        {/* LÅST signatur-blok (2026-07-16): signaturen er ikke længere en del af
+            det redigérbare body-felt — den påføres ved afsendelse og følger
+            afsender-valget live. Kan ikke redigeres/slettes/stables herfra. */}
+        <div
+          style={{
+            padding: "8px 12px",
+            background: "var(--bg-2)",
+            border: "1px dashed var(--border)",
+            borderRadius: 8,
+            fontSize: 12.5,
+            color: "var(--text-muted)",
+            maxWidth: "70ch",
+          }}
+        >
+          <div style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+            Signatur — sættes automatisk ved afsendelse ({sender === "lucas" ? "Lucas" : "Charlie"} + Kinly-logo i HTML)
+          </div>
+          <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap", color: "var(--text)", lineHeight: 1.5 }}>
+            {previewSignature("", sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE).trim()}
+          </pre>
+        </div>
       </div>
 
       {/* demos — read-only once decided, editable picker while pending */}
@@ -1149,20 +1201,15 @@ function DraftLetter({
       {/* actions */}
       {!decided && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
-          <button onClick={() => act("approve")} disabled={busy !== null || dirty} style={btnPrimary(busy === "approve" || dirty)}>
-            {busy === "approve" ? "Godkender…" : "Godkend"}
+          <button onClick={approveSmart} disabled={busy !== null} style={btnPrimary(busy === "approve")}>
+            {busy === "approve" ? "Godkender…" : dirty || demosDirty ? "Gem + godkend" : "Godkend"}
           </button>
-          {dirty && (
-            <button onClick={() => act("edit")} disabled={busy !== null} style={btnSecondary}>
-              {busy === "edit" ? "Gemmer…" : "Gem rettelse + godkend"}
-            </button>
-          )}
           <button onClick={() => act("reject")} disabled={busy !== null} style={btnGhost}>
             {busy === "reject" ? "Afviser…" : "Afvis"}
           </button>
-          {dirty && (
+          {(dirty || demosDirty) && (
             <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-              {demosDirty ? "Demo skiftet — tryk “Gem demoer”" : "Rettet — gem for at godkende"}
+              U-gemte ændringer — “Gem + godkend” gemmer det hele
             </span>
           )}
         </div>

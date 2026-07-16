@@ -74,6 +74,14 @@ check("brand-new business NOT blocked",
   suppressionReason({ leadId: "place_Z", name: "Helt Ny Salon", city: "Randers", branch: "skønhedsklinik" }, sets) === null);
 check("excluded branch blocked even if new",
   suppressionReason({ leadId: "place_T", name: "Ny Tandklinik", city: "Horsens", branch: "tandlæge" }, sets) !== null);
+// Kæder blokeres ved indgangen (2026-07-16) — før nåede fx "PARK" (frisørkæde)
+// helt ind i /godkendelse fordi kun canSendTo tjekkede isChain (ved send).
+check("kæde blokeret ved ingest (PARK, eksakt fuldt navn)",
+  suppressionReason({ leadId: "place_C1", name: "PARK", city: "Glostrup", branch: "frisør" }, sets) !== null);
+check("kæde blokeret ved ingest (McDonald's)",
+  suppressionReason({ leadId: "place_C2", name: "McDonald's Ikast", city: "Ikast", branch: "restaurant" }, sets) !== null);
+check("'Park Bio' er IKKE kæde (fuldnavn-match må ikke over-matche)",
+  suppressionReason({ leadId: "place_C3", name: "Park Bio", city: "København", branch: "biograf" }, sets) === null);
 
 // Sheets unavailable → queue half still guards, contactedAvailable false.
 const setsNoSheets = buildBlockSets(queue, null, NOW);

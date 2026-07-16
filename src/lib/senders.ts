@@ -345,12 +345,71 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
   }
 
+  // 2026-07-16: Kinly-brand i alle signaturer (Lucas + Charlies fælles firma).
+  // Text-delen får en "Kinly"-linje; HTML-delen er en tabel-baseret signatur
+  // efter email-standard (inline CSS, web-safe font, hostet lille PNG, <600px)
+  // så den renderer ens i Gmail/Outlook/Apple Mail. kinly.dk-link og klikbart
+  // logo tændes via KINLY_SITE_URL når domænet er live — indtil da vises
+  // domænet som ren tekst (døde links i kold mail skader mere end intet link).
+  const siteUrl = (process.env.KINLY_SITE_URL || "").trim().replace(/\/$/, "");
+  textLines.push(siteUrl ? `Kinly · ${siteUrl.replace(/^https?:\/\//, "")}` : "Kinly");
+
+  // 2026-07-16 (redesign efter Lucas-feedback): foto-kort i Kinly-sitets
+  // designsystem (paper #f6f3ee, ink #191713, ember #d4500f, Georgia-serif
+  // wordmark med ember-farvet i). Rundt teamfoto + tekst-wordmark = INGEN
+  // logo-fil at hoste; fotos ligger allerede live på kinly-site.vercel.app
+  // (15-26 KB, under 50 KB-standarden). Aldrig ren-billede-signatur: navn/
+  // rolle/telefon forbliver rigtig tekst (spamfiltre, blokerede billeder,
+  // søgbarhed). border-radius degraderer til firkant i gammel Outlook — ok.
+  const EMBER = "#d4500f";
+  const INK = "#191713";
+  const PAPER = "#f6f3ee";
+  // lucas-mail-v2.jpg = Lucas' Google-profilfoto i FARVE (s/h-versionen
+  // fravalgt; -v2 = cache-bust). Sitets lucas.jpg er et andet billede og må
+  // ikke overskrives. Charlie bruger sitets teamfoto.
+  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas-mail-v2.jpg" : "charlie.jpg"}`;
+  const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
+  // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
+  // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
+  // = paper #f6f3ee = kortets bg → ingen synlig kant.
+  // -v2 i filnavnet er cache-bust: Gmails billedproxy cacher pr. URL, så en
+  // rettet logofil på samme URL vises aldrig hos modtagere der har set den
+  // gamle. Nyt indhold = nyt filnavn.
+  const logoImg = `<img src="${KINLY_ASSET_BASE}/img/brand/kinly-logo-email-v2.png" alt="Kinly" width="96" height="47" style="display:block;border:0;" />`;
+  const domainCell = siteUrl
+    ? `<a href="${siteUrl}" style="color:${INK};text-decoration:none;">kinly.dk</a>`
+    : `kinly.dk`;
+  const htmlTable = [
+    `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:separate;">`,
+    `<tr><td style="background:${PAPER};border:1px solid #e9e2d5;border-radius:14px;padding:18px 24px 18px 18px;">`,
+    `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
+    `<td valign="middle" style="padding-right:18px;"><img src="${photoUrl}" alt="${trim(name)}" width="76" height="76" style="display:block;border-radius:50%;border:2px solid ${EMBER};" /></td>`,
+    `<td valign="middle" style="font-family:Arial,Helvetica,sans-serif;">`,
+    `<div style="font-size:16px;color:${INK};font-weight:bold;letter-spacing:0.2px;">${trim(name)}</div>`,
+    ...roleLines.map((l) => `<div style="font-size:12.5px;color:#6d675c;padding-top:2px;">${l}</div>`),
+    `<div style="font-size:13px;color:${INK};padding-top:9px;line-height:1.7;">`,
+    ...(trim(phone) ? [`${trim(phone)}<br>`] : []),
+    `${domainCell}`,
+    `</div>`,
+    `</td>`,
+    `<td valign="bottom" style="padding-left:28px;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td>`,
+    `</tr></table>`,
+    `</td></tr>`,
+    `</table>`,
+  ].join("\n");
+
   return {
     text: textLines.join("\n"),
-    html: htmlLines.join("<br>"),
+    html: htmlTable,
     closing: `Mvh, ${trim(name)}`,
   };
 }
+
+/** Basen for brand-assets i mails (teamfotos m.m.). Bor på kinly-sitet —
+ *  IKKE på lead-systemets domæne — så billederne virker uafhængigt af dette
+ *  repos deploys og senere kan flytte med til kinly.dk. Fotos:
+ *  /img/team/lucas.jpg + /img/team/charlie.jpg (live, 15-26 KB). */
+const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
 // 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send
@@ -358,26 +417,40 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
 // the layered formatSignature() under the hood so it picks up the same env
 // vars and per-sender defaults.
 
-/** Strip any trailing sign-off from a body so we can re-sign for the chosen sender. */
-export function stripSignature(body: string): string {
-  let t = (body || "").replace(/\s+$/, "");
-  const patterns: RegExp[] = [
-    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
-    // "Mvh, Lucas" OG "Mvh, Lucas Buur" / "Mvh, Charlie Nielsen" — efternavnet
-    // manglede før Bundle G, så closing-linjen fra formatSignature ("Mvh,
-    // Lucas Buur") blev aldrig strippet og send-ruten dobbelt-signerede.
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
-  ];
-  for (const re of patterns) {
-    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
-  }
-  return t;
-}
+// 2026-07-16: strip-logikken bor nu ét sted (signature-preview.ts, client-safe,
+// ingen imports) så /godkendelse-preview og send-ruten aldrig driver fra
+// hinanden igen. Re-eksporteres herfra så eksisterende imports virker.
+export { stripSignature } from "./leads/signature-preview.ts";
+import { stripSignature as _strip } from "./leads/signature-preview.ts";
 
-/** Re-sign a body for the chosen sender. */
+/** Re-sign a body for the chosen sender. Matcher preview-formatet på
+ *  /godkendelse: "Med venlig hilsen\n<navn>\n[titel]\n<telefon>\nKinly". */
 export function applySignature(body: string, id: SenderId): string {
   const sig = formatSignature(id);
-  return `${stripSignature(body)}\n\n${sig.text}`;
+  return `${_strip(body)}\n\nMed venlig hilsen\n${sig.text}`;
+}
+
+/** HTML-udgave af mailen til send-ruten: brødtekst (escaped, nl2br, URLs som
+ *  links) + HTML-signatur med Kinly-logo. Plain-text-delen (applySignature)
+ *  sendes altid ved siden af som multipart-alternativ. */
+export function applySignatureHtml(body: string, id: SenderId): string {
+  const sig = formatSignature(id);
+  const stripped = _strip(body);
+  const escaped = stripped
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const linked = escaped.replace(
+    /https?:\/\/[^\s<]+/g,
+    (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,
+  );
+  const paragraphs = linked
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, "<br>")}</p>`)
+    .join("\n");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f1f1f;max-width:620px;">
+${paragraphs}
+<p style="margin:18px 0 10px 0;">Med venlig hilsen</p>
+${sig.html}
+</div>`;
 }

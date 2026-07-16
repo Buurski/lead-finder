@@ -6,7 +6,8 @@ import { canSendTo } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
-import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, type SenderId } from "@/lib/senders";
+import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
+import { validateDraft } from "@/lib/draft";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -54,6 +55,22 @@ const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
   /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
 
+// "Godkendt" = approved ELLER edited. "edited" er legacy-status fra før
+// edit-actionen begyndte at sætte "approved" — UI'et viser begge som godkendt
+// ("redigeret · godkendt"), så send-ruten SKAL også kunne sende dem. Uden
+// dette sad 221 redigerede drafts fast: synlige som godkendt, aldrig sendt.
+const isApproved = (s: string) => s === "approved" || s === "edited";
+
+// Afsender-filter (?sender=lucas|charlie): send kun drafts der VILLE gå ud
+// som den valgte identitet. Samme opløsning som transportFor — manglende/
+// ukendt sender falder tilbage på defaultSender().
+const resolveSender = (sender?: string): SenderId =>
+  sender === "lucas" || sender === "charlie" ? sender : defaultSender();
+const parseSenderFilter = (req: Request): SenderId | null => {
+  const s = new URL(req.url).searchParams.get("sender");
+  return s === "lucas" || s === "charlie" ? s : null;
+};
+
 // GET /api/approve/send — PREFLIGHT. Sender INTET. Kører de samme guards som
 // send-løkken (samme rækkefølge, samme ledger-seeding) og svarer med hvad et
 // klik ville gøre: hvor mange sendes nu (SEND_CAP), hvor mange venter, hvem
@@ -66,6 +83,7 @@ export async function GET(req: Request) {
   // samme !force-gating af re-contact-guards, ellers under-rapporterer
   // dialogen på et force-run.
   const force = new URL(req.url).searchParams.get("force") === "1";
+  const senderFilter = parseSenderFilter(req);
   const senders = { lucas: isSenderAvailable("lucas"), charlie: isSenderAvailable("charlie") };
   const pause = await getPauseStatus("cold").catch(() => ({ paused: false as const, until: undefined as string | undefined }));
   const now = Date.now();
@@ -73,9 +91,10 @@ export async function GET(req: Request) {
   const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
 
   const drafts = await readQueue();
-  const candidates = force
-    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
-    : drafts.filter((d) => d.status === "approved");
+  const candidates = (force
+    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
+    : drafts.filter((d) => isApproved(d.status))
+  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
 
   const sentIds = new Set<string>();
   const sentKeys = new Set<string>();
@@ -173,6 +192,7 @@ export async function POST(req: Request) {
   // May limit-hit batch where emailSentAt was stamped optimistically but the mail
   // never actually went out (verified via Gmail). pause + canSendTo still apply.
   const force = new URL(req.url).searchParams.get("force") === "1";
+  const senderFilter = parseSenderFilter(req);
   // Accepter EITHER Lucas- eller Charlie-creds (hybrid allokering 2026-06-17).
   // Helt uden creds er eneste tilfælde hvor vi nægter at starte.
   if (!isSenderAvailable("lucas") && !isSenderAvailable("charlie")) {
@@ -208,9 +228,10 @@ export async function POST(req: Request) {
   // also re-included "sent" drafts (a one-time May-migration hack); that is what let
   // an already-sent draft go out again, so it is gone. Use ?force=1 to re-run the
   // legacy migration if ever needed.
-  const candidates = force
-    ? drafts.filter((d) => d.status === "approved" || d.status === "sent")
-    : drafts.filter((d) => d.status === "approved");
+  const candidates = (force
+    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
+    : drafts.filter((d) => isApproved(d.status))
+  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
 
   // Already-sent ledger from the queue itself: a business with a "sent" draft must
   // never be mailed again, even via a different draft. Covers ingest/leadgen leads
@@ -255,7 +276,7 @@ export async function POST(req: Request) {
   // /godkendelse-knappen). Manglende sender (legacy drafts) falder tilbage på
   // defaultSender(). Returnerer også det valgte id så vi kan re-signere body'en.
   const transportFor = (sender?: string) => {
-    const id: SenderId = (sender === "lucas" || sender === "charlie") ? sender : defaultSender();
+    const id = resolveSender(sender);
     return { id, transport: getTransporter(id), from: formatFrom(id) };
   };
 
@@ -344,14 +365,47 @@ export async function POST(req: Request) {
           // 4. Human spacing before each send (except the first).
           if (sent > 0) await sleep(randGap());
 
-          const { id: senderId, transport, from } = transportFor(d.sender);
+          // 5. FRISK LÆSNING (2026-07-16): en run tager minutter, og drafts kan
+          // redigeres/afvises/skifte afsender undervejs via /godkendelse. Uden
+          // genlæsning sendes det STALE snapshot fra run-start. Genlæs draften
+          // lige før afsendelse og respektér dens aktuelle body/subject/sender/
+          // status.
+          const fresh = (await readQueue()).find((q) => q.id === d.id) ?? d;
+          const freshOk = force
+            ? isApproved(fresh.status) || fresh.status === "sent"
+            : isApproved(fresh.status);
+          if (!freshOk) {
+            skipped.push({ name: d.name, reason: `status ændret undervejs (${fresh.status})` });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: `status ændret undervejs (${fresh.status})` });
+            continue;
+          }
+
+          // 6. SIDSTE HEGN (2026-07-16): validateDraft kørte før kun ved
+          // edit/set-demos — ren Godkend og bulk-godkend havde ingen server-
+          // validering. Alt passerer dette punkt, så hegnet fanger alle veje.
+          // Signatur-tjekket fanger enhver fremtidig stabling-regression.
+          const finalText = applySignature(fresh.body, transportFor(fresh.sender).id);
+          const check = validateDraft(fresh.body);
+          if (!check.ok) {
+            skipped.push({ name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
+            continue;
+          }
+          if ((finalText.match(/Med venlig hilsen/g) || []).length !== 1) {
+            skipped.push({ name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
+            continue;
+          }
+
+          const { id: senderId, transport, from } = transportFor(fresh.sender);
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({
               from,
               to: target,
-              subject: d.subject,
-              text: applySignature(d.body, senderId),
+              subject: fresh.subject,
+              text: finalText,
+              html: applySignatureHtml(fresh.body, senderId),
             });
             await updateDraft(d.id, { status: "sent", sentBy: senderId });
             // Add to the in-run ledgers so a same-business / same-address sibling
@@ -368,10 +422,10 @@ export async function POST(req: Request) {
               }
             }
             sent++;
-            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: d.sender ?? defaultSender() });
+            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: senderId });
           } catch (err) {
             failed++;
-            send({ type: "failed", index: processed, total, name: d.name, sender: d.sender ?? defaultSender(), error: String(err) });
+            send({ type: "failed", index: processed, total, name: d.name, sender: senderId, error: String(err) });
           }
         }
       } finally {

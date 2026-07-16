@@ -29,6 +29,7 @@ import type { QueueDraft } from "../queue.ts";
 import type { Lead } from "../sheets.ts";
 import { isContactable } from "./contactable.ts";
 import { isExcludedBranch } from "./branch-policy.ts";
+import { isChain } from "../chains.ts";
 
 const REJECT_BLOCK_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -106,6 +107,10 @@ export interface IncomingBiz {
 // (for the agent's summary / logs) or null when it's clear to queue.
 export function suppressionReason(b: IncomingBiz, sets: BlockSets): string | null {
   if (isExcludedBranch(b.branch, b.name)) return "branche ekskluderet (medicinsk/sundhed)";
+  // Kæder må aldrig nå køen (2026-07-16): før blev kæder først blokeret ved
+  // afsendelse (canSendTo), så de lå synlige og godkendbare i /godkendelse.
+  // Dette er det fælles choke-point for /api/approve/add + cron/ingest-leadgen.
+  if (b.name && isChain(b.name)) return "kæde (isChain)";
   if (b.leadId && sets.ids.has(b.leadId)) return "allerede i kø/kontaktet (place_id)";
   const k = bizKey(b.name, b.city);
   if (k && sets.keys.has(k)) return "allerede i kø/kontaktet (navn)";

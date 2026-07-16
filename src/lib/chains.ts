@@ -43,11 +43,18 @@ const CHAIN_CONTAINS = [
   "cbre",
   // Restaurant chains
   "pincho nation",
+  // Frisør/beauty chains (2026-07-16 — listen var HELT tom for frisør-kæder)
+  "zenz organic", "frisør stender", "stender frisør",
 ];
 
 // Short/ambiguous tokens that must match as a whole word — substring matching
 // would over-match (e.g. "coop" inside "Scoop Is", "Coop" the grocery chain is real).
 const CHAIN_WORDS = ["coop"];
+
+// Kæder hvor navnet er ét almindeligt ord — matches kun når HELE navnet er
+// præcis dét ord. "PARK" (frisørkæden) må ikke ramme "Park Bio" / "Hotel
+// Park" / "Restaurant Parken" (falske positive, jf. chain-detection-pitfalls).
+const CHAIN_FULLNAME = ["park"];
 
 export function isChain(name: string, extra?: string[]): boolean {
   const lower = name.toLowerCase();
@@ -66,6 +73,7 @@ export function isChain(name: string, extra?: string[]): boolean {
   for (const w of CHAIN_WORDS) {
     if (new RegExp(`\\b${w}\\b`).test(norm)) return true;
   }
+  if (CHAIN_FULLNAME.includes(norm.trim())) return true;
   for (const chain of CHAIN_EXACT) {
     const c = stripApos(chain.toLowerCase());
     if (new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(norm)) return true;

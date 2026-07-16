@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { validateDraft } from "@/lib/draft";
+import { applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
 
 // POST /api/replies/[id]/send-reply — QA-only reply send.
 //
@@ -19,6 +20,7 @@ interface Body {
   subject?: string;
   leadName?: string;
   toEmail?: string; // customer recipient — only used (and only sent) in armed live mode
+  sender?: SenderId; // hvem signerer (Kinly-kort) — default lucas
   mode?: "qa" | "live";
   confirm?: boolean;
 }
@@ -69,8 +71,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ leadId:
       return NextResponse.json({ ok: false, message: "Ingen mail-creds." }, { status: 200 });
     }
     try {
+      const senderId: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
       const t = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD } });
-      await t.sendMail({ from: `Lucas Buur <${process.env.GMAIL_USER}>`, to, subject: body.subject || `Re: ${body.leadName ?? id}`, text: reply });
+      await t.sendMail({
+        from: `Lucas Buur <${process.env.GMAIL_USER}>`,
+        to,
+        subject: body.subject || `Re: ${body.leadName ?? id}`,
+        // Kinly-signatur (kort) på alle udgående svar — samme kilde som DM-mails.
+        text: applySignature(reply, senderId),
+        html: applySignatureHtml(reply, senderId),
+      });
       return NextResponse.json({ ok: true, sent: true, mode: "live", to });
     } catch (err) {
       return NextResponse.json({ ok: false, message: String(err) }, { status: 200 });

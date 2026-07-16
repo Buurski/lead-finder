@@ -103,11 +103,26 @@ export class FSStore implements Store {
   }
   async list(prefix: string): Promise<string[]> {
     const dir = path.join(process.cwd(), ".send_queue");
-    try {
-      return fs.readdirSync(dir).filter((f) => f.startsWith(prefix)).map((f) => f.replace(/\.(json|jsonl)$/, ""));
-    } catch {
-      return [];
-    }
+    const out: string[] = [];
+    const walk = (d: string) => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(d, { withFileTypes: true });
+      } catch {
+        return; // .send_queue (or a subdir) missing
+      }
+      for (const e of entries) {
+        const abs = path.join(d, e.name);
+        if (e.isDirectory()) {
+          walk(abs);
+        } else {
+          const key = path.relative(dir, abs).split(path.sep).join("/").replace(/\.(json|jsonl)$/, "");
+          if (key.startsWith(prefix)) out.push(key);
+        }
+      }
+    };
+    walk(dir);
+    return out;
   }
   async putAsset(key: string, content: string | Uint8Array, contentType: string): Promise<PutAssetResult> {
     void contentType; // FS writes don't need the MIME type; Blob does.
