@@ -364,9 +364,10 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   const EMBER = "#d4500f";
   const INK = "#191713";
   const PAPER = "#f6f3ee";
-  // lucas-mail.jpg = Lucas' Google-profilfoto i s/h (sitets lucas.jpg er et
-  // andet billede og må ikke overskrives). Charlie bruger sitets teamfoto.
-  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas-mail.jpg" : "charlie.jpg"}`;
+  // lucas-mail-v2.jpg = Lucas' Google-profilfoto i FARVE (s/h-versionen
+  // fravalgt; -v2 = cache-bust). Sitets lucas.jpg er et andet billede og må
+  // ikke overskrives. Charlie bruger sitets teamfoto.
+  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas-mail-v2.jpg" : "charlie.jpg"}`;
   const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
   // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
   // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
@@ -384,11 +385,11 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
     `<td valign="middle" style="padding-right:18px;"><img src="${photoUrl}" alt="${trim(name)}" width="76" height="76" style="display:block;border-radius:50%;border:2px solid ${EMBER};" /></td>`,
     `<td valign="middle" style="font-family:Arial,Helvetica,sans-serif;">`,
-    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:${INK};font-weight:bold;">${trim(name)}</div>`,
-    ...roleLines.map((l) => `<div style="font-size:12px;color:#6d675c;padding-top:1px;">${l}</div>`),
-    `<div style="font-size:12.5px;color:${INK};padding-top:8px;line-height:1.6;">`,
-    ...(trim(phone) ? [`<span style="color:${EMBER};font-weight:bold;">T:</span>&nbsp; ${trim(phone)}<br>`] : []),
-    `<span style="color:${EMBER};font-weight:bold;">W:</span>&nbsp; ${domainCell}`,
+    `<div style="font-size:16px;color:${INK};font-weight:bold;letter-spacing:0.2px;">${trim(name)}</div>`,
+    ...roleLines.map((l) => `<div style="font-size:12.5px;color:#6d675c;padding-top:2px;">${l}</div>`),
+    `<div style="font-size:13px;color:${INK};padding-top:9px;line-height:1.7;">`,
+    ...(trim(phone) ? [`${trim(phone)}<br>`] : []),
+    `${domainCell}`,
     `</div>`,
     `</td>`,
     `<td valign="bottom" style="padding-left:28px;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td>`,
