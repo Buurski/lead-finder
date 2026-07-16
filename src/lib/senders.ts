@@ -358,26 +358,15 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
 // the layered formatSignature() under the hood so it picks up the same env
 // vars and per-sender defaults.
 
-/** Strip any trailing sign-off from a body so we can re-sign for the chosen sender. */
-export function stripSignature(body: string): string {
-  let t = (body || "").replace(/\s+$/, "");
-  const patterns: RegExp[] = [
-    /\n+Med venlig hilsen,?\s*\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
-    // "Mvh, Lucas" OG "Mvh, Lucas Buur" / "Mvh, Charlie Nielsen" — efternavnet
-    // manglede før Bundle G, så closing-linjen fra formatSignature ("Mvh,
-    // Lucas Buur") blev aldrig strippet og send-ruten dobbelt-signerede.
-    /\n+Mvh,?\s*(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?(?:\n\+?[\d\s]{6,})?\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\n\+?[\d\s]{6,}\s*$/i,
-    /\n+(?:Lucas|Charlie)(?:\s+(?:Buur|Nielsen))?\s*$/i,
-  ];
-  for (const re of patterns) {
-    if (re.test(t)) { t = t.replace(re, "").replace(/\s+$/, ""); break; }
-  }
-  return t;
-}
+// 2026-07-16: strip-logikken bor nu ét sted (signature-preview.ts, client-safe,
+// ingen imports) så /godkendelse-preview og send-ruten aldrig driver fra
+// hinanden igen. Re-eksporteres herfra så eksisterende imports virker.
+export { stripSignature } from "./leads/signature-preview.ts";
+import { stripSignature as _strip } from "./leads/signature-preview.ts";
 
-/** Re-sign a body for the chosen sender. */
+/** Re-sign a body for the chosen sender. Matcher preview-formatet på
+ *  /godkendelse: "Med venlig hilsen\n<navn>\n[titel]\n<telefon>". */
 export function applySignature(body: string, id: SenderId): string {
   const sig = formatSignature(id);
-  return `${stripSignature(body)}\n\n${sig.text}`;
+  return `${_strip(body)}\n\nMed venlig hilsen\n${sig.text}`;
 }
