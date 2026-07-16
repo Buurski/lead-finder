@@ -19,6 +19,7 @@ interface CreateBody {
   recipient?: { name?: string; att?: string; address?: string; cvr?: string };
   lines?: InvoiceLine[];
   note?: string;
+  issueDate?: string; // valgfri, YYYY-MM-DD — til backfill af historiske fakturaer
 }
 
 export async function POST(req: Request) {
@@ -34,7 +35,9 @@ export async function POST(req: Request) {
   }
 
   const biz = await getBusinessSettings();
-  const issueDate = new Date().toISOString().slice(0, 10);
+  const issueDate = /^\d{4}-\d{2}-\d{2}$/.test(body.issueDate ?? "")
+    ? (body.issueDate as string)
+    : new Date().toISOString().slice(0, 10);
   const number = await nextInvoiceNumber(issueDate);
 
   const inv: Invoice = {
