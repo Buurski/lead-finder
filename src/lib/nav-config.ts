@@ -64,6 +64,7 @@ export const NAV_TREE: NavNode[] = [
     icon: "CircleDollarSign",
     children: [
       { href: "/okonomi", label: "Økonomi", paletteLabel: "Forretning · Økonomi", icon: "Target", hint: "Forecast & mål" },
+      { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
       { href: "/salg", label: "Salg", icon: "Workflow", hint: "Vægtet deal-pipeline" },
       { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening & trends" },
     ],
