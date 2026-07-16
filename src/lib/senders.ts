@@ -364,12 +364,17 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   const EMBER = "#d4500f";
   const INK = "#191713";
   const PAPER = "#f6f3ee";
-  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId}.jpg`;
+  // lucas-mail.jpg = Lucas' Google-profilfoto i s/h (sitets lucas.jpg er et
+  // andet billede og må ikke overskrives). Charlie bruger sitets teamfoto.
+  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas-mail.jpg" : "charlie.jpg"}`;
   const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
   // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
   // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
   // = paper #f6f3ee = kortets bg → ingen synlig kant.
-  const logoImg = `<img src="${KINLY_ASSET_BASE}/img/brand/kinly-logo-email.png" alt="Kinly" width="96" height="47" style="display:block;border:0;" />`;
+  // -v2 i filnavnet er cache-bust: Gmails billedproxy cacher pr. URL, så en
+  // rettet logofil på samme URL vises aldrig hos modtagere der har set den
+  // gamle. Nyt indhold = nyt filnavn.
+  const logoImg = `<img src="${KINLY_ASSET_BASE}/img/brand/kinly-logo-email-v2.png" alt="Kinly" width="96" height="47" style="display:block;border:0;" />`;
   const domainCell = siteUrl
     ? `<a href="${siteUrl}" style="color:${INK};text-decoration:none;">kinly.dk</a>`
     : `kinly.dk`;
@@ -382,7 +387,7 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     `<div style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:${INK};font-weight:bold;">${trim(name)}</div>`,
     ...roleLines.map((l) => `<div style="font-size:12px;color:#6d675c;padding-top:1px;">${l}</div>`),
     `<div style="font-size:12.5px;color:${INK};padding-top:8px;line-height:1.6;">`,
-    `<span style="color:${EMBER};font-weight:bold;">T:</span>&nbsp; ${trim(phone)}<br>`,
+    ...(trim(phone) ? [`<span style="color:${EMBER};font-weight:bold;">T:</span>&nbsp; ${trim(phone)}<br>`] : []),
     `<span style="color:${EMBER};font-weight:bold;">W:</span>&nbsp; ${domainCell}`,
     `</div>`,
     `</td>`,

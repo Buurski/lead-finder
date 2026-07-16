@@ -74,7 +74,7 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
     assert.ok(sig.html.startsWith("<table"));
     assert.ok(sig.html.includes("Lucas Buur"));
     assert.ok(sig.html.includes("+45 23 24 24 82"));
-    assert.ok(sig.html.includes("/img/team/lucas.jpg"));
+    assert.ok(sig.html.includes("/img/team/lucas-mail.jpg"));
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
@@ -438,7 +438,7 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   const out = applySignatureHtml("Hej <Vida>,\n\nSe https://demo.dk\n\nMvh, Lucas Buur", "lucas");
   assert.equal(out.includes("&lt;Vida&gt;"), true);
   assert.equal(out.includes('<a href="https://demo.dk"'), true);
-  assert.equal(out.includes("/img/team/lucas.jpg"), true);
+  assert.equal(out.includes("/img/team/lucas-mail.jpg"), true);
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });
