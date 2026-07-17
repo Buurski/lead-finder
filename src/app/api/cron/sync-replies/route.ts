@@ -4,7 +4,9 @@ import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/sync-replies — the automatic reply-sync hook for Vercel Cron.
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// 120→300 (council-fund 2026-07-18): svar-scan + sendt-scan = op til 4 IMAP-
+// forbindelser sekventielt; 120s kunne hard-killes midt i løbet.
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;

@@ -623,6 +623,30 @@ export async function updateLeadEmailStatus(
   });
 }
 
+// Bulk-variant (2026-07-18, council-fund): sendt-mappe-scannen kan matche
+// 100+ rækker på første kørsel — én batchUpdate i stedet for én pr. række,
+// så Sheets' write-kvote (60/100s) og cron-tiden holder.
+export async function updateLeadEmailStatusBulk(
+  entries: {
+    rowIndex: number;
+    fields: { emailSentAt?: string; emailStatus?: string; followupSentAt?: string };
+  }[]
+): Promise<void> {
+  const data: { range: string; values: string[][] }[] = [];
+  for (const { rowIndex, fields } of entries) {
+    const row = rowIndex + 2;
+    if (fields.emailSentAt    !== undefined) data.push({ range: `Leads!O${row}`, values: [[fields.emailSentAt]] });
+    if (fields.emailStatus    !== undefined) data.push({ range: `Leads!R${row}`, values: [[fields.emailStatus]] });
+    if (fields.followupSentAt !== undefined) data.push({ range: `Leads!S${row}`, values: [[fields.followupSentAt]] });
+  }
+  if (data.length === 0) return;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
 export async function updateCallbackDate(rowIndex: number, date: string): Promise<void> {
   const sheets = getSheetsClient();
   const row = rowIndex + 2;

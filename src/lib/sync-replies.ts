@@ -17,7 +17,7 @@
 //     EAI_AGAIN, socket hang up).
 //   - guaranteed logout in finally so we never leak sockets between runs.
 import { ImapFlow } from "imapflow";
-import { getLeads, updateLeadEmailStatus } from "./sheets.ts";
+import { getLeads, updateLeadEmailStatus, updateLeadEmailStatusBulk } from "./sheets.ts";
 import { getActiveSenders, type SenderId } from "./senders.ts";
 
 export interface SyncRepliesResult {
@@ -184,8 +184,10 @@ export async function syncSentFolders(lookbackDays = FALLBACK_DAYS): Promise<Syn
 
   const rowToLead = new Map(candidates.map(({ lead, rowIndex }) => [rowIndex, lead]));
   const rowToName = new Map(candidates.map(({ rowIndex, name }) => [rowIndex, name]));
+  // Ét samlet batchUpdate (council-fund 2026-07-18): første kørsel kan matche
+  // 100+ rækker — én Sheets-write i stedet for én pr. række.
   const names: string[] = [];
-  let stamped = 0;
+  const writes: { rowIndex: number; fields: { emailSentAt?: string; emailStatus?: string; followupSentAt?: string } }[] = [];
   for (const [rowIndex, date] of latestByRow) {
     const lead = rowToLead.get(rowIndex)!;
     const iso = date.toISOString();
@@ -194,20 +196,24 @@ export async function syncSentFolders(lookbackDays = FALLBACK_DAYS): Promise<Syn
       .filter((d): d is Date => d !== null && !Number.isNaN(d.getTime()));
     const latestKnown = known.length ? new Date(Math.max(...known.map((d) => d.getTime()))) : null;
     if (!lead.emailSentAt || !lead.emailSentAt.trim()) {
-      await updateLeadEmailStatus(rowIndex, {
-        emailSentAt: iso,
-        ...(lead.emailStatus && lead.emailStatus.trim() ? {} : { emailStatus: "sent" }),
+      writes.push({
+        rowIndex,
+        fields: {
+          emailSentAt: iso,
+          ...(lead.emailStatus && lead.emailStatus.trim() ? {} : { emailStatus: "sent" }),
+        },
       });
-      stamped++; names.push(rowToName.get(rowIndex)!);
+      names.push(rowToName.get(rowIndex)!);
     } else if (!latestKnown || date.getTime() > latestKnown.getTime() + 60_000) {
       // Manuel mail NYERE end sidste kendte kontakt → registrér som follow-up.
       // 60s-slæk så systemets egen send (som allerede stemplede emailSentAt)
       // ikke dobbelt-stemples af sit eget spor i Sendt-mappen.
-      await updateLeadEmailStatus(rowIndex, { followupSentAt: iso });
-      stamped++; names.push(rowToName.get(rowIndex)!);
+      writes.push({ rowIndex, fields: { followupSentAt: iso } });
+      names.push(rowToName.get(rowIndex)!);
     }
   }
-  return { stamped, checked: candidates.length, names, byAccount };
+  await updateLeadEmailStatusBulk(writes);
+  return { stamped: writes.length, checked: candidates.length, names, byAccount };
 }
 
 export async function syncReplies(): Promise<SyncRepliesResult> {
