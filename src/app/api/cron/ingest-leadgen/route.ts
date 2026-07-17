@@ -6,6 +6,7 @@ import type { ComposeLead } from "@/lib/compose";
 import { getLeads } from "@/lib/sheets";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
+import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
@@ -184,7 +185,7 @@ async function ingest() {
       continue;
     }
     const leadId = (it.place_id || name).toString();
-    if (suppressionReason({ leadId, name, city: it.city, branch: it.branch }, blockSets)) {
+    if (suppressionReason({ leadId, name, city: it.city, branch: it.branch, email: it.email ?? undefined }, blockSets)) {
       skippedSuppressed++;
       continue;
     }
@@ -211,6 +212,7 @@ async function ingest() {
     blockSets.ids.add(leadId);
     const k = bizKey(name, it.city);
     if (k) blockSets.keys.add(k);
+    if (it.email) addEmailToBlock(blockSets.emailBlock, it.email);
     drafts.push({
       id: newDraftId(),
       leadId,

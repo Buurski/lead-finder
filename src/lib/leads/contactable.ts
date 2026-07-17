@@ -54,3 +54,58 @@ export function suppressedNameSet(leads: Lead[]): Set<string> {
   }
   return s;
 }
+
+// ── email/domæne-blok (session 5, 2026-07-17) ────────────────────────────
+// Navn+by-nøglen fanger ikke samme forretning under to stavninger/byer — men
+// emailen er den samme. Derfor: all-time blok på eksakt email + på domæne når
+// domænet er firma-ejet (ikke-freemail). Freemail (gmail/hotmail/…) blokerer
+// kun eksakt adresse — to forskellige frisører kan begge bruge gmail.
+// Regex spejler FREEMAIL_REGEX i email-finder.ts; inlinet her fordi
+// email-finder trækker node:dns ind, og contactable skal forblive ren/strip-safe.
+const FREEMAIL_REGEX = /^(gmail|hotmail|outlook|yahoo|live|msn|protonmail|proton|icloud|me|aol|mail|email)\.[a-z.]+$/i;
+
+export const emailDomainOf = (email: string): string => {
+  const e = norm(email);
+  const at = e.lastIndexOf("@");
+  return at > 0 ? e.slice(at + 1) : "";
+};
+
+export interface EmailBlock {
+  emails: Set<string>;   // eksakte kontaktede adresser (lowercased)
+  domains: Set<string>;  // kontaktede ikke-freemail-domæner
+  blocks(email: string | undefined): boolean;
+}
+
+export function makeEmailBlock(): EmailBlock {
+  const emails = new Set<string>();
+  const domains = new Set<string>();
+  return {
+    emails,
+    domains,
+    blocks(email: string | undefined): boolean {
+      const e = norm(email);
+      if (!e || !e.includes("@")) return false;
+      if (emails.has(e)) return true;
+      const d = emailDomainOf(e);
+      return Boolean(d) && domains.has(d);
+    },
+  };
+}
+
+/** Registrér én kontaktet email i blokken (eksakt + evt. domæne). */
+export function addEmailToBlock(block: EmailBlock, email: string | undefined): void {
+  const e = norm(email);
+  if (!e || !e.includes("@")) return;
+  block.emails.add(e);
+  const d = emailDomainOf(e);
+  if (d && !FREEMAIL_REGEX.test(d)) block.domains.add(d);
+}
+
+/** Email-blok bygget fra Sheets: alle !isContactable-leads' emails. */
+export function contactedEmailBlock(leads: Lead[]): EmailBlock {
+  const block = makeEmailBlock();
+  for (const l of leads) {
+    if (!isContactable(l)) addEmailToBlock(block, l.email);
+  }
+  return block;
+}

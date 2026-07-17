@@ -35,7 +35,7 @@ import { compositeScore } from "./leads/composite-score.ts";
 import type { CompositeSignals } from "./leads/composite-score.ts";
 import { diversifyByFamily } from "./leads/diversify.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
-import { isContactable } from "./leads/contactable.ts";
+import { isContactable, contactedEmailBlock } from "./leads/contactable.ts";
 import { leadChannel } from "./leads/channel.ts";
 import type { Lead } from "./sheets.ts";
 
@@ -255,6 +255,10 @@ async function pickLeads(
       // sleeping-beauty bonus and a branch-relevance multiplier (beauty ×1.2,
       // restaurants ×1.05, professional ×0.7) — so the PICK naturally favours
       // the mix Lucas wants (beauty weighted up) instead of raw base score.
+      // Email/domæne-blok (2026-07-17): samme forretning kan stå i to rækker med
+      // forskellig stavning/by men samme email — isContactable pr. række fanger
+      // det ikke. Blokér kandidater hvis email/firma-domæne matcher en kontaktet.
+      const emailBlock = contactedEmailBlock(all as Lead[]);
       candidates = all
         .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
         // Un-worked = blank or "new" status (Sheets returns "" for a blank cell
@@ -266,6 +270,7 @@ async function pickLeads(
         // usable email. No-email leads (Facebook → Messenger, phone → SMS) are
         // handled by their own channels and must never become an email draft.
         .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email"
+          && !emailBlock.blocks(lead.email)
           && (!allow || allow.has(lead.name.trim().toLowerCase())))
         .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
         .sort((a, b) => b.comp - a.comp)

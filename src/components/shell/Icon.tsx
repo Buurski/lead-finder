@@ -7,7 +7,7 @@ import {
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
   Moon, Pause, Columns3, ArrowUpRight,
   Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard, Wallet, Receipt, Scale,
-  TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass,
+  TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
   type LucideProps,
 } from "lucide-react";
 
@@ -19,7 +19,7 @@ const MAP = {
   Settings, Gauge, Calendar, Server, CircleDollarSign, ShieldCheck, Sun,
   Moon, Pause, Columns3, ArrowUpRight,
   Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard, Wallet, Receipt, Scale,
-  TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass,
+  TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
 } as const;
 
 export type IconName = keyof typeof MAP;

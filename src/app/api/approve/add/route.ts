@@ -5,6 +5,7 @@ import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { getLeads } from "@/lib/sheets";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
+import { addEmailToBlock } from "@/lib/leads/contactable";
 
 // POST /api/approve/add — secret-guarded endpoint so a Cowork lead-gen task can push
 // ready-made, deep-rated DRAFTS straight into the approval queue (the in-app engine is
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     const name = (d.name || "").trim();
     const body = (d.body || "").trim();
     if (!name || !body) { skipped.push({ name: name || "(uden navn)", reason: "mangler navn/body" }); continue; }
-    const supp = suppressionReason({ leadId: d.leadId, name, city: d.city, branch: d.branch }, blockSets);
+    const supp = suppressionReason({ leadId: d.leadId, name, city: d.city, branch: d.branch, email: d.recipientEmail }, blockSets);
     if (supp) { skipped.push({ name, reason: supp }); continue; }
     const check = validateDraft(body);
     if (!check.ok) { skipped.push({ name, reason: `voice: ${check.errors.join(", ")}` }); continue; }
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
     if (d.leadId) blockSets.ids.add(d.leadId.toString());
     const k = bizKey(name, d.city);
     if (k) blockSets.keys.add(k);
+    if (d.recipientEmail) addEmailToBlock(blockSets.emailBlock, d.recipientEmail);
   }
 
   if (valid.length > 0) await appendDrafts(valid);

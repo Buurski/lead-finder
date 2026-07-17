@@ -5,6 +5,8 @@ import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
+import { isContactable, contactedEmailBlock } from "@/lib/leads/contactable";
+import { bizKey } from "@/lib/leads/suppress";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -12,11 +14,58 @@ export const dynamic = "force-dynamic";
 // best-effort Sheets-registreringer i hold — skal have luft til at løbe færdig.
 export const maxDuration = 300;
 
-// GET /api/approve/queue — return all drafts (newest first).
+// Badge-historikken tåler 60s forsinkelse — modul-cache så gentagne refreshes
+// af køen ikke hamrer Sheets-API'et (council-fund 2026-07-17). Kun for GET-badgen;
+// POST-actions læser aldrig herfra.
+let leadsCache: { at: number; leads: Awaited<ReturnType<typeof getLeads>> } | null = null;
+async function getLeadsCached() {
+  if (leadsCache && Date.now() - leadsCache.at < 60_000) return leadsCache.leads;
+  const leads = await getLeads();
+  leadsCache = { at: Date.now(), leads };
+  return leads;
+}
+
+// GET /api/approve/queue — return all drafts (newest first), each enriched with
+// a `history` badge (session 5, 2026-07-17): har vi set/kontaktet denne
+// forretning før, all-time i Sheets? Matcher på navn+by-nøgle OG email/domæne.
+// Best-effort: kan Sheets ikke nås, kommer køen stadig — historyOk=false så
+// UI'en kan vise at badgen er degraderet i stedet for at lyve "aldrig set".
 export async function GET() {
   const drafts = await readQueue();
   drafts.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-  return NextResponse.json({ drafts, count: drafts.length });
+
+  let historyOk = false;
+  const contactedKeys = new Map<string, string>(); // bizKey → kort grund
+  let emailBlock: ReturnType<typeof contactedEmailBlock> | null = null;
+  try {
+    const leads = await getLeadsCached();
+    emailBlock = contactedEmailBlock(leads);
+    for (const l of leads) {
+      if (isContactable(l)) continue;
+      const k = bizKey(l.name, l.city);
+      if (!k || contactedKeys.has(k)) continue;
+      const reason = l.emailStatus === "replied" ? "svarede"
+        : l.followupSentAt ? `follow-up ${l.followupSentAt.slice(0, 10)}`
+        : l.emailSentAt ? `mail sendt ${l.emailSentAt.slice(0, 10)}`
+        : l.status ? `status: ${l.status}`
+        : "kontaktet";
+      contactedKeys.set(k, reason);
+    }
+    historyOk = true;
+  } catch {
+    // Sheets nede — badge degraderet, køen leveres alligevel.
+  }
+
+  const enriched = drafts.map((d) => {
+    const k = bizKey(d.name, d.city);
+    const byKey = k ? contactedKeys.get(k) : undefined;
+    const byEmail = !byKey && emailBlock && d.recipientEmail && emailBlock.blocks(d.recipientEmail)
+      ? "email/domæne kontaktet før" : undefined;
+    const seen = byKey ?? byEmail;
+    return seen ? { ...d, history: { seenBefore: true, reason: seen } } : d;
+  });
+
+  return NextResponse.json({ drafts: enriched, count: enriched.length, historyOk });
 }
 
 interface ActionBody {

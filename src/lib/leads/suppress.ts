@@ -27,7 +27,7 @@
 
 import type { QueueDraft } from "../queue.ts";
 import type { Lead } from "../sheets.ts";
-import { isContactable } from "./contactable.ts";
+import { isContactable, makeEmailBlock, addEmailToBlock, type EmailBlock } from "./contactable.ts";
 import { isExcludedBranch } from "./branch-policy.ts";
 import { isChain } from "../chains.ts";
 
@@ -56,6 +56,9 @@ export function bizKey(name: string | undefined, city?: string | undefined): str
 export interface BlockSets {
   ids: Set<string>;   // place_id / leadId of blocked businesses
   keys: Set<string>;  // bizKey(name, city) of blocked businesses
+  // Email-blok (2026-07-17): eksakt email + ikke-freemail-domæne for alt
+  // kontaktet. Fanger samme forretning under anden stavning/by end nøglen gør.
+  emailBlock: EmailBlock;
   contactedAvailable: boolean; // false when Sheets couldn't be read (gate degraded)
 }
 
@@ -75,6 +78,7 @@ export function buildBlockSets(
 ): BlockSets {
   const ids = new Set<string>();
   const keys = new Set<string>();
+  const emailBlock = makeEmailBlock();
   const cutoff = now - REJECT_BLOCK_MS;
 
   for (const d of queue) {
@@ -85,15 +89,17 @@ export function buildBlockSets(
     if (d.leadId) ids.add(d.leadId);
     const k = bizKey(d.name, d.city);
     if (k) keys.add(k);
+    if (d.recipientEmail) addEmailToBlock(emailBlock, d.recipientEmail);
   }
 
   for (const l of sheetsLeads ?? []) {
     if (isContactable(l)) continue;
     const k = bizKey(l.name, l.city);
     if (k) keys.add(k);
+    addEmailToBlock(emailBlock, l.email);
   }
 
-  return { ids, keys, contactedAvailable: sheetsLeads !== null };
+  return { ids, keys, emailBlock, contactedAvailable: sheetsLeads !== null };
 }
 
 export interface IncomingBiz {
@@ -101,6 +107,7 @@ export interface IncomingBiz {
   name?: string;
   city?: string;
   branch?: string;
+  email?: string;
 }
 
 // Decide whether one incoming cold draft must be skipped. Returns a reason string
@@ -114,5 +121,6 @@ export function suppressionReason(b: IncomingBiz, sets: BlockSets): string | nul
   if (b.leadId && sets.ids.has(b.leadId)) return "allerede i kø/kontaktet (place_id)";
   const k = bizKey(b.name, b.city);
   if (k && sets.keys.has(k)) return "allerede i kø/kontaktet (navn)";
+  if (b.email && sets.emailBlock.blocks(b.email)) return "allerede kontaktet (email/domæne)";
   return null;
 }

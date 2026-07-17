@@ -83,6 +83,51 @@ check("kæde blokeret ved ingest (McDonald's)",
 check("'Park Bio' er IKKE kæde (fuldnavn-match må ikke over-matche)",
   suppressionReason({ leadId: "place_C3", name: "Park Bio", city: "København", branch: "biograf" }, sets) === null);
 
+// ── email/domæne-dedup (session 5, 2026-07-17) ─────────────────────────
+// Samme firma kan stå i to Sheets-rækker med forskellig stavning/by men samme
+// email — navn+by-nøglen fanger det ikke. Email (eksakt) og domæne (ikke-freemail)
+// skal blokere all-time.
+const queueE = [
+  { id: "q1", leadId: "place_10", name: "Cafe Alfa", city: "Herning", status: "sent", recipientEmail: "info@cafealfa.dk", createdAt: "2026-06-12T00:00:00Z", updatedAt: "2026-06-12T00:00:00Z" },
+];
+const sheetsE = [
+  { name: "Salon Beta", city: "Ikast", status: "new", email: "kontakt@salonbeta.dk", emailSentAt: "2026-06-10T00:00:00Z", emailStatus: "sent", followupSentAt: "", callbackDate: "" },
+  { name: "Gamma Frisør", city: "Silkeborg", status: "new", email: "gammafrisor@gmail.com", emailSentAt: "2026-06-11T00:00:00Z", emailStatus: "sent", followupSentAt: "", callbackDate: "" },
+  { name: "Ren Lead", city: "Holstebro", status: "new", email: "hej@renlead.dk", emailSentAt: "", emailStatus: "", followupSentAt: "", callbackDate: "" },
+];
+const setsE = buildBlockSets(queueE, sheetsE, NOW);
+check("samme email, andet navn/by → blokeret (Sheets-kontaktet)",
+  suppressionReason({ leadId: "p_n1", name: "Beta Salonen", city: "Aarhus", branch: "frisør", email: "kontakt@salonbeta.dk" }, setsE) !== null);
+check("email case/whitespace-normaliseret",
+  suppressionReason({ leadId: "p_n2", name: "Beta Salonen", city: "Aarhus", branch: "frisør", email: " Kontakt@SalonBeta.dk " }, setsE) !== null);
+check("samme domæne (ikke-freemail), anden adresse → blokeret",
+  suppressionReason({ leadId: "p_n3", name: "Beta ApS", city: "Vejle", branch: "frisør", email: "booking@salonbeta.dk" }, setsE) !== null);
+check("freemail-domæne blokerer IKKE på domæne (gmail.com)",
+  suppressionReason({ leadId: "p_n4", name: "Anden Frisør", city: "Odense", branch: "frisør", email: "andenfrisor@gmail.com" }, setsE) === null);
+check("freemail: eksakt adresse blokerer stadig",
+  suppressionReason({ leadId: "p_n5", name: "Anden Frisør", city: "Odense", branch: "frisør", email: "gammafrisor@gmail.com" }, setsE) !== null);
+check("kø-draft recipientEmail blokerer",
+  suppressionReason({ leadId: "p_n6", name: "Alfa Cafe 2", city: "Viborg", branch: "café", email: "info@cafealfa.dk" }, setsE) !== null);
+check("ukontaktet leads email blokerer ikke",
+  suppressionReason({ leadId: "p_n7", name: "Ny Biks", city: "Skive", branch: "café", email: "hej@renlead.dk" }, setsE) === null);
+check("ingen email på incoming → email-gate neutral (navnegate gælder stadig)",
+  suppressionReason({ leadId: "p_n8", name: "Helt Ny", city: "Struer", branch: "café" }, setsE) === null);
+
+// contactedEmailSet (engine PICK-gate): emails + ikke-freemail-domæner for
+// alle !isContactable-leads.
+const contactableMod = await import(pathToFileURL(path.join(ROOT, "src", "lib", "leads", "contactable.ts")).href);
+if (typeof contactableMod.contactedEmailBlock === "function") {
+  const blk = contactableMod.contactedEmailBlock(sheetsE);
+  check("contactedEmailBlock: kontaktet email blokeret", blk.blocks("kontakt@salonbeta.dk") === true);
+  check("contactedEmailBlock: domæne-match blokeret", blk.blocks("andet@salonbeta.dk") === true);
+  check("contactedEmailBlock: freemail domæne ikke blokeret", blk.blocks("frisk@gmail.com") === false);
+  check("contactedEmailBlock: freemail eksakt blokeret", blk.blocks("gammafrisor@gmail.com") === true);
+  check("contactedEmailBlock: ren lead ikke blokeret", blk.blocks("hej@renlead.dk") === false);
+  check("contactedEmailBlock: tom email ikke blokeret", blk.blocks("") === false);
+} else {
+  check("contactedEmailBlock eksisterer i contactable.ts", false);
+}
+
 // Sheets unavailable → queue half still guards, contactedAvailable false.
 const setsNoSheets = buildBlockSets(queue, null, NOW);
 check("Sheets null → contactedAvailable false", setsNoSheets.contactedAvailable === false);

@@ -10,6 +10,7 @@ import CronHealth from "./CronHealth";
 import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
 import MaalWidget from "./MaalWidget";
+import OmverdenCard from "./OmverdenCard";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
 
@@ -252,6 +253,7 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <DailyBriefCard brief={dailyBrief} />
+      <OmverdenCard />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(0, 1.2fr)", gap: 18, alignItems: "stretch" }} className="cc-today-cols">
         <HeroNumber s={s} />
         <UsageSparkline data={s.dailySent} />

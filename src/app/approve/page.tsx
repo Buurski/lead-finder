@@ -36,6 +36,9 @@ interface QueueDraft {
   updatedAt: string;
   sender?: "lucas" | "charlie";
   sentBy?: "lucas" | "charlie";
+  // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
+  // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
+  history?: { seenBefore: boolean; reason: string };
 }
 
 type Filter = "pending" | "approved" | "decided" | "all";
@@ -1000,6 +1003,24 @@ function DraftLetter({
             }}
           >
             {draft.name}
+            {draft.history?.seenBefore && draft.status === "pending" && (
+              <span
+                title={`Denne forretning findes i kontakt-historikken: ${draft.history.reason}. Godkend kun hvis du er sikker på det ikke er en gensending.`}
+                style={{
+                  marginLeft: 8,
+                  padding: "2px 8px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  verticalAlign: "middle",
+                  borderRadius: 999,
+                  color: "var(--red)",
+                  background: "#dc26261a",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ⚠ set før · {draft.history.reason}
+              </span>
+            )}
           </h2>
           <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--text-muted)" }}>
             {[draft.branch, draft.city].filter(Boolean).join(" · ")}
