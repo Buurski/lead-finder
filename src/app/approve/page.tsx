@@ -41,7 +41,10 @@ interface QueueDraft {
   history?: { seenBefore: boolean; reason: string };
 }
 
-type Filter = "pending" | "approved" | "decided" | "all";
+// "seen" (2026-07-17): pending drafts hvis forretning findes i kontakt-
+// historikken (history.seenBefore fra /api/approve/queue). "pending" viser KUN
+// friske — så Lucas aldrig godkender en gensending ved et uheld.
+type Filter = "pending" | "seen" | "approved" | "decided" | "all";
 
 // Demo catalog grouped by branch family, for the per-draft demo picker.
 const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
@@ -115,14 +118,16 @@ export default function ApprovePage() {
   }, []);
 
   const counts = useMemo(() => {
-    const pending = drafts.filter((d) => d.status === "pending").length;
+    const pendingAll = drafts.filter((d) => d.status === "pending");
+    const seen = pendingAll.filter((d) => d.history?.seenBefore).length;
+    const pending = pendingAll.length - seen;
     // "edited" = legacy redigeret·godkendt — tælles og sendes som godkendt.
     const approvedList = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     const approved = approvedList.length;
     const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
     const approvedLucas = approved - approvedCharlie;
-    const decided = drafts.length - pending;
-    return { pending, approved, approvedLucas, approvedCharlie, decided, all: drafts.length };
+    const decided = drafts.length - pendingAll.length;
+    return { pending, seen, approved, approvedLucas, approvedCharlie, decided, all: drafts.length };
   }, [drafts]);
 
   // Send the approved drafts. The route streams SSE progress, so the UI shows a
@@ -280,7 +285,8 @@ export default function ApprovePage() {
 
   const visible = useMemo(() => {
     let base: QueueDraft[];
-    if (filter === "pending") base = drafts.filter((d) => d.status === "pending");
+    if (filter === "pending") base = drafts.filter((d) => d.status === "pending" && !d.history?.seenBefore);
+    else if (filter === "seen") base = drafts.filter((d) => d.status === "pending" && d.history?.seenBefore);
     else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
     else base = drafts;
@@ -633,7 +639,7 @@ function Header({
   rejBusy,
   visiblePending,
 }: {
-  counts: { pending: number; approved: number; decided: number; all: number };
+  counts: { pending: number; seen: number; approved: number; decided: number; all: number };
   filter: Filter;
   setFilter: (f: Filter) => void;
   onRefresh: () => void;
@@ -652,6 +658,7 @@ function Header({
   const tabs: { key: Filter; label: string; n: number }[] = [
     { key: "pending", label: "Afventer", n: counts.pending },
     { key: "approved", label: "Godkendt", n: counts.approved },
+    { key: "seen", label: "⚠ Set før", n: counts.seen },
     { key: "decided", label: "Besluttet", n: counts.decided },
     { key: "all", label: "Alle", n: counts.all },
   ];
