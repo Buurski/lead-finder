@@ -97,6 +97,119 @@ async function scanOneAccount(
   return { synced: repliedRows.size - beforeCount };
 }
 
+// ── Sendt-mappe-scan (2026-07-18) ────────────────────────────────────────
+// "Virkelig gennemtjekket": mails sendt UDEN OM systemet (manuelt fra Gmail)
+// skal også tælle som kontakt. Scanner begge kontis Sendt-mappe og stempler
+// leads i Sheets: første manuelle mail → emailSentAt + emailStatus="sent";
+// senere mail end sidste kendte kontakt → followupSentAt. Dermed fanger
+// isContactable/dedup-gaten og kø-badgen dem automatisk.
+
+export interface SyncSentResult {
+  stamped: number;
+  checked: number;
+  names?: string[];
+  byAccount?: Record<SenderId, { matched: number; error?: string }>;
+}
+
+async function scanSentOneAccount(
+  account: { id: SenderId; user: string; appPassword: string },
+  emailToRow: Map<string, number>,
+  since: Date,
+  latestByRow: Map<number, Date>,
+): Promise<{ matched: number; error?: string }> {
+  const client = new ImapFlow({
+    host: "imap.gmail.com",
+    port: 993,
+    secure: true,
+    ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
+    auth: { user: account.user, pass: account.appPassword },
+    logger: false,
+    connectionTimeout: CONNECT_TIMEOUT_MS,
+    socketTimeout: SOCKET_TIMEOUT_MS,
+  });
+  let matched = 0;
+  try {
+    await withRetry(() => client.connect(), `imap-connect-sent[${account.id}]`);
+    try {
+      // Locale-sikkert: find Sendt-mappen via special-use-flag, ikke navnet
+      // ("[Gmail]/Sent Mail" hedder "[Gmail]/Sendte mails" på dansk konto).
+      const boxes = await client.list();
+      const sent = boxes.find((b) => b.specialUse === "\\Sent");
+      if (!sent) return { matched: 0, error: "ingen \\Sent-mappe fundet" };
+      await client.mailboxOpen(sent.path, { readOnly: true });
+      for await (const msg of client.fetch({ since }, { envelope: true })) {
+        const date = msg.envelope?.date ? new Date(msg.envelope.date) : null;
+        if (!date || Number.isNaN(date.getTime())) continue;
+        const rcpts = [...(msg.envelope?.to ?? []), ...(msg.envelope?.cc ?? [])];
+        for (const r of rcpts) {
+          const addr = r?.address?.toLowerCase().trim();
+          if (!addr) continue;
+          const row = emailToRow.get(addr);
+          if (row === undefined) continue;
+          matched++;
+          const prev = latestByRow.get(row);
+          if (!prev || date > prev) latestByRow.set(row, date);
+        }
+      }
+    } finally {
+      try { await client.logout(); } catch { /* already closed */ }
+    }
+  } catch (err) {
+    try { await client.logout(); } catch { /* ignore */ }
+    return { matched, error: String(err) };
+  }
+  return { matched };
+}
+
+export async function syncSentFolders(lookbackDays = FALLBACK_DAYS): Promise<SyncSentResult> {
+  const leads = await getLeads();
+  const candidates = leads
+    .map((lead, rowIndex) => ({ lead, rowIndex, name: lead.name }))
+    .filter(({ lead }) => lead.email && lead.email.includes("@"));
+  if (candidates.length === 0) return { stamped: 0, checked: 0, names: [] };
+
+  const emailToRow = new Map(candidates.map(({ lead, rowIndex }) => [lead.email.toLowerCase().trim(), rowIndex]));
+  const since = new Date();
+  since.setDate(since.getDate() - Math.min(lookbackDays, MAX_LOOKBACK_DAYS));
+
+  const latestByRow = new Map<number, Date>();
+  const byAccount: Record<SenderId, { matched: number; error?: string }> = {
+    lucas: { matched: 0 },
+    charlie: { matched: 0 },
+  };
+  const accounts = getActiveSenders();
+  for (const account of accounts) {
+    byAccount[account.id] = await scanSentOneAccount(account, emailToRow, since, latestByRow);
+  }
+
+  const rowToLead = new Map(candidates.map(({ lead, rowIndex }) => [rowIndex, lead]));
+  const rowToName = new Map(candidates.map(({ rowIndex, name }) => [rowIndex, name]));
+  const names: string[] = [];
+  let stamped = 0;
+  for (const [rowIndex, date] of latestByRow) {
+    const lead = rowToLead.get(rowIndex)!;
+    const iso = date.toISOString();
+    const known = [lead.emailSentAt, lead.followupSentAt]
+      .map((s) => (s && s.trim() ? new Date(s) : null))
+      .filter((d): d is Date => d !== null && !Number.isNaN(d.getTime()));
+    const latestKnown = known.length ? new Date(Math.max(...known.map((d) => d.getTime()))) : null;
+    if (!lead.emailSentAt || !lead.emailSentAt.trim()) {
+      await updateLeadEmailStatus(rowIndex, {
+        emailSentAt: iso,
+        ...(lead.emailStatus && lead.emailStatus.trim() ? {} : { emailStatus: "sent" }),
+      });
+      stamped++; names.push(rowToName.get(rowIndex)!);
+    } else if (!latestKnown || date.getTime() > latestKnown.getTime() + 60_000) {
+      // Manuel mail NYERE end sidste kendte kontakt → registrér som follow-up.
+      // 60s-slæk så systemets egen send (som allerede stemplede emailSentAt)
+      // ikke dobbelt-stemples af sit eget spor i Sendt-mappen.
+      await updateLeadEmailStatus(rowIndex, { followupSentAt: iso });
+      stamped++; names.push(rowToName.get(rowIndex)!);
+    }
+  }
+  return { stamped, checked: candidates.length, names, byAccount };
+}
+
 export async function syncReplies(): Promise<SyncRepliesResult> {
   const leads = await getLeads();
   const candidates = leads

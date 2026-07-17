@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncReplies } from "@/lib/sync-replies";
+import { syncReplies, syncSentFolders } from "@/lib/sync-replies";
 import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/sync-replies — the automatic reply-sync hook for Vercel Cron.
@@ -15,11 +15,20 @@ export async function GET(req: Request) {
     }
   }
   try {
-    const { synced, checked, names } = await withCronLog("sync-replies", async () => {
+    const { synced, checked, names, sent } = await withCronLog("sync-replies", async () => {
       const r = await syncReplies();
-      return { result: r, note: `tjekket ${r.checked} · ${r.synced} nye svar`, meta: { synced: r.synced, checked: r.checked } };
+      // Sendt-mappe-scan (2026-07-18): fang manuelle mails sendt uden om
+      // systemet så dedup-gate + kø-badge kender dem. Best-effort — en fejl
+      // her må aldrig vælte svar-synken.
+      let sent: Awaited<ReturnType<typeof syncSentFolders>> | null = null;
+      try { sent = await syncSentFolders(); } catch (err) { console.warn("[sync-replies] sent-scan fejlede:", err); }
+      return {
+        result: { ...r, sent },
+        note: `tjekket ${r.checked} · ${r.synced} nye svar · ${sent?.stamped ?? "?"} manuelle kontakter stemplet`,
+        meta: { synced: r.synced, checked: r.checked, sentStamped: sent?.stamped ?? -1 },
+      };
     });
-    return NextResponse.json({ ok: true, synced, checked, names, note: "svar synket — ingen mail sendt" });
+    return NextResponse.json({ ok: true, synced, checked, names, sent, note: "svar + sendt-mapper synket — ingen mail sendt" });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }

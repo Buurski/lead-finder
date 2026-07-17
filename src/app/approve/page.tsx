@@ -38,8 +38,24 @@ interface QueueDraft {
   sentBy?: "lucas" | "charlie";
   // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
   // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
-  history?: { seenBefore: boolean; reason: string };
+  history?: {
+    seenBefore: boolean;
+    reason: string;
+    lastContactAt?: string | null;
+    daysSince?: number | null;
+    replied?: "ja" | "nej" | "aldrig";
+    warmth?: "varm" | "lun" | "kold" | "død";
+  };
 }
+
+// Varme-badge (2026-07-18): farve + label pr. varme-trin. "død" = svarede nej —
+// må aldrig kontaktes igen (dedup-gaten blokerer dem også serverside).
+const WARMTH_META: Record<string, { label: string; fg: string; bg: string }> = {
+  varm: { label: "🔥 varm", fg: "#b45309", bg: "#f59e0b1a" },
+  lun:  { label: "lun",     fg: "#92700c", bg: "#eab3081a" },
+  kold: { label: "kold",    fg: "#1d4ed8", bg: "#3b82f61a" },
+  død:  { label: "✕ svarede nej", fg: "var(--red)", bg: "#dc26261a" },
+};
 
 // "seen" (2026-07-17): pending drafts hvis forretning findes i kontakt-
 // historikken (history.seenBefore fra /api/approve/queue). "pending" viser KUN
@@ -286,7 +302,16 @@ export default function ApprovePage() {
   const visible = useMemo(() => {
     let base: QueueDraft[];
     if (filter === "pending") base = drafts.filter((d) => d.status === "pending" && !d.history?.seenBefore);
-    else if (filter === "seen") base = drafts.filter((d) => d.status === "pending" && d.history?.seenBefore);
+    else if (filter === "seen") {
+      // Varmest øverst; døde (svarede nej) nederst. Sekundært: kortest tid
+      // siden kontakt først.
+      const rank: Record<string, number> = { varm: 0, lun: 1, kold: 2, "død": 3 };
+      base = drafts
+        .filter((d) => d.status === "pending" && d.history?.seenBefore)
+        .sort((a, b) =>
+          (rank[a.history?.warmth ?? "kold"] - rank[b.history?.warmth ?? "kold"]) ||
+          ((a.history?.daysSince ?? 9999) - (b.history?.daysSince ?? 9999)));
+    }
     else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
     else base = drafts;
@@ -1010,24 +1035,56 @@ function DraftLetter({
             }}
           >
             {draft.name}
-            {draft.history?.seenBefore && draft.status === "pending" && (
-              <span
-                title={`Denne forretning findes i kontakt-historikken: ${draft.history.reason}. Godkend kun hvis du er sikker på det ikke er en gensending.`}
-                style={{
-                  marginLeft: 8,
-                  padding: "2px 8px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  verticalAlign: "middle",
-                  borderRadius: 999,
-                  color: "var(--red)",
-                  background: "#dc26261a",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                ⚠ set før · {draft.history.reason}
-              </span>
-            )}
+            {draft.history?.seenBefore && draft.status === "pending" && (() => {
+              const h = draft.history;
+              const w = WARMTH_META[h.warmth ?? ""] ?? null;
+              const days = h.daysSince != null
+                ? h.daysSince === 0 ? "i dag" : h.daysSince === 1 ? "i går" : `${h.daysSince} dage siden`
+                : null;
+              const parts = [
+                h.reason,
+                h.lastContactAt ? `sidst ${h.lastContactAt}${days ? ` (${days})` : ""}` : null,
+                h.replied === "aldrig" ? "aldrig svaret" : null,
+              ].filter(Boolean);
+              return (
+                <span style={{ whiteSpace: "nowrap" }}>
+                  <span
+                    title={`Denne forretning findes i kontakt-historikken: ${parts.join(" · ")}. Godkend kun hvis du er sikker på det ikke er en for tidlig gensending.`}
+                    style={{
+                      marginLeft: 8,
+                      padding: "2px 8px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      verticalAlign: "middle",
+                      borderRadius: 999,
+                      color: "var(--red)",
+                      background: "#dc26261a",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ⚠ set før · {parts.join(" · ")}
+                  </span>
+                  {w && (
+                    <span
+                      title="Varme: svar + hvor længe siden sidste kontakt. 'Attraktiv' står i kvalifikations-linjen nedenunder."
+                      style={{
+                        marginLeft: 6,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        verticalAlign: "middle",
+                        borderRadius: 999,
+                        color: w.fg,
+                        background: w.bg,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {w.label}
+                    </span>
+                  )}
+                </span>
+              );
+            })()}
           </h2>
           <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--text-muted)" }}>
             {[draft.branch, draft.city].filter(Boolean).join(" · ")}

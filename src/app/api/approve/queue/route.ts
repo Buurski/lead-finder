@@ -5,8 +5,7 @@ import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
-import { isContactable, contactedEmailBlock } from "@/lib/leads/contactable";
-import { bizKey } from "@/lib/leads/suppress";
+import { buildContactIndex } from "@/lib/leads/contact-history";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -35,34 +34,17 @@ export async function GET() {
   drafts.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 
   let historyOk = false;
-  const contactedKeys = new Map<string, string>(); // bizKey → kort grund
-  let emailBlock: ReturnType<typeof contactedEmailBlock> | null = null;
+  let index: ReturnType<typeof buildContactIndex> | null = null;
   try {
-    const leads = await getLeadsCached();
-    emailBlock = contactedEmailBlock(leads);
-    for (const l of leads) {
-      if (isContactable(l)) continue;
-      const k = bizKey(l.name, l.city);
-      if (!k || contactedKeys.has(k)) continue;
-      const reason = l.emailStatus === "replied" ? "svarede"
-        : l.followupSentAt ? `follow-up ${l.followupSentAt.slice(0, 10)}`
-        : l.emailSentAt ? `mail sendt ${l.emailSentAt.slice(0, 10)}`
-        : l.status ? `status: ${l.status}`
-        : "kontaktet";
-      contactedKeys.set(k, reason);
-    }
+    index = buildContactIndex(await getLeadsCached());
     historyOk = true;
   } catch {
     // Sheets nede — badge degraderet, køen leveres alligevel.
   }
 
   const enriched = drafts.map((d) => {
-    const k = bizKey(d.name, d.city);
-    const byKey = k ? contactedKeys.get(k) : undefined;
-    const byEmail = !byKey && emailBlock && d.recipientEmail && emailBlock.blocks(d.recipientEmail)
-      ? "email/domæne kontaktet før" : undefined;
-    const seen = byKey ?? byEmail;
-    return seen ? { ...d, history: { seenBefore: true, reason: seen } } : d;
+    const rec = index?.lookup(d.name, d.city, d.recipientEmail);
+    return rec ? { ...d, history: { seenBefore: true, ...rec } } : d;
   });
 
   return NextResponse.json({ drafts: enriched, count: enriched.length, historyOk });
@@ -81,7 +63,8 @@ interface ActionBody {
     | "set-sender"
     | "reset-sent"
     | "reset-approved"
-    | "cleanup-no-email";
+    | "cleanup-no-email"
+    | "reject-seen";
   ids?: string[];
   subject?: string;
   body?: string;
@@ -153,6 +136,27 @@ export async function POST(req: Request) {
     }
     await writeQueue(drafts);
     return NextResponse.json({ ok: true, rejected });
+  }
+
+  // Oprydning (Lucas, 2026-07-18): afvis ALLE pending drafts hvis forretning
+  // allerede findes i kontakt-historikken (Sheets, all-time — navn+by ELLER
+  // email/domæne). Rejected, ikke slettet: reversibelt, og rejected giver
+  // 14-dages engine-blok så motoren ikke re-drafter dem i morgen.
+  // Fresh Sheets-read (ikke 60s-cachen): oprydning må aldrig køre på stale data.
+  if (action === "reject-seen") {
+    const index = buildContactIndex(await getLeads());
+    const drafts = await readQueue();
+    const now = new Date().toISOString();
+    const rejected: string[] = [];
+    for (const d of drafts) {
+      if (d.status !== "pending") continue;
+      if (!index.lookup(d.name, d.city, d.recipientEmail)) continue;
+      d.status = "rejected";
+      d.updatedAt = now;
+      rejected.push(d.name);
+    }
+    await writeQueue(drafts);
+    return NextResponse.json({ ok: true, rejected: rejected.length, names: rejected.slice(0, 50) });
   }
 
   // Bulk-godkend: klienten sendte før ét POST pr. draft ("Godkend alle" på 490

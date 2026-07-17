@@ -46,6 +46,16 @@ export interface QueueDraft {
   // Stamped with the identity that ACTUALLY sent the mail (audit + the UI's
   // "Sendt som X" line). Set by /approve/send on a successful send.
   sentBy?: SenderId;
+  // Sat af GET /api/approve/queue (aldrig persisteret): kontakt-historik-badge.
+  // Shape spejler ContactRecord i leads/contact-history.ts + seenBefore-flag.
+  history?: {
+    seenBefore: boolean;
+    reason: string;
+    lastContactAt?: string | null;
+    daysSince?: number | null;
+    replied?: "ja" | "nej" | "aldrig";
+    warmth?: "varm" | "lun" | "kold" | "død";
+  };
 }
 
 // The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;
