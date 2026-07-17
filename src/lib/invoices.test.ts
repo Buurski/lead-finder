@@ -53,7 +53,19 @@ test("subscriptionsDue — due (dayOfMonth passeret, ingen faktura denne måned)
 
 test("subscriptionsDue — allerede faktureret denne måned", () => {
   const sub = { clientName: "VIDA", lines: [], dayOfMonth: 1, active: true };
-  const existing = [{ clientName: "VIDA", issueDate: "2026-07-01" } as any];
+  const existing: Invoice[] = [
+    {
+      number: "001",
+      clientName: "VIDA",
+      recipient: { name: "VIDA" },
+      issueDate: "2026-07-01",
+      dueDate: "2026-07-15",
+      lines: [],
+      vatRate: 0,
+      status: "sendt",
+      payerType: "privat",
+    },
+  ];
   assert.deepEqual(subscriptionsDue([sub], existing, "2026-07-16"), []);
 });
 

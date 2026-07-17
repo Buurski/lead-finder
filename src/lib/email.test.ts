@@ -239,11 +239,14 @@ test("HTML-form: Charlie-skabelon har FULD Charlie-profil i <strong>", () => {
   } finally { clearCharlie(); }
 });
 
-test("HTML-form: Lucas-skabelon beholder Lucas-telefon i <strong>", () => {
+test("HTML-form: Lucas-signatur (Kinly-kort) har navn i bold-div + telefon", () => {
+  // 2026-07-16: signaturen blev redesignet til Kinly-fotokort (senders.ts,
+  // htmlTable) — navnet renderes i en <div style="...font-weight:bold...">,
+  // ikke længere i <strong>. Testen opdateret 2026-07-17 til det nye format.
   setLucas();
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "lucas" }, "cold");
-    assert.ok(tpl.html.includes("<strong>Lucas Buur</strong>"));
+    assert.match(tpl.html, /<div style="[^"]*font-weight:bold[^"]*">Lucas Buur<\/div>/);
     assert.ok(tpl.html.includes("+45 23 24 24 82"));
   } finally { clearLucas(); }
 });
