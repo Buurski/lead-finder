@@ -6,7 +6,6 @@ import { NextResponse } from "next/server";
 import { withCronLog } from "@/lib/cron-log";
 import * as preCleanupRoute from "@/app/api/cron/pre-cleanup/route";
 import * as engineRoute from "@/app/api/cron/engine/route";
-import * as inboxTriageRoute from "@/app/api/cron/inbox-triage/route";
 import * as ingestLeadgenRoute from "@/app/api/cron/ingest-leadgen/route";
 import { syncReplies } from "@/lib/sync-replies";
 
@@ -28,13 +27,6 @@ const KNOWN: Record<string, () => Promise<unknown>> = {
       headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
     });
     const r = await engineRoute.GET(fakeReq);
-    return await r.json().catch(() => ({}));
-  },
-  "inbox-triage": async () => {
-    const fakeReq = new Request("http://x/api/cron/inbox-triage?force=1", {
-      headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
-    });
-    const r = await inboxTriageRoute.GET(fakeReq);
     return await r.json().catch(() => ({}));
   },
   "ingest-leadgen": async () => {

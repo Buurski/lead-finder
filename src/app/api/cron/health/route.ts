@@ -22,7 +22,6 @@ const SCHEDULE: Record<string, string> = {
   "pre-cleanup":    "30 04 * * *",
   "sync-replies":   "30 04 * * *",
   "engine":         "00 * * * *",
-  "inbox-triage":   "00 * * * *",
   "ingest-leadgen": "30 06 * * *",
 };
 
