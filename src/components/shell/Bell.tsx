@@ -8,11 +8,35 @@ interface Counts {
   needs?: number;
 }
 
+// Bundle K DEL 3.2: task-fejl-alerts fra samme all-status-kilde som
+// TaskStatusWidget. En Cowork-task uden lastRunAt < 26t regnes som stale.
+function useTaskAlerts(): string[] {
+  const [alerts, setAlerts] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/ops/all-status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive || !d?.scheduled) return;
+        const stale = d.scheduled
+          .filter((t: { lastRunAt: string | null }) => !t.lastRunAt || Date.now() - Date.parse(t.lastRunAt) > 26 * 60 * 60 * 1000)
+          .map((t: { taskId: string }) => t.taskId);
+        setAlerts(stale);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return alerts;
+}
+
 // Notifikations-klokke i topbaren (Bundle G): viser summen af ubehandlede
 // drafts + svar-der-kraever-dig paa tvaers af kanaler. Dataen er den samme
 // deck-summary som sidebar-badges bruger, saa de kan aldrig drifte.
 export default function Bell({ counts }: { counts: Counts }) {
   const [open, setOpen] = useState(false);
+  const taskAlerts = useTaskAlerts();
 
   // Esc lukker dropdownen (tastatur-brugere forventer det; backdrop-klik
   // dækker kun mus). stopPropagation ikke nødvendig — AppShell's Esc-handler
@@ -28,7 +52,7 @@ export default function Bell({ counts }: { counts: Counts }) {
 
   const queue = counts.queue ?? 0;
   const needs = counts.needs ?? 0;
-  const total = queue + needs;
+  const total = queue + needs + taskAlerts.length;
 
   return (
     <div style={{ position: "relative" }}>
@@ -91,6 +115,12 @@ export default function Bell({ counts }: { counts: Counts }) {
                 <span className="cc-count">{needs}</span>
               </Link>
             )}
+            {taskAlerts.map((taskId) => (
+              <Link key={taskId} href="/" className="cc-navlink" onClick={() => setOpen(false)}>
+                <Icon name="AlertTriangle" />
+                <span>{taskId} kørte ikke i dag</span>
+              </Link>
+            ))}
           </div>
         </>
       )}

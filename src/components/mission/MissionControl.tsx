@@ -11,6 +11,8 @@ import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
 import MaalWidget from "./MaalWidget";
 import OmverdenCard from "./OmverdenCard";
+import TaskStatusWidget from "./TaskStatusWidget";
+import NextRunsWidget from "./NextRunsWidget";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import type { SpendSummary } from "@/lib/spend-log";
 
@@ -268,6 +270,10 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
         </div>
       </div>
       <CronHealth />
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 18 }} className="cc-today-cols">
+        <TaskStatusWidget />
+        <NextRunsWidget />
+      </div>
       <HermesRuns />
       <PulseCard s={s} />
     </div>
