@@ -1,41 +1,45 @@
-import { hermesHealth, hermesCronList } from "@/lib/hermes";
-import { listVault, readVaultNote } from "@/lib/vault";
-import HermesClient from "./HermesClient";
-
 export const metadata = { title: "Hermes · AgenticOS" };
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 const WEBUI_URL = "https://number-producers-investigations-galleries.trycloudflare.com";
 
-async function latestDream(): Promise<{ path: string; body: string } | null> {
-  try {
-    const { entries } = await listVault("daily", { preferRemote: true });
-    const dreams = entries
-      .map((e) => e.pathRel)
-      .filter((p) => /daily\/\d{4}-\d{2}-\d{2}-[^/]+\.md$/.test(p))
-      .sort()
-      .reverse();
-    if (!dreams.length) return null;
-    const note = await readVaultNote(dreams[0], { preferRemote: true });
-    if (!note?.body) return null;
-    return { path: dreams[0], body: note.body };
-  } catch (err) {
-    console.error("hermes: latestDream fejlede", err);
-    return null;
-  }
-}
-
-export default async function HermesPage() {
-  const [health, jobs, dream] = await Promise.all([hermesHealth(), hermesCronList(), latestDream()]);
-
+export default function HermesLandingPage() {
   return (
-    <div data-hermes-page style={{ margin: "-24px -28px -32px", minHeight: "calc(100vh - 32px)" }}>
-      <HermesClient
-        initialHealth={health}
-        initialJobs={jobs}
-        dream={dream}
-        webuiUrl={WEBUI_URL}
-      />
+    <div className="hermes-landing" data-hermes-page>
+      {/* Stort K-logo med orange glow BAG (ikke firkant omkring) */}
+      <div className="hermes-landing-mark-wrap">
+        <div className="hermes-landing-glow" />
+        <img
+          src="/brand/kinly-mark-tight-512.png"
+          alt="Hermes"
+          className="hermes-landing-mark"
+        />
+      </div>
+
+      <h1 className="hermes-landing-title">Hermes</h1>
+      <p className="hermes-landing-subtitle">
+        Jeres 24/7 medstifter på VPS&apos;en. Kort dansk, ærlig, sender aldrig noget selv.
+      </p>
+
+      <a
+        href={WEBUI_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hermes-landing-cta"
+      >
+        Åbn Hermes WebUI
+      </a>
+
+      <div className="hermes-landing-meta">
+        <span className="hermes-landing-status">
+          <span className="hermes-live-dot" />
+          Online · port 8789
+        </span>
+        <span>·</span>
+        <span>Login: Kinly1234</span>
+        <span>·</span>
+        <span>Via cloudflare-tunnel</span>
+      </div>
     </div>
   );
 }
