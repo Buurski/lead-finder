@@ -910,6 +910,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   flex-direction: column;
   background: var(--hermes-bg);
   overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
 }
 .hermes-chat-top {
   display: flex; align-items: center; justify-content: space-between;
