@@ -140,7 +140,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isHermesPage = pathname === "/hermes" || pathname.startsWith("/hermes/");
 
   return (
-    <div className="cc-shell">
+    <div className={`cc-shell${isHermesPage ? " cc-shell--hermes" : ""}`}>
       {!isHermesPage && <Sidebar open={navOpen} counts={counts} onNavigate={() => setNavOpen(false)} />}
 
       <div className="cc-main">
