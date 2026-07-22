@@ -720,6 +720,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   background: var(--hermes-bg-2);
   border-right: 1px solid var(--hermes-border);
   gap: 4px;
+  width: var(--hermes-rail-w, 56px);
+  flex-shrink: 0;
 }
 .hermes-rail-logo {
   width: 36px; height: 36px;
@@ -783,6 +785,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   background: var(--hermes-bg-2);
   border-right: 1px solid var(--hermes-border);
   overflow: hidden;
+  position: relative;
+  width: var(--hermes-sessions-w, 280px);
+  flex-shrink: 0;
 }
 .hermes-sessions-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -1373,6 +1378,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
     top: 0;
     z-index: 20;
   }
+  /* Skjul den ekstra chat-top på mobil — mobil-bar har alt hvad vi skal bruge */
+  .hermes-chat-top { display: none !important; }
   .hermes-mobile-bar-btn {
     width: 36px; height: 36px;
     background: transparent;
@@ -1480,15 +1487,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 .hermes-sessions-resizer.dragging {
   background: var(--hermes-ember);
 }
-.hermes-sessions {
-  position: relative;
-  min-width: 200px;
-  max-width: 480px;
-  flex-shrink: 0;
-}
-.hermes-shell {
-  grid-template-columns: var(--hermes-rail-w, 56px) var(--hermes-sessions-w, 280px) 1fr;
-}
+/* Resize-system flyttet ind i .hermes-shell via inline style (ikke lokale vars) */
 
 @media (max-width: 768px) {
   .hermes-sessions-resizer { display: none; }
