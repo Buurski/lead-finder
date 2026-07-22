@@ -301,7 +301,7 @@ export default function HermesClient({
     <div
       className={`hermes-shell theme-${theme}`}
       data-drawer={drawer}
-      style={{ ["--hermes-sessions-w" as any]: `${sessionsWidth}px` }}
+      style={{ "--hermes-sessions-w": `${sessionsWidth}px` } as React.CSSProperties}
     >
       {/* ---- MOBILE TOP BAR (kun synlig på mobil) ---- */}
       <div className="hermes-mobile-bar" style={{ gridColumn: "1 / -1" }}>

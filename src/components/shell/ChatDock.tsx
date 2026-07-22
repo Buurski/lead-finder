@@ -31,9 +31,6 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   const [mode, setMode] = useState<"chat" | "control">("control");
   const pathname = usePathname();
 
-  // Skjul helt på Hermes-sider (egen chat-UI overtager)
-  if (shouldHideChatDock(pathname)) return null;
-
   // Escape closes the dock (a11y: a dialog must be dismissible from the keyboard,
   // not only via the X button).
   useEffect(() => {
@@ -50,6 +47,10 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Skjul helt på Hermes-sider (Buur Agent er det primære chat-UI der).
+  // BEMÆRK: alle hooks er kaldt FØR dette return null, så React-rules-of-hooks overholdes.
+  if (shouldHideChatDock(pathname)) return null;
 
   async function send(text: string) {
     const q = text.trim();
