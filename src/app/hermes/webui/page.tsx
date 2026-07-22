@@ -1,7 +1,7 @@
 export const metadata = { title: "Hermes WebUI · AgenticOS" };
 export const dynamic = "force-static";
 
-const WEBUI_URL = "https://number-producers-investigations-galleries.trycloudflare.com";
+const WEBUI_URL = "https://tom-scholarships-synthetic-checked.trycloudflare.com";
 
 export default function HermesWebUIPage() {
   return (
