@@ -6,8 +6,6 @@ import Icon from "@/components/shell/Icon";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
-import CronHealth from "./CronHealth";
-import HermesRuns from "./HermesRuns";
 import UsageSparkline from "./UsageSparkline";
 import MaalWidget from "./MaalWidget";
 import OmverdenCard from "./OmverdenCard";
@@ -267,8 +265,6 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
           <MaalWidget />
         </div>
       </div>
-      <CronHealth />
-      <HermesRuns />
       <PulseCard s={s} />
     </div>
   );
@@ -765,9 +761,9 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
           icon="Radio"
           name="Hermes"
           role="24/7 baggrund"
-          status="kommer snart"
-          tone="var(--text-dim)"
-          note="Telegram-handshake + nat-kørsler. Placeholder indtil bygget."
+          status="aktiv"
+          tone="var(--accent)"
+          note="Telegram + WebUI. Kører drømme-jobbet hver nat kl 02:00."
         />
       </div>
 

@@ -6,6 +6,8 @@ import HermesClient from "./HermesClient";
 export const metadata = { title: "Hermes · Command Center" };
 export const dynamic = "force-dynamic";
 
+const WEBUI_URL = "https://number-producers-investigations-galleries.trycloudflare.com";
+
 // Latest dream note from the live vault (Hermes writes daily/<date>-dream.md
 // on the VPS clone and pushes; we read remote-first like the journal does).
 async function latestDream(): Promise<{ path: string; body: string } | null> {
@@ -45,24 +47,43 @@ export default async function HermesPage() {
         title="Hermes"
         subtitle="Buur Agent — jeres 24/7 medstifter på VPS'en."
         action={
-          <span
-            className="cc-chip"
-            style={{
-              background: statusOn ? "var(--accent-soft)" : "var(--bg-3)",
-              color: statusOn ? "var(--accent-ink)" : "var(--text-muted)",
-            }}
-          >
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span
+              className="cc-chip"
               style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: statusOn ? "var(--accent)" : "var(--border-strong)",
-                display: "inline-block",
+                background: statusOn ? "var(--accent-soft)" : "var(--bg-3)",
+                color: statusOn ? "var(--accent-ink)" : "var(--text-muted)",
               }}
-            />
-            {statusLabel}
-          </span>
+            >
+              <span
+                className={statusOn ? "hermes-live-dot" : undefined}
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: statusOn ? "var(--accent)" : "var(--border-strong)",
+                  display: "inline-block",
+                  marginRight: 6,
+                }}
+              />
+              {statusLabel}
+            </span>
+            <a
+              href={WEBUI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cc-chip"
+              style={{
+                background: "var(--bg-3)",
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: 12,
+              }}
+              title="Åbn fulde Hermes WebUI i nyt vindue (cloudflare-tunnel)"
+            >
+              Hermes WebUI ↗
+            </a>
+          </div>
         }
       />
       <HermesClient

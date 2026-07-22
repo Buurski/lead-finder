@@ -258,6 +258,11 @@ export default function HermesClient({
             </button>
           ))}
           {msgs.length > 0 && (
+            <span className="hermes-model-badge" style={{ marginLeft: msgs.length > 0 ? 8 : "auto" }}>
+              {PROFILES.find((p) => p.id === profile)?.label}
+            </span>
+          )}
+          {msgs.length > 0 && (
             <button
               className="cc-btn hermes-new-btn"
               style={{ marginLeft: "auto" }}
@@ -304,24 +309,37 @@ export default function HermesClient({
           {msgs.map((m, i) => (
             <div
               key={`${i}-${m.role}`}
-              style={{
-                alignSelf: m.role === "you" ? "flex-end" : "flex-start",
-                maxWidth: "85%",
-                background: m.role === "you" ? "var(--accent-soft)" : "var(--bg-3)",
-                color: "var(--text)",
-                borderRadius: 10,
-                padding: "8px 12px",
-                fontSize: 13.5,
-                whiteSpace: "pre-wrap",
-                lineHeight: 1.55,
-              }}
+              className={`hermes-msg ${m.role}`}
+              style={{ marginTop: 6 }}
             >
-              {m.text}
+              <div className={`hermes-avatar ${m.role}`} aria-hidden="true">
+                {m.role === "you" ? "D" : "H"}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%" }}>
+                <div className={`hermes-bubble ${m.role}`}>{m.text}</div>
+                <div className="hermes-msg-meta">
+                  {m.role === "hermes" ? (
+                    <>
+                      <span className="hermes-model-badge">Hermes · {PROFILES.find((p) => p.id === profile)?.label}</span>
+                    </>
+                  ) : (
+                    <span>dig · {(m.ts ?? "").slice(11, 16)}</span>
+                  )}
+                </div>
+              </div>
             </div>
           ))}
           {sending && (
-            <div style={{ alignSelf: "flex-start", color: "var(--text-dim)", fontSize: 12.5 }}>
-              Hermes tænker… (kan tage op til et minut)
+            <div className="hermes-thinking">
+              <div className="hermes-avatar hermes" aria-hidden="true">H</div>
+              <div>
+                <div className="hermes-thinking-dots" aria-label="Hermes tænker">
+                  <span /><span /><span />
+                </div>
+                <div className="hermes-msg-meta">
+                  <span className="hermes-model-badge">Hermes · {PROFILES.find((p) => p.id === profile)?.label}</span>
+                </div>
+              </div>
             </div>
           )}
           {exportMsg && (
@@ -344,27 +362,52 @@ export default function HermesClient({
             e.preventDefault();
             send(input);
           }}
-          style={{ display: "flex", gap: 8, padding: 14, borderTop: "1px solid var(--border)" }}
+          className="hermes-composer"
         >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send(input);
-              }
-            }}
-            placeholder={offline ? "Hermes er offline…" : "Skriv til Hermes… (Enter sender, Shift+Enter ny linje)"}
-            disabled={sending || offline}
-            rows={2}
-            maxLength={8000}
-            aria-label="Skriv til Hermes"
-            className="hermes-input"
-          />
-          <button type="submit" disabled={sending || offline || !input.trim()} className="cc-btn cc-btn-accent" style={{ padding: "0 16px" }}>
-            Send
-          </button>
+          <div className="hermes-composer-toolbar">
+            <span className="hermes-model-badge" title="Aktiv profil">
+              {PROFILES.find((p) => p.id === profile)?.label}
+            </span>
+            <span className="hermes-model-badge" title="Antal beskeder i samtalen">
+              {msgs.length} beskeder
+            </span>
+            <button
+              type="button"
+              className="hermes-toolbar-btn"
+              onClick={() => startNewSession()}
+              title="Ny samtale"
+              aria-label="Ny samtale"
+            >
+              +
+            </button>
+          </div>
+          <div className="hermes-composer-row">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send(input);
+                }
+              }}
+              placeholder={offline ? "Hermes er offline…" : "Skriv til Hermes… (Enter sender, Shift+Enter ny linje)"}
+              disabled={sending || offline}
+              rows={2}
+              maxLength={8000}
+              aria-label="Skriv til Hermes"
+              className="hermes-input"
+            />
+            <button
+              type="submit"
+              disabled={sending || offline || !input.trim()}
+              className="hermes-send-btn"
+              aria-label="Send"
+              title="Send (Enter)"
+            >
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
         </form>
       </section>
 
@@ -451,21 +494,18 @@ export default function HermesClient({
             <button
               key={s.id}
               onClick={() => openSession(s)}
-              className="hermes-session-btn"
-              style={{
-                textAlign: "left",
-                background: s.id === sessionId ? "var(--accent-soft)" : "none",
-                border: "none",
-                borderRadius: 7,
-                cursor: "pointer",
-                color: "var(--text)",
-                fontSize: 12.5,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              className={`hermes-session-item ${s.id === sessionId ? "active" : ""}`}
+              title={s.title || "(uden titel)"}
             >
-              {s.title || "(uden titel)"}
+              <span className={`hermes-session-dot ${s.id === sessionId ? "" : "dim"}`} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {s.title || "(uden titel)"}
+                </div>
+                <div className="hermes-session-meta">
+                  {(s.updatedAt ?? "").slice(0, 16).replace("T", " ")}
+                </div>
+              </div>
             </button>
           ))}
         </section>
