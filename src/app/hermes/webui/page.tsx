@@ -14,29 +14,31 @@ export default function HermesWebUIPage() {
         subtitle="Den fulde Hermes-agent i browseren — åbnes i nyt vindue."
       />
       <div className="hermes-webui-shell">
-        {/* Kinly K-mark (med orange prik) */}
-        <img
-          src="/brand/kinly-mark-tight-512.png"
-          alt="Kinly mark"
-          className="hermes-webui-mark"
-        />
+        {/* Card-boks som på YT-billedet */}
+        <div className="hermes-webui-card">
+          <div className="hermes-webui-mark-box">
+            <img
+              src="/brand/kinly-mark-tight-512.png"
+              alt="Kinly mark"
+            />
+          </div>
 
-        <h1>Hermes WebUI</h1>
-        <p>
-          Det fuldstændige Hermes-command-center kører som selvstændig app på vores VPS,
-          tunneleret via Cloudflare. Det åbnes i et nyt vindue så det får al den plads det har brug for —
-          og så du kan have flere faner åbne samtidig (fx denne /hermes-side som opslagstavle
-          + WebUI som live arbejdsbord).
-        </p>
-
-        <a
-          href={WEBUI_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hermes-webui-cta"
-        >
-          ⚕ Åbn Hermes WebUI i nyt vindue
-        </a>
+          <div className="hermes-webui-card-text">
+            <h1>Hermes WebUI</h1>
+            <p>
+              Den fuldstændige Hermes-agent kører som selvstændig app på vores VPS,
+              tunneleret via Cloudflare. Åbn i nyt vindue for fuld arbejdsplads.
+            </p>
+            <a
+              href={WEBUI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hermes-webui-cta"
+            >
+              ⚕ Åbn Hermes WebUI i nyt vindue
+            </a>
+          </div>
+        </div>
 
         <div className="hermes-webui-meta">
           <span><span className="hermes-live-dot" /> Online · port 8789</span>

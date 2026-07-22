@@ -491,12 +491,9 @@ export default function HermesClient({
 
           {msgs.length === 0 && !offline && (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--hermes-text-muted)" }}>
-              <img
-                src="/brand/kinly-mark-tight-512.png"
-                alt="Kinly"
-                className="hermes-mark-large"
-                style={{ display: "block", margin: "0 auto 20px" }}
-              />
+              <div className="hermes-mark-box" style={{ display: "inline-grid", margin: "0 auto 20px" }}>
+                <img src="/brand/kinly-mark-tight-512.png" alt="Kinly" />
+              </div>
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, color: "var(--hermes-text)", margin: "0 0 8px" }}>
                 Hej {PROFILES.find((p) => p.id === profile)?.label}.
               </p>
