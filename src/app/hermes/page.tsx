@@ -1,4 +1,3 @@
-import PageHeader from "@/components/shell/PageHeader";
 import { hermesHealth, hermesCronList } from "@/lib/hermes";
 import { listVault, readVaultNote } from "@/lib/vault";
 import HermesClient from "./HermesClient";
@@ -29,64 +28,13 @@ async function latestDream(): Promise<{ path: string; body: string } | null> {
 export default async function HermesPage() {
   const [health, jobs, dream] = await Promise.all([hermesHealth(), hermesCronList(), latestDream()]);
 
-  const statusLabel = !health.configured
-    ? "ikke konfigureret"
-    : health.reachable
-      ? "online"
-      : "offline";
-  const statusOn = health.configured && health.reachable;
-
   return (
-    <div className="cc-fade" data-hermes-page>
-      <PageHeader
-        icon="Sparkles"
-        title="Hermes · AgenticOS"
-        subtitle="Buur Agent — jeres 24/7 medstifter på VPS'en. Kinly × Hermes hybrid."
-        action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span
-              className="cc-chip"
-              style={{
-                background: statusOn ? "var(--hermes-ember-soft)" : "var(--bg-3)",
-                color: statusOn ? "var(--hermes-ember)" : "var(--text-muted)",
-                border: statusOn ? "1px solid rgba(212, 80, 15, 0.3)" : "none",
-              }}
-            >
-              <span
-                className={statusOn ? "hermes-live-dot" : undefined}
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: statusOn ? "var(--hermes-ember)" : "var(--border-strong)",
-                  display: "inline-block",
-                  marginRight: 6,
-                }}
-              />
-              {statusLabel}
-            </span>
-            <a
-              href={WEBUI_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cc-chip"
-              style={{
-                background: "var(--bg-3)",
-                color: "var(--text-muted)",
-                textDecoration: "none",
-                fontSize: 12,
-              }}
-              title="Åbn fulde Hermes WebUI i nyt vindue"
-            >
-              WebUI ↗
-            </a>
-          </div>
-        }
-      />
+    <div data-hermes-page style={{ margin: "-24px -28px -32px", minHeight: "calc(100vh - 32px)" }}>
       <HermesClient
         initialHealth={health}
         initialJobs={jobs}
         dream={dream}
+        webuiUrl={WEBUI_URL}
       />
     </div>
   );

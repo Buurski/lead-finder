@@ -42,10 +42,12 @@ export default function HermesClient({
   initialHealth,
   initialJobs,
   dream,
+  webuiUrl,
 }: {
   initialHealth: Health;
   initialJobs: HermesCronJob[];
   dream: { path: string; body: string } | null;
+  webuiUrl: string;
 }) {
   const [profile, setProfile] = useState<HermesProfile>("lucas");
   const [sessionId, setSessionId] = useState<string>(newSessionId);
@@ -443,29 +445,40 @@ export default function HermesClient({
       {/* ---- COLUMN 3: Chat ---- */}
       <section className="hermes-chat">
         <div className="hermes-chat-top">
-          <div className="hermes-chat-title">
+          <div className="hermes-chat-top-left">
             <img
               src="/brand/kinly-mark-tight-512.png"
               alt=""
               className="hermes-mark"
               aria-hidden="true"
             />
-            {activeSession?.title || "Ny samtale"}
+            <div>
+              <div className="hermes-chat-title-text">Hermes · AgenticOS</div>
+              <div className="hermes-chat-subtitle">{activeSession?.title || "Buur Agent — jeres 24/7 medstifter"}</div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="hermes-chat-top-right">
+            <a
+              href={webuiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hermes-webui-link"
+              title="Åbn Hermes WebUI i nyt vindue"
+            >
+              WebUI <Icon name="ArrowUpRight" size={13} />
+            </a>
             <button
               className="hermes-theme-toggle"
               title={theme === "dark" ? "Skift til lys" : "Skift til mørk"}
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Skift tema"
             >
-              {theme === "dark" ? "☀" : "☾"}
+              <Icon name={theme === "dark" ? "Sun" : "Moon"} size={16} />
             </button>
             <div className="hermes-chat-status">
               <span className="hermes-live-dot" />
               <span>{online ? "ONLINE" : "OFFLINE"}</span>
             </div>
-            <div className="hermes-chat-count">{msgs.length} beskeder</div>
           </div>
         </div>
 
