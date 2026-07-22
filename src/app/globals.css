@@ -675,7 +675,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 
 /* ============================================================== */
 /*  HERMES DARK THEME — Kinly × Hermes hybrid                     */
-/*  3-column layout: 50px iconbar + 280px sessions + 1fr chat    */
+/*  3-column layout: 56px iconbar + 280px sessions + 1fr chat    */
 /*  Color tokens: --hermes-* (declared in :root above)            */
 /* ============================================================== */
 
@@ -689,7 +689,27 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   font-family: var(--font-body);
   margin: 0 -28px -32px; /* break out of the cc-shell padding */
   font-size: 13.5px;
+  --hermes-rail-w: 56px;
+  --hermes-sessions-w: 280px;
+  position: relative;
 }
+
+/* light-mode variant */
+.hermes-shell.theme-light {
+  --hermes-bg: #FAF7F0;
+  --hermes-bg-2: #F3EEE3;
+  --hermes-bg-3: #E8E2D4;
+  --hermes-bg-hover: #DDD6C5;
+  --hermes-border: #D8D0BD;
+  --hermes-border-strong: #B8AE96;
+  --hermes-text: #191713;
+  --hermes-text-muted: #5C5344;
+  --hermes-text-dim: #8B8273;
+  --hermes-ember-soft: rgba(212, 80, 15, 0.10);
+}
+
+/* ---- mobile drawer system (CSS-only) ---- */
+.hermes-mobile-bar { display: none; }
 
 /* ---- column 1: icon rail (56px) ---- */
 .hermes-rail {
@@ -1240,3 +1260,162 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 }
 .hermes-webui-meta span { display: flex; align-items: center; gap: 5px; }
 .hermes-webui-meta .hermes-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hermes-ember); }
+
+
+/* ============================================================== */
+/*  MOBILE RESPONSIVE — breakpoint ≤ 768px                        */
+/*  På mobil: rail + sessions bliver drawers (skjult som default) */
+/* ============================================================== */
+
+@media (max-width: 768px) {
+  .hermes-shell {
+    grid-template-columns: 1fr !important;
+    margin: 0 -12px -24px;
+    font-size: 14px;
+    --hermes-rail-w: 0px;
+    --hermes-sessions-w: 0px;
+  }
+  .hermes-rail {
+    position: fixed;
+    left: 0; top: 64px; bottom: 0;
+    width: 56px;
+    z-index: 30;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    background: var(--hermes-bg-2);
+    border-right: 1px solid var(--hermes-border);
+  }
+  .hermes-shell[data-drawer="rail"] .hermes-rail {
+    transform: translateX(0);
+  }
+  .hermes-sessions {
+    position: fixed;
+    left: 0; top: 64px; bottom: 0;
+    width: 280px;
+    z-index: 31;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    background: var(--hermes-bg-2);
+    border-right: 1px solid var(--hermes-border);
+  }
+  .hermes-shell[data-drawer="sessions"] .hermes-sessions {
+    transform: translateX(0);
+  }
+  .hermes-chat {
+    width: 100vw;
+    min-width: 0;
+  }
+  .hermes-mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--hermes-bg-2);
+    border-bottom: 1px solid var(--hermes-border);
+  }
+  .hermes-mobile-bar-btn {
+    width: 36px; height: 36px;
+    background: transparent;
+    border: 1px solid var(--hermes-border);
+    border-radius: 8px;
+    color: var(--hermes-text-muted);
+    display: grid; place-items: center;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .hermes-mobile-bar-btn:hover { background: var(--hermes-bg-hover); color: var(--hermes-text); }
+  .hermes-mobile-bar-title {
+    flex: 1;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--hermes-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hermes-mobile-backdrop {
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 29;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .hermes-shell[data-drawer="rail"] .hermes-mobile-backdrop,
+  .hermes-shell[data-drawer="sessions"] .hermes-mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ============================================================== */
+/*  RESIZABLE PANELS — desktop only                               */
+/*  Træk i højre kant af sessions-sidebar for at ændre bredde     */
+/* ============================================================== */
+
+.hermes-sessions-resizer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 5;
+  transition: background 0.15s ease;
+}
+.hermes-sessions-resizer:hover,
+.hermes-sessions-resizer.dragging {
+  background: var(--hermes-ember);
+}
+.hermes-sessions {
+  position: relative;
+  min-width: 200px;
+  max-width: 480px;
+  flex-shrink: 0;
+}
+.hermes-shell {
+  grid-template-columns: var(--hermes-rail-w, 56px) var(--hermes-sessions-w, 280px) 1fr;
+}
+
+@media (max-width: 768px) {
+  .hermes-sessions-resizer { display: none; }
+}
+
+/* ============================================================== */
+/*  THEME TOGGLE — sol/måne-knap i header                         */
+/* ============================================================== */
+
+.hermes-theme-toggle {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  color: var(--hermes-text-muted);
+  cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 14px;
+  font-family: var(--font-body);
+  transition: all 0.14s ease;
+}
+.hermes-theme-toggle:hover {
+  background: var(--hermes-bg-hover);
+  color: var(--hermes-ember);
+  border-color: var(--hermes-ember);
+}
+
+/* ============================================================== */
+/*  KINLY K-LOGO i chat-top / header                              */
+/* ============================================================== */
+
+.hermes-mark {
+  width: 22px; height: 32px;
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 2px rgba(212, 80, 15, 0.4));
+}
+.hermes-mark-large {
+  width: 40px; height: 58px;
+  filter: drop-shadow(0 2px 6px rgba(212, 80, 15, 0.3));
+}

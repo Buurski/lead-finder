@@ -16,6 +16,11 @@ function screenLabel(pathname: string): string {
   return NAV_FLAT.find((i) => i.href === pathname)?.label ?? pathname;
 }
 
+// Skjul "Spørg Claude" widget på Hermes-sider (Buur Agent er det primære chat-UI der)
+function shouldHideChatDock(pathname: string): boolean {
+  return pathname === "/hermes" || pathname.startsWith("/hermes/");
+}
+
 // The contextual chat widget. Two modes:
 //   Chat        — talk to Claude (composer is live in Fase B; here it explains itself).
 //   Control Room — shows what the widget can currently "see" on screen.
@@ -25,6 +30,9 @@ export default function ChatDock({ counts }: { counts: DockCounts }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"chat" | "control">("control");
   const pathname = usePathname();
+
+  // Skjul helt på Hermes-sider (egen chat-UI overtager)
+  if (shouldHideChatDock(pathname)) return null;
 
   // Escape closes the dock (a11y: a dialog must be dismissible from the keyboard,
   // not only via the X button).

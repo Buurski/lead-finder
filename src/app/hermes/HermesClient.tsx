@@ -235,7 +235,44 @@ export default function HermesClient({
     }
   }
 
-  // Gruppér sessions efter dato (i dag / i går / ældre)
+  // Theme toggle
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("hermes-theme") as "dark" | "light") || "dark";
+  });
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-hermes-theme", theme);
+      try { localStorage.setItem("hermes-theme", theme); } catch {}
+    }
+  }, [theme]);
+
+  // Mobile drawer state
+  const [drawer, setDrawer] = useState<"none" | "rail" | "sessions">("none");
+
+  // Resizable sessions sidebar (desktop only)
+  const [sessionsWidth, setSessionsWidth] = useState<number>(280);
+  const draggingRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    draggingRef.current = { startX: e.clientX, startW: sessionsWidth };
+    const onMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const dx = ev.clientX - draggingRef.current.startX;
+      const next = Math.min(480, Math.max(200, draggingRef.current.startW + dx));
+      setSessionsWidth(next);
+    };
+    const onUp = () => {
+      draggingRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  // Gruppér sessions efter dato
   function groupSessions(all: HermesSessionMeta[]): { label: string; items: HermesSessionMeta[] }[] {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -258,31 +295,68 @@ export default function HermesClient({
 
   const sessionGroups = groupSessions(sessions);
   const activeSession = sessions.find((s) => s.id === sessionId);
+  const online = health.configured && health.reachable;
 
   return (
-    <div className="hermes-shell">
-      {/* ---- COLUMN 1: Icon rail (56px) ---- */}
+    <div
+      className={`hermes-shell theme-${theme}`}
+      data-drawer={drawer}
+      style={{ ["--hermes-sessions-w" as any]: `${sessionsWidth}px` }}
+    >
+      {/* ---- MOBILE TOP BAR (kun synlig på mobil) ---- */}
+      <div className="hermes-mobile-bar" style={{ gridColumn: "1 / -1" }}>
+        <button
+          className="hermes-mobile-bar-btn"
+          onClick={() => setDrawer(drawer === "rail" ? "none" : "rail")}
+          aria-label="Åbn menu"
+        >☰</button>
+        <span className="hermes-mobile-bar-title">
+          {activeSession?.title || "Hermes · Buur Agent"}
+        </span>
+        <button
+          className="hermes-mobile-bar-btn"
+          onClick={() => setDrawer(drawer === "sessions" ? "none" : "sessions")}
+          aria-label="Åbn samtaler"
+        >💬</button>
+      </div>
+
+      <div className="hermes-mobile-backdrop" onClick={() => setDrawer("none")} aria-hidden="true" />
+
+      {/* ---- COLUMN 1: Icon rail ---- */}
       <nav className="hermes-rail" aria-label="Hermes navigation">
-        <div className="hermes-rail-logo" title="Hermes · AgenticOS">⚕</div>
+        <img
+          src="/brand/kinly-mark-tight-512.png"
+          alt="Hermes · Kinly"
+          className="hermes-rail-logo"
+          style={{ width: 32, height: "auto", objectFit: "contain" }}
+        />
         <button className="hermes-rail-btn active" title="Chat" aria-label="Chat">💬</button>
         <button className="hermes-rail-btn" title="Skills" aria-label="Skills">✦</button>
         <button className="hermes-rail-btn" title="Memory" aria-label="Memory">◐</button>
         <button className="hermes-rail-btn" title="Knowledge Graph" aria-label="Knowledge Graph">◇</button>
         <button className="hermes-rail-btn" title="Activity" aria-label="Activity">≋</button>
         <div className="hermes-rail-spacer" />
+        <button
+          className="hermes-theme-toggle"
+          title={theme === "dark" ? "Skift til lys" : "Skift til mørk"}
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          aria-label="Skift tema"
+        >
+          {theme === "dark" ? "☀" : "☾"}
+        </button>
         <button className="hermes-rail-btn" title="Indstillinger" aria-label="Indstillinger">⚙</button>
         <div className="hermes-rail-avatar" title={PROFILES.find((p) => p.id === profile)?.label}>
           {PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "L"}
         </div>
       </nav>
 
-      {/* ---- COLUMN 2: Sessions sidebar (280px) ---- */}
+      {/* ---- COLUMN 2: Sessions sidebar ---- */}
       <aside className="hermes-sessions" aria-label="Chat sessions">
         <div className="hermes-sessions-head">
           <span className="hermes-sessions-title">CHAT</span>
           <button
             className="hermes-sessions-new"
-            onClick={() => startNewSession()}
+            onClick={() => { startNewSession(); setDrawer("none"); }}
             title="Ny samtale"
             aria-label="Ny samtale"
           >+</button>
@@ -309,7 +383,7 @@ export default function HermesClient({
                   return (
                     <button
                       key={s.id}
-                      onClick={() => openSession(s)}
+                      onClick={() => { openSession(s); setDrawer("none"); }}
                       className={`hermes-session ${s.id === sessionId ? "active" : ""}`}
                       title={s.title || "(uden titel)"}
                     >
@@ -334,7 +408,6 @@ export default function HermesClient({
             ))
           )}
 
-          {/* Cron jobs + dream knap nederst */}
           <div style={{ padding: "16px 8px 8px" }}>
             <div className="hermes-sessions-group-label">System</div>
             <div style={{ fontSize: 12, color: "var(--hermes-text-muted)", marginBottom: 8, padding: "4px 10px" }}>
@@ -357,18 +430,40 @@ export default function HermesClient({
             )}
           </div>
         </div>
+
+        {/* Resize handle (desktop) */}
+        <div
+          className="hermes-sessions-resizer"
+          onMouseDown={startResize}
+          title="Træk for at ændre bredde"
+          aria-label="Træk for at ændre sessions-sidebar bredde"
+        />
       </aside>
 
-      {/* ---- COLUMN 3: Chat (1fr) ---- */}
+      {/* ---- COLUMN 3: Chat ---- */}
       <section className="hermes-chat">
         <div className="hermes-chat-top">
           <div className="hermes-chat-title">
+            <img
+              src="/brand/kinly-mark-tight-512.png"
+              alt=""
+              className="hermes-mark"
+              aria-hidden="true"
+            />
             {activeSession?.title || "Ny samtale"}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              className="hermes-theme-toggle"
+              title={theme === "dark" ? "Skift til lys" : "Skift til mørk"}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Skift tema"
+            >
+              {theme === "dark" ? "☀" : "☾"}
+            </button>
             <div className="hermes-chat-status">
               <span className="hermes-live-dot" />
-              <span>{(health.configured && health.reachable ? "ONLINE" : "OFFLINE")}</span>
+              <span>{online ? "ONLINE" : "OFFLINE"}</span>
             </div>
             <div className="hermes-chat-count">{msgs.length} beskeder</div>
           </div>
@@ -396,6 +491,12 @@ export default function HermesClient({
 
           {msgs.length === 0 && !offline && (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--hermes-text-muted)" }}>
+              <img
+                src="/brand/kinly-mark-tight-512.png"
+                alt="Kinly"
+                className="hermes-mark-large"
+                style={{ display: "block", margin: "0 auto 20px" }}
+              />
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, color: "var(--hermes-text)", margin: "0 0 8px" }}>
                 Hej {PROFILES.find((p) => p.id === profile)?.label}.
               </p>
@@ -408,7 +509,13 @@ export default function HermesClient({
           {msgs.map((m, i) => (
             <div key={`${i}-${m.role}`} className={`hermes-msg ${m.role}`}>
               <div className={`hermes-avatar ${m.role}`} aria-hidden="true">
-                {m.role === "you" ? PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "D" : "⚕"}
+                {m.role === "you" ? PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "D" : (
+                  <img
+                    src="/brand/kinly-mark-tight-512.png"
+                    alt=""
+                    style={{ width: 22, height: "auto", display: "block" }}
+                  />
+                )}
               </div>
               <div className="hermes-msg-body">
                 <div className="hermes-msg-meta">
@@ -424,7 +531,13 @@ export default function HermesClient({
 
           {sending && (
             <div className="hermes-thinking">
-              <div className="hermes-avatar hermes" aria-hidden="true">⚕</div>
+              <div className="hermes-avatar hermes" aria-hidden="true">
+                <img
+                  src="/brand/kinly-mark-tight-512.png"
+                  alt=""
+                  style={{ width: 22, height: "auto", display: "block" }}
+                />
+              </div>
               <div>
                 <div className="hermes-thinking-dots" aria-label="Hermes tænker">
                   <span /><span /><span />
@@ -523,6 +636,7 @@ export default function HermesClient({
     </div>
   );
 }
+
 
 
 // Lille pipeline-puls så morgenrutinen kan klares fra Hermes-siden alene.
