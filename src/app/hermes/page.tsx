@@ -37,7 +37,7 @@ export default async function HermesPage() {
   const statusOn = health.configured && health.reachable;
 
   return (
-    <div className="cc-fade">
+    <div className="cc-fade" data-hermes-page>
       <PageHeader
         icon="Sparkles"
         title="Hermes · AgenticOS"

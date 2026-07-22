@@ -309,7 +309,7 @@ export default function HermesClient({
           className="hermes-mobile-bar-btn"
           onClick={() => setDrawer(drawer === "rail" ? "none" : "rail")}
           aria-label="Åbn menu"
-        >☰</button>
+        ><Icon name="Menu" size={18} /></button>
         <span className="hermes-mobile-bar-title">
           {activeSession?.title || "Hermes · Buur Agent"}
         </span>
@@ -317,7 +317,7 @@ export default function HermesClient({
           className="hermes-mobile-bar-btn"
           onClick={() => setDrawer(drawer === "sessions" ? "none" : "sessions")}
           aria-label="Åbn samtaler"
-        >💬</button>
+        ><Icon name="MessagesSquare" size={18} /></button>
       </div>
 
       <div className="hermes-mobile-backdrop" onClick={() => setDrawer("none")} aria-hidden="true" />
@@ -330,11 +330,11 @@ export default function HermesClient({
           className="hermes-rail-logo"
           style={{ width: 32, height: "auto", objectFit: "contain" }}
         />
-        <button className="hermes-rail-btn active" title="Chat" aria-label="Chat">💬</button>
-        <button className="hermes-rail-btn" title="Skills" aria-label="Skills">✦</button>
-        <button className="hermes-rail-btn" title="Memory" aria-label="Memory">◐</button>
-        <button className="hermes-rail-btn" title="Knowledge Graph" aria-label="Knowledge Graph">◇</button>
-        <button className="hermes-rail-btn" title="Activity" aria-label="Activity">≋</button>
+        <button className="hermes-rail-btn active" title="Chat" aria-label="Chat"><Icon name="MessagesSquare" size={18} /></button>
+        <button className="hermes-rail-btn" title="Skills" aria-label="Skills"><Icon name="Wand" size={18} /></button>
+        <button className="hermes-rail-btn" title="Memory" aria-label="Memory"><Icon name="Brain" size={18} /></button>
+        <button className="hermes-rail-btn" title="Knowledge Graph" aria-label="Knowledge Graph"><Icon name="Network" size={18} /></button>
+        <button className="hermes-rail-btn" title="Activity" aria-label="Activity"><Icon name="Activity" size={18} /></button>
         <div className="hermes-rail-spacer" />
         <button
           className="hermes-theme-toggle"
@@ -344,7 +344,7 @@ export default function HermesClient({
         >
           {theme === "dark" ? "☀" : "☾"}
         </button>
-        <button className="hermes-rail-btn" title="Indstillinger" aria-label="Indstillinger">⚙</button>
+        <button className="hermes-rail-btn" title="Indstillinger" aria-label="Indstillinger"><Icon name="Settings" size={18} /></button>
         <div className="hermes-rail-avatar" title={PROFILES.find((p) => p.id === profile)?.label}>
           {PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "L"}
         </div>
@@ -359,7 +359,7 @@ export default function HermesClient({
             onClick={() => { startNewSession(); setDrawer("none"); }}
             title="Ny samtale"
             aria-label="Ny samtale"
-          >+</button>
+          ><Icon name="Plus" size={16} /></button>
         </div>
         <div className="hermes-sessions-search">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -479,21 +479,24 @@ export default function HermesClient({
         <div ref={scrollRef} className="hermes-messages">
           {offline && (
             <div className="hermes-bubble" style={{ background: "var(--hermes-bg-2)", border: "1px solid var(--hermes-ember)" }}>
-              <strong>⚠ Hermes er offline</strong><br />
+              <strong><Icon name="AlertTriangle" size={15} style={{ verticalAlign: "middle" }} /> Hermes er offline</strong><br />
               {health.configured
                 ? "Tjek at VPS'en kører (hermes-api på port 8787)."
                 : "HERMES_API_URL + HERMES_API_SECRET mangler i miljøet."}
               <button onClick={recheckHealth} className="hermes-tool-btn" style={{ marginLeft: 8 }} title="Tjek igen">
-                ↻
+                <Icon name="RefreshCw" size={15} />
               </button>
             </div>
           )}
 
           {msgs.length === 0 && !offline && (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--hermes-text-muted)" }}>
-              <div className="hermes-mark-box" style={{ display: "inline-grid", margin: "0 auto 20px" }}>
-                <img src="/brand/kinly-mark-tight-512.png" alt="Kinly" />
-              </div>
+              <img
+                src="/brand/kinly-mark-tight-512.png"
+                alt="Kinly"
+                className="hermes-mark-large"
+                style={{ display: "block", margin: "0 auto 20px", filter: "drop-shadow(0 4px 16px rgba(212, 80, 15, 0.35))" }}
+              />
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, color: "var(--hermes-text)", margin: "0 0 8px" }}>
                 Hej {PROFILES.find((p) => p.id === profile)?.label}.
               </p>
@@ -548,7 +551,7 @@ export default function HermesClient({
 
           {dreamOpen && dream && (
             <div className="hermes-bubble" style={{ background: "var(--hermes-bg-3)", border: "1px solid var(--hermes-gold)" }}>
-              <strong>🌙 Nattens dream</strong>
+              <strong><Icon name="Moon" size={15} style={{ verticalAlign: "middle" }} /> Nattens dream</strong>
               <div style={{ marginTop: 8 }}>
                 <MarkdownLite source={trimAtParagraph(dream.body, 2000)} />
               </div>
@@ -568,8 +571,8 @@ export default function HermesClient({
           className="hermes-composer"
         >
           <div className="hermes-composer-toolbar">
-            <button type="button" className="hermes-tool-btn" title="Vedhæft fil" aria-label="Vedhæft fil">📎</button>
-            <button type="button" className="hermes-tool-btn" title="Stemmekommando" aria-label="Stemme">🎙</button>
+            <button type="button" className="hermes-tool-btn" title="Vedhæft fil" aria-label="Vedhæft fil"><Icon name="Paperclip" size={15} /></button>
+            <button type="button" className="hermes-tool-btn" title="Stemmekommando" aria-label="Stemme"><Icon name="Mic" size={15} /></button>
             <button type="button" className="hermes-tool-btn" title="Profil" aria-label="Skift profil">
               {PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "L"}
             </button>
@@ -587,7 +590,7 @@ export default function HermesClient({
                   title="Gem i vault"
                   aria-label="Gem i vault"
                 >
-                  💾
+                  <Icon name="Save" size={15} />
                 </button>
                 <button
                   type="button"
@@ -596,7 +599,7 @@ export default function HermesClient({
                   title="Ny samtale"
                   aria-label="Ny samtale"
                 >
-                  +
+                  <Icon name="Plus" size={15} />
                 </button>
               </>
             )}
@@ -625,7 +628,7 @@ export default function HermesClient({
               aria-label="Send"
               title="Send (Enter)"
             >
-              ↑
+              <Icon name="ArrowUp" size={20} />
             </button>
           </div>
         </form>

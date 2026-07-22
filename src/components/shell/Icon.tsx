@@ -8,6 +8,8 @@ import {
   Moon, Pause, Columns3, ArrowUpRight,
   Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard, Wallet, Receipt, Scale,
   TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
+  Home, MessagesSquare, ListChecks, FolderTree, Network, BarChart3,
+  Plus, Send, Paperclip, Mic, Save, RefreshCw, ArrowUp, Power,
   type LucideProps,
 } from "lucide-react";
 
@@ -20,6 +22,8 @@ const MAP = {
   Moon, Pause, Columns3, ArrowUpRight,
   Radar, Rss, Columns2, Wand, Wrench, Bell, Keyboard, Wallet, Receipt, Scale,
   TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
+  Home, MessagesSquare, ListChecks, FolderTree, Network, BarChart3,
+  Plus, Send, Paperclip, Mic, Save, RefreshCw, ArrowUp, Power,
 } as const;
 
 export type IconName = keyof typeof MAP;

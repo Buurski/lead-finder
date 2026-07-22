@@ -137,11 +137,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const closePalette = useCallback(() => setPaletteOpen(false), []);
   const crumbs = crumbsFor(pathname);
 
+  const isHermesPage = pathname === "/hermes" || pathname.startsWith("/hermes/");
+
   return (
     <div className="cc-shell">
-      <Sidebar open={navOpen} counts={counts} onNavigate={() => setNavOpen(false)} />
+      {!isHermesPage && <Sidebar open={navOpen} counts={counts} onNavigate={() => setNavOpen(false)} />}
 
       <div className="cc-main">
+        {!isHermesPage && (
         <header className="cc-topbar">
           <button
             className="cc-cmdk cc-menu-btn"
@@ -176,6 +179,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
+        )}
 
         {pause?.paused && (
           <div
