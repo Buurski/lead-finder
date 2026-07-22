@@ -235,127 +235,220 @@ export default function HermesClient({
     }
   }
 
+  // Gruppér sessions efter dato (i dag / i går / ældre)
+  function groupSessions(all: HermesSessionMeta[]): { label: string; items: HermesSessionMeta[] }[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const groups: Record<string, HermesSessionMeta[]> = { I_DAG: [], I_GAAR: [], AELDRE: [] };
+    for (const s of all) {
+      const d = new Date(s.updatedAt);
+      if (isNaN(d.getTime())) { groups.AELDRE.push(s); continue; }
+      if (d >= today) groups.I_DAG.push(s);
+      else if (d >= yesterday) groups.I_GAAR.push(s);
+      else groups.AELDRE.push(s);
+    }
+    return [
+      { label: "I dag", items: groups.I_DAG },
+      { label: "I går", items: groups.I_GAAR },
+      { label: "Tidligere", items: groups.AELDRE },
+    ].filter((g) => g.items.length > 0);
+  }
+
+  const sessionGroups = groupSessions(sessions);
+  const activeSession = sessions.find((s) => s.id === sessionId);
+
   return (
-    <div className="hermes-grid">
-      {/* ---- left: chat ---- */}
-      <section className="cc-card hermes-chat">
-        <div className="hermes-chips" style={{ display: "flex", gap: 6, padding: "12px 14px", borderBottom: "1px solid var(--border)", alignItems: "center", flexWrap: "wrap" }}>
-          {PROFILES.map((p) => (
-            <button
-              key={p.id}
-              className="cc-chip"
-              title={p.hint}
-              onClick={() => startNewSession(p.id)}
-              style={{
-                cursor: "pointer",
-                border: "none",
-                background: profile === p.id ? "var(--accent-soft)" : "var(--bg-3)",
-                color: profile === p.id ? "var(--accent-ink)" : "var(--text-muted)",
-                fontWeight: profile === p.id ? 600 : 400,
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-          {msgs.length > 0 && (
-            <span className="hermes-model-badge" style={{ marginLeft: msgs.length > 0 ? 8 : "auto" }}>
-              {PROFILES.find((p) => p.id === profile)?.label}
-            </span>
-          )}
-          {msgs.length > 0 && (
-            <button
-              className="cc-btn hermes-new-btn"
-              style={{ marginLeft: "auto" }}
-              disabled={exporting}
-              onClick={exportSession}
-              title="Gem hele samtalen som note i KnowledgeOS-vaulten"
-            >
-              {exporting ? "Gemmer…" : "Gem i vault"}
-            </button>
-          )}
+    <div className="hermes-shell">
+      {/* ---- COLUMN 1: Icon rail (56px) ---- */}
+      <nav className="hermes-rail" aria-label="Hermes navigation">
+        <div className="hermes-rail-logo" title="Hermes · AgenticOS">⚕</div>
+        <button className="hermes-rail-btn active" title="Chat" aria-label="Chat">💬</button>
+        <button className="hermes-rail-btn" title="Skills" aria-label="Skills">✦</button>
+        <button className="hermes-rail-btn" title="Memory" aria-label="Memory">◐</button>
+        <button className="hermes-rail-btn" title="Knowledge Graph" aria-label="Knowledge Graph">◇</button>
+        <button className="hermes-rail-btn" title="Activity" aria-label="Activity">≋</button>
+        <div className="hermes-rail-spacer" />
+        <button className="hermes-rail-btn" title="Indstillinger" aria-label="Indstillinger">⚙</button>
+        <div className="hermes-rail-avatar" title={PROFILES.find((p) => p.id === profile)?.label}>
+          {PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "L"}
+        </div>
+      </nav>
+
+      {/* ---- COLUMN 2: Sessions sidebar (280px) ---- */}
+      <aside className="hermes-sessions" aria-label="Chat sessions">
+        <div className="hermes-sessions-head">
+          <span className="hermes-sessions-title">CHAT</span>
           <button
-            className="cc-btn hermes-new-btn"
-            style={msgs.length > 0 ? { marginLeft: 0 } : undefined}
+            className="hermes-sessions-new"
             onClick={() => startNewSession()}
-          >
-            + Ny samtale
-          </button>
+            title="Ny samtale"
+            aria-label="Ny samtale"
+          >+</button>
+        </div>
+        <div className="hermes-sessions-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input placeholder="Filter conversations…" aria-label="Filter conversations" />
         </div>
 
-        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 9, minHeight: 0 }}>
-          {offline && (
-            <div className="cc-card-pad" style={{ background: "var(--bg-3)", borderRadius: 10, fontSize: 13, color: "var(--text-muted)", display: "grid", gap: 8 }}>
-              <span>
-                {health.configured
-                  ? "Hermes svarer ikke lige nu — tjek at VPS'en kører (hermes-api på port 8787)."
-                  : "HERMES_API_URL + HERMES_API_SECRET mangler i miljøet. Sæt dem, så er chatten live."}
-              </span>
+        <div className="hermes-sessions-list">
+          {sessionGroups.length === 0 ? (
+            <div style={{ padding: "20px 12px", fontSize: 12, color: "var(--hermes-text-dim)", textAlign: "center" }}>
+              Ingen samtaler endnu — start en ny.
+            </div>
+          ) : (
+            sessionGroups.map((group) => (
+              <div key={group.label}>
+                <div className="hermes-sessions-group-label">{group.label}</div>
+                {group.items.map((s) => {
+                  const isTelegram = s.title?.toLowerCase().includes("telegram");
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => openSession(s)}
+                      className={`hermes-session ${s.id === sessionId ? "active" : ""}`}
+                      title={s.title || "(uden titel)"}
+                    >
+                      <span className={`hermes-session-dot ${s.id === sessionId ? "" : "dim"}`} />
+                      <div className="hermes-session-content">
+                        <div className="hermes-session-title">
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {s.title || "(uden titel)"}
+                          </span>
+                          {isTelegram && <span className="hermes-session-tg">TELEGRAM</span>}
+                        </div>
+                        <div className="hermes-session-meta">
+                          <span>{(s.updatedAt ?? "").slice(11, 16)}</span>
+                          <span>·</span>
+                          <span>{s.messageCount ?? 0} beskeder</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))
+          )}
+
+          {/* Cron jobs + dream knap nederst */}
+          <div style={{ padding: "16px 8px 8px" }}>
+            <div className="hermes-sessions-group-label">System</div>
+            <div style={{ fontSize: 12, color: "var(--hermes-text-muted)", marginBottom: 8, padding: "4px 10px" }}>
+              {jobs.length} cron jobs · gateway {health.gatewayRunning ? "kører" : "stoppet"}
+            </div>
+            {dream && (
               <button
-                className="cc-btn hermes-mini-btn"
-                style={{ justifySelf: "start" }}
-                disabled={healthChecking}
-                onClick={recheckHealth}
+                onClick={() => setDreamOpen((o) => !o)}
+                className="hermes-session"
+                style={{ width: "100%" }}
               >
-                {healthChecking ? "Tjekker…" : "Tjek igen"}
+                <span className="hermes-session-dot" style={{ background: "var(--hermes-gold)" }} />
+                <div className="hermes-session-content">
+                  <div className="hermes-session-title">Nattens dream</div>
+                  <div className="hermes-session-meta">
+                    <span>{dreamOpen ? "skjul" : "vis"}</span>
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* ---- COLUMN 3: Chat (1fr) ---- */}
+      <section className="hermes-chat">
+        <div className="hermes-chat-top">
+          <div className="hermes-chat-title">
+            {activeSession?.title || "Ny samtale"}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="hermes-chat-status">
+              <span className="hermes-live-dot" />
+              <span>{(health.configured && health.reachable ? "ONLINE" : "OFFLINE")}</span>
+            </div>
+            <div className="hermes-chat-count">{msgs.length} beskeder</div>
+          </div>
+        </div>
+
+        {sending && (
+          <div className="hermes-stream-banner">
+            <span className="hermes-resuming">STREAMING</span>
+            <span>· {PROFILES.find((p) => p.id === profile)?.label} · session {sessionId.slice(0, 8)}</span>
+          </div>
+        )}
+
+        <div ref={scrollRef} className="hermes-messages">
+          {offline && (
+            <div className="hermes-bubble" style={{ background: "var(--hermes-bg-2)", border: "1px solid var(--hermes-ember)" }}>
+              <strong>⚠ Hermes er offline</strong><br />
+              {health.configured
+                ? "Tjek at VPS'en kører (hermes-api på port 8787)."
+                : "HERMES_API_URL + HERMES_API_SECRET mangler i miljøet."}
+              <button onClick={recheckHealth} className="hermes-tool-btn" style={{ marginLeft: 8 }} title="Tjek igen">
+                ↻
               </button>
             </div>
           )}
+
           {msgs.length === 0 && !offline && (
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
-              Du skriver med <strong>{PROFILES.find((p) => p.id === profile)?.label}</strong>-profilen.
-              Samme Hermes som på Telegram — kort dansk, ærligt, og den sender aldrig noget selv.
-            </p>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--hermes-text-muted)" }}>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, color: "var(--hermes-text)", margin: "0 0 8px" }}>
+                Hej {PROFILES.find((p) => p.id === profile)?.label}.
+              </p>
+              <p style={{ fontSize: 13.5, margin: 0 }}>
+                Kort dansk, ærlig, sender aldrig noget selv. Stil mig om hvad som helst.
+              </p>
+            </div>
           )}
+
           {msgs.map((m, i) => (
-            <div
-              key={`${i}-${m.role}`}
-              className={`hermes-msg ${m.role}`}
-              style={{ marginTop: 6 }}
-            >
+            <div key={`${i}-${m.role}`} className={`hermes-msg ${m.role}`}>
               <div className={`hermes-avatar ${m.role}`} aria-hidden="true">
-                {m.role === "you" ? "D" : "H"}
+                {m.role === "you" ? PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "D" : "⚕"}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%" }}>
-                <div className={`hermes-bubble ${m.role}`}>{m.text}</div>
+              <div className="hermes-msg-body">
                 <div className="hermes-msg-meta">
-                  {m.role === "hermes" ? (
-                    <>
-                      <span className="hermes-model-badge">Hermes · {PROFILES.find((p) => p.id === profile)?.label}</span>
-                    </>
-                  ) : (
-                    <span>dig · {(m.ts ?? "").slice(11, 16)}</span>
-                  )}
+                  <span className="hermes-role-pill">{m.role === "you" ? "DIG" : "HERMES"}</span>
+                  <span className="hermes-model-pill">{m.role === "hermes" ? `Hermes · ${PROFILES.find((p) => p.id === profile)?.label}` : (m.ts ?? "").slice(11, 16)}</span>
+                </div>
+                <div className="hermes-bubble">
+                  {m.role === "hermes" ? <MarkdownLite source={m.text} /> : m.text}
                 </div>
               </div>
             </div>
           ))}
+
           {sending && (
             <div className="hermes-thinking">
-              <div className="hermes-avatar hermes" aria-hidden="true">H</div>
+              <div className="hermes-avatar hermes" aria-hidden="true">⚕</div>
               <div>
                 <div className="hermes-thinking-dots" aria-label="Hermes tænker">
                   <span /><span /><span />
                 </div>
                 <div className="hermes-msg-meta">
-                  <span className="hermes-model-badge">Hermes · {PROFILES.find((p) => p.id === profile)?.label}</span>
+                  <span className="hermes-role-pill">HERMES</span>
                 </div>
               </div>
             </div>
           )}
+
+          {dreamOpen && dream && (
+            <div className="hermes-bubble" style={{ background: "var(--hermes-bg-3)", border: "1px solid var(--hermes-gold)" }}>
+              <strong>🌙 Nattens dream</strong>
+              <div style={{ marginTop: 8 }}>
+                <MarkdownLite source={trimAtParagraph(dream.body, 2000)} />
+              </div>
+            </div>
+          )}
+
           {exportMsg && (
-            <div style={{ alignSelf: "center", color: "var(--text-dim)", fontSize: 12 }}>{exportMsg}</div>
+            <div style={{ textAlign: "center", color: "var(--hermes-text-dim)", fontSize: 12, padding: 8 }}>{exportMsg}</div>
           )}
         </div>
-
-        {!offline && (
-          <div className="hermes-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 14px 10px" }}>
-            {(dream ? [DREAM_QUICK, ...QUICK] : QUICK).map((s) => (
-              <button key={s} className="cc-chip" style={{ cursor: "pointer", border: "none" }} onClick={() => send(s)} disabled={sending}>
-                {s === DREAM_QUICK ? "🌙 Nattens vigtigste fund?" : s}
-              </button>
-            ))}
-          </div>
-        )}
 
         <form
           onSubmit={(e) => {
@@ -365,21 +458,38 @@ export default function HermesClient({
           className="hermes-composer"
         >
           <div className="hermes-composer-toolbar">
-            <span className="hermes-model-badge" title="Aktiv profil">
+            <button type="button" className="hermes-tool-btn" title="Vedhæft fil" aria-label="Vedhæft fil">📎</button>
+            <button type="button" className="hermes-tool-btn" title="Stemmekommando" aria-label="Stemme">🎙</button>
+            <button type="button" className="hermes-tool-btn" title="Profil" aria-label="Skift profil">
+              {PROFILES.find((p) => p.id === profile)?.label?.[0] ?? "L"}
+            </button>
+            <span className="hermes-model-pill" title="Model">
               {PROFILES.find((p) => p.id === profile)?.label}
             </span>
-            <span className="hermes-model-badge" title="Antal beskeder i samtalen">
-              {msgs.length} beskeder
-            </span>
-            <button
-              type="button"
-              className="hermes-toolbar-btn"
-              onClick={() => startNewSession()}
-              title="Ny samtale"
-              aria-label="Ny samtale"
-            >
-              +
-            </button>
+            {msgs.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="hermes-tool-btn"
+                  style={{ marginLeft: 8 }}
+                  onClick={exportSession}
+                  disabled={exporting}
+                  title="Gem i vault"
+                  aria-label="Gem i vault"
+                >
+                  💾
+                </button>
+                <button
+                  type="button"
+                  className="hermes-tool-btn"
+                  onClick={() => startNewSession()}
+                  title="Ny samtale"
+                  aria-label="Ny samtale"
+                >
+                  +
+                </button>
+              </>
+            )}
           </div>
           <div className="hermes-composer-row">
             <textarea
@@ -393,7 +503,7 @@ export default function HermesClient({
               }}
               placeholder={offline ? "Hermes er offline…" : "Skriv til Hermes… (Enter sender, Shift+Enter ny linje)"}
               disabled={sending || offline}
-              rows={2}
+              rows={1}
               maxLength={8000}
               aria-label="Skriv til Hermes"
               className="hermes-input"
@@ -405,132 +515,15 @@ export default function HermesClient({
               aria-label="Send"
               title="Send (Enter)"
             >
-              <span aria-hidden="true">→</span>
+              ↑
             </button>
           </div>
         </form>
       </section>
-
-      {/* ---- right: status, cron, sessions, dream ---- */}
-      <div className="hermes-side">
-        <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 8 }}>
-          <div className="cc-kicker">Status</div>
-          <SideRow label="hermes-api" value={health.reachable ? "online" : "offline"} ok={health.reachable} />
-          <SideRow label="Gateway (Telegram)" value={health.gatewayRunning ? "kører" : "stoppet"} ok={health.gatewayRunning} />
-          <SideRow label="Cron jobs" value={String(health.cronJobs)} ok={health.cronJobs > 0} />
-        </section>
-
-        <PipelineSnapshot />
-
-        <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
-          <div className="cc-kicker">Cron jobs</div>
-          {cronError && <div style={{ fontSize: 12, color: "var(--danger, #b4453a)" }}>{cronError}</div>}
-          {jobs.length === 0 && <div className="cc-dim" style={{ fontSize: 12.5 }}>Ingen jobs (eller Hermes offline).</div>}
-          {jobs.map((j) => (
-            <div key={j.id} style={{ display: "grid", gap: 4, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Icon name={j.state === "paused" ? "Pause" : "Clock"} style={{ width: 13, height: 13, color: "var(--text-dim)" }} />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{j.name}</span>
-                <span className="cc-dim" style={{ fontSize: 11.5, marginLeft: "auto" }}>{j.schedule_display}</span>
-              </div>
-              {j.last_status === "error" && (
-                <div style={{ fontSize: 11.5, color: "var(--danger, #b4453a)" }}>
-                  Sidste kørsel fejlede{j.last_error ? `: ${j.last_error.slice(0, 90)}` : ""}
-                </div>
-              )}
-              {j.last_status === "success" && j.last_run_at && (
-                <div className="cc-dim" style={{ fontSize: 11.5 }}>Sidst kørt OK · {j.last_run_at.slice(0, 16).replace("T", " ")}</div>
-              )}
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <button
-                  className="cc-btn hermes-mini-btn"
-                  disabled={cronBusy === j.id || j.last_status === "running"}
-                  onClick={() => cronAction(j.id, "run")}
-                  style={cronBusy === j.id || j.last_status === "running" ? { opacity: 0.6, cursor: "wait" } : undefined}
-                >
-                  {cronBusy === j.id || j.last_status === "running" ? "kører…" : "Kør nu"}
-                </button>
-                <button
-                  className="cc-btn hermes-mini-btn"
-                  disabled={cronBusy === j.id}
-                  onClick={() => cronAction(j.id, j.state === "paused" ? "resume" : "pause")}
-                >
-                  {j.state === "paused" ? "Genoptag" : "Pause"}
-                </button>
-                {(cronBusy === j.id || j.last_status === "running") && (
-                  <Icon name="Loader2" style={{ width: 13, height: 13, color: "var(--accent-ink)", animation: "spin 1s linear infinite" }} />
-                )}
-              </div>
-              {/* Seneste kørsler + key points for dette job */}
-              {(() => {
-                const withRuns = jobsWithRuns.find((x) => x.id === j.id);
-                if (!withRuns || withRuns.runs.length === 0) return null;
-                return (
-                  <div style={{ marginTop: 6, paddingLeft: 21, borderLeft: "2px solid var(--border)", display: "grid", gap: 4 }}>
-                    {withRuns.runs.slice(0, 3).map((r) => (
-                      <div key={r.file} style={{ fontSize: 11, lineHeight: 1.4 }}>
-                        <span style={{ color: r.status === "ok" ? "var(--accent-ink)" : "var(--danger, #b4453a)" }}>
-                          {r.status === "ok" ? "✓" : "✗"}
-                        </span>{" "}
-                        <span className="cc-dim" style={{ fontFamily: "var(--font-mono)" }}>{r.timestamp.replace(" ", " ").slice(5, 16)}</span>
-                        {r.key_points && r.key_points.length > 0 && (
-                          <ul style={{ margin: "2px 0 0 16px", padding: 0 }}>
-                            {r.key_points.slice(0, 2).map((kp, i) => <li key={i} className="cc-dim">{kp}</li>)}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          ))}
-        </section>
-
-        <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 8 }}>
-          <div className="cc-kicker">Seneste samtaler · {PROFILES.find((p) => p.id === profile)?.label}</div>
-          {sessions.length === 0 && <div className="cc-dim" style={{ fontSize: 12.5 }}>Ingen endnu.</div>}
-          {sessions.slice(0, 8).map((s) => (
-            <button
-              key={s.id}
-              onClick={() => openSession(s)}
-              className={`hermes-session-item ${s.id === sessionId ? "active" : ""}`}
-              title={s.title || "(uden titel)"}
-            >
-              <span className={`hermes-session-dot ${s.id === sessionId ? "" : "dim"}`} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {s.title || "(uden titel)"}
-                </div>
-                <div className="hermes-session-meta">
-                  {(s.updatedAt ?? "").slice(0, 16).replace("T", " ")}
-                </div>
-              </div>
-            </button>
-          ))}
-        </section>
-
-        {dream && (
-          <section className="cc-card cc-card-pad">
-            <button
-              onClick={() => setDreamOpen((o) => !o)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: 0, width: "100%", color: "var(--text)" }}
-            >
-              <Icon name="Moon" style={{ width: 14, height: 14, color: "var(--text-dim)" }} />
-              <span className="cc-kicker" style={{ margin: 0 }}>Nattens dream</span>
-              <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>{dreamOpen ? "skjul" : "vis"}</span>
-            </button>
-            {dreamOpen && (
-              <div style={{ marginTop: 10, fontSize: 13 }}>
-                <MarkdownLite source={trimAtParagraph(dream.body, 4000)} />
-              </div>
-            )}
-          </section>
-        )}
-      </div>
     </div>
   );
 }
+
 
 // Lille pipeline-puls så morgenrutinen kan klares fra Hermes-siden alene.
 function PipelineSnapshot() {

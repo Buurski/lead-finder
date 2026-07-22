@@ -3,18 +3,14 @@ import { hermesHealth, hermesCronList } from "@/lib/hermes";
 import { listVault, readVaultNote } from "@/lib/vault";
 import HermesClient from "./HermesClient";
 
-export const metadata = { title: "Hermes · Command Center" };
+export const metadata = { title: "Hermes · AgenticOS" };
 export const dynamic = "force-dynamic";
 
 const WEBUI_URL = "https://number-producers-investigations-galleries.trycloudflare.com";
 
-// Latest dream note from the live vault (Hermes writes daily/<date>-dream.md
-// on the VPS clone and pushes; we read remote-first like the journal does).
 async function latestDream(): Promise<{ path: string; body: string } | null> {
   try {
     const { entries } = await listVault("daily", { preferRemote: true });
-    // Hermes names night-run files daily/<date>-<suffix>.md (fx -dream,
-    // -lead-analyse). Plain daily/<date>.md is the morning brief — skip it.
     const dreams = entries
       .map((e) => e.pathRel)
       .filter((p) => /daily\/\d{4}-\d{2}-\d{2}-[^/]+\.md$/.test(p))
@@ -43,16 +39,17 @@ export default async function HermesPage() {
   return (
     <div className="cc-fade">
       <PageHeader
-        icon="Radio"
-        title="Hermes"
-        subtitle="Buur Agent — jeres 24/7 medstifter på VPS'en."
+        icon="Sparkles"
+        title="Hermes · AgenticOS"
+        subtitle="Buur Agent — jeres 24/7 medstifter på VPS'en. Kinly × Hermes hybrid."
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span
               className="cc-chip"
               style={{
-                background: statusOn ? "var(--accent-soft)" : "var(--bg-3)",
-                color: statusOn ? "var(--accent-ink)" : "var(--text-muted)",
+                background: statusOn ? "var(--hermes-ember-soft)" : "var(--bg-3)",
+                color: statusOn ? "var(--hermes-ember)" : "var(--text-muted)",
+                border: statusOn ? "1px solid rgba(212, 80, 15, 0.3)" : "none",
               }}
             >
               <span
@@ -61,7 +58,7 @@ export default async function HermesPage() {
                   width: 7,
                   height: 7,
                   borderRadius: "50%",
-                  background: statusOn ? "var(--accent)" : "var(--border-strong)",
+                  background: statusOn ? "var(--hermes-ember)" : "var(--border-strong)",
                   display: "inline-block",
                   marginRight: 6,
                 }}
@@ -79,9 +76,9 @@ export default async function HermesPage() {
                 textDecoration: "none",
                 fontSize: 12,
               }}
-              title="Åbn fulde Hermes WebUI i nyt vindue (cloudflare-tunnel)"
+              title="Åbn fulde Hermes WebUI i nyt vindue"
             >
-              Hermes WebUI ↗
+              WebUI ↗
             </a>
           </div>
         }

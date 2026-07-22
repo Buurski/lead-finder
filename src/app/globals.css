@@ -42,6 +42,23 @@
   --primary: oklch(58% 0.085 150);
   --primary-dim: oklch(58% 0.085 150 / 0.12);
 
+  /* ---- Hermes dark theme — Kinly × Hermes hybrid ---- */
+  --hermes-dark: 1; /* toggle for dark-mode CSS */
+  --hermes-bg: #0E1014;
+  --hermes-bg-2: #15171C;
+  --hermes-bg-3: #1C1F26;
+  --hermes-bg-hover: #232730;
+  --hermes-border: #2A2D35;
+  --hermes-border-strong: #383B45;
+  --hermes-text: #F4F1EB;
+  --hermes-text-muted: #B5B0A4;
+  --hermes-text-dim: #6B665B;
+  --hermes-ember: #d4500f;
+  --hermes-ember-hover: #e5661f;
+  --hermes-ember-soft: rgba(212, 80, 15, 0.15);
+  --hermes-gold: #B8860B;
+  --hermes-bronze: #CD7F32;
+
   /* shape */
   --radius: 14px;
   --radius-sm: 10px;
@@ -654,3 +671,572 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 /* Scannable list rows (deal rows, alert rows). */
 .cc-hoverrow { transition: background 150ms ease, border-color 150ms ease; }
 .cc-hoverrow:hover { background: var(--surface-2); }
+
+
+/* ============================================================== */
+/*  HERMES DARK THEME — Kinly × Hermes hybrid                     */
+/*  3-column layout: 50px iconbar + 280px sessions + 1fr chat    */
+/*  Color tokens: --hermes-* (declared in :root above)            */
+/* ============================================================== */
+
+.hermes-shell {
+  display: grid;
+  grid-template-columns: 56px 280px 1fr;
+  gap: 0;
+  height: calc(100vh - 64px);
+  background: var(--hermes-bg);
+  color: var(--hermes-text);
+  font-family: var(--font-body);
+  margin: 0 -28px -32px; /* break out of the cc-shell padding */
+  font-size: 13.5px;
+}
+
+/* ---- column 1: icon rail (56px) ---- */
+.hermes-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  background: var(--hermes-bg-2);
+  border-right: 1px solid var(--hermes-border);
+  gap: 4px;
+}
+.hermes-rail-logo {
+  width: 36px; height: 36px;
+  background: var(--hermes-ember);
+  border-radius: 9px;
+  display: grid; place-items: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 14px;
+  position: relative;
+}
+.hermes-rail-logo::after {
+  content: "";
+  position: absolute;
+  bottom: 5px; right: 5px;
+  width: 6px; height: 6px;
+  background: var(--hermes-ember);
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--hermes-bg-2);
+}
+.hermes-rail-btn {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  background: transparent;
+  color: var(--hermes-text-dim);
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 18px;
+  font-family: var(--font-body);
+  transition: all .14s ease;
+  text-decoration: none;
+}
+.hermes-rail-btn:hover {
+  background: var(--hermes-bg-hover);
+  color: var(--hermes-text);
+}
+.hermes-rail-btn.active {
+  background: var(--hermes-ember-soft);
+  color: var(--hermes-ember);
+}
+.hermes-rail-spacer { flex: 1; }
+.hermes-rail-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--hermes-ember);
+  color: #fff;
+  display: grid; place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  margin-top: 8px;
+  border: 2px solid var(--hermes-bg-2);
+}
+
+/* ---- column 2: sessions (280px) ---- */
+.hermes-sessions {
+  display: flex;
+  flex-direction: column;
+  background: var(--hermes-bg-2);
+  border-right: 1px solid var(--hermes-border);
+  overflow: hidden;
+}
+.hermes-sessions-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--hermes-border);
+}
+.hermes-sessions-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--hermes-text);
+  letter-spacing: -0.01em;
+}
+.hermes-sessions-new {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: var(--hermes-ember);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  font-size: 16px;
+  display: grid; place-items: center;
+  font-family: var(--font-body);
+  transition: background .14s ease;
+}
+.hermes-sessions-new:hover { background: var(--hermes-ember-hover); }
+
+.hermes-sessions-search {
+  margin: 10px 14px 6px;
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  display: flex; align-items: center; gap: 7px;
+}
+.hermes-sessions-search input {
+  background: transparent;
+  border: 0; outline: 0;
+  color: var(--hermes-text);
+  font-size: 12.5px;
+  flex: 1;
+  font-family: var(--font-body);
+}
+.hermes-sessions-search input::placeholder { color: var(--hermes-text-dim); }
+.hermes-sessions-search svg { color: var(--hermes-text-dim); flex-shrink: 0; }
+
+.hermes-sessions-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 12px;
+}
+.hermes-sessions-group-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hermes-text-dim);
+  font-weight: 600;
+  padding: 12px 8px 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.hermes-sessions-group-label::before {
+  content: "▾";
+  font-size: 9px;
+  opacity: 0.6;
+}
+.hermes-session {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--hermes-text);
+  transition: background .12s ease;
+  margin-bottom: 1px;
+}
+.hermes-session:hover { background: var(--hermes-bg-3); }
+.hermes-session.active {
+  background: var(--hermes-ember-soft);
+  color: var(--hermes-text);
+}
+.hermes-session-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--hermes-ember);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.hermes-session-dot.dim { background: var(--hermes-border-strong); }
+.hermes-session-content { flex: 1; min-width: 0; }
+.hermes-session-title {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.hermes-session-tg {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--hermes-ember-soft);
+  color: var(--hermes-ember);
+  flex-shrink: 0;
+}
+.hermes-session-meta {
+  font-size: 11px;
+  color: var(--hermes-text-dim);
+  margin-top: 2px;
+  display: flex; gap: 6px;
+}
+
+/* ---- column 3: chat (1fr) ---- */
+.hermes-chat {
+  display: flex;
+  flex-direction: column;
+  background: var(--hermes-bg);
+  overflow: hidden;
+}
+.hermes-chat-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--hermes-border);
+  background: var(--hermes-bg-2);
+}
+.hermes-chat-title {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--hermes-text);
+}
+.hermes-chat-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px;
+  color: var(--hermes-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.hermes-chat-status .hermes-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--hermes-ember);
+  box-shadow: 0 0 0 0 var(--hermes-ember-soft);
+  animation: hermes-pulse 2s ease-in-out infinite;
+}
+@keyframes hermes-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--hermes-ember-soft); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+.hermes-chat-count {
+  font-size: 11px;
+  color: var(--hermes-text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 8px;
+  background: var(--hermes-bg-3);
+  border-radius: 999px;
+}
+
+.hermes-stream-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 22px;
+  background: var(--hermes-bg-2);
+  border-bottom: 1px solid var(--hermes-border);
+  font-size: 11.5px;
+  color: var(--hermes-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+.hermes-stream-banner .hermes-resuming {
+  color: var(--hermes-ember);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.hermes-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 22px 12px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.hermes-msg {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  max-width: 92%;
+}
+.hermes-msg.you { align-self: flex-end; flex-direction: row-reverse; }
+.hermes-msg.hermes { align-self: flex-start; }
+
+.hermes-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.hermes-avatar.you {
+  background: var(--hermes-ember);
+}
+.hermes-avatar.hermes {
+  background: #191713;
+  position: relative;
+}
+.hermes-avatar.hermes::after {
+  content: "";
+  position: absolute;
+  bottom: 2px; right: 2px;
+  width: 8px; height: 8px;
+  background: var(--hermes-ember);
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--hermes-bg);
+}
+
+.hermes-msg-body { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
+.hermes-msg-meta {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 11px;
+  color: var(--hermes-text-dim);
+  margin-bottom: 4px;
+  padding: 0 4px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.01em;
+}
+.hermes-msg-meta .hermes-model-pill {
+  padding: 1px 7px;
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  border-radius: 4px;
+  color: var(--hermes-text-muted);
+  font-size: 10.5px;
+}
+.hermes-msg-meta .hermes-role-pill {
+  color: var(--hermes-ember);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.hermes-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--hermes-text);
+  background: var(--hermes-bg-2);
+  border: 1px solid var(--hermes-border);
+  word-wrap: break-word;
+}
+.hermes-msg.you .hermes-bubble {
+  background: var(--hermes-ember-soft);
+  border-color: rgba(212, 80, 15, 0.35);
+  border-bottom-right-radius: 4px;
+}
+.hermes-msg.hermes .hermes-bubble {
+  border-bottom-left-radius: 4px;
+}
+.hermes-bubble strong { color: var(--hermes-ember); font-weight: 600; }
+.hermes-bubble code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--hermes-bg-3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--hermes-border);
+}
+.hermes-bubble pre {
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  margin: 8px 0;
+}
+.hermes-bubble h1, .hermes-bubble h2, .hermes-bubble h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--hermes-text);
+  margin: 8px 0 4px;
+  letter-spacing: -0.01em;
+}
+.hermes-bubble h1 { font-size: 18px; }
+.hermes-bubble h2 { font-size: 16px; }
+.hermes-bubble h3 { font-size: 14.5px; }
+.hermes-bubble ul, .hermes-bubble ol { margin: 4px 0 4px 18px; }
+.hermes-bubble li { margin-bottom: 2px; }
+.hermes-bubble a { color: var(--hermes-ember); text-decoration: underline; }
+
+.hermes-thinking {
+  align-self: flex-start;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.hermes-thinking-dots {
+  display: inline-flex; gap: 4px;
+  padding: 12px 16px;
+  background: var(--hermes-bg-2);
+  border: 1px solid var(--hermes-border);
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+}
+.hermes-thinking-dots span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--hermes-ember);
+  animation: hermes-bounce 1.4s ease-in-out infinite;
+}
+.hermes-thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.hermes-thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes hermes-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ---- composer (nederst i chat) ---- */
+.hermes-composer {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 18px 16px;
+  background: var(--hermes-bg-2);
+  border-top: 1px solid var(--hermes-border);
+}
+.hermes-composer-toolbar {
+  display: flex; gap: 4px; align-items: center;
+}
+.hermes-tool-btn {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--hermes-text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  font-family: var(--font-body);
+  transition: all .12s ease;
+}
+.hermes-tool-btn:hover { background: var(--hermes-bg-hover); color: var(--hermes-text); }
+
+.hermes-composer-row {
+  display: flex; gap: 8px; align-items: stretch;
+}
+.hermes-input {
+  flex: 1;
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--hermes-text);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  resize: none;
+  outline: 0;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.hermes-input:focus {
+  border-color: var(--hermes-ember);
+  box-shadow: 0 0 0 3px var(--hermes-ember-soft);
+}
+.hermes-input::placeholder { color: var(--hermes-text-dim); }
+
+.hermes-send-btn {
+  width: 46px; height: auto;
+  min-height: 46px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--hermes-ember);
+  color: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 700;
+  display: grid; place-items: center;
+  font-family: var(--font-body);
+  transition: all .12s ease;
+  flex-shrink: 0;
+}
+.hermes-send-btn:hover:not(:disabled) { background: var(--hermes-ember-hover); transform: translateX(1px); }
+.hermes-send-btn:disabled { background: var(--hermes-bg-hover); color: var(--hermes-text-dim); cursor: not-allowed; }
+
+/* ---- model dropdown (placeholder) ---- */
+.hermes-model-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  background: var(--hermes-bg-3);
+  border: 1px solid var(--hermes-border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--hermes-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: auto;
+  cursor: default;
+}
+.hermes-model-pill::after {
+  content: "▾";
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* ---- /hermes/webui override page ---- */
+.hermes-webui-shell {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 200px);
+  padding: 48px 24px;
+  background: var(--hermes-bg);
+  color: var(--hermes-text);
+  border-radius: 16px;
+  border: 1px solid var(--hermes-border);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hermes-webui-shell::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center top, var(--hermes-ember-soft) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hermes-webui-mark {
+  width: 96px; height: 140px;
+  margin-bottom: 28px;
+  filter: drop-shadow(0 8px 24px rgba(212, 80, 15, 0.25));
+  position: relative;
+}
+.hermes-webui-shell h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--hermes-text);
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+  position: relative;
+}
+.hermes-webui-shell p {
+  font-size: 15px;
+  color: var(--hermes-text-muted);
+  max-width: 520px;
+  line-height: 1.6;
+  margin: 0 0 32px;
+  position: relative;
+}
+.hermes-webui-cta {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 28px;
+  background: var(--hermes-ember);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-decoration: none;
+  font-family: var(--font-body);
+  transition: all .14s ease;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(212, 80, 15, 0.25);
+}
+.hermes-webui-cta:hover {
+  background: var(--hermes-ember-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(212, 80, 15, 0.4);
+}
+.hermes-webui-meta {
+  margin-top: 32px;
+  display: flex; gap: 24px;
+  font-size: 12px;
+  color: var(--hermes-text-dim);
+  position: relative;
+}
+.hermes-webui-meta span { display: flex; align-items: center; gap: 5px; }
+.hermes-webui-meta .hermes-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hermes-ember); }
