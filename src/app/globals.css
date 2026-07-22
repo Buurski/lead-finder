@@ -710,6 +710,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 
 /* ---- mobile drawer system (CSS-only) ---- */
 .hermes-mobile-bar { display: none; }
+.hermes-mobile-backdrop { display: none; }
 
 /* ---- column 1: icon rail (56px) ---- */
 .hermes-rail {
