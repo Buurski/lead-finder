@@ -269,3 +269,4 @@ export async function appendHermesExchange(
   const trimmed = HERMES_PROFILES.flatMap((p) => sorted.filter((s) => s.profile === p).slice(0, 30));
   await store.put(SESSIONS_KEY, trimmed);
 }
+
