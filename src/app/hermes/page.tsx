@@ -4,33 +4,8 @@ import { hermesHealth } from "@/lib/hermes";
 export const metadata = { title: "Hermes · AgenticOS" };
 export const dynamic = "force-dynamic";
 
+// Holdes i sync med cloudflare-rotation. Samme fallback som tidligere.
 const FALLBACK_WEBUI_URL = "https://piece-premises-surely-hunter.trycloudflare.com";
-
-async function fetchLoginHtml(): Promise<{ html: string; ok: boolean; err?: string }> {
-  const url = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).replace(/\/+$/, "");
-  try {
-    const res = await fetch(`${url}/login`, {
-      // Send Basic Auth så upstream (Hermes WebUI) godtager os — og Vercels
-      // bot-protection ikke blokerer requestet fra server-side.
-      headers: { "user-agent": "AgenticOS/1.0 (lead-system iframe)" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) return { html: "", ok: false, err: `upstream ${res.status}` };
-    const html = await res.text();
-    // Rewrite relative asset paths til absolute så de peger mod upstream.
-    // Tilføj også <base href> så client-side fetch()-calls i login.js
-    // (api/auth/login, health, api/auth/status) resolver mod tunnelen og
-    // ikke mod lead-system.vercel.app — ellers logger brugeren ind i ingenting.
-    const rewritten = html
-      .replace(/<head([^>]*)>/i, `<head$1><base href="${url}/">`)
-      .replace(/src="\/(static\/[^"]+)"/g, (_m, p) => `src="${url}/${p}"`)
-      .replace(/href="\/(static\/[^"]+)"/g, (_m, p) => `href="${url}/${p}"`);
-    return { html: rewritten, ok: true };
-  } catch (e) {
-    return { html: "", ok: false, err: e instanceof Error ? e.message : String(e) };
-  }
-}
 
 export default async function HermesPage() {
   const h = await hermesHealth().catch(() => ({
@@ -41,16 +16,13 @@ export default async function HermesPage() {
     shimStatus: 0,
   }));
 
-  // Server-side hent login-formularen — undgår Vercel bot-protection der
-  // blokerer iframe-requests på .vercel.app domænet.
-  const login = await fetchLoginHtml();
+  const webuiUrl = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).replace(/\/+$/, "");
 
   const cards = [
     { name: "Hermes-api", ok: h.reachable, detail: h.reachable ? "svarer" : (h.configured ? `fejl ${h.shimStatus}` : "ikke konfigureret") },
     { name: "Gateway", ok: h.gatewayRunning, detail: h.gatewayRunning ? "kører" : "stoppet" },
     { name: "Cron-motor", ok: h.cronJobs > 0, detail: `${h.cronJobs} jobs planlagt` },
     { name: "Tunnel-rotation", ok: true, detail: "cron hver 2. dag kl 04:00" },
-    { name: "WebUI-fetch", ok: login.ok, detail: login.ok ? "login-side hentet" : (login.err ?? "fejl") },
   ];
 
   return (
@@ -60,12 +32,18 @@ export default async function HermesPage() {
         title="Hermes"
         subtitle="Jeres 24/7 medstifter på VPS'en. Kort dansk, ærlig, sender aldrig noget selv."
         action={
-          <a
-            href="/api/hermes/webui-proxy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cc-chip"
-            style={{ textDecoration: "none" }}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 12px",
+              borderRadius: 999,
+              border: "1px solid var(--border)",
+              fontSize: 12.5,
+              color: "var(--text-2)",
+              background: "var(--bg-2)",
+            }}
           >
             <span
               style={{
@@ -76,8 +54,8 @@ export default async function HermesPage() {
                 display: "inline-block",
               }}
             />
-            {h.reachable ? "Online" : "Offline"} · Åbn i nyt vindue ↗
-          </a>
+            {h.reachable ? "Online" : "Offline"}
+          </span>
         }
       />
 
@@ -116,24 +94,82 @@ export default async function HermesPage() {
           </div>
         </section>
 
-        <section className="cc-card cc-card-pad" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "14px 18px 10px", display: "flex", alignItems: "center", gap: 10 }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, margin: 0 }}>
-              WebUI
-            </h2>
-            <span className="cc-dim" style={{ fontSize: 12, marginLeft: "auto" }}>
-              Login: Kinly1234
-            </span>
-          </div>
+        <section
+          className="cc-card"
+          style={{
+            padding: 0,
+            overflow: "hidden",
+            border: "none",
+            background:
+              "radial-gradient(120% 120% at 50% 0%, rgba(232,160,48,0.18) 0%, rgba(233,69,96,0.10) 35%, var(--bg) 70%)",
+          }}
+        >
           <div
             style={{
-              borderTop: "1px solid var(--border)",
-              background: "var(--bg-2)",
-              minHeight: 480,
-              padding: 0,
+              padding: "40px 24px 36px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 22,
+              textAlign: "center",
             }}
-            dangerouslySetInnerHTML={{ __html: login.ok ? login.html : `<div style="padding:24px;color:var(--red);font-size:13px">WebUI ikke tilgængelig: ${login.err ?? "ukendt fejl"}</div>` }}
-          />
+          >
+            <div
+              aria-hidden
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: 22,
+                background: "linear-gradient(145deg,#e8a030,#e94560)",
+                boxShadow: "0 12px 32px rgba(233,69,96,0.25), inset 0 1px 0 rgba(255,255,255,0.18)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: 44,
+                letterSpacing: -1,
+              }}
+            >
+              K
+            </div>
+
+            <div>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>
+                Hermes WebUI
+              </h2>
+              <p className="cc-dim" style={{ margin: 0, fontSize: 13.5, maxWidth: 460, lineHeight: 1.55 }}>
+                Chat med Hermes direkte. Åbner i en ny fane — login med{" "}
+                <code style={{ background: "var(--bg-2)", padding: "1px 6px", borderRadius: 4 }}>Kinly1234</code>.
+              </p>
+            </div>
+
+            <a
+              href={webuiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 22px",
+                borderRadius: 12,
+                fontWeight: 600,
+                fontSize: 14,
+                textDecoration: "none",
+                color: "#1a1a2e",
+                background: "linear-gradient(145deg,#e8a030,#e94560)",
+                boxShadow: "0 6px 18px rgba(233,69,96,0.30)",
+              }}
+            >
+              Åbn Hermes nu ↗
+            </a>
+
+            <span className="cc-dim" style={{ fontSize: 11.5, marginTop: 2, fontFamily: "ui-monospace,monospace" }}>
+              {webuiUrl.replace(/^https?:\/\//, "")}
+            </span>
+          </div>
         </section>
 
         <section className="cc-card cc-card-pad">
