@@ -1,6 +1,6 @@
 // Hermes WebUI proxy — Next.js route der reverse-proxy'er til cloudflare-tunnelen.
-// Bruges af iframen på /hermes. Læser cloudflare-URL'en fra env (HERMES_WEBUI_URL)
-// så vi kan rotere tunnelen uden at ændre koden.
+// Bruges af eksterne klienter (curl, scripts) — selve iframen er flyttet til
+// server-side fetch i src/app/hermes/page.tsx for at omgå Vercel bot-protection.
 //
 // CSP headeren fjernes fra upstream-svaret (WebUI sender `frame-ancestors 'none'`
 // som ellers blokerer iframen — proxy'en sidder på samme origin som lead-system,
@@ -12,13 +12,8 @@ export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 30_000;
 
-// TODO(hermes): env-fallback fjernes når Vercel env-vars er bekræftet til at
-// ramme runtime igen. Sæt HERMES_WEBUI_URL i Vercel-projektet og fjern den
-// hardcodede default. Se wiki/os/hermes-vercel-env-issue.md.
-const FALLBACK_WEBUI_URL = "https://piece-premises-surely-hunter.trycloudflare.com";
-
 function upstreamBase(): string {
-  const url = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).trim();
+  const url = (process.env.HERMES_WEBUI_URL ?? "").trim();
   if (!url) throw new Error("HERMES_WEBUI_URL ikke sat");
   return url.replace(/\/+$/, "");
 }

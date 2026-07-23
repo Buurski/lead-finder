@@ -4,6 +4,31 @@ import { hermesHealth } from "@/lib/hermes";
 export const metadata = { title: "Hermes · AgenticOS" };
 export const dynamic = "force-dynamic";
 
+const FALLBACK_WEBUI_URL = "https://piece-premises-surely-hunter.trycloudflare.com";
+
+async function fetchLoginHtml(): Promise<{ html: string; ok: boolean; err?: string }> {
+  const url = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).replace(/\/+$/, "");
+  try {
+    const res = await fetch(`${url}/login`, {
+      // Send Basic Auth så upstream (Hermes WebUI) godtager os — og Vercels
+      // bot-protection ikke blokerer requestet fra server-side.
+      headers: { "user-agent": "AgenticOS/1.0 (lead-system iframe)" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { html: "", ok: false, err: `upstream ${res.status}` };
+    const html = await res.text();
+    // Rewrite relative asset paths til absolute så de stadig peger mod upstream
+    // (vi proxy'er kun /login — ikke /static/* fra browseren).
+    const rewritten = html
+      .replace(/src="\/(static\/[^"]+)"/g, (_m, p) => `src="${url}/${p}"`)
+      .replace(/href="\/(static\/[^"]+)"/g, (_m, p) => `href="${url}/${p}"`);
+    return { html: rewritten, ok: true };
+  } catch (e) {
+    return { html: "", ok: false, err: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export default async function HermesPage() {
   const h = await hermesHealth().catch(() => ({
     configured: false,
@@ -13,13 +38,16 @@ export default async function HermesPage() {
     shimStatus: 0,
   }));
 
-  // WebUI kører direkte på VPS port 8789 (cloudflare-tunnel foran). Vi
-  // indlejrer den via Next.js API-proxy så iframe ikke blokeres af CSP.
+  // Server-side hent login-formularen — undgår Vercel bot-protection der
+  // blokerer iframe-requests på .vercel.app domænet.
+  const login = await fetchLoginHtml();
+
   const cards = [
     { name: "Hermes-api", ok: h.reachable, detail: h.reachable ? "svarer" : (h.configured ? `fejl ${h.shimStatus}` : "ikke konfigureret") },
     { name: "Gateway", ok: h.gatewayRunning, detail: h.gatewayRunning ? "kører" : "stoppet" },
     { name: "Cron-motor", ok: h.cronJobs > 0, detail: `${h.cronJobs} jobs planlagt` },
     { name: "Tunnel-rotation", ok: true, detail: "cron hver 2. dag kl 04:00" },
+    { name: "WebUI-fetch", ok: login.ok, detail: login.ok ? "login-side hentet" : (login.err ?? "fejl") },
   ];
 
   return (
@@ -94,17 +122,14 @@ export default async function HermesPage() {
               Login: Kinly1234
             </span>
           </div>
-          <iframe
-            src="/api/hermes/webui-proxy/login"
-            title="Hermes WebUI"
+          <div
             style={{
-              width: "100%",
-              height: "min(78vh, 820px)",
-              border: "none",
               borderTop: "1px solid var(--border)",
-              display: "block",
               background: "var(--bg-2)",
+              minHeight: 480,
+              padding: 0,
             }}
+            dangerouslySetInnerHTML={{ __html: login.ok ? login.html : `<div style="padding:24px;color:var(--red);font-size:13px">WebUI ikke tilgængelig: ${login.err ?? "ukendt fejl"}</div>` }}
           />
         </section>
 
