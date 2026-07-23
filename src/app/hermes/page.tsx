@@ -18,9 +18,12 @@ async function fetchLoginHtml(): Promise<{ html: string; ok: boolean; err?: stri
     });
     if (!res.ok) return { html: "", ok: false, err: `upstream ${res.status}` };
     const html = await res.text();
-    // Rewrite relative asset paths til absolute så de stadig peger mod upstream
-    // (vi proxy'er kun /login — ikke /static/* fra browseren).
+    // Rewrite relative asset paths til absolute så de peger mod upstream.
+    // Tilføj også <base href> så client-side fetch()-calls i login.js
+    // (api/auth/login, health, api/auth/status) resolver mod tunnelen og
+    // ikke mod lead-system.vercel.app — ellers logger brugeren ind i ingenting.
     const rewritten = html
+      .replace(/<head([^>]*)>/i, `<head$1><base href="${url}/">`)
       .replace(/src="\/(static\/[^"]+)"/g, (_m, p) => `src="${url}/${p}"`)
       .replace(/href="\/(static\/[^"]+)"/g, (_m, p) => `href="${url}/${p}"`);
     return { html: rewritten, ok: true };
