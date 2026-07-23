@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "build": {
+    "env": {
+      "HERMES_WEBUI_URL": "https://piece-premises-surely-hunter.trycloudflare.com"
+    }
+  },
   "crons": [
     { "path": "/api/cron/pre-cleanup",    "schedule": "30 4 * * *" },
     { "path": "/api/cron/sync-replies",   "schedule": "30 4 * * *" },
