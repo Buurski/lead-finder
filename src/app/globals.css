@@ -161,17 +161,6 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   min-height: 100dvh;
 }
 
-/* /hermes skjuler sidebaren i AppShell, så shellen skal også skifte fra
-   to kolonner til én. Ellers bliver indholdet låst i den tomme 248px-kolonne. */
-.cc-shell--hermes {
-  grid-template-columns: minmax(0, 1fr);
-}
-.cc-shell--hermes .cc-content {
-  max-width: none;
-  padding: 0;
-  margin: 0;
-}
-
 /* --- sidebar -------------------------------------------------------- */
 .cc-sidebar {
   position: sticky;
