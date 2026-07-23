@@ -5,7 +5,7 @@ export const metadata = { title: "Hermes · AgenticOS" };
 export const dynamic = "force-dynamic";
 
 // Holdes i sync med cloudflare-rotation. Samme fallback som tidligere.
-const FALLBACK_WEBUI_URL = "https://piece-premises-surely-hunter.trycloudflare.com";
+const FALLBACK_WEBUI_URL = "https://insight-charger-son-potatoes.trycloudflare.com";
 
 export default async function HermesPage() {
   const h = await hermesHealth().catch(() => ({
