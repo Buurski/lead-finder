@@ -12,8 +12,13 @@ export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 30_000;
 
+// TODO(hermes): env-fallback fjernes når Vercel env-vars er bekræftet til at
+// ramme runtime igen. Sæt HERMES_WEBUI_URL i Vercel-projektet og fjern den
+// hardcodede default. Se wiki/os/hermes-vercel-env-issue.md.
+const FALLBACK_WEBUI_URL = "https://piece-premises-surely-hunter.trycloudflare.com";
+
 function upstreamBase(): string {
-  const url = (process.env.HERMES_WEBUI_URL ?? "").trim();
+  const url = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).trim();
   if (!url) throw new Error("HERMES_WEBUI_URL ikke sat");
   return url.replace(/\/+$/, "");
 }
