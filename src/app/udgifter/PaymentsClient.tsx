@@ -69,11 +69,11 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
   const sorted = [...payments].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <section className="cc-card cc-card-pad">
+    <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", boxShadow: "0 8px 24px rgba(74,124,89,.12)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
         <Icon name="ArrowUpRight" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Overførsler</h2>
-        <span className="cc-chip" style={{ marginLeft: "auto" }}>Charlie i alt: {kr(charlieTotal)}</span>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Overførsler</h2>
+        <span className="cc-chip" style={{ marginLeft: "auto", background: "var(--accent-soft)", color: "var(--accent-ink)" }}>Charlie i alt: {kr(charlieTotal)}</span>
       </div>
 
       {/* Anbefalet overførselsdag: 2 dage før tidligste fælles træk */}
@@ -90,13 +90,13 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
               ? `✓ Denne måned er dækket — næste overførsel: senest d. ${payBy}. næste måned.`
               : overdue
                 ? `Første fælles træk (d. ${dueDay}.) er passeret — Charlie mangler ${kr(owedPerMonth - charlieThisMonth)} for denne måned.`
-                : `Charlie overfører ${kr(owedPerMonth)} senest d. ${payBy}. — første fælles træk er d. ${dueDay}. (Vercel + Google).`}
+                : `Charlie skal overføre ${kr(owedPerMonth)} denne måned — det er allerede efter modregning. Første fælles træk er d. ${dueDay}.`}
           </div>
         );
       })()}
 
       {/* Denne måned: Charlie's ½ selskab */}
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: "var(--accent-soft)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 5 }}>
           <span className="cc-dim">Charlie denne måned</span>
           <span><strong>{kr(charlieThisMonth)}</strong> af {kr(owedPerMonth)} (½ selskab)</span>

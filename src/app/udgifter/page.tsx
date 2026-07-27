@@ -16,10 +16,11 @@ const SHARE_META: Record<Share, { label: string; color: string; dim: string }> =
 
 function ShareChip({ s }: { s: Subscription }) {
   const m = SHARE_META[s.share];
+  const charliePays = s.payer === "charlie" && !s.personal;
   return (
-    <span className="cc-chip" style={{ background: m.dim, color: m.color, border: "none", whiteSpace: "nowrap" }}>
-      <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.color, display: "inline-block", marginRight: 5 }} />
-      {s.personal ? `${m.label} · egen` : s.share === "selskab" ? "Selskab · 50/50" : m.label}
+    <span className="cc-chip" style={{ background: charliePays ? "var(--amber-dim)" : m.dim, color: charliePays ? "var(--amber)" : m.color, border: charliePays ? "1px solid var(--amber)" : "none", whiteSpace: "nowrap" }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: charliePays ? "var(--amber)" : m.color, display: "inline-block", marginRight: 5 }} />
+      {charliePays ? "Charlie betaler hele" : s.personal ? `${m.label} · egen` : s.share === "selskab" ? "Selskab · 50/50" : m.label}
     </span>
   );
 }
@@ -136,10 +137,20 @@ export default function OkonomiPage() {
           <PersonCard name="Charlie" who="charlie" color="var(--amber)" dim="var(--amber-dim)" own={split.charlie} half={split.selskab / 2} />
         </div>
 
+        <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", background: "linear-gradient(135deg, var(--accent-soft), var(--surface))" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <Icon name="ArrowUpRight" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Charlies månedlige overførsel</h2>
+          </div>
+          <div style={{ fontSize: 34, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--accent-ink)" }}>{kr(split.owedCharlie - charlieCredits)}</div>
+          <div className="cc-dim" style={{ fontSize: 13, marginTop: 5 }}>Det er beløbet efter hans normale 50/50-andel og modregning af ChatGPT.</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, fontSize: 12.5 }}>
+            <span className="cc-chip">Normal andel: {kr(split.owedCharlie)}</span>
+            <span className="cc-chip" style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid var(--amber)" }}>− ChatGPT-halvdel: {kr(charlieCredits)}</span>
+          </div>
+        </section>
+
         {/* Overførsler */}
-        <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--text-muted)" }}>
-          Charlies betalinger modregnes: {kr(charlieCredits)} pr. måned ({kr(charlieCredits * 2)} ChatGPT betalt af Charlie).
-        </div>
         <PaymentsClient owedPerMonth={split.owedCharlie - charlieCredits} dueDay={earliestSharedRenewal()} />
 
         {/* Tjenester */}
