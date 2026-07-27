@@ -43,6 +43,8 @@ export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", renewalDay: 10, note: "Hjernen — fælles, oprettet 10/6" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — ~$50 i juni, intet siden 10/6" },
   { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
+  { name: "Simply.com — fælles hosting", amount: 29.70, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 8, note: "Ny/lille Simply.com — allerede betalt til Lucas" },
+  { name: "ChatGPT-abonnement", amount: 179, currency: "DKK", period: "md", share: "selskab", payer: "charlie", note: "Charlie betaler hele abonnementet — hans ½ (89,50 kr) modregnes i gælden til Lucas" },
   { name: "Anthropic API-kreditter", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Topups ~€13 ad gangen (lead-system drafts) — apr–jun, ~snit" },
 ];
 

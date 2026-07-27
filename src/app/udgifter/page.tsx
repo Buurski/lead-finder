@@ -105,6 +105,7 @@ function PersonCard({
 
 export default function OkonomiPage() {
   const split = computeSplit();
+  const charlieCredits = SUBSCRIPTIONS.filter((s) => s.payer === "charlie" && !s.personal).reduce((sum, s) => sum + monthlyDkk(s) / 2, 0);
   const shared = SUBSCRIPTIONS.filter((s) => !s.personal).sort((a, b) => monthlyDkk(b) - monthlyDkk(a));
   const personal = SUBSCRIPTIONS.filter((s) => s.personal);
   const max = monthlyDkk(shared[0]);
@@ -124,9 +125,9 @@ export default function OkonomiPage() {
             <span style={{ fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{kr(split.total)}</span>
             <span className="cc-dim" style={{ fontSize: 13 }}>fælles pr. måned · {kr(split.total * 12)} pr. år · {kr(split.total / 2)} pr. person</span>
           </div>
-          <p className="cc-dim" style={{ fontSize: 12.5 }}>
-            Alt fælles deles 50/50 til selskabet selv betaler. Egne Claude Max-planer er holdt udenfor.
-          </p>
+          <span className="cc-dim" style={{ fontSize: 12.5 }}>
+            Alt fælles deles 50/50. Poster betalt af Charlie modregnes automatisk i hans månedlige afregning.
+          </span>
         </section>
 
         {/* Person-kort */}
@@ -136,7 +137,10 @@ export default function OkonomiPage() {
         </div>
 
         {/* Overførsler */}
-        <PaymentsClient owedPerMonth={split.owedCharlie} dueDay={earliestSharedRenewal()} />
+        <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--text-muted)" }}>
+          Charlies betalinger modregnes: {kr(charlieCredits)} pr. måned ({kr(charlieCredits * 2)} ChatGPT betalt af Charlie).
+        </div>
+        <PaymentsClient owedPerMonth={split.owedCharlie - charlieCredits} dueDay={earliestSharedRenewal()} />
 
         {/* Tjenester */}
         <section className="cc-card cc-card-pad">
