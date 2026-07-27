@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://make-thoughts-protest-def.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://easter-than-equity-eva.trycloudflare.com"
     }
   },
   "crons": [
