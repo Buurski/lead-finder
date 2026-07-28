@@ -37,7 +37,10 @@ export default function PreviewQueue() {
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke hente preview-køen"); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const shown = useMemo(() => requests.filter((item) => {
     if (filter === "klar") return ["preview klar", "godkendt", "kladde klar"].includes(item.status);
