@@ -202,9 +202,14 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
     if (!authed) return unauthorized();
 
+    // Pass a marker to internal API routes as well. This keeps the browser's
+    // Basic Auth session and route-level auth in the same chain.
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-command-center-auth", "1");
+
     // Mint/refresh session cookie on success.
     const fresh = await issueSession(USER, SECRET);
-    const res = NextResponse.next();
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
     res.cookies.set(SESSION_COOKIE, fresh, {
       httpOnly: true,
       secure: true,

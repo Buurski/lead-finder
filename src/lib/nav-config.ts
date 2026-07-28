@@ -34,7 +34,8 @@ export const NAV_TREE: NavNode[] = [
     badge: "queue",
     children: [
       { href: "/approve", label: "Email", paletteLabel: "Godkendelse · Email", icon: "Mail", hint: "Drafts i kø", badge: "queue" },
-      { href: "/messenger", label: "Messenger", paletteLabel: "Godkendelse · Messenger", icon: "MessageSquare", hint: "FB-drafts, marker sendt" },
+      { href: "/previews", label: "Kinly previews", icon: "PanelTop", hint: "Inbound preview requests" },
+      { href: "/messenger", label: "Messenger", paletteLabel: "Godkendelse · Messenger", icon: "MessageSquare", hint: "FB-drafts, marker sendt" }
     ],
   },
   {
