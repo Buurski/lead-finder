@@ -105,7 +105,7 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {item.status === "preview klar" && <button className="cc-btn cc-btn-accent" onClick={() => onDecide(item, "godkendt")}>Accepter</button>}
-          {ready && <button className="cc-btn" onClick={onEdit}>Accepter og rediger</button>}
+          {ready && <button className="cc-btn" onClick={onEdit}>Se / redigér mail</button>}
           {item.status !== "afvist" && item.status !== "sendt/lukket" && <button className="cc-btn" onClick={() => onDecide(item, "afvist")}>Afvis</button>}
           <select aria-label={`Status for ${item.company}`} value={item.status} onChange={(e) => onStatus(e.target.value as Status)}>
             {statuses.map((status) => <option key={status}>{status}</option>)}
