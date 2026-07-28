@@ -58,7 +58,7 @@ function pick<T>(seed: string, variants: T[]): T {
 function cleanQuote(hook: string): string | null {
   const m = hook.match(/"([^"]+)"/);
   if (!m) return null;
-  let q = m[1].replace(/[\s.…]+$/u, "").trim();
+  let q = m[1].replace(/:\)|🙂|😊/gi, "").replace(/[\s.…—–-]+$/u, "").trim();
   const dot = q.lastIndexOf(".");
   if (dot > 25) q = q.slice(0, dot).trim();
   else {
