@@ -27,6 +27,11 @@ const OLD_HOOKS = [
   "lavede en lille demo",
 ];
 
+function reviewCount(hooks: string[] = []): number | undefined {
+  const m = hooks.join(" ").match(/\b(\d[\d.,]*)\s+anmeldelser?/i);
+  return m ? Number(m[1].replace(/[.,]/g, "")) : undefined;
+}
+
 function checkAuth(req: Request): { ok: true } | { ok: false; response: NextResponse } {
   const expected = process.env.LEAD_FINDER_API_TOKEN;
   if (expected) {
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
   const targets = all.filter((d) => {
     if (onlyIds && !onlyIds.has(d.id)) return false;
     if (d.status === "sent" || d.status === "rejected") return false;
-    return hasOldHook(d.body || "");
+    return hasOldHook(d.body || "") || Boolean((body as { all?: boolean }).all);
   });
 
   const results: Array<{
@@ -110,6 +115,8 @@ export async function POST(req: Request) {
         name: d.name,
         branch: d.branch || "",
         city: d.city,
+        hooks: d.hooks || [],
+        reviewsCount: reviewCount(d.hooks || []),
       });
 
       const newText = composed.text;
