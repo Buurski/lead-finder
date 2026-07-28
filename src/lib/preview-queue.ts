@@ -22,6 +22,7 @@ export interface PreviewRequestInput {
   branch?: string;
   questionnaire?: string;
   sourceMessageId?: string;
+  demoKey?: string;
 }
 
 export interface PreviewRequest extends PreviewRequestInput {
@@ -42,6 +43,10 @@ const KEY = "preview-requests";
 
 function id(): string {
   return `preview_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function demoKey(): string {
+  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
 
 export async function readPreviewRequests(): Promise<PreviewRequest[]> {
@@ -66,6 +71,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     branch: input.branch?.trim() || undefined,
     questionnaire: input.questionnaire?.trim() || undefined,
     sourceMessageId: input.sourceMessageId?.trim() || undefined,
+    demoKey: input.demoKey?.trim() || demoKey(),
     status: "ny",
     noindex: true,
     createdAt: now,
@@ -79,7 +85,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
 export async function updatePreviewStatus(
   requestId: string,
   status: PreviewStatus,
-  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire">> = {},
+  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey">> = {},
 ): Promise<PreviewRequest | null> {
   const records = await readPreviewRequests();
   const index = records.findIndex((item) => item.id === requestId);
@@ -87,7 +93,7 @@ export async function updatePreviewStatus(
   const current = records[index];
   const definedFields = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined),
-  ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft">>;
+  ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey">>;
   const next: PreviewRequest = {
     ...current,
     ...definedFields,

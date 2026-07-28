@@ -34,13 +34,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string };
+  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (body.channel !== "formular" && body.channel !== "mail") {
     return NextResponse.json({ error: "channel skal være formular eller mail" }, { status: 400 });
   }
   try {
-    const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId });
+    const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey });
     return NextResponse.json({ ok: true, request }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "invalid_request" }, { status: 400 });
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { id?: string; status?: PreviewStatus; research?: string; previewUrl?: string; screenshotUrl?: string; mailDraft?: string; contactName?: string; branch?: string; questionnaire?: string };
+  let body: { id?: string; status?: PreviewStatus; research?: string; previewUrl?: string; screenshotUrl?: string; mailDraft?: string; contactName?: string; branch?: string; questionnaire?: string; company?: string; demoKey?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (!body.id || !body.status || !PREVIEW_STATUSES.includes(body.status)) {
     return NextResponse.json({ error: "id og gyldig status er påkrævet", statuses: PREVIEW_STATUSES }, { status: 400 });
@@ -62,6 +62,8 @@ export async function PATCH(req: NextRequest) {
     contactName: body.contactName,
     branch: body.branch,
     questionnaire: body.questionnaire,
+    company: body.company,
+    demoKey: body.demoKey,
   });
   return request ? NextResponse.json({ ok: true, request }) : NextResponse.json({ error: "request_not_found" }, { status: 404 });
 }
