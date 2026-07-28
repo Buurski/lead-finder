@@ -30,6 +30,12 @@ export interface DesignTemplate {
   sectionOrder: string[];
   inspiration: string[];
   antiReferences: string[];
+  // Optional branch guidance. Kept as prose/data, not a rigid component recipe.
+  journey?: { flow: string; primaryCTA: string };
+  visualDirection?: string;
+  layoutPrinciples?: string[];
+  uniquenessLevers?: string[];
+  references?: Array<{ url: string; learning: string }>;
 }
 
 export const DESIGN_TEMPLATES: DesignTemplate[] = [
@@ -63,7 +69,23 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       "book nu",
     ],
     inspiration: ["Rene, store billeder", "Booking øverst", "Tydelig prisliste uden at virke billig"],
-    antiReferences: ["Stockfoto-modeller", "Glitter/gradient-tekst", "For mange skrifttyper", "Auto-afspillende musik"],
+    antiReferences: ["Stockfoto-modeller", "Glitter/gradient-tekst", "For mange skrifttyper", "Auto-afspillende musik", "Falske anmeldelser eller priser"],
+    journey: {
+      flow: "Se stil og priser → vælg klip eller stylist → book tid.",
+      primaryCTA: "Book tid.",
+    },
+    visualDirection: "Klip & Karl er den urbane pol. Brug kundens eget rum, hårarbejde og lokale tone til at afgøre om previewet bliver råt, stille, farverigt eller klassisk.",
+    layoutPrinciples: [
+      "Booking følger brugeren på mobil, men konkurrerer ikke med heroen.",
+      "Vis priser som en klar liste og hårarbejde som få, store billeder.",
+      "Heroen må have én sær detalje, fx et billede-wipe eller typografisk reveal, ikke fem effekter.",
+    ],
+    uniquenessLevers: ["kundens egen klip- eller farvespeciale", "fysisk lokale eller nabolag", "direkte booking eller valg af specifik frisør"],
+    references: [
+      { url: "https://streetcut.vercel.app/", learning: "Klip & Karl viser et enkelt, urbant flow med gennemsigtige priser." },
+      { url: "https://salon-artec.vercel.app/Salon%20Artec.html", learning: "Salon Artec viser, hvordan en frisør kan tage et klart æstetisk standpunkt." },
+      { url: "https://serenityhairblaxland.com.au/", learning: "Lad rummets egne farver styre den visuelle retning." },
+    ],
   },
   {
     // Real site: under-klippen — warm brown #1a1208 base + cream #f5f0ea + gold #c8a87a
@@ -95,7 +117,23 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       "find vej + åbningstider",
     ],
     inspiration: ["Store madbilleder", "Menu i ét klik", "Book-bord tydeligt"],
-    antiReferences: ["PDF-menu der skal downloades", "Mørk side der skjuler maden", "Comic Sans-agtig charme"],
+    antiReferences: ["PDF-menu der skal downloades", "Mørk side der skjuler maden", "Comic Sans-agtig charme", "Opdigtede åbningstider, anmeldelser eller menuer"],
+    journey: {
+      flow: "Få lyst til stedet → se menu eller koncept → book bord, bestil eller find vej.",
+      primaryCTA: "Vælg efter kundens virkelige drift: book bord, bestil eller find vej.",
+    },
+    visualDirection: "Under Klippen, Zaytoon, Zappa og Mellow er fire forskellige poler. Vælg ud fra kundens mad, lokale og tempo, ikke automatisk mørk brun og guld.",
+    layoutPrinciples: [
+      "Heroen sælger stemningen med ét ægte billede eller en kort filmsløjfe, hvis kunden har den.",
+      "Menuen er læsbar inline og kan åbnes på ét tryk, aldrig en PDF som eneste vej.",
+      "Åbningstider, adresse og den valgte handling samles tæt på bunden og er klikbare på mobil.",
+    ],
+    uniquenessLevers: ["dagens format, selskaber eller takeaway når det findes", "signaturret eller råvarehistorie", "lokalet, kvarteret eller udsigten"],
+    references: [
+      { url: "https://under-klippen.vercel.app/", learning: "Giv stedet en egen fortælling frem for at dumpe hele menuen i heroen." },
+      { url: "https://zaytoon-six.vercel.app/", learning: "Mad og social stemning kan skabe rytme uden fastfood-udtryk." },
+      { url: "https://mellow-gold.vercel.app/", learning: "Selskaber og à la carte kan få hver sin tydelige indgang." },
+    ],
   },
   {
     // Real site: kt-vvs — navy #1a3a5c + coral #ff8a7d, Bricolage Grotesque + Manrope
@@ -127,7 +165,23 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       "kontakt",
     ],
     inspiration: ["Telefonnummer øverst og klikbart", "Tydeligt dækningsområde", "Autoriseret-mærker"],
-    antiReferences: ["Generiske clipart-værktøjer", "Lange tekstvægge", "Skjult telefonnummer"],
+    antiReferences: ["Generiske clipart-værktøjer", "Lange tekstvægge", "Skjult telefonnummer", "Falske anmeldelser eller akutløfter"],
+    journey: {
+      flow: "Akut kunde: problem → ring. Planlagt arbejde: fagområde → se konkret arbejde → få tilbud.",
+      primaryCTA: "Ring nu ved akut hjælp. Få tilbud ved planlagt arbejde.",
+    },
+    visualDirection: "Teknisk klarhed eller materialedrevet håndværk, valgt fra kundens egne fotos, varebil, logo eller arbejdsproces. KT VVS er reference for autoritet, ikke en universel blå skabelon.",
+    layoutPrinciples: [
+      "Telefon eller tilbud er synlig i første skærm og klikbar på mobil.",
+      "Vis arbejdsproces eller færdigt arbejde før en bred service-liste.",
+      "Brug én rolig bevægelse, fx billede-wipe eller detalje-til-helhed på scroll.",
+    ],
+    uniquenessLevers: ["autorisation, vagt eller lokal responstid når det er ægte", "dokumenteret arbejdsproces", "egne før/efter- eller projektfotos"],
+    references: [
+      { url: "https://ktvvs.vercel.app/", learning: "Autoritet, tydelig telefon og teknisk præcision." },
+      { url: "https://www.maman-corp.com/", learning: "Lad processen give scrollen rytme i stedet for ens kort." },
+      { url: "https://jdavisgc.com/", learning: "Projektfotos og materiale kan bære identiteten." },
+    ],
   },
   {
     // Real site: salon-artec — deep teal #0c2a27 + gold #c9a35e, Cormorant Garamond + DM Sans
@@ -159,7 +213,22 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       "book",
     ],
     inspiration: ["Rolig, dyr følelse", "Behandlingskort med priser", "Online booking"],
-    antiReferences: ["Neonpink", "Glitter", "Over-retoucherede billeder", "For meget tekst"],
+    antiReferences: ["Neonpink", "Glitter", "Over-retoucherede billeder", "For meget tekst", "Falske før/efter-resultater"],
+    journey: {
+      flow: "Behov eller behandling → se ægte arbejde og behandler → book tid.",
+      primaryCTA: "Book tid.",
+    },
+    visualDirection: "Editorial, men hent paletten fra salonens rum, logo eller emballage før teal og guld. Salon Artec er modet til en signatur, ikke farveopskriften.",
+    layoutPrinciples: [
+      "En hero med ét stærkt salonfoto, ikke model-stock.",
+      "Priser skal kunne skannes uden at tage hele siden som webshop-kort.",
+      "Galleri er kurateret og horisontalt på mobil, aldrig et Instagram-dump.",
+    ],
+    uniquenessLevers: ["stylistens egen metode eller speciale", "farver fra det fysiske rum", "bookingtype, fx konsultation eller direkte tid"],
+    references: [
+      { url: "https://salon-artec.vercel.app/Salon%20Artec.html", learning: "En konsekvent, modig palet kan gøre en lille salon umiskendelig." },
+      { url: "https://serenityhairblaxland.com.au/", learning: "Tag farver og ro fra det rigtige salonrum." },
+    ],
   },
   {
     // Real site: vida — warm sand #eae2d2 bg + dark brown #26170e ink, Cormorant Garamond + Manrope
@@ -191,7 +260,22 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       "kontakt",
     ],
     inspiration: ["Ro og renhed", "Tryghed (certificering)", "Tydelige behandlingsbeskrivelser"],
-    antiReferences: ["Skræmmebilleder", "For klinisk/kold", "Stockfoto-hud"],
+    antiReferences: ["Skræmmebilleder", "For klinisk/kold", "Stockfoto-hud", "Opdigtede resultater eller lægefaglige løfter"],
+    journey: {
+      flow: "Hudbehov → forstå behandling og behandler → book konsultation eller tid.",
+      primaryCTA: "Book konsultation eller tid, kun hvis kundens flow understøtter det.",
+    },
+    visualDirection: "Tryg og sanselig, men styret af klinikkens egne rum, ansigter og faglighed. VIDA er reference for varme og nærhed, ikke en sandfarvet standard.",
+    layoutPrinciples: [
+      "Lad behov eller problemstilling komme før en lang behandlingsliste.",
+      "Sæt behandlers bevis tæt på den relevante behandling.",
+      "Brug hvide flader, luft og ét ægte rum- eller behandlingsfoto ad gangen.",
+    ],
+    uniquenessLevers: ["behandlerens dokumenterede erfaring", "særligt behandlingsområde", "egen konsultations- eller bookingform"],
+    references: [
+      { url: "https://vida-klinik.dk", learning: "Sted, mennesker og langsom rytme kan skabe tryghed før booking." },
+      { url: "https://dribbble.com/tags/aesthetic-clinic", learning: "Brug kun som kompositionsreference for behovsvejvisning og konsultationsflow." },
+    ],
   },
   {
     // Real site: buur-foto — cream #f3eee5 bg + muted gold #9a7e4a, Cormorant Garamond + Inter

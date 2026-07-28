@@ -31,7 +31,30 @@
 - Tydeligt dækningsområde
 - Autoriseret-mærker
 
+## Kunderejse & primær CTA
+- **Rejse:** Akut kunde: problem → ring. Planlagt arbejde: fagområde → se konkret arbejde → få tilbud.
+- **CTA:** Ring nu ved akut hjælp. Få tilbud ved planlagt arbejde.
+
+## Visuel retning
+Teknisk klarhed eller materialedrevet håndværk, valgt fra kundens egne fotos, varebil, logo eller arbejdsproces. KT VVS er reference for autoritet, ikke en universel blå skabelon.
+
+## Layoutprincipper
+- Telefon eller tilbud er synlig i første skærm og klikbar på mobil.
+- Vis arbejdsproces eller færdigt arbejde før en bred service-liste.
+- Brug én rolig bevægelse, fx billede-wipe eller detalje-til-helhed på scroll.
+
+## Unikhedshåndtag
+- autorisation, vagt eller lokal responstid når det er ægte
+- dokumenteret arbejdsproces
+- egne før/efter- eller projektfotos
+
+## Referencer
+- https://ktvvs.vercel.app/ — Autoritet, tydelig telefon og teknisk præcision.
+- https://www.maman-corp.com/ — Lad processen give scrollen rytme i stedet for ens kort.
+- https://jdavisgc.com/ — Projektfotos og materiale kan bære identiteten.
+
 ## Anti-references
 - Generiske clipart-værktøjer
 - Lange tekstvægge
 - Skjult telefonnummer
+- Falske anmeldelser eller akutløfter

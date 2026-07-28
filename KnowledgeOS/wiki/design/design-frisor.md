@@ -31,8 +31,31 @@
 - Booking øverst
 - Tydelig prisliste uden at virke billig
 
+## Kunderejse & primær CTA
+- **Rejse:** Se stil og priser → vælg klip eller stylist → book tid.
+- **CTA:** Book tid.
+
+## Visuel retning
+Klip & Karl er den urbane pol. Brug kundens eget rum, hårarbejde og lokale tone til at afgøre om previewet bliver råt, stille, farverigt eller klassisk.
+
+## Layoutprincipper
+- Booking følger brugeren på mobil, men konkurrerer ikke med heroen.
+- Vis priser som en klar liste og hårarbejde som få, store billeder.
+- Heroen må have én sær detalje, fx et billede-wipe eller typografisk reveal, ikke fem effekter.
+
+## Unikhedshåndtag
+- kundens egen klip- eller farvespeciale
+- fysisk lokale eller nabolag
+- direkte booking eller valg af specifik frisør
+
+## Referencer
+- https://streetcut.vercel.app/ — Klip & Karl viser et enkelt, urbant flow med gennemsigtige priser.
+- https://salon-artec.vercel.app/Salon%20Artec.html — Salon Artec viser, hvordan en frisør kan tage et klart æstetisk standpunkt.
+- https://serenityhairblaxland.com.au/ — Lad rummets egne farver styre den visuelle retning.
+
 ## Anti-references
 - Stockfoto-modeller
 - Glitter/gradient-tekst
 - For mange skrifttyper
 - Auto-afspillende musik
+- Falske anmeldelser eller priser

@@ -41,7 +41,23 @@ ${t.sectionOrder.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
 ## Inspiration
 ${t.inspiration.map((s) => `- ${s}`).join("\n")}
-
+${t.journey ? `
+## Kunderejse & primær CTA
+- **Rejse:** ${t.journey.flow}
+- **CTA:** ${t.journey.primaryCTA}
+` : ""}${t.visualDirection ? `
+## Visuel retning
+${t.visualDirection}
+` : ""}${t.layoutPrinciples?.length ? `
+## Layoutprincipper
+${t.layoutPrinciples.map((s) => `- ${s}`).join("\n")}
+` : ""}${t.uniquenessLevers?.length ? `
+## Unikhedshåndtag
+${t.uniquenessLevers.map((s) => `- ${s}`).join("\n")}
+` : ""}${t.references?.length ? `
+## Referencer
+${t.references.map((r) => `- ${r.url} — ${r.learning}`).join("\n")}
+` : ""}
 ## Anti-references
 ${t.antiReferences.map((s) => `- ${s}`).join("\n")}
 `;

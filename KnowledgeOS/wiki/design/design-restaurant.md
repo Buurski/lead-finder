@@ -31,7 +31,30 @@
 - Menu i ét klik
 - Book-bord tydeligt
 
+## Kunderejse & primær CTA
+- **Rejse:** Få lyst til stedet → se menu eller koncept → book bord, bestil eller find vej.
+- **CTA:** Vælg efter kundens virkelige drift: book bord, bestil eller find vej.
+
+## Visuel retning
+Under Klippen, Zaytoon, Zappa og Mellow er fire forskellige poler. Vælg ud fra kundens mad, lokale og tempo, ikke automatisk mørk brun og guld.
+
+## Layoutprincipper
+- Heroen sælger stemningen med ét ægte billede eller en kort filmsløjfe, hvis kunden har den.
+- Menuen er læsbar inline og kan åbnes på ét tryk, aldrig en PDF som eneste vej.
+- Åbningstider, adresse og den valgte handling samles tæt på bunden og er klikbare på mobil.
+
+## Unikhedshåndtag
+- dagens format, selskaber eller takeaway når det findes
+- signaturret eller råvarehistorie
+- lokalet, kvarteret eller udsigten
+
+## Referencer
+- https://under-klippen.vercel.app/ — Giv stedet en egen fortælling frem for at dumpe hele menuen i heroen.
+- https://zaytoon-six.vercel.app/ — Mad og social stemning kan skabe rytme uden fastfood-udtryk.
+- https://mellow-gold.vercel.app/ — Selskaber og à la carte kan få hver sin tydelige indgang.
+
 ## Anti-references
 - PDF-menu der skal downloades
 - Mørk side der skjuler maden
 - Comic Sans-agtig charme
+- Opdigtede åbningstider, anmeldelser eller menuer

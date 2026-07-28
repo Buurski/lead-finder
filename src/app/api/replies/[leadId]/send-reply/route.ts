@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { validateDraft } from "@/lib/draft";
-import { applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
+import { applySignature, applySignatureHtml, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
 
 // POST /api/replies/[id]/send-reply — QA-only reply send.
 //
@@ -67,17 +66,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ leadId:
     }
     const to = (body.toEmail || "").trim();
     if (!to) return NextResponse.json({ ok: false, message: "Ingen modtager-email på dette svar." }, { status: 400 });
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      return NextResponse.json({ ok: false, message: "Ingen mail-creds." }, { status: 200 });
+    const senderId: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
+    if (!isSenderAvailable(senderId)) {
+      return NextResponse.json({ ok: false, message: `Ingen mail-creds for ${senderId}.` }, { status: 200 });
     }
     try {
-      const senderId: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
-      const t = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD } });
+      const t = getTransporter(senderId);
       await t.sendMail({
-        from: `Lucas Buur <${process.env.GMAIL_USER}>`,
+        from: formatFrom(senderId),
         to,
         subject: body.subject || `Re: ${body.leadName ?? id}`,
-        // Kinly-signatur (kort) på alle udgående svar — samme kilde som DM-mails.
         text: applySignature(reply, senderId),
         html: applySignatureHtml(reply, senderId),
       });
@@ -87,26 +85,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ leadId:
     }
   }
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+  const qaSender: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
+  if (!isSenderAvailable(qaSender)) {
     return NextResponse.json(
-      { ok: false, sent: false, wouldSendTo: QA_RECIPIENT, note: "no mail creds — QA send skipped (dry)" },
+      { ok: false, sent: false, wouldSendTo: QA_RECIPIENT, note: "ingen mail-creds — QA send skipped (dry)" },
       { status: 200 }
     );
   }
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  });
-
   try {
+    const transporter = getTransporter(qaSender);
     await transporter.sendMail({
-      from: `Lucas Buur <${process.env.GMAIL_USER}>`,
+      from: formatFrom(qaSender),
       to: QA_RECIPIENT, // hard-locked — never the lead
       subject: `[QA-SVAR] ${body.subject ?? `Svar til ${body.leadName ?? id}`}`,
-      text: `QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${reply}`,
+      text: `QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${applySignature(reply, qaSender)}`,
+      html: applySignatureHtml(`QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${reply}`, qaSender),
     });
     return NextResponse.json({ ok: true, sent: true, to: QA_RECIPIENT, mode: "qa" });
   } catch (err) {

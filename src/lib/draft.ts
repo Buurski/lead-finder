@@ -39,7 +39,6 @@ const PRICE_PATTERNS: Array<[RegExp, string]> = [
   [/\bbillig\w*/i, "ordet 'billig'"],
   [/\bfra\s+\d+/i, "'fra X' pris"],
   [/\bpris(en|er|tilbud)?\b/i, "ordet 'pris'"],
-  [/\bgratis\b/i, "ordet 'gratis' (lyder som tilbud)"],
 ];
 
 // Robot / hard-sell CTA + template-isms — never allowed.

@@ -1,5 +1,5 @@
 import { DEMO_SITES } from "./demos.ts";
-import { defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
+import { applySignature, applySignatureHtml, defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
 // level transport here because we now support two Gmail identities (Lucas
@@ -19,17 +19,14 @@ const DEMO_URLS = {
   beautySalon: DEMO_SITES.salonArtec,
 } as const;
 
-// vvs/elektriker/blikkenslager/mekaniker/smed get the ktvvs demo.
-// tomrer/snedker/maler/murermester/tagdaekker get the denlillemaler demo.
-const CRAFT_UTILITY_KEYWORDS = ["vvs", "elektriker", "blikkenslager", "mekaniker", "smed"];
+// Trade branches use the real KT VVS customer demo first; the maler demo is
+// secondary for visual variation.
 
 // Beauty: per Lucas (2026-05-20) — always send BOTH demos to every beauty lead,
 // no per-sub-branch specialisation. Salon-artec leads (broadest appeal), streetcut second.
 
-function pickCraftDemo(branch: string): string {
-  const b = branch.toLowerCase();
-  if (CRAFT_UTILITY_KEYWORDS.some((k) => b.includes(k))) return DEMO_URLS.craftUtility;
-  return DEMO_URLS.craft;
+function pickCraftDemo(): string {
+  return DEMO_URLS.craftUtility;
 }
 
 function pickFoodDemoOrder(name: string, branch: string): { primary: string; secondary: string } {
@@ -298,7 +295,7 @@ ${signature.html}`),
     cold: (v) => {
       const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const compliment = complimentLine("craft", v.name, v.city);
-      const demo = pickCraftDemo(v.branch);
+      const demo = pickCraftDemo();
       const text = `Hej ${v.name},
 
 ${compliment} Jeres arbejde taler for sig selv. hjemmesiden fortjener at gøre det samme.
@@ -328,7 +325,7 @@ ${signature.html}`),
       };
     },
     followup: (v) => {
-      const signature = formatSignature(v.sender);      const demo = pickCraftDemo(v.branch);
+      const signature = formatSignature(v.sender);      const demo = pickCraftDemo();
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.
@@ -722,12 +719,16 @@ export async function sendLeadEmail(
   let subject: string;
   let text: string;
   let html: string;
+  const sender: SenderId = lead.sender && isSenderAvailable(lead.sender)
+    ? lead.sender
+    : defaultSender();
 
   if (type === "cold" && lead.composedBody) {
-    // Compose-at-draft-time path — send the exact bytes the engine produced.
+    // Compose-at-draft-time path — preserve the copy, but add/re-sign centrally
+    // so this path cannot bypass the official sender identity.
     subject = lead.composedSubject || `En idé til ${lead.name}`;
-    text = lead.composedBody + UNSUBSCRIBE_TEXT;
-    html = lead.composedHtml || lead.composedBody.replace(/\n/g, "<br>");
+    text = applySignature(lead.composedBody, sender) + UNSUBSCRIBE_TEXT;
+    html = applySignatureHtml(lead.composedBody, sender);
   } else {
     if (type === "cold") {
       console.warn(`[email] LEGACY template path for "${lead.name}". no composedBody on the lead.`);
@@ -735,7 +736,6 @@ export async function sendLeadEmail(
     const daysSince = type === "followup" && lead.emailSentAt
       ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
       : 7;
-    const sender: SenderId = lead.sender ?? defaultSender();
     const template = getEmailTemplate(lead.branch, type, {
       leadId: lead.id,
       name: lead.name,
@@ -754,9 +754,6 @@ export async function sendLeadEmail(
   // Pick the sender: explicit lead.sender wins; otherwise fall back to whichever
   // Gmail identity is configured (defaultSender). If neither is available, fail
   // loudly — better than silently using the wrong creds.
-  const sender: SenderId = lead.sender && isSenderAvailable(lead.sender)
-    ? lead.sender
-    : defaultSender();
   const transporter = getTransporter(sender);
   const fromAddress = formatFrom(sender);
   // The List-Unsubscribe mailto must match the From: domain or Gmail will

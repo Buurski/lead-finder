@@ -5,9 +5,10 @@ Denne fil er den ene kilde til sandhed for hvordan en personlig besked skal lyde
 
 ## Hvem skriver
 
-Lucas — **salgselev til daglig, bygger hjemmesider som hobby ved siden af**. Dansk
-marked, lokale virksomheder. Framingen er ALTID: hobby / under oplæring + gratis demo
-hvis interesseret. **Aldrig** "professionelt bureau", aldrig sælgende.
+Kinly — Lucas bygger hjemmesider til danske lokale virksomheder under Kinly-navnet.
+Arbejdet er personligt og founder-led: direkte kontakt, egen kode og ingen unødigt
+bureau-lag. Man må gerne være ærlig og ydmyg, men mails må aldrig lyde som et
+hobbyprojekt, en elevopgave eller noget under oplæring.
 
 ## Tone
 
@@ -25,12 +26,13 @@ hvis interesseret. **Aldrig** "professionelt bureau", aldrig sælgende.
    kunne fornærme).
 3. **2 demoer** — vis variation, vælg de 2 mest relevante for branchen. Ren URL.
 4. Varm soft-close: "sig endelig til hvis I vil se hvordan jeres kunne se ud".
+   Tilbyd gerne et gratis udkast — som en konkret mulighed, ikke som et salgspres.
 5. Slut UDEN underskrift — pipelinen tilføjer selv "Mvh, {afsender}" (Lucas
    eller Charlie) efter generering, så navnet altid matcher den valgte afsender.
 
 ## HARD RULES (brydes ALDRIG — håndhæves af validateDraft)
 
-- **Ingen pris / kr-beløb.** Ikke "5k", "5.000 kr", "fra X kr", "prisvenligt", "billigt".
+- **Ingen pris / kr-beløb.** Ikke "5k", "5.000 kr", "fra X kr", "prisvenligt", "billigt". Et gratis udkast må gerne tilbydes.
 - **Ingen hard-sell CTA.** Ikke "skriv ja", "send mockup", "helt uforpligtende",
   "skriv hvis du vil se mere :)".
 - **Ingen kunde-volumen-pral** ("jeg har lavet sider for X virksomheder").
@@ -46,9 +48,9 @@ hvis interesseret. **Aldrig** "professionelt bureau", aldrig sælgende.
 ## Eksempel — efter (researchet, personlig)
 
 > Hej [navn], jeg faldt over jeres [konkrete detalje fra research — fx "balayage-arbejde
-> I lagde op i sidste uge"] — det ser virkelig stærkt ud. Jeg sidder og bygger
-> hjemmesider som hobby, og jeg kom til at tænke på hvordan sådan noget kunne se ud
-> online for jer. Jeg lavede et par demoer I kan kigge på:
+> I lagde op i sidste uge"] — det ser virkelig stærkt ud. Jeg bygger hjemmesider
+> under Kinly og kom til at tænke på hvordan sådan noget kunne se ud online for jer.
+> Jeg lavede et par demoer I kan kigge på:
 > [demo 1]
 > [demo 2]
 > Sig endelig til hvis I vil se hvordan jeres kunne se ud — ellers ingen skade sket.

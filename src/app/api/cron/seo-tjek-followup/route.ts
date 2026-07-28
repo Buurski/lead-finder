@@ -63,7 +63,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         try {
           const reportUrl = `${base}/seo-tjek/rapport/${sub.id}`;
           const to = (process.env.SEO_TJEK_TEST_RECIPIENT || "").trim() || sub.email;
-          const mail = day7Mail(sub, reportUrl);
+          const mail = day7Mail(sub, reportUrl, senderId);
           await getTransporter(senderId).sendMail({
             from: formatFrom(senderId),
             to,

@@ -7,7 +7,7 @@
 //   - DROP "ser ud til at have bygget noget særligt op" — 30+ sends, 0 positives.
 //   - Proven openers: tillykke+anerkendelse, konkret teknisk problem, konkret
 //     detalje + autoritets-tal, demo-krog, brand-tolkning.
-//   - Keep the salgselev-hobby disclosure — it is THE differentiator.
+//   - Keep the honest founder disclosure under the Kinly name — no hobby framing.
 //   - Follow-up at 7 days, not 12.
 //   - Hostile blacklist never gets mailed again.
 //   - Avoid stat-citation overuse (94%/88%/75%) — use the lead's own real number.
@@ -74,6 +74,7 @@ function cleanQuote(hook: string): string | null {
 function cleanHook(hook: string): string {
   let h = hook.trim();
   h = h.replace(/^(nævner|etableret|summary[:\s]*)/i, "").trim();
+  h = h.replace(/^jeres\s+/i, "").trim();
   if (/^\d{4}$/.test(h)) return `historie helt tilbage til ${h}`;
   return h;
 }
@@ -250,21 +251,25 @@ export function mixForLead(lead: MixLead): ToneMix {
   if (ach) {
     chosen = ach;
   } else if (specific.length > 0) {
-    chosen = specific[hash(seed + "open") % specific.length];
+    // Keep the strongest real signal instead of randomly replacing a review
+    // count with a weaker generic detail.
+    chosen = specific.find((o) => o.kind === "quote")
+      || specific.find((o) => o.kind === "review-volume")
+      || specific.find((o) => o.kind === "tech-problem")
+      || specific.find((o) => o.kind === "detail")
+      || specific[0];
   } else if (lok) {
     chosen = lok;
   } else {
     chosen = openers[hash(seed + "open") % openers.length];
   }
 
-  // The salgselev-hobby disclosure — the differentiator. Always present.
-  // The salgselev-hobby disclosure (the differentiator). No "pris"/"gratis" — the
-  // voice-guide bans money words in cold mail, so we keep the humble, fair tone
-  // without the literal word.
+  // Honest Kinly disclosure: personal founder-led work without sounding like a
+  // student project. No "pris"/"gratis" in cold mail.
   const disclosure = pick(seed + "i", [
-    `Jeg laver hjemmesider som hobby ved siden af min salgselev-plads, så det er helt uden det store setup. Bare mig, ærligt og ligetil.`,
-    `Det er mig der sidder og bygger dem, ved siden af min salgselev-plads. Ingen bureau-pakke, bare en ærlig snak.`,
-    `Jeg bygger sider som hobby ved siden af mit arbejde som salgselev, så det er afslappet og ligetil.`,
+    `Jeg arbejder med min sidevirksomhed Kinly ved siden af min salgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.`,
+    `Ved siden af min salgselevplads driver jeg Kinly, hvor jeg bygger hjemmesider til lokale virksomheder. Jeg går meget op i, at siden ikke bare ser godt ud, men faktisk gør det lettere for nye kunder at finde jer.`,
+    `Jeg har min egen sidevirksomhed, Kinly, ved siden af min salgselevplads. Det er mig selv der bygger og følger op, og jeg brænder for at hjælpe virksomheder som jeres med at få flere relevante henvendelser.`,
   ]);
 
   const demoIntro = pick(seed + "dm", [

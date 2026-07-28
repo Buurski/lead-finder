@@ -36,8 +36,11 @@ export type SenderId = "lucas" | "charlie";
 
 export interface SenderCreds {
   id: SenderId;
+  /** SMTP login address (may differ from the visible From address). */
   email: string;
   appPassword: string;
+  /** Official Kinly address shown in the From: header. */
+  fromEmail?: string;
   /** Display name used in the From: header (e.g. "Lucas Buur"). */
   displayName: string;
   /** Phone number shown in the email signature (e.g. "+45 23 24 24 82"). */
@@ -66,20 +69,16 @@ export interface SenderCreds {
 //    boundary even if some env var accidentally sets it. Lucas' tag/title
 //    paths do NOT filter — that's his differentiator by design.
 const LUCAS_DEFAULT_NAME = "Lucas Buur";
+const LUCAS_DEFAULT_EMAIL = "lucas@kinly.dk";
 const LUCAS_DEFAULT_PHONE = "+45 23 24 24 82";
-const LUCAS_DEFAULT_TITLE = "";   // bevarer eksisterende format (kun navn + tlf)
-const LUCAS_DEFAULT_TAGLINE = ""; // bevarer eksisterende format
+const LUCAS_DEFAULT_TITLE = "Co-founder";
+const LUCAS_DEFAULT_TAGLINE = "";
 
 const CHARLIE_DEFAULT_NAME = "Charlie Nielsen";
-// 2026-06-26 (gen-restoreret efter tom-forsøg kl 01:51): Charlie ønsker fuld
-// profil igen — titel "Senior Funding Manager" + tagline "Web-design
-// entusiast" + telefon "+45 42 25 32 62". Tom-version var et fejlskud fra
-// kort refactor-window. Alle fire felter stadig env-overridable så Lucas kan
-// justere uden redeploy. scrubCharlieLeak() defense-in-depth mod "salgselev"
-// er stadig aktiv.
+const CHARLIE_DEFAULT_EMAIL = "charlie@kinly.dk";
 const CHARLIE_DEFAULT_PHONE = "+45 42 25 32 62";
-const CHARLIE_DEFAULT_TITLE = "Senior Funding Manager";
-const CHARLIE_DEFAULT_TAGLINE = "Web-design entusiast";
+const CHARLIE_DEFAULT_TITLE = "Co-founder";
+const CHARLIE_DEFAULT_TAGLINE = "";
 
 /** 2026-06-26: distinguish "env var absent" from "env var set to empty string".
  *  Returns the first defined value (including ""). The old `||` operator
@@ -110,6 +109,10 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
   const lucasPw = process.env.GMAIL_APP_PASSWORD;
   const charlieEmail = process.env.CHARLIE_GMAIL_USER;
   const charliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
+  // Visible From is a fixed brand identity; SMTP login stays independently
+  // configurable through the existing Gmail credentials.
+  const lucasFrom = LUCAS_DEFAULT_EMAIL;
+  const charlieFrom = CHARLIE_DEFAULT_EMAIL;
 
   // 2026-06-26: use pickEnv() instead of || so that an empty env var means
   // "explicit opt-out" — the field is stored as "" in creds and formatSignature
@@ -121,6 +124,7 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           id: "lucas",
           email: lucasEmail,
           appPassword: lucasPw,
+          fromEmail: lucasFrom,
           displayName: LUCAS_DEFAULT_NAME,
           phone: pickEnv("LUCAS_SENDER_PHONE", "LUCAS_PHONE") ?? LUCAS_DEFAULT_PHONE,
           title: pickEnv("LUCAS_SENDER_TITLE", "LUCAS_TITLE") ?? LUCAS_DEFAULT_TITLE,
@@ -132,6 +136,7 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
           id: "charlie",
           email: charlieEmail,
           appPassword: charliePw,
+          fromEmail: charlieFrom,
           displayName: CHARLIE_DEFAULT_NAME,
           phone: pickEnv("CHARLIE_SENDER_PHONE", "CHARLIE_PHONE") ?? CHARLIE_DEFAULT_PHONE,
           title: pickEnv("CHARLIE_SENDER_TITLE", "CHARLIE_TITLE") ?? CHARLIE_DEFAULT_TITLE,
@@ -259,7 +264,8 @@ export function getTransporter(senderId: SenderId): nodemailer.Transporter {
 export function formatFrom(senderId: SenderId): string {
   const creds = getSenderCreds(senderId);
   if (!creds) return senderId;
-  return `${creds.displayName} <${creds.email}>`;
+  const fallback = senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL;
+  return `${creds.displayName} <${creds.fromEmail || fallback}>`;
 }
 
 // ---- Signature rendering --------------------------------------------------
@@ -298,23 +304,13 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // legacy aliases without _SENDER_) -> in-code defaults. The env vars are
   // consulted even when creds is null so tests/dry-run can still tweak the
   // signature without provisioning a full Gmail account.
-  const envPhone = senderId === "lucas"
-    ? (process.env.LUCAS_SENDER_PHONE || process.env.LUCAS_PHONE || "")
-    : (process.env.CHARLIE_SENDER_PHONE || process.env.CHARLIE_PHONE || "");
-  const envTitle = senderId === "lucas"
-    ? (process.env.LUCAS_SENDER_TITLE || process.env.LUCAS_TITLE || "")
-    : (process.env.CHARLIE_SENDER_TITLE || process.env.CHARLIE_TITLE || "");
-  const envTagline = senderId === "lucas"
-    ? (process.env.LUCAS_SENDER_TAGLINE || process.env.LUCAS_TAGLINE || "")
-    : (process.env.CHARLIE_SENDER_TAGLINE || process.env.CHARLIE_TAGLINE || "");
   const name = creds?.displayName ?? (senderId === "lucas" ? LUCAS_DEFAULT_NAME : CHARLIE_DEFAULT_NAME);
   const senderEnvPhone = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_PHONE", "LUCAS_PHONE"] : ["CHARLIE_SENDER_PHONE", "CHARLIE_PHONE"]));
-  const senderEnvTitle = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TITLE", "LUCAS_TITLE"] : ["CHARLIE_SENDER_TITLE", "CHARLIE_TITLE"]));
-  const senderEnvTagline = pickEnv(...(senderId === "lucas" ? ["LUCAS_SENDER_TAGLINE", "LUCAS_TAGLINE"] : ["CHARLIE_SENDER_TAGLINE", "CHARLIE_TAGLINE"]));
 
   let phone = creds?.phone ?? senderEnvPhone ?? (senderId === "lucas" ? LUCAS_DEFAULT_PHONE : CHARLIE_DEFAULT_PHONE);
-  let title = creds?.title ?? senderEnvTitle ?? (senderId === "lucas" ? LUCAS_DEFAULT_TITLE : CHARLIE_DEFAULT_TITLE);
-  let tagline = creds?.tagline ?? senderEnvTagline ?? (senderId === "lucas" ? LUCAS_DEFAULT_TAGLINE : CHARLIE_DEFAULT_TAGLINE);
+  // Official source of truth: both signatures are Co-founder, with no extra
+  // tagline/title line. Phone remains env-overridable for the live number.
+  let title = "Co-founder";
 
   // Defense-in-depth: scrub "salgselev" out of Charlie's signature no matter
   // where it came from. The default paths never include it, but a stray env
@@ -322,7 +318,6 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   if (senderId === "charlie") {
     phone = scrubCharlieLeak(phone);
     title = scrubCharlieLeak(title);
-    tagline = scrubCharlieLeak(tagline);
   }
 
   // Text form: filter out empty fields so we never emit trailing blank lines
@@ -334,16 +329,8 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // title/tagline er tomme, så de filtreres væk og han ser stadig kun
   // "navn + telefon").
   const trim = (s: string) => s.trim();
-  let textLines: string[];
-  let htmlLines: string[];
-  if (senderId === "charlie" && trim(title) && trim(tagline)) {
-    const role = `${trim(title)} & ${trim(tagline)}`;
-    textLines = [trim(name), role, trim(phone)].filter((s) => s.length > 0);
-    htmlLines = [`<strong>${trim(name)}</strong>`, role, trim(phone)].filter((s) => s.length > 0);
-  } else {
-    textLines = [name, title, tagline, phone].map(trim).filter((s) => s.length > 0);
-    htmlLines = [`<strong>${trim(name)}</strong>`, trim(title), trim(tagline), trim(phone)].filter((s) => s.length > 0);
-  }
+  const textLines = [name, title, creds?.fromEmail ?? (senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL), phone]
+    .map(trim).filter((s) => s.length > 0);
 
   // 2026-07-16: Kinly-brand i alle signaturer (Lucas + Charlies fælles firma).
   // Text-delen får en "Kinly"-linje; HTML-delen er en tabel-baseret signatur
@@ -352,7 +339,8 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // logo tændes via KINLY_SITE_URL når domænet er live — indtil da vises
   // domænet som ren tekst (døde links i kold mail skader mere end intet link).
   const siteUrl = (process.env.KINLY_SITE_URL || "").trim().replace(/\/$/, "");
-  textLines.push(siteUrl ? `Kinly · ${siteUrl.replace(/^https?:\/\//, "")}` : "Kinly");
+  textLines.push(siteUrl ? `kinly.dk · ${siteUrl.replace(/^https?:\/\//, "")}` : "kinly.dk");
+  textLines.push("EST · 2026 · HERNING · DK · KODET I DANMARK");
 
   // 2026-07-16 (redesign efter Lucas-feedback): foto-kort i Kinly-sitets
   // designsystem (paper #f6f3ee, ink #191713, ember #d4500f, Georgia-serif
@@ -367,35 +355,33 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // lucas-mail-v2.jpg = Lucas' Google-profilfoto i FARVE (s/h-versionen
   // fravalgt; -v2 = cache-bust). Sitets lucas.jpg er et andet billede og må
   // ikke overskrives. Charlie bruger sitets teamfoto.
-  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas-mail-v2.jpg" : "charlie.jpg"}`;
-  const roleLines = htmlLines.slice(1, -1).map((l) => l.replace(/<[^>]+>/g, ""));
+  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas.jpg" : "charlie.jpg"}`;
   // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
   // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
   // = paper #f6f3ee = kortets bg → ingen synlig kant.
   // -v2 i filnavnet er cache-bust: Gmails billedproxy cacher pr. URL, så en
   // rettet logofil på samme URL vises aldrig hos modtagere der har set den
   // gamle. Nyt indhold = nyt filnavn.
-  const logoImg = `<img src="${KINLY_ASSET_BASE}/img/brand/kinly-logo-email-v2.png" alt="Kinly" width="96" height="47" style="display:block;border:0;" />`;
-  const domainCell = siteUrl
-    ? `<a href="${siteUrl}" style="color:${INK};text-decoration:none;">kinly.dk</a>`
-    : `kinly.dk`;
+  // Keep the official drafts' body structure/assets, reduced to an email-safe
+  // fragment (the draft HTML document itself is not embedded in the email).
   const htmlTable = [
-    `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:separate;">`,
-    `<tr><td style="background:${PAPER};border:1px solid #e9e2d5;border-radius:14px;padding:18px 24px 18px 18px;">`,
+    `<div style="background:#fff;width:100%;border:1px solid ${INK};border-top:7px solid ${EMBER};border-radius:4px;overflow:hidden;">`,
+    `<div style="padding:10px 14px 10px 16px;">`,
     `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
-    `<td valign="middle" style="padding-right:18px;"><img src="${photoUrl}" alt="${trim(name)}" width="76" height="76" style="display:block;border-radius:50%;border:2px solid ${EMBER};" /></td>`,
+    `<td valign="middle" style="padding-right:16px;"><img src="${photoUrl}" alt="${trim(name)}" width="130" height="130" style="display:block;border-radius:50%;border:4px solid ${EMBER};" /></td>`,
     `<td valign="middle" style="font-family:Arial,Helvetica,sans-serif;">`,
-    `<div style="font-size:16px;color:${INK};font-weight:bold;letter-spacing:0.2px;">${trim(name)}</div>`,
-    ...roleLines.map((l) => `<div style="font-size:12.5px;color:#6d675c;padding-top:2px;">${l}</div>`),
-    `<div style="font-size:13px;color:${INK};padding-top:9px;line-height:1.7;">`,
-    ...(trim(phone) ? [`${trim(phone)}<br>`] : []),
-    `${domainCell}`,
+    `<div style="font-size:32px;color:${INK};font-weight:bold;line-height:1;">${trim(name)}</div>`,
+    `<div style="font-size:17px;color:#666;font-style:italic;padding-top:3px;">Co-founder</div>`,
+    `<div style="width:28px;height:2px;background:${EMBER};margin:8px 0;"></div>`,
+    `<div style="font-family:monospace;font-size:16px;color:${INK};line-height:1.45;">`,
+    `<span style="color:#999;font-size:9px;letter-spacing:.14em;">MAIL</span> <a href="mailto:${senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL}" style="color:${INK};text-decoration:none;">${senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL}</a><br>`,
+    `<span style="color:#999;font-size:9px;letter-spacing:.14em;">TLF</span> <a href="tel:${trim(phone).replace(/\s/g, "")}" style="color:${INK};text-decoration:none;">${trim(phone)}</a><br>`,
+    `<a href="${siteUrl || "https://kinly.dk"}" style="color:${INK};text-decoration:none;">kinly.dk</a>`,
+    `</div></td>`,
+    `<td valign="middle" style="padding-left:28px;"><img src="${KINLY_ASSET_BASE}/brand/kinly-k-naked-512.png" alt="kinly" width="160" height="160" style="display:block;border:0;" /></td>`,
+    `</tr></table></div>`,
+    `<div style="background:${PAPER};padding:6px 16px;border-top:1px solid #e8e3d8;text-align:center;font:9.5px monospace;letter-spacing:.16em;color:${INK};">EST · 2026 · HERNING · DK · KODET I DANMARK</div>`,
     `</div>`,
-    `</td>`,
-    `<td valign="bottom" style="padding-left:28px;">${siteUrl ? `<a href="${siteUrl}" style="text-decoration:none;">${logoImg}</a>` : logoImg}</td>`,
-    `</tr></table>`,
-    `</td></tr>`,
-    `</table>`,
   ].join("\n");
 
   return {

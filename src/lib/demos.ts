@@ -105,7 +105,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
   if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
   if (AUTO.test(t)) return [D.ikastAutoservice, D.ktvvs];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
-  if (CRAFT.test(t)) return [D.denlillemaler, D.ktvvs];
+  if (CRAFT.test(t)) return [D.ktvvs, D.denlillemaler];
   if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];
   return [D.vestfjends, D.underKlippen];
 }

@@ -1,18 +1,7 @@
 // senders.test.ts — sender hub unit tests, frosset kontrakt per 2026-06-26.
 //
-// Lucas-specifik kontrakt (regression-safe): format uændret
-//   text = "Lucas Buur\n+45 23 24 24 82" / closing = "Mvh, Lucas Buur"
-//
-// Charlie-specifik kontrakt (bruger-spec 2026-06-26, gen-restoreret til FULD):
-//   defaults: phone="+45 42 25 32 62", title="Senior Funding Manager",
-//             tagline="Web-design entusiast"
-//   → signatur = "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62"
-//   closing = "Mvh, Charlie Nielsen"
-//   "salgselev" ALDRIG i Charlie-signatur (Lucas' differentiator) — scrubCharlieLeak()
-//   defense-in-depth: fjerner "salgselev" fra Charlie-felter uanset kilde.
-//   telefon opt-in: process.env.CHARLIE_SENDER_PHONE (legacy alias CHARLIE_PHONE)
-//   titel opt-in:   process.env.CHARLIE_SENDER_TITLE  (legacy alias CHARLIE_TITLE)
-//   tagline opt-in: process.env.CHARLIE_SENDER_TAGLINE (legacy alias CHARLIE_TAGLINE)
+// Official Kinly contract: name, Co-founder, official @kinly.dk address,
+// phone, kinly.dk and the official rail/assets.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -70,11 +59,13 @@ function clearCharlieEnv() {
 test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
   withEnv(setLucasEnv, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82\nKinly");
-    assert.ok(sig.html.startsWith("<table"));
+    assert.equal(sig.text, "Lucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
+    assert.ok(sig.html.startsWith("<div"));
     assert.ok(sig.html.includes("Lucas Buur"));
     assert.ok(sig.html.includes("+45 23 24 24 82"));
-    assert.ok(sig.html.includes("/img/team/lucas-mail-v2.jpg"));
+    assert.ok(sig.html.includes("/img/team/lucas.jpg"));
+    assert.ok(sig.html.includes("/brand/kinly-k-naked-512.png"));
+    assert.ok(sig.html.includes("EST · 2026"));
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
@@ -82,7 +73,7 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
 test("formatSignature: Lucas creds-missing fallback — defaults stadig active", () => {
   withEnv(clearLucasEnv, () => {}, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\n+45 23 24 24 82\nKinly");
+    assert.equal(sig.text, "Lucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
   });
 });
 
@@ -90,16 +81,13 @@ test("formatSignature: Lucas creds-missing fallback — defaults stadig active",
 // formatSignature: Charlie (BRUGER-SPEC — FULD profil gen-restoreret)
 // ============================================================================
 
-test("formatSignature: Charlie defaults — navn + titel+tagline-på-én-linje + telefon", () => {
+test("formatSignature: Charlie defaults — officiel Kinly-signatur", () => {
   withEnv(setCharlieEnv, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.equal(
-      sig.text,
-      "Charlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62\nKinly"
-    );
+    assert.equal(sig.text, "Charlie Nielsen\nCo-founder\ncharlie@kinly.dk\n+45 42 25 32 62\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
     assert.equal(sig.closing, "Mvh, Charlie Nielsen");
     assert.ok(sig.html.includes("Charlie Nielsen"));
-    assert.ok(sig.html.includes("Senior Funding Manager & Web-design entusiast"));
+    assert.ok(sig.html.includes("Co-founder"));
     assert.ok(sig.html.includes("+45 42 25 32 62"));
   });
 });
@@ -146,53 +134,16 @@ test("formatSignature: Charlie + CHARLIE_SENDER_PHONE vinder over CHARLIE_PHONE"
   });
 });
 
-test("formatSignature: Charlie + CHARLIE_SENDER_TITLE env — opt-in override", () => {
+test("formatSignature: Charlie ignorerer gamle title/tagline-env-vars", () => {
   withEnv(() => {
     setCharlieEnv();
-    process.env.CHARLIE_SENDER_TITLE = "Medstifter, Buur & Nielsen";
+    process.env.CHARLIE_SENDER_TITLE = "Senior Funding Manager";
+    process.env.CHARLIE_SENDER_TAGLINE = "Web-design entusiast";
   }, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.ok(sig.text.includes("Medstifter, Buur & Nielsen"));
-    assert.ok(!sig.text.includes("Senior Funding Manager"));
-  });
-});
-
-test("formatSignature: Charlie + CHARLIE_SENDER_TAGLINE env — opt-in override", () => {
-  withEnv(() => {
-    setCharlieEnv();
-    process.env.CHARLIE_SENDER_TAGLINE = "Frontend-developer";
-  }, clearCharlieEnv, () => {
-    const sig = formatSignature("charlie");
-    assert.ok(sig.text.includes("Frontend-developer"));
-    assert.ok(!sig.text.includes("Web-design entusiast"));
-  });
-});
-
-test("formatSignature: Charlie + både telefon OG titel OG tagline env", () => {
-  withEnv(() => {
-    setCharlieEnv();
-    process.env.CHARLIE_SENDER_PHONE = "+45 22 22 22 22";
-    process.env.CHARLIE_SENDER_TITLE = "QA-tester";
-    process.env.CHARLIE_SENDER_TAGLINE = "Frontend-developer";
-  }, clearCharlieEnv, () => {
-    const sig = formatSignature("charlie");
-    assert.ok(sig.text.includes("QA-tester"));
-    assert.ok(sig.text.includes("Frontend-developer"));
-    assert.ok(sig.text.includes("+45 22 22 22 22"));
-    assert.ok(!sig.text.includes("Senior Funding Manager"));
-    assert.ok(!sig.text.includes("Web-design entusiast"));
-  });
-});
-
-test("formatSignature: Charlie + tom CHARLIE_SENDER_TITLE skjuler kun titel-linje", () => {
-  withEnv(() => {
-    setCharlieEnv();
-    process.env.CHARLIE_SENDER_TITLE = "";
-  }, clearCharlieEnv, () => {
-    const sig = formatSignature("charlie");
-    assert.ok(!sig.text.includes("Senior Funding Manager"));
-    assert.ok(sig.text.includes("Web-design entusiast"));
-    assert.ok(sig.text.includes("+45 42 25 32 62"));
+    assert.ok(sig.text.includes("Co-founder"));
+    assert.equal(sig.text.includes("Senior Funding Manager"), false);
+    assert.equal(sig.text.includes("Web-design entusiast"), false);
   });
 });
 
@@ -207,14 +158,14 @@ test("formatSignature: defense-in-depth — 'salgselev' scrubbes fra Charlie-fel
   });
 });
 
-test("formatSignature: Lucas ALDRIG scrubbes (det er hans differentiator)", () => {
+test("formatSignature: Lucas bruger også den officielle Co-founder-identitet", () => {
   withEnv(() => {
     setLucasEnv();
     process.env.LUCAS_SENDER_TITLE = "salgselev";
   }, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
-    assert.ok(sig.text.includes("salgselev"),
-      "Lucas må gerne have 'salgselev'-titel: " + sig.text);
+    assert.ok(sig.text.includes("Co-founder"));
+    assert.equal(sig.text.includes("salgselev"), false);
   });
 });
 
@@ -232,7 +183,7 @@ test("formatSignature: credsOverride tvinger bestemte værdier (test/dry-run)", 
     title: "QA-test",
     tagline: "",
   });
-  assert.equal(sig.text, "Charlie Test\nQA-test\n+45 00 00 00 00\nKinly");
+  assert.equal(sig.text, "Charlie Test\nCo-founder\ncharlie@kinly.dk\n+45 00 00 00 00\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
   assert.equal(sig.closing, "Mvh, Charlie Test");
 });
 
@@ -245,8 +196,8 @@ test("formatSignature: ingen creds falder tilbage til defaults (begge har telefo
     const charlie = formatSignature("charlie");
     assert.ok(lucas.text.includes("+45 23 24 24 82"));
     assert.ok(charlie.text.includes("+45 42 25 32 62"));
-    assert.ok(charlie.text.includes("Senior Funding Manager"));
-    assert.ok(charlie.text.includes("Web-design entusiast"));
+    assert.ok(charlie.text.includes("Co-founder"));
+    assert.ok(charlie.text.includes(""));
   });
 });
 
@@ -262,7 +213,7 @@ test("formatSignature: ingen trailing newlines", () => {
 // formatFrom
 // ============================================================================
 
-test("formatFrom: uden creds = senderId; med creds = displayName <email>", () => {
+test("formatFrom: SMTP-login og officiel Kinly From-adresse er separate", () => {
   withEnv(clearLucasEnv, () => {}, () => {
     assert.equal(formatFrom("lucas"), "lucas");
     assert.equal(formatFrom("charlie"), "charlie");
@@ -271,8 +222,12 @@ test("formatFrom: uden creds = senderId; med creds = displayName <email>", () =>
   process.env.GMAIL_APP_PASSWORD = DUMMY_PW;
   const f = formatFrom("lucas");
   assert.ok(f.includes("Lucas Buur"));
-  assert.ok(f.includes("buur.aigro@gmail.com"));
+  assert.equal(f, "Lucas Buur <lucas@kinly.dk>");
+  process.env.CHARLIE_GMAIL_USER = "1charlie.nielsen@gmail.com";
+  process.env.CHARLIE_GMAIL_APP_PASSWORD = DUMMY_PW;
+  assert.equal(formatFrom("charlie"), "Charlie Nielsen <charlie@kinly.dk>");
   clearLucasEnv();
+  clearCharlieEnv();
 });
 
 // ============================================================================
@@ -331,11 +286,11 @@ test("getSenderCreds: begge sendere har telefon, title og tagline som defaults",
     assert.ok(lucas, "lucas creds skal være sat");
     assert.ok(charlie, "charlie creds skal være sat");
     assert.equal(lucas.phone, "+45 23 24 24 82");
-    assert.equal(lucas.title, "");
+    assert.equal(lucas.title, "Co-founder");
     assert.equal(lucas.tagline, "");
     assert.equal(charlie.phone, "+45 42 25 32 62");           // FULD default
-    assert.equal(charlie.title, "Senior Funding Manager");     // FULD default
-    assert.equal(charlie.tagline, "Web-design entusiast");      // FULD default
+    assert.equal(charlie.title, "Co-founder");     // FULD default
+    assert.equal(charlie.tagline, "");      // FULD default
     assert.equal(lucas.displayName, "Lucas Buur");
     assert.equal(charlie.displayName, "Charlie Nielsen");
   });
@@ -389,18 +344,18 @@ test("applySignature: ingen dobbelt-signatur oven paa closing-linje", async () =
   assert.equal(/Mvh, Lucas Buur[\s\S]*Lucas Buur/.test(out), false);
   assert.equal((out.match(/Lucas Buur/g) || []).length, 1);
   assert.equal(/Med venlig hilsen\nLucas Buur/.test(out), true);
-  assert.equal(out.endsWith("\nKinly"), true);
+  assert.equal(out.endsWith("EST · 2026 · HERNING · DK · KODET I DANMARK"), true);
 });
 
 // ---------------------------------------------------------------------------
 // stripSignature: Charlie-blok med rolle-linje + stablede blokke (toggle-bug
 // 2026-07-16). Foer fixet matchede ingen moenstre Charlies "Senior Funding
-// Manager & Web-design entusiast"-linje, saa toggle Lucas/Charlie paa
+// Manager & "-linje, saa toggle Lucas/Charlie paa
 // /godkendelse stablede en ny signaturblok pr. klik.
 // ---------------------------------------------------------------------------
 
-const CHARLIE_BLOCK = "Med venlig hilsen\nCharlie Nielsen\nSenior Funding Manager & Web-design entusiast\n+45 42 25 32 62\nKinly";
-const LUCAS_BLOCK = "Med venlig hilsen\nLucas Buur\n+45 23 24 24 82\nKinly";
+const CHARLIE_BLOCK = "Med venlig hilsen\nCharlie Nielsen\nCo-founder\ncharlie@kinly.dk\n+45 42 25 32 62\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK";
+const LUCAS_BLOCK = "Med venlig hilsen\nLucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK";
 
 test("stripSignature: fjerner Charlie-blok med rolle-linje", async () => {
   const { stripSignature } = await import("./senders.ts");
@@ -438,7 +393,7 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   const out = applySignatureHtml("Hej <Vida>,\n\nSe https://demo.dk\n\nMvh, Lucas Buur", "lucas");
   assert.equal(out.includes("&lt;Vida&gt;"), true);
   assert.equal(out.includes('<a href="https://demo.dk"'), true);
-  assert.equal(out.includes("/img/team/lucas-mail-v2.jpg"), true);
+  assert.equal(out.includes("/img/team/lucas.jpg"), true);
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });

@@ -30,8 +30,30 @@
 - Behandlingskort med priser
 - Online booking
 
+## Kunderejse & primær CTA
+- **Rejse:** Behov eller behandling → se ægte arbejde og behandler → book tid.
+- **CTA:** Book tid.
+
+## Visuel retning
+Editorial, men hent paletten fra salonens rum, logo eller emballage før teal og guld. Salon Artec er modet til en signatur, ikke farveopskriften.
+
+## Layoutprincipper
+- En hero med ét stærkt salonfoto, ikke model-stock.
+- Priser skal kunne skannes uden at tage hele siden som webshop-kort.
+- Galleri er kurateret og horisontalt på mobil, aldrig et Instagram-dump.
+
+## Unikhedshåndtag
+- stylistens egen metode eller speciale
+- farver fra det fysiske rum
+- bookingtype, fx konsultation eller direkte tid
+
+## Referencer
+- https://salon-artec.vercel.app/Salon%20Artec.html — En konsekvent, modig palet kan gøre en lille salon umiskendelig.
+- https://serenityhairblaxland.com.au/ — Tag farver og ro fra det rigtige salonrum.
+
 ## Anti-references
 - Neonpink
 - Glitter
 - Over-retoucherede billeder
 - For meget tekst
+- Falske før/efter-resultater

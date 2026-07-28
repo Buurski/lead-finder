@@ -1217,7 +1217,7 @@ function DraftLetter({
           }}
         >
           <div style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-            Signatur — sættes automatisk ved afsendelse ({sender === "lucas" ? "Lucas" : "Charlie"} + Kinly-logo i HTML)
+            Officiel Kinly-signatur tilføjes automatisk ved afsendelse ({sender === "lucas" ? "Lucas Buur <lucas@kinly.dk>" : "Charlie Nielsen <charlie@kinly.dk>"} + Kinly-logo i HTML)
           </div>
           <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap", color: "var(--text)", lineHeight: 1.5 }}>
             {previewSignature("", sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE).trim()}

@@ -11,6 +11,7 @@
 // Strip-safe: no Next imports; store only via lazy dynamic import.
 
 import { runSeoChecks, type SeoResult, type LighthouseScores } from "./seo.ts";
+import { formatSignature, type SenderId } from "./senders.ts";
 
 // ---- types ----------------------------------------------------------------
 
@@ -477,7 +478,8 @@ function bookingLineHtml(): string {
   return u ? ` <a href="${esc(u)}">Book direkte i kalenderen her (15 min, gratis)</a>.` : "";
 }
 
-export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUrl: string): { subject: string; text: string; html: string } {
+export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUrl: string, sender: SenderId = "lucas"): { subject: string; text: string; html: string } {
+  const signature = formatSignature(sender);
   const host = hostOfUrl(sub.url);
   const topFix = report.fixes[0];
   const unsub = unsubscribeUrl(sub, reportUrl);
@@ -496,8 +498,7 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
     ``,
     `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineText()}`,
     ``,
-    `Mvh, Lucas`,
-    `Buur Web`,
+    signature.text,
     ``,
     `Du får denne mail, fordi du bad om et gratis SEO-tjek. Har du ikke bedt om det, kan du bare ignorere mailen. Afmeld: ${unsub}`,
   ].join("\n");
@@ -507,7 +508,7 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
       `Tak fordi du bad om et gratis SEO-tjek af <strong>${esc(host)}</strong>. Rapporten er klar, og du kan også gemme den som PDF.`,
       topFix ? `<strong>Den vigtigste ting at fikse først: ${esc(topFix.title)}.</strong> ${esc(topFix.why)}` : `Din side klarer sig faktisk fint. Rapporten viser detaljerne.`,
       `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineHtml()}`,
-      `Mvh, Lucas<br>Buur Web`,
+      signature.html,
     ],
     "Se din rapport",
     reportUrl,
@@ -516,7 +517,8 @@ export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUr
   return { subject, text, html };
 }
 
-export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: string; text: string; html: string } {
+export function day7Mail(sub: SeoTjekSubmission, reportUrl: string, sender: SenderId = "lucas"): { subject: string; text: string; html: string } {
+  const signature = formatSignature(sender);
   const host = hostOfUrl(sub.url);
   const unsub = unsubscribeUrl(sub, reportUrl);
   const subject = `Kom der noget ud af SEO-rapporten for ${host}?`;
@@ -529,8 +531,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
     ``,
     `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineText()}`,
     ``,
-    `Mvh, Lucas`,
-    `Buur Web`,
+    signature.text,
     ``,
     `Afmeld: ${unsub}`,
   ].join("\n");
@@ -539,7 +540,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string): { subject: 
       `Hej,`,
       `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: <strong>Vida Klinik</strong> scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
       `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineHtml()}`,
-      `Mvh, Lucas<br>Buur Web`,
+      signature.html,
     ],
     "Se rapporten igen",
     reportUrl,

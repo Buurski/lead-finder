@@ -58,6 +58,13 @@ function tailorLine(name: string): string {
   ]);
 }
 
+function offerLine(name: string): string {
+  return pickVariant(name + "o", [
+    `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud — så kan I vurdere idéen helt konkret.`,
+    `Jeg kan også lave et gratis udkast med jeres egen stil og indhold, hvis I vil se hvordan det kunne tage form.`,
+  ]);
+}
+
 function pickVariant(seed: string, variants: string[]): string {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -77,17 +84,20 @@ function valueLine(name: string): string {
   ]);
 }
 
-function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: Demo[], closing: string, valueText?: string): string {
+function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: Demo[], closing: string, valueText?: string, offerText?: string): string {
   return [
     `Hej ${name},`,
     ``,
-    `${opener} ${disclosure}`,
+    `${opener}`,
+    ``,
+    `${disclosure}`,
     ...(valueText ? [``, valueText] : []),
     ``,
     demoIntro,
     ...demoLeadLine(demos),
     ``,
     tailorLine(name),
+    ...(offerText ? [``, offerText] : []),
     ``,
     closing,
   ].join("\n");
@@ -110,7 +120,7 @@ function textToHtml(text: string, demos: Demo[]): string {
 export function composeColdEmail(lead: ComposeLead): ComposedEmail {
   const mix = mixForLead(lead);
   const demos = pickDemos(lead.branch, lead.name);
-  const text = buildText(lead.name, mix.opener, mix.disclosure, mix.demoIntro, demos, mix.closing, valueLine(lead.name));
+  const text = buildText(lead.name, mix.opener, mix.disclosure, mix.demoIntro, demos, mix.closing, valueLine(lead.name), offerLine(lead.name));
 
   const check = validateDraft(text);
   if (!check.ok) {

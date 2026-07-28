@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getInvoice, saveInvoice, getBusinessSettings, invoiceTotal } from "@/lib/invoices.ts";
 import { renderInvoicePdf } from "@/lib/invoice-pdf.tsx";
-import { getTransporter, formatFrom } from "@/lib/senders.ts";
+import { getTransporter, formatFrom, applySignature, applySignatureHtml } from "@/lib/senders.ts";
 import { store } from "@/lib/store.ts";
 
 // POST /api/invoices/[number]/send — kaldes KUN fra UI-knap (aldrig automatisk).
@@ -38,9 +38,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     const { total } = invoiceTotal(inv);
     const month = new Date(inv.issueDate).toLocaleDateString("da-DK", { month: "long", year: "numeric" });
     const subject = body.subject || `Faktura ${number} — ${biz.name}`;
-    const text =
+    const unsignedText =
       body.body ||
-      `Hej ${inv.recipient.att || inv.recipient.name}\n\nHer er fakturaen for ${month} — ${total.toLocaleString("da-DK")} kr., betales senest ${new Date(inv.dueDate + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.\n\nBetaling via bankoverførsel (nemt at kopiere herfra):\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\nSig endelig til hvis noget driller.\n\nMvh ${biz.name}`;
+      `Hej ${inv.recipient.att || inv.recipient.name}\n\nHer er fakturaen for ${month} — ${total.toLocaleString("da-DK")} kr., betales senest ${new Date(inv.dueDate + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.\n\nBetaling via bankoverførsel (nemt at kopiere herfra):\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\nSig endelig til hvis noget driller.`;
+    const text = applySignature(unsignedText, "lucas");
 
     const transporter = getTransporter("lucas");
     await transporter.sendMail({
@@ -48,6 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
       to: body.to,
       subject,
       text,
+      html: applySignatureHtml(unsignedText, "lucas"),
       attachments: [{ filename: `faktura-${number}.pdf`, content: buf }],
     });
 

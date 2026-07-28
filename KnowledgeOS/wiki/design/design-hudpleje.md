@@ -31,7 +31,29 @@
 - Tryghed (certificering)
 - Tydelige behandlingsbeskrivelser
 
+## Kunderejse & primær CTA
+- **Rejse:** Hudbehov → forstå behandling og behandler → book konsultation eller tid.
+- **CTA:** Book konsultation eller tid, kun hvis kundens flow understøtter det.
+
+## Visuel retning
+Tryg og sanselig, men styret af klinikkens egne rum, ansigter og faglighed. VIDA er reference for varme og nærhed, ikke en sandfarvet standard.
+
+## Layoutprincipper
+- Lad behov eller problemstilling komme før en lang behandlingsliste.
+- Sæt behandlers bevis tæt på den relevante behandling.
+- Brug hvide flader, luft og ét ægte rum- eller behandlingsfoto ad gangen.
+
+## Unikhedshåndtag
+- behandlerens dokumenterede erfaring
+- særligt behandlingsområde
+- egen konsultations- eller bookingform
+
+## Referencer
+- https://vida-klinik.dk — Sted, mennesker og langsom rytme kan skabe tryghed før booking.
+- https://dribbble.com/tags/aesthetic-clinic — Brug kun som kompositionsreference for behovsvejvisning og konsultationsflow.
+
 ## Anti-references
 - Skræmmebilleder
 - For klinisk/kold
 - Stockfoto-hud
+- Opdigtede resultater eller lægefaglige løfter

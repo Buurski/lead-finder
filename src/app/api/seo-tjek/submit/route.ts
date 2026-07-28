@@ -197,7 +197,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const senderId = defaultSender();
     if (!isSenderAvailable(senderId)) throw new Error("ingen mail-konto konfigureret");
     const to = (process.env.SEO_TJEK_TEST_RECIPIENT || "").trim() || sub.email;
-    const mail = day0Mail(sub, report, reportUrl);
+    const mail = day0Mail(sub, report, reportUrl, senderId);
     await getTransporter(senderId).sendMail({
       from: formatFrom(senderId),
       to,
