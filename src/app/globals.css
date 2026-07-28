@@ -640,6 +640,16 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .cc-content { padding: 18px; }
 }
 
+/* Preview queue cards stack on phones; the demo panel must never force the text column wider than the viewport. */
+.cc-preview-card { overflow: hidden; }
+.cc-preview-card a, .cc-preview-card div { overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .cc-preview-card { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .cc-preview-visual { min-height: 116px !important; }
+  .cc-preview-visual a:first-child { min-height: 92px !important; }
+  .cc-preview-card h2 { overflow-wrap: anywhere; }
+}
+
 /* --- Forretning (finance suite) — presentational helpers -------------- */
 /* CSS-only tooltip: <el class="cc-tip" data-tip="…">. Kept dependency- and
    JS-free so FinanceUI stays hook-free / server-safe. */

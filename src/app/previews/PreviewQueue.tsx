@@ -88,7 +88,7 @@ export default function PreviewQueue() {
 function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewRequest; onEdit: () => void; onDecide: (item: PreviewRequest, status: Status) => void; onStatus: (status: Status) => void }) {
   const ready = ["preview klar", "godkendt", "kladde klar"].includes(item.status);
   return (
-    <article className="cc-card cc-card-pad" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 330px)", gap: 22 }}>
+    <article className="cc-card cc-card-pad cc-preview-card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 330px)", gap: 22, minWidth: 0 }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
@@ -112,7 +112,7 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
           </select>
         </div>
       </div>
-      <div style={{ minHeight: 190, borderRadius: 12, overflow: "hidden", background: "var(--bg-2)", border: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
+      <div className="cc-preview-visual" style={{ minHeight: 190, borderRadius: 12, overflow: "hidden", background: "var(--bg-2)", border: "1px solid var(--border)", display: "flex", flexDirection: "column", minWidth: 0 }}>
         {item.screenshotUrl && /^https?:\/\//.test(item.screenshotUrl) ? <Screenshot item={item} /> : item.previewUrl ? <a href={item.previewUrl} target="_blank" rel="noreferrer" style={{ display: "grid", placeItems: "center", flex: 1, minHeight: 170, textDecoration: "none" }}>Åbn demo ↗</a> : <span className="cc-dim" style={{ margin: "auto" }}>Demo ikke klar endnu</span>}
         {item.previewUrl && <a href={item.previewUrl} target="_blank" rel="noreferrer" style={{ padding: "9px 12px", borderTop: "1px solid var(--border)", fontSize: 13, textDecoration: "none" }}>Åbn hele hjemmesiden ↗</a>}
       </div>
