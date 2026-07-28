@@ -7,6 +7,7 @@ export const PREVIEW_STATUSES = [
   "preview klar",
   "godkendt",
   "kladde klar",
+  "afvist",
   "sendt/lukket",
 ] as const;
 export type PreviewStatus = (typeof PREVIEW_STATUSES)[number];
@@ -17,6 +18,10 @@ export interface PreviewRequestInput {
   channel: PreviewChannel;
   email: string;
   website?: string;
+  contactName?: string;
+  branch?: string;
+  questionnaire?: string;
+  sourceMessageId?: string;
 }
 
 export interface PreviewRequest extends PreviewRequestInput {
@@ -30,6 +35,7 @@ export interface PreviewRequest extends PreviewRequestInput {
   screenshotUrl?: string;
   mailDraft?: string;
   approvedAt?: string;
+  rejectedAt?: string;
 }
 
 const KEY = "preview-requests";
@@ -56,6 +62,10 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     channel: input.channel,
     email,
     website: input.website?.trim() || undefined,
+    contactName: input.contactName?.trim() || undefined,
+    branch: input.branch?.trim() || undefined,
+    questionnaire: input.questionnaire?.trim() || undefined,
+    sourceMessageId: input.sourceMessageId?.trim() || undefined,
     status: "ny",
     noindex: true,
     createdAt: now,
@@ -69,7 +79,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
 export async function updatePreviewStatus(
   requestId: string,
   status: PreviewStatus,
-  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft">> = {},
+  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire">> = {},
 ): Promise<PreviewRequest | null> {
   const records = await readPreviewRequests();
   const index = records.findIndex((item) => item.id === requestId);
@@ -83,6 +93,7 @@ export async function updatePreviewStatus(
     ...definedFields,
     status,
     ...(status === "godkendt" ? { approvedAt: new Date().toISOString() } : {}),
+    ...(status === "afvist" ? { rejectedAt: new Date().toISOString() } : {}),
     updatedAt: new Date().toISOString(),
   };
   records[index] = next;
