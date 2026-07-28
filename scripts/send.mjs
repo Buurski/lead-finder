@@ -66,6 +66,10 @@ if (!SHEET_ID || !KEY_FILE || !GMAIL_USER || !GMAIL_PASS) {
   console.error("Missing env: GOOGLE_SHEET_ID / GOOGLE_KEY_FILE / GMAIL_USER / GMAIL_APP_PASSWORD");
   process.exit(1);
 }
+if (!/^lucas@kinly\.dk$/i.test(GMAIL_USER)) {
+  console.error("Refusing to send: GMAIL_USER skal være lucas@kinly.dk, ikke den gamle buur.aigro-konto.");
+  process.exit(1);
+}
 
 // ----- log --------------------------------------------------------------
 
@@ -232,7 +236,7 @@ async function main() {
 
     try {
       const info = await transporter.sendMail({
-        from: `Lucas Buur <${GMAIL_USER}>`,
+        from: "Lucas Buur <lucas@kinly.dk>",
         to: item.toEmail,
         subject: item.subject,
         text: item.body,

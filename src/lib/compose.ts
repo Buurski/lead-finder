@@ -60,7 +60,7 @@ function tailorLine(name: string): string {
 
 function offerLine(name: string): string {
   return pickVariant(name + "o", [
-    `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud — så kan I vurdere idéen helt konkret.`,
+    `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`,
     `Jeg kan også lave et gratis udkast med jeres egen stil og indhold, hvis I vil se hvordan det kunne tage form.`,
   ]);
 }

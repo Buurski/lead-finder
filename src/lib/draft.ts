@@ -203,10 +203,13 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
         : [])
     : [`→ ${demos[0].url}`, `→ ${demos[1].url}`];
 
+  const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
     `Hej ${name},`,
     ``,
-    `${opener} ${mix.disclosure}`,
+    opener,
+    ``,
+    mix.disclosure,
     ``,
     branchValueLine(lead.branch),
     ``,
@@ -214,6 +217,8 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ...demoLines,
     ``,
     tailorLine,
+    ``,
+    offerLine,
     ``,
     mix.closing,
     ``,

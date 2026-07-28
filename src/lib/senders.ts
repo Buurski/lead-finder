@@ -378,7 +378,7 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     `<span style="color:#999;font-size:9px;letter-spacing:.14em;">TLF</span> <a href="tel:${trim(phone).replace(/\s/g, "")}" style="color:${INK};text-decoration:none;">${trim(phone)}</a><br>`,
     `<a href="${siteUrl || "https://kinly.dk"}" style="color:${INK};text-decoration:none;">kinly.dk</a>`,
     `</div></td>`,
-    `<td valign="middle" style="padding-left:28px;"><img src="${KINLY_ASSET_BASE}/brand/kinly-k-naked-512.png" alt="kinly" width="160" height="160" style="display:block;border:0;" /></td>`,
+    `<td valign="middle" style="padding-left:28px;"><img src="${KINLY_LOGO_BASE}/brand/kinly-k-naked-512.png" alt="kinly" width="160" height="160" style="display:block;border:0;" /></td>`,
     `</tr></table></div>`,
     `<div style="background:${PAPER};padding:6px 16px;border-top:1px solid #e8e3d8;text-align:center;font:9.5px monospace;letter-spacing:.16em;color:${INK};">EST · 2026 · HERNING · DK · KODET I DANMARK</div>`,
     `</div>`,
@@ -395,6 +395,7 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
  *  IKKE på lead-systemets domæne — så billederne virker uafhængigt af dette
  *  repos deploys og senere kan flytte med til kinly.dk. Fotos:
  *  /img/team/lucas.jpg + /img/team/charlie.jpg (live, 15-26 KB). */
+const KINLY_LOGO_BASE = (process.env.KINLY_LOGO_URL || "https://lead-finder-three-beta.vercel.app").replace(/\/$/, "");
 const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
