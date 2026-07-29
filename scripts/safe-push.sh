@@ -23,14 +23,14 @@ git pull --rebase --autostash origin "$BRANCH"
 echo "→ git add -A (alt unstaged + untracked)"
 git add -A
 
-# Skip commit hvis intet at committe
+# Commit kun hvis der er lokale ændringer — push altid, også når committet
+# allerede blev lavet før scriptet blev kaldt.
 if git diff --cached --quiet; then
-  echo "→ intet at committe — alt allerede synk't"
-  exit 0
+  echo "→ intet at committe"
+else
+  echo "→ git commit -m \"$MSG\""
+  git commit -m "$MSG"
 fi
-
-echo "→ git commit -m \"$MSG\""
-git commit -m "$MSG"
 
 echo "→ git push origin $BRANCH"
 git push origin "$BRANCH"
