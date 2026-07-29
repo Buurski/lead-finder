@@ -63,6 +63,7 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
     assert.ok(sig.html.startsWith("<div"));
     assert.ok(sig.html.includes('href="mailto:lucas@kinly.dk"'));
     assert.ok(sig.html.includes('href="tel:+4523242482"'));
+    assert.ok(sig.html.includes('href="https://kinly.dk"'));
     assert.ok(sig.html.includes('color:#d4500f'));
     assert.equal(/<img\b/i.test(sig.html), false);
     assert.equal(sig.closing, "Mvh, Lucas Buur");
