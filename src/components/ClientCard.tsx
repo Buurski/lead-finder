@@ -7,9 +7,19 @@ import type { Client } from "@/lib/sheets";
 
 const WS_STYLE = {
   demo:          { label: "Demo klar", color: "#4338ca", bg: "#e0e7ff" },
-  "in progress": { label: "I gang",    color: "#b45309", bg: "#fef3c7" },
+  "in progress": { label: "I gang",    color: "#65756e", bg: "#e8eeeb" },
   live:          { label: "Live",      color: "#15803d", bg: "#dcfce7" },
 };
+
+function safeProjectLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    const parts = value.split(/[\\/]/).filter(Boolean);
+    return parts.at(-1) || "Projektmappe tilkoblet";
+  }
+}
 
 export default function ClientCard({ client }: { client: Client }) {
   const ws = WS_STYLE[client.websiteStatus] ?? WS_STYLE.demo;
@@ -119,7 +129,7 @@ export default function ClientCard({ client }: { client: Client }) {
         }}>
           <FolderOpen size={11} style={{ flexShrink: 0 }} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {client.projectFolder}
+            {safeProjectLabel(client.projectFolder)}
           </span>
         </div>
       )}

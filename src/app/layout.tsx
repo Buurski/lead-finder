@@ -15,8 +15,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Command Center · AgenticOS",
-  description: "AgenticOS — lead & client command center",
+  title: "Kinly Lead System",
+  description: "Kinly · internt lead- og kundeoverblik",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

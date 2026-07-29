@@ -22,10 +22,10 @@ export default async function ClientsPage() {
   const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
 
   return (
-    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <PageHeader
         icon="Briefcase"
-        title="Klienter"
+        title="Kunder & sites"
         subtitle={
           <>
             {clients.length} i CRM · <strong style={{ color: "var(--text)" }}>{payingCount} betalende</strong>

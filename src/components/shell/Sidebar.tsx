@@ -105,15 +105,10 @@ export default function Sidebar({
   return (
     <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
       <div className="cc-brand">
-        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden style={{ flexShrink: 0 }}>
-          <rect x="8" y="24" width="22" height="28" rx="7" fill="var(--accent-ink)" />
-          <rect x="35.75" y="25.75" width="18.5" height="24.5" rx="5.5" fill="none" stroke="var(--text)" strokeWidth="3.5" />
-          <circle cx="32" cy="12.5" r="5" fill="#C8A97E" />
-        </svg>
-        <span>
-          <span className="cc-brand-name">AgenticOS</span>
-          <span className="cc-brand-sub" style={{ display: "block" }}>Command Center</span>
-        </span>
+        {/* Canonical Kinly wordmark, neutralized for the internal app palette. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="cc-brand-logo" src="/brand/kinly-wordmark-neutral-dark.svg" alt="Kinly" draggable={false} />
+        <span className="cc-brand-sub">Lead System</span>
       </div>
 
       <nav className="cc-navgroup" aria-label="Navigation">
@@ -158,11 +153,11 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div style={{ marginTop: "auto", paddingTop: 16 }}>
-        <div className="cc-navgroup-label" style={{ paddingBottom: 2 }}>Status</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", color: "var(--text-dim)", fontSize: 12 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
-          read-only · ingen auto-send
+      <div className="cc-rail-status">
+        <div className="cc-navgroup-label">Status</div>
+        <div className="cc-rail-status-line">
+          <span className="cc-status-dot" />
+          <span>read-only · ingen auto-send</span>
         </div>
       </div>
     </aside>

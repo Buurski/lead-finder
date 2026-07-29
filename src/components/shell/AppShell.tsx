@@ -51,7 +51,7 @@ function crumbsFor(pathname: string): Crumb[] {
       if (!best || i.href.length > best.href.length) best = i;
     }
   }
-  if (!best) return [{ label: "Command Center" }];
+  if (!best) return [{ label: "Kinly Lead System" }];
   const crumbs: Crumb[] = [{ label: best.paletteLabel ?? best.label, href: best.href }];
   const rest = pathname.slice(best.href.length).split("/").filter(Boolean);
   for (const seg of rest) {

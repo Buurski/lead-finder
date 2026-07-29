@@ -6,7 +6,7 @@ import { readVaultNote } from "@/lib/vault";
 import { buildDeckSummary } from "@/lib/deck";
 import GoalsClient from "./GoalsClient";
 
-export const metadata = { title: "Goals · Command Center" };
+export const metadata = { title: "Mål · Kinly Lead System" };
 export const dynamic = "force-dynamic";
 
 interface Checkbox { done: boolean; text: string }
@@ -32,10 +32,10 @@ export default async function GoalsPage() {
   const goals = roadmap.ok ? parseCheckboxes(roadmap.body) : [];
 
   return (
-    <div className="cc-fade">
+    <div className="cc-fade kinly-page">
       <PageHeader
         icon="Target"
-        title="Goals"
+        title="Mål"
         subtitle={roadmap.ok ? `Fra vaulten (${roadmap.source}) · ${roadmap.frontmatter.horizon ?? "90 dage"}` : "Vaulten er ikke koblet på — viser skelet."}
       />
 

@@ -157,8 +157,8 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
   }
 
   return (
-    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+    <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      <header className="kinly-page-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <h1 className="cc-h1">{hello}.</h1>
           <p className="cc-sub">{summaryLine(summary)}</p>
@@ -166,7 +166,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Link
             href={act.href}
-            className="cc-card"
+            className="cc-card kinly-next-action"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 16px", textDecoration: "none", color: "var(--accent-ink)", fontWeight: 600, fontSize: 13.5, background: "var(--accent-soft)" }}
           >
             {act.label}
@@ -175,7 +175,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
           <button
             onClick={toggleDetails}
             aria-expanded={details}
-            className="cc-card"
+            className="cc-card kinly-quiet-action"
             style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 13px", cursor: "pointer", background: "transparent", color: "var(--text-dim)", fontWeight: 600, fontSize: 12.5, font: "inherit" }}
           >
             Detaljer
@@ -249,7 +249,7 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
   }, [n, router, sel, s.needsYou]);
 
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div className="kinly-today" style={{ display: "grid", gap: 18 }}>
       <DailyBriefCard brief={dailyBrief} />
       <OmverdenCard />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(0, 1.2fr)", gap: 18, alignItems: "stretch" }} className="cc-today-cols">
@@ -279,7 +279,7 @@ function HeroNumber({ s }: { s: DeckSummary }) {
       ? { value: s.queue.pending, label: "udkast venter på dig", href: "/approve", tone: "var(--accent)" }
       : { value: s.numbers.contactable, label: "klar at kontakte i pipelinen", href: "/leadgen", tone: "var(--text)" };
   return (
-    <Link href={lead.href} className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
+    <Link href={lead.href} className="cc-card cc-card-pad kinly-focus-card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
       <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{lead.value}</div>
       <div className="cc-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{lead.label} →</div>
     </Link>
@@ -295,7 +295,7 @@ function NumbersStrip({ s }: { s: DeckSummary }) {
     { label: "vundet i ugen", value: n.wonThisWeek },
   ];
   return (
-    <div className="cc-card cc-card-pad cc-numbers">
+    <div className="cc-card cc-card-pad cc-numbers kinly-stat-strip">
       {items.map((it) => (
         <div key={it.label} className="cc-numbers-cell">
           <div className="cc-stat-n">{it.value}</div>
