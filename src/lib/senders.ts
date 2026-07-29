@@ -342,24 +342,36 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   textLines.push(siteUrl ? `kinly.dk · ${siteUrl.replace(/^https?:\/\//, "")}` : "kinly.dk");
   textLines.push("EST · 2026 · HERNING · DK · KODET I DANMARK");
 
-  // HTML-only: no signature image (Gmail's image-heavy mails hit spam more often).
-  // Links stay real and the Kinly mark keeps its orange dot.
+  // Two small brand assets only — never a flattened signature image. Text and
+  // contact details stay real HTML so Gmail can index and users can click them.
   const EMBER = "#d4500f";
   const INK = "#191713";
+  const PAPER = "#f6f3ee";
   const senderEmail = senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL;
   const phoneHref = trim(phone).replace(/\s/g, "");
+  const portrait = `${KINLY_ASSET_BASE}/img/team/${senderId}.jpg`;
+  const mark = `${KINLY_ASSET_BASE}/brand/kinly-mark-tight-512.png`;
   const htmlTable = [
-    `<div style="font-family:Arial,Helvetica,sans-serif;color:${INK};max-width:480px;border-top:3px solid ${EMBER};padding-top:12px;">`,
-    `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
-    `<td valign="top" style="padding-right:18px;border-right:1px solid #e9e6e2;">`,
-    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:30px;font-weight:bold;letter-spacing:-2px;">k<span style="color:${EMBER};font-family:Arial,Helvetica,sans-serif;font-size:22px;vertical-align:middle;">•</span></div>`,
-    `</td><td valign="top" style="padding-left:18px;">`,
-    `<div style="font-size:16px;font-weight:bold;line-height:20px;">${trim(name)}</div>`,
-    `<div style="font-size:12px;color:#6d675c;padding:1px 0 7px;">${title}</div>`,
-    `<div style="font-size:13px;line-height:20px;"><a href="mailto:${senderEmail}" style="color:${INK};text-decoration:none;">${senderEmail}</a><br><a href="tel:${phoneHref}" style="color:${INK};text-decoration:none;">${trim(phone)}</a><br><a href="${siteUrl || "https://kinly.dk"}" style="color:${INK};text-decoration:none;">kinly.dk</a></div>`,
-    `</td></tr></table>`,
-    `<div style="padding-top:10px;font-size:9px;letter-spacing:1.2px;color:#6d675c;">EST · 2026 · HERNING · DK · KODET I DANMARK</div>`,
-    `</div>`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:${INK};border:1px solid ${INK};border-top:6px solid ${EMBER};background:#ffffff;">`,
+    `<tr>`,
+    `<td width="126" valign="middle" style="padding:18px 16px 18px 18px;border-right:2px solid #e9e6e2;">`,
+    `<img src="${portrait}" alt="${trim(name)}" width="104" height="104" style="display:block;width:104px;height:104px;border-radius:52px;border:4px solid ${EMBER};" />`,
+    `</td>`,
+    `<td valign="middle" style="padding:18px 14px 18px 20px;">`,
+    `<div style="font-size:25px;line-height:30px;font-weight:700;letter-spacing:-0.4px;">${trim(name)}</div>`,
+    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:21px;font-style:italic;color:#6d675c;padding-top:2px;">${title}</div>`,
+    `<div style="width:44px;height:3px;background:${EMBER};font-size:1px;line-height:1px;margin:12px 0 11px;">&nbsp;</div>`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">`,
+    `<tr><td style="padding:0 16px 5px 0;font-size:10px;letter-spacing:2px;color:#999;">MAIL</td><td style="padding:0 0 5px;font-family:monospace;font-size:15px;"><a href="mailto:${senderEmail}" style="color:${INK};text-decoration:none;">${senderEmail}</a></td></tr>`,
+    `<tr><td style="padding:0 16px 0 0;font-size:10px;letter-spacing:2px;color:#999;">TLF</td><td style="padding:0;font-family:monospace;font-size:15px;"><a href="tel:${phoneHref}" style="color:${INK};text-decoration:none;">${trim(phone)}</a></td></tr>`,
+    `</table>`,
+    `</td>`,
+    `<td width="88" valign="middle" align="center" style="padding:14px 18px 14px 4px;">`,
+    `<a href="${siteUrl || "https://kinly.dk"}" style="text-decoration:none;"><img src="${mark}" alt="Kinly" width="66" height="97" style="display:block;width:66px;height:auto;border:0;" /></a>`,
+    `</td>`,
+    `</tr>`,
+    `<tr><td colspan="3" style="padding:8px 12px;background:${PAPER};border-top:1px solid #e9e6e2;text-align:center;font-family:monospace;font-size:9px;letter-spacing:1.5px;color:${INK};">EST&nbsp; · &nbsp;2026&nbsp; · &nbsp;HERNING&nbsp; · &nbsp;DK&nbsp; · &nbsp;KODET I DANMARK</td></tr>`,
+    `</table>`,
   ].join("\n");
 
   return {
@@ -368,6 +380,10 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     closing: `Mvh, ${trim(name)}`,
   };
 }
+
+// Hosted outside lead-system so the two small signature assets keep working
+// across lead-system deployments.
+const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
 // 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send

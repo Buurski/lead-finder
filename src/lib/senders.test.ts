@@ -60,12 +60,14 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
   withEnv(setLucasEnv, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
     assert.equal(sig.text, "Lucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
-    assert.ok(sig.html.startsWith("<div"));
+    assert.ok(sig.html.startsWith("<table"));
     assert.ok(sig.html.includes('href="mailto:lucas@kinly.dk"'));
     assert.ok(sig.html.includes('href="tel:+4523242482"'));
     assert.ok(sig.html.includes('href="https://kinly.dk"'));
-    assert.ok(sig.html.includes('color:#d4500f'));
-    assert.equal(/<img\b/i.test(sig.html), false);
+    assert.ok(sig.html.includes('https://kinly-site.vercel.app/img/team/lucas.jpg'));
+    assert.ok(sig.html.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'));
+    assert.ok(sig.html.includes('border-top:6px solid #d4500f'));
+    assert.equal((sig.html.match(/<img\b/gi) || []).length, 2);
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
@@ -89,7 +91,8 @@ test("formatSignature: Charlie defaults — officiel Kinly-signatur", () => {
     assert.ok(sig.html.includes("Charlie Nielsen"));
     assert.ok(sig.html.includes('href="mailto:charlie@kinly.dk"'));
     assert.ok(sig.html.includes('href="tel:+4542253262"'));
-    assert.equal(/<img\b/i.test(sig.html), false);
+    assert.ok(sig.html.includes('https://kinly-site.vercel.app/img/team/charlie.jpg'));
+    assert.ok(sig.html.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'));
   });
 });
 
@@ -394,7 +397,9 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   const out = applySignatureHtml("Hej <Vida>,\n\nSe https://demo.dk\n\nMvh, Lucas Buur", "lucas");
   assert.equal(out.includes("&lt;Vida&gt;"), true);
   assert.equal(out.includes('<a href="https://demo.dk"'), true);
-  assert.equal(/<img\b/i.test(out), false);
+  assert.equal((out.match(/<img\b/gi) || []).length, 2);
+  assert.equal(out.includes('https://kinly-site.vercel.app/img/team/lucas.jpg'), true);
+  assert.equal(out.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'), true);
   assert.equal(out.includes('href="mailto:lucas@kinly.dk"'), true);
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
