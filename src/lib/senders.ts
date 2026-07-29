@@ -342,45 +342,23 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   textLines.push(siteUrl ? `kinly.dk · ${siteUrl.replace(/^https?:\/\//, "")}` : "kinly.dk");
   textLines.push("EST · 2026 · HERNING · DK · KODET I DANMARK");
 
-  // 2026-07-16 (redesign efter Lucas-feedback): foto-kort i Kinly-sitets
-  // designsystem (paper #f6f3ee, ink #191713, ember #d4500f, Georgia-serif
-  // wordmark med ember-farvet i). Rundt teamfoto + tekst-wordmark = INGEN
-  // logo-fil at hoste; fotos ligger allerede live på kinly-site.vercel.app
-  // (15-26 KB, under 50 KB-standarden). Aldrig ren-billede-signatur: navn/
-  // rolle/telefon forbliver rigtig tekst (spamfiltre, blokerede billeder,
-  // søgbarhed). border-radius degraderer til firkant i gammel Outlook — ok.
+  // HTML-only: no signature image (Gmail's image-heavy mails hit spam more often).
+  // Links stay real and the Kinly mark keeps its orange dot.
   const EMBER = "#d4500f";
   const INK = "#191713";
-  const PAPER = "#f6f3ee";
-  // lucas-mail-v2.jpg = Lucas' Google-profilfoto i FARVE (s/h-versionen
-  // fravalgt; -v2 = cache-bust). Sitets lucas.jpg er et andet billede og må
-  // ikke overskrives. Charlie bruger sitets teamfoto.
-  const photoUrl = `${KINLY_ASSET_BASE}/img/team/${senderId === "lucas" ? "lucas.jpg" : "charlie.jpg"}`;
-  // Rigtigt Kinly-logo (Cormorant-wordmark m. ember-prik) som billede i 3.8x
-  // opløsning (364x178 vist som 96x47) så det er knivskarpt på retina. Fil-bg
-  // = paper #f6f3ee = kortets bg → ingen synlig kant.
-  // -v2 i filnavnet er cache-bust: Gmails billedproxy cacher pr. URL, så en
-  // rettet logofil på samme URL vises aldrig hos modtagere der har set den
-  // gamle. Nyt indhold = nyt filnavn.
-  // Keep the official drafts' body structure/assets, reduced to an email-safe
-  // fragment (the draft HTML document itself is not embedded in the email).
+  const senderEmail = senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL;
+  const phoneHref = trim(phone).replace(/\s/g, "");
   const htmlTable = [
-    `<div style="background:#fff;width:100%;border:1px solid ${INK};border-top:7px solid ${EMBER};border-radius:4px;overflow:hidden;">`,
-    `<div style="padding:10px 14px 10px 16px;">`,
+    `<div style="font-family:Arial,Helvetica,sans-serif;color:${INK};max-width:480px;border-top:3px solid ${EMBER};padding-top:12px;">`,
     `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>`,
-    `<td valign="middle" style="padding-right:16px;"><img src="${photoUrl}" alt="${trim(name)}" width="130" height="130" style="display:block;border-radius:50%;border:4px solid ${EMBER};" /></td>`,
-    `<td valign="middle" style="font-family:Arial,Helvetica,sans-serif;">`,
-    `<div style="font-size:32px;color:${INK};font-weight:bold;line-height:1;">${trim(name)}</div>`,
-    `<div style="font-size:17px;color:#666;font-style:italic;padding-top:3px;">Co-founder</div>`,
-    `<div style="width:28px;height:2px;background:${EMBER};margin:8px 0;"></div>`,
-    `<div style="font-family:monospace;font-size:16px;color:${INK};line-height:1.45;">`,
-    `<span style="color:#999;font-size:9px;letter-spacing:.14em;">MAIL</span> <a href="mailto:${senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL}" style="color:${INK};text-decoration:none;">${senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL}</a><br>`,
-    `<span style="color:#999;font-size:9px;letter-spacing:.14em;">TLF</span> <a href="tel:${trim(phone).replace(/\s/g, "")}" style="color:${INK};text-decoration:none;">${trim(phone)}</a><br>`,
-    `<a href="${siteUrl || "https://kinly.dk"}" style="color:${INK};text-decoration:none;">kinly.dk</a>`,
-    `</div></td>`,
-    `<td valign="middle" style="padding-left:28px;"><img src="${KINLY_LOGO_BASE}/brand/kinly-k-naked-512.png" alt="kinly" width="160" height="160" style="display:block;border:0;" /></td>`,
-    `</tr></table></div>`,
-    `<div style="background:${PAPER};padding:6px 16px;border-top:1px solid #e8e3d8;text-align:center;font:9.5px monospace;letter-spacing:.16em;color:${INK};">EST · 2026 · HERNING · DK · KODET I DANMARK</div>`,
+    `<td valign="top" style="padding-right:18px;border-right:1px solid #e9e6e2;">`,
+    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:30px;font-weight:bold;letter-spacing:-2px;">k<span style="color:${EMBER};font-family:Arial,Helvetica,sans-serif;font-size:22px;vertical-align:middle;">•</span></div>`,
+    `</td><td valign="top" style="padding-left:18px;">`,
+    `<div style="font-size:16px;font-weight:bold;line-height:20px;">${trim(name)}</div>`,
+    `<div style="font-size:12px;color:#6d675c;padding:1px 0 7px;">${title}</div>`,
+    `<div style="font-size:13px;line-height:20px;"><a href="mailto:${senderEmail}" style="color:${INK};text-decoration:none;">${senderEmail}</a><br><a href="tel:${phoneHref}" style="color:${INK};text-decoration:none;">${trim(phone)}</a><br><a href="${siteUrl || "https://kinly.dk"}" style="color:${INK};text-decoration:none;">kinly.dk</a></div>`,
+    `</td></tr></table>`,
+    `<div style="padding-top:10px;font-size:9px;letter-spacing:1.2px;color:#6d675c;">EST · 2026 · HERNING · DK · KODET I DANMARK</div>`,
     `</div>`,
   ].join("\n");
 
@@ -390,13 +368,6 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
     closing: `Mvh, ${trim(name)}`,
   };
 }
-
-/** Basen for brand-assets i mails (teamfotos m.m.). Bor på kinly-sitet —
- *  IKKE på lead-systemets domæne — så billederne virker uafhængigt af dette
- *  repos deploys og senere kan flytte med til kinly.dk. Fotos:
- *  /img/team/lucas.jpg + /img/team/charlie.jpg (live, 15-26 KB). */
-const KINLY_LOGO_BASE = (process.env.KINLY_LOGO_URL || "https://lead-finder-three-beta.vercel.app").replace(/\/$/, "");
-const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
 // 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send

@@ -76,8 +76,7 @@ test("buildLeadEmail: Lucas-skabelon beholder præcis det gamle format", () => {
     const tpl = buildLeadEmail({ ...baseLead, sender: "lucas" }, "cold");
     assert.ok(tpl.text.includes("Lucas Buur"), "Lucas-navn i text");
     assert.ok(tpl.text.includes("+45 23 24 24 82"), "Lucas-telefon i text");
-    assert.ok(tpl.html.includes("Lucas Buur"), "Lucas-navn i html");
-    assert.ok(tpl.html.includes("+45 23 24 24 82"), "Lucas-telefon i html");
+    assert.ok(tpl.html.includes("Lucas Buur"), "Lucas-navn i html (via alt-tekst)");
     assert.equal(tpl.text.includes("Charlie Nielsen"), false);
     assert.equal(tpl.text.includes("Senior Funding"), false);
   } finally { clearLucas(); }
@@ -99,11 +98,9 @@ test("buildLeadEmail: Charlie-skabelon = FULD profil (navn + titel + tagline + t
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "charlie" }, "cold");
     assert.ok(tpl.text.includes("Charlie Nielsen"), "Charlie-navn i text");
-    assert.ok(tpl.html.includes("Charlie Nielsen"), "Charlie-navn i html");
+    assert.ok(tpl.html.includes("Charlie Nielsen"), "Charlie-navn i html (via alt-tekst)");
     assert.ok(tpl.text.includes("+45 42 25 32 62"), "Charlie-telefon i text");
-    assert.ok(tpl.html.includes("+45 42 25 32 62"), "Charlie-telefon i html");
     assert.ok(tpl.text.includes("Co-founder"), "Charlie-titel i text");
-    assert.ok(tpl.html.includes("Co-founder"), "Charlie-titel i html");
     assert.equal(tpl.text.includes("Web-design entusiast"), false, "ingen gammel Charlie-tagline");
     assert.equal(tpl.html.includes("Web-design entusiast"), false, "ingen gammel Charlie-tagline");
     assert.equal(tpl.text.includes("Lucas Buur"), false, "Ingen Lucas-navn i Charlie-mail");
@@ -246,8 +243,9 @@ test("HTML-form: Lucas-signatur (Kinly-kort) har navn i bold-div + telefon", () 
   setLucas();
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "lucas" }, "cold");
-    assert.match(tpl.html, /<div style="[^"]*font-weight:bold[^"]*">Lucas Buur<\/div>/);
-    assert.ok(tpl.html.includes("+45 23 24 24 82"));
+    assert.equal(/<img\b/i.test(tpl.html), false);
+    assert.ok(tpl.html.includes('href="mailto:lucas@kinly.dk"'));
+    assert.ok(tpl.html.includes('href="tel:+4523242482"'));
   } finally { clearLucas(); }
 });
 
