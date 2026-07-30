@@ -52,68 +52,6 @@ function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void
   );
 }
 
-interface Vital { task: string; label: string; ageMin: number | null; detail: string; status: "fresh" | "stale" | "missing" }
-
-// Morgen-vitals — system-health of the 3 daily tasks (lead-gen/messenger/inbox),
-// kept visually SEPARATE from Lucas's own tasks. A slim one-line bar: when all 3 ran
-// recently it collapses to "✓ alle morgenkørsler friske"; when something's stale/red
-// it names the culprit and can expand for per-task detail. Derived from each output's
-// artifact via /api/ops/status. Silent if the endpoint can't be reached.
-function MorningVitals() {
-  const [vitals, setVitals] = useState<Vital[] | null>(null);
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    fetch("/api/ops/status")
-      .then((r) => r.json())
-      .then((d) => setVitals(Array.isArray(d.vitals) ? d.vitals : []))
-      .catch(() => setVitals([]));
-  }, []);
-  if (!vitals || vitals.length === 0) return null;
-
-  const dot = (s: string) => (s === "fresh" ? "var(--accent)" : s === "stale" ? "var(--amber)" : "var(--danger, #dc2626)");
-  const age = (m: number | null) => (m == null ? "—" : m < 60 ? `${m}m` : `${Math.round(m / 60)}t`);
-  const bad = vitals.filter((v) => v.status !== "fresh");
-  const allFresh = bad.length === 0;
-  const overall = vitals.some((v) => v.status === "missing") ? "missing" : allFresh ? "fresh" : "stale";
-  const summary = allFresh ? "alle morgenkørsler friske" : `${bad.map((v) => v.label).join(" + ")} ikke kørt i dag`;
-
-  return (
-    <div className="cc-card" style={{ padding: "9px 14px" }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, font: "inherit", textAlign: "left" }}
-      >
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot(overall), flexShrink: 0 }} />
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: allFresh ? "var(--text-dim)" : "var(--text)" }}>{summary}</span>
-        <Icon name={open ? "ChevronUp" : "ChevronDown"} style={{ width: 14, height: 14, marginLeft: "auto", color: "var(--text-dim)" }} />
-      </button>
-      {open && (
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginTop: 9, paddingTop: 9, borderTop: "1px solid var(--border)" }}>
-          {vitals.map((v) => (
-            <div key={v.task} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot(v.status), flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, fontWeight: 600 }}>{v.label}</span>
-              <span className="cc-dim" style={{ fontSize: 12 }}>
-                {v.status === "missing" ? "ingen kørsel" : `${age(v.ageMin)} siden · ${v.detail}`}
-              </span>
-              {v.status !== "fresh" && (
-                <Link
-                  href={v.task === "leadgen" ? "/leadgen" : v.task === "messenger" ? "/messenger" : "/replies"}
-                  className="cc-link"
-                  style={{ fontSize: 12, fontWeight: 600 }}
-                >
-                  Åbn →
-                </Link>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function greeting(d: Date): string {
   const h = d.getHours();
   if (h < 5) return "Sent oppe";
@@ -167,7 +105,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
           <Link
             href={act.href}
             className="cc-card kinly-next-action"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 16px", textDecoration: "none", color: "var(--accent-ink)", fontWeight: 600, fontSize: 13.5, background: "var(--accent-soft)" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 17px", textDecoration: "none", color: "#fff", fontWeight: 700, fontSize: 13.5 }}
           >
             {act.label}
             <Icon name="ArrowRight" style={{ width: 14, height: 14 }} />
@@ -202,8 +140,6 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
           <span style={{ fontSize: 13.5 }}>{spendAlert} — over dagsgrænsen. Åbn Detaljer → Agents for tallene.</span>
         </div>
       )}
-
-      <MorningVitals />
 
       {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
@@ -265,7 +201,7 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
           <MaalWidget />
         </div>
       </div>
-      <PulseCard s={s} />
+      <CompanySnapshot s={s} />
     </div>
   );
 }
@@ -518,30 +454,31 @@ function Mini({ label, value }: { label: string; value: number }) {
   );
 }
 
-function PulseCard({ s }: { s: DeckSummary }) {
+function CompanySnapshot({ s }: { s: DeckSummary }) {
+  const rev = s.revenue;
+  const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr`;
   return (
-    <section className="cc-card" aria-label="Pulse Check">
-      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: s.pulse.length ? "1px solid var(--border)" : "none" }}>
-        <Icon name="HeartPulse" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Pulse Check · kunder</h2>
-        <span className="cc-chip" style={{ marginLeft: "auto" }}>{s.pulse.length}</span>
+    <section className="cc-card cc-company-snapshot" aria-label="Virksomhedsoverblik">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
+        <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Virksomhedsoverblik</h2>
+        <Link href="/clients" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>Kunder →</Link>
       </div>
-      {s.pulse.length === 0 ? (
-        <div className="cc-empty">
-          <Icon name="HeartPulse" />
-          <div>Ingen kunder kræver opfølgning.</div>
+      <div className="cc-company-grid">
+        <div><div className="cc-stat-n">{rev.clientCount}</div><div className="cc-stat-l">kunder i CRM</div></div>
+        <div><div className="cc-stat-n">{rev.payingClientCount}</div><div className="cc-stat-l">betalende kunder</div></div>
+        <div><div className="cc-stat-n">{kr(rev.monthlyDKK)}</div><div className="cc-stat-l">fast pr. måned</div></div>
+        <div className="cc-company-note">
+          <div style={{ fontWeight: 600, fontSize: 13 }}>Næste blik</div>
+          <div className="cc-dim" style={{ fontSize: 12 }}>Google Analytics er ikke koblet på endnu.</div>
+          <Link href="/indsigter" className="cc-link" style={{ fontSize: 12, fontWeight: 600 }}>Åbn indsigter →</Link>
         </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 0 }}>
-          {s.pulse.map((c, i) => (
-            <div key={c.id} style={{ padding: "13px 22px", borderTop: i >= 0 ? "1px solid var(--border)" : "none", borderRight: "1px solid var(--border)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{c.name}</span>
-                <span className="cc-chip" style={{ height: 18, fontSize: 10 }}>{c.stage}</span>
-              </div>
-              <div className="cc-dim" style={{ fontSize: 12, marginTop: 3 }}>{c.reason}</div>
-            </div>
-          ))}
+      </div>
+      {s.pulse.length > 0 && (
+        <div className="cc-company-attention">
+          <Icon name="HeartPulse" style={{ width: 15, height: 15 }} />
+          <span><strong>{s.pulse.length}</strong> kundesag{ s.pulse.length === 1 ? "" : "er" } kræver opmærksomhed.</span>
+          <Link href="/clients" className="cc-link" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Se kunder →</Link>
         </div>
       )}
     </section>

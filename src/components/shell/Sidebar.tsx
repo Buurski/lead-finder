@@ -56,10 +56,14 @@ export default function Sidebar({
   open,
   counts,
   onNavigate,
+  collapsed = false,
+  onToggleSize,
 }: {
   open: boolean;
   counts: Counts;
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleSize?: () => void;
 }) {
   const pathname = usePathname();
   // Accordion-model (Bundle G, council-hærdet): expanded er AFLEDT, ikke
@@ -103,7 +107,7 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="cc-sidebar" data-open={open} aria-label="Hovednavigation">
+    <aside className="cc-sidebar" data-open={open} data-collapsed={collapsed} aria-label="Hovednavigation">
       <div className="cc-brand">
         {/* Canonical Kinly wordmark, neutralized for the internal app palette. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -159,6 +163,18 @@ export default function Sidebar({
           <span className="cc-status-dot" />
           <span>read-only · ingen auto-send</span>
         </div>
+        {onToggleSize && (
+          <button
+            type="button"
+            className="cc-rail-size cc-focus"
+            onClick={onToggleSize}
+            aria-label={collapsed ? "Gør navigation større" : "Gør navigation mindre"}
+            title={collapsed ? "Gør navigation større" : "Gør navigation mindre"}
+          >
+            <Icon name={collapsed ? "Columns3" : "Columns2"} />
+            <span>{collapsed ? "Udvid" : "Skjul labels"}</span>
+          </button>
+        )}
       </div>
     </aside>
   );

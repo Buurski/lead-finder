@@ -67,6 +67,7 @@ function crumbsFor(pathname: string): Crumb[] {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const [counts, setCounts] = useState<Counts>({});
   const [pause, setPause] = useState<PauseInfo | null>(null);
 
@@ -92,8 +93,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const crumbs = crumbsFor(pathname);
 
   return (
-    <div className="cc-shell">
-      <Sidebar open={navOpen} counts={counts} onNavigate={() => setNavOpen(false)} />
+    <div className="cc-shell" data-rail-collapsed={railCollapsed}>
+      <Sidebar open={navOpen} counts={counts} collapsed={railCollapsed} onToggleSize={() => setRailCollapsed((value) => !value)} onNavigate={() => setNavOpen(false)} />
 
       <div className="cc-main">
         <header className="cc-topbar">
@@ -122,6 +123,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
             <Bell counts={counts} />
+            <button
+              className="cc-cmdk cc-rail-toggle"
+              onClick={() => setRailCollapsed((value) => !value)}
+              aria-label={railCollapsed ? "Udvid navigation" : "Skjul navigationstekst"}
+              aria-pressed={railCollapsed}
+              title={railCollapsed ? "Udvid navigation" : "Skjul navigationstekst"}
+            >
+              <Icon name={railCollapsed ? "Columns3" : "Columns2"} style={{ width: 14, height: 14 }} />
+            </button>
           </div>
         </header>
 
