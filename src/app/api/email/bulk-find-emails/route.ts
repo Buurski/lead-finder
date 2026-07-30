@@ -191,8 +191,8 @@ export async function GET() {
     const leads = await getLeads();
     const count = leads.filter(needsEmailSearch).length;
     return NextResponse.json({ count });
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ available: false, count: null });
   }
 }
 

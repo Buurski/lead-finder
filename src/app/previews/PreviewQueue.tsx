@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/shell/PageHeader";
 
 type Status = "ny" | "researcher" | "bygger" | "preview klar" | "godkendt" | "kladde klar" | "afvist" | "sendt/lukket";
 interface PreviewRequest {
@@ -48,6 +49,10 @@ export default function PreviewQueue() {
     return true;
   }), [filter, requests]);
 
+  const newCount = requests.filter((item) => item.status === "ny").length;
+  const readyCount = requests.filter((item) => ["preview klar", "godkendt", "kladde klar"].includes(item.status)).length;
+  const closedCount = requests.filter((item) => ["afvist", "sendt/lukket"].includes(item.status)).length;
+
   async function patch(item: PreviewRequest, body: Partial<PreviewRequest>) {
     const res = await fetch("/api/previews", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -63,20 +68,28 @@ export default function PreviewQueue() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div><h1 className="cc-h1">Kinly Preview-kø</h1><p className="cc-dim">Alle demoer, drafts og beslutninger samlet ét sted.</p></div>
-        <button className="cc-btn" onClick={() => void load()}>Opdatér</button>
+    <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <PageHeader
+        icon="LayoutGrid"
+        title="Gratis udkast"
+        subtitle="Spørgeskemaer fra kinly.dk, demo-links og mailkladder samlet ét sted. Intet sendes automatisk."
+        action={<button className="cc-btn" onClick={() => void load()}>Opdatér</button>}
+      />
+      <div className="cc-numbers kinly-stat-strip" aria-label="Gratis udkast overblik">
+        <div className="cc-numbers-cell"><div className="cc-stat-n">{newCount}</div><div className="cc-stat-l">nye svar</div></div>
+        <div className="cc-numbers-cell"><div className="cc-stat-n">{readyCount}</div><div className="cc-stat-l">klar til dig</div></div>
+        <div className="cc-numbers-cell"><div className="cc-stat-n">{closedCount}</div><div className="cc-stat-l">afsluttet</div></div>
+        <div className="cc-numbers-cell"><div className="cc-stat-n">{requests.length}</div><div className="cc-stat-l">i alt</div></div>
       </div>
       <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <strong>{requests.length} demoer i alt</strong>
+        <strong>{requests.length} udkast i alt</strong>
         <span className="cc-dim">·</span>
         <button className={`cc-btn ${filter === "alle" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("alle")}>Alle</button>
         <button className={`cc-btn ${filter === "klar" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("klar")}>Klar til dig</button>
         <button className={`cc-btn ${filter === "sendt" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("sendt")}>Lukkede / afviste</button>
       </div>
       {error && <div className="cc-card cc-card-pad" role="alert">Kunne ikke gemme: {error}</div>}
-      {shown.length === 0 && !error && <div className="cc-card cc-card-pad">Ingen previews i denne visning.</div>}
+      {shown.length === 0 && !error && <div className="cc-card cc-card-pad">Ingen udkast i denne visning.</div>}
       {shown.map((item) => (
         <PreviewCard key={item.id} item={item} onEdit={() => setEditing(item)} onDecide={decide} onStatus={(status) => void decide(item, status)} />
       ))}
@@ -93,7 +106,8 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 19 }}>{item.company}</h2>
-            <div className="cc-dim" style={{ marginTop: 5 }}>{item.contactName ? `${item.contactName} · ` : ""}{item.channel} · {item.email}{item.branch ? ` · ${item.branch}` : ""}</div>
+            <div className="cc-dim" style={{ marginTop: 5 }}>{item.contactName ? `${item.contactName} · ` : ""}{item.channel === "formular" ? "spørgeskema" : "mail"} · {item.email}{item.branch ? ` · ${item.branch}` : ""}</div>
+            <div className="cc-dim" style={{ marginTop: 3, fontSize: 11.5 }}>{new Date(item.createdAt).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })}</div>
           </div>
           <span className="cc-pill">{item.status}</span>
         </div>
@@ -104,9 +118,9 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
           <Field label="Mailkladde" value={item.mailDraft ? "Klar — kan redigeres før send" : "—"} />
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {item.status === "preview klar" && <button className="cc-btn cc-btn-accent" onClick={() => onDecide(item, "godkendt")}>Accepter</button>}
+          {item.status === "preview klar" && <button className="cc-btn cc-btn-accent" onClick={() => onDecide(item, "godkendt")}>Godkend udkast</button>}
           {ready && <button className="cc-btn" onClick={onEdit}>Se / redigér mail</button>}
-          {item.status !== "afvist" && item.status !== "sendt/lukket" && <button className="cc-btn" onClick={() => onDecide(item, "afvist")}>Afvis</button>}
+          {item.status !== "afvist" && item.status !== "sendt/lukket" && <button className="cc-btn" onClick={() => onDecide(item, "afvist")}>Afvis udkast</button>}
           <select aria-label={`Status for ${item.company}`} value={item.status} onChange={(e) => onStatus(e.target.value as Status)}>
             {statuses.map((status) => <option key={status}>{status}</option>)}
           </select>
@@ -145,7 +159,7 @@ function EditPanel({ item, onClose, onSaved }: { item: PreviewRequest; onClose: 
       <label><span className="cc-kicker">Research og hook</span><textarea value={research} onChange={(e) => setResearch(e.target.value)} rows={5} style={area} /></label>
       <label><span className="cc-kicker">Mail til {item.email} · fra Lucas</span><textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={14} style={area} /></label>
       {error && <div role="alert">{error}</div>}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className="cc-btn" disabled={saving} onClick={() => void save()}>Gem ændringer</button><button className="cc-btn cc-btn-accent" disabled={saving} onClick={() => void save("godkendt")}>Gem og accepter</button></div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className="cc-btn" disabled={saving} onClick={() => void save()}>Gem ændringer</button><button className="cc-btn cc-btn-accent" disabled={saving} onClick={() => void save("godkendt")}>Gem og godkend udkast</button></div>
     </section>
   </div>;
 }

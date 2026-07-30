@@ -34,7 +34,7 @@ export const NAV_TREE: NavNode[] = [
     children: [
       { href: "/approve", label: "Godkendelse", paletteLabel: "Arbejde · Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
       { href: "/leads", label: "Pipeline", paletteLabel: "Arbejde · Pipeline", icon: "Users", hint: "Lead-pipeline" },
-      { href: "/leadgen", label: "Gratis udkast", paletteLabel: "Arbejde · Gratis udkast", icon: "Radar", hint: "Find leads og lav gratis udkast" },
+      { href: "/previews", label: "Gratis udkast", paletteLabel: "Arbejde · Gratis udkast", icon: "LayoutGrid", hint: "Spørgeskemaer, demoer og mailkladder" },
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig", badge: "needs" },
     ],
   },

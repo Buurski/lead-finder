@@ -24,9 +24,9 @@ export default function BulkEmailPanel() {
         fetch("/api/email/bulk-send").then((r) => r.json()),
         fetch("/api/email/bulk-find-emails").then((r) => r.json()),
       ]);
-      setBulkCount(b.eligible ?? 0);
-      setFindEmailCount(e.count ?? 0);
-      setCountsError(false);
+      setBulkCount(b.available === false ? null : (b.eligible ?? 0));
+      setFindEmailCount(e.available === false ? null : (e.count ?? 0));
+      setCountsError(b.available === false || e.available === false);
     } catch {
       setCountsError(true);
     }

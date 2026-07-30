@@ -26,10 +26,10 @@ export interface DailyBrief {
 type Tab = "today" | "pipeline" | "goals" | "agents";
 
 const TABS: { id: Tab; label: string; short: string }[] = [
-  { id: "today", label: "Today", short: "I dag" },
+  { id: "today", label: "I dag", short: "I dag" },
   { id: "pipeline", label: "Pipeline", short: "Pipeline" },
-  { id: "goals", label: "Goals & Revenue", short: "Mål" },
-  { id: "agents", label: "Agents", short: "Agenter" },
+  { id: "goals", label: "Mål & indtjening", short: "Mål" },
+  { id: "agents", label: "Agenter", short: "Agenter" },
 ];
 
 function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void; secondary?: boolean }) {
@@ -69,7 +69,8 @@ function nextAction(s: DeckSummary): { label: string; href: string } {
     return { label: `Besvar ${s.numbers.repliesPending} svar`, href: "/replies" };
   if (s.queue.pending > 0)
     return { label: `Godkend ${s.queue.pending} udkast`, href: "/approve" };
-  return { label: "Find nye leads", href: "/leadgen" };
+  if (s.numbers.contactable > 0) return { label: "Find nye leads", href: "/leadgen" };
+  return { label: "Åbn gratis udkast", href: "/previews" };
 }
 
 export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null }) {

@@ -166,8 +166,17 @@ export async function proxy(req: NextRequest): Promise<Response> {
   const USER = process.env.VERCEL_BASIC_AUTH_USER;
   const PASS = process.env.VERCEL_BASIC_AUTH_PASS;
   const SECRET = process.env.AUTH_SESSION_SECRET;
+  const previewQueueSecret = process.env.PREVIEW_QUEUE_SECRET;
 
-  // Auth only enforced when all three are configured.
+  // The public Kinly questionnaire creates queue records server-to-server. Keep
+  // this narrow: only POST /api/previews with the queue secret bypasses the
+  // browser Basic Auth; the route still verifies the same bearer token.
+  const isPreviewServiceRequest = req.method === "POST"
+    && req.nextUrl.pathname === "/api/previews"
+    && Boolean(previewQueueSecret)
+    && ctEqual(req.headers.get("authorization") || "", `Bearer ${previewQueueSecret}`);
+  if (isPreviewServiceRequest) return NextResponse.next();
+
   if (USER && PASS && SECRET) {
     let authed = false;
 

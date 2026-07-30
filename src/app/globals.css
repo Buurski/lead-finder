@@ -108,6 +108,10 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 }
 .cc-card-pad { padding: 20px 22px; }
 
+.cc-page-header-sub { max-width: 72ch; }
+.cc-page-header { padding-bottom: 2px; }
+.cc-page-header > div:first-child { min-width: 0; }
+
 .cc-kicker {
   font-size: 11px;
   font-weight: 600;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PreviewQueue from "./PreviewQueue";
 
 export const metadata: Metadata = {
-  title: "Kinly previews",
+  title: "Gratis udkast · Kinly Lead System",
   robots: { index: false, follow: false },
 };
 

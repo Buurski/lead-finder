@@ -8,7 +8,14 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = parseInt(url.searchParams.get("limit") || "0", 10);
-  const leads = await getLeads();
+  let leads;
+  try {
+    leads = await getLeads();
+  } catch {
+    // Status is best-effort. The UI must be able to render an honest offline
+    // state without turning a Sheets outage into a browser-level 500.
+    return NextResponse.json({ available: false, eligible: null, returning: 0, leads: [] });
+  }
   const eligible = leads
     .filter(isEligibleForCold)
     .sort((a, b) => b.score - a.score);
