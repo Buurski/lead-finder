@@ -101,7 +101,7 @@ export default async function HermesPage() {
             overflow: "hidden",
             border: "none",
             background:
-              "radial-gradient(120% 120% at 50% 0%, rgba(232,160,48,0.18) 0%, rgba(233,69,96,0.10) 35%, var(--bg) 70%)",
+              "var(--bg-2)",
           }}
         >
           <div
@@ -120,8 +120,8 @@ export default async function HermesPage() {
                 width: 88,
                 height: 88,
                 borderRadius: 22,
-                background: "linear-gradient(145deg,#e8a030,#e94560)",
-                boxShadow: "0 12px 32px rgba(233,69,96,0.25), inset 0 1px 0 rgba(255,255,255,0.18)",
+                background: "var(--text)",
+                boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -158,9 +158,9 @@ export default async function HermesPage() {
                 fontWeight: 600,
                 fontSize: 14,
                 textDecoration: "none",
-                color: "#1a1a2e",
-                background: "linear-gradient(145deg,#e8a030,#e94560)",
-                boxShadow: "0 6px 18px rgba(233,69,96,0.30)",
+                color: "#fff",
+                background: "var(--text)",
+                boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
               }}
             >
               Åbn Hermes nu ↗

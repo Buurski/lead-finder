@@ -136,7 +136,7 @@ async function runFindEmails() {
         <button
           onClick={runSyncReplies}
           disabled={syncingReplies}
-          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#15803d", border: "1px solid #86efac", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingReplies ? "default" : "pointer", opacity: syncingReplies ? 0.6 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "var(--accent-ink)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingReplies ? "default" : "pointer", opacity: syncingReplies ? 0.6 : 1 }}
         >
           {syncingReplies ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <MailCheck size={11} />}
           {syncingReplies ? "Synkroniserer..." : "Sync svar fra Gmail"}
@@ -144,7 +144,7 @@ async function runFindEmails() {
         <button
           onClick={runSyncBounces}
           disabled={syncingBounces}
-          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "#7c3aed", border: "1px solid #c4b5fd", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingBounces ? "default" : "pointer", opacity: syncingBounces ? 0.6 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", color: "var(--accent-ink)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: syncingBounces ? "default" : "pointer", opacity: syncingBounces ? 0.6 : 1 }}
         >
           {syncingBounces ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <MailCheck size={11} />}
           {syncingBounces ? "Checker..." : "Sync fejlede mails"}
@@ -152,7 +152,7 @@ async function runFindEmails() {
       </div>
 
       {lastResult && (
-        <span style={{ fontSize: 12, color: "#15803d", fontWeight: 500 }}>{lastResult}</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{lastResult}</span>
       )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

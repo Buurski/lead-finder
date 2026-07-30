@@ -68,7 +68,7 @@ export default function ScrapeButton({ onDone }: { onDone?: (added: number) => v
       disabled={busy}
       title="Skraber alle relevante brancher i alle danske regioner, composite-scorer dem, og springer allerede-kendte over."
       style={{
-        background: status === "error" ? "#dc2626" : "var(--green)",
+        background: status === "error" ? "#dc2626" : "var(--text)",
         color: "#fff",
         border: "none",
         borderRadius: 8,
@@ -77,7 +77,7 @@ export default function ScrapeButton({ onDone }: { onDone?: (added: number) => v
         fontWeight: 700,
         cursor: busy ? "default" : "pointer",
         letterSpacing: "0.01em",
-        boxShadow: "0 0 0 1px #22c55e40, 0 2px 12px #22c55e30",
+        boxShadow: "0 0 0 1px var(--border-strong), 0 2px 12px rgba(23,24,22,.08)",
         opacity: busy ? 0.7 : 1,
         transition: "opacity 0.15s, background 0.2s",
         minWidth: 140,

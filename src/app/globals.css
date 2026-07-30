@@ -104,7 +104,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(23, 24, 22, 0.025);
 }
 .cc-card-pad { padding: 20px 22px; }
 
@@ -154,6 +154,15 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 
 @keyframes cc-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .cc-fade { animation: cc-fade-in 220ms ease both; }
+.cc-fade { width: 100%; max-width: 1180px; margin: 0 auto; }
+.cc-page-header { padding: 4px 0 22px; border-bottom: 1px solid var(--border); margin-bottom: 26px !important; }
+.cc-page-header > div:first-child { min-width: 0; }
+.cc-page-header-sub { max-width: 72ch; line-height: 1.5; }
+.cc-page-header h1 { font-size: clamp(25px, 2.4vw, 32px) !important; letter-spacing: -0.04em; }
+.cc-page-header > div:first-child > span { background: var(--text) !important; color: #fff; border-radius: 10px !important; }
+.cc-page-header > div:first-child > span svg { color: var(--amber) !important; }
+.cc-numbers { box-shadow: 0 1px 2px rgba(23, 24, 22, 0.025); }
+.cc-card-pad { padding: 22px 24px; }
 
 @keyframes cc-spin { to { transform: rotate(360deg); } }
 .cc-spin { animation: cc-spin 0.7s linear infinite; }
@@ -291,7 +300,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   border: 1px solid var(--border);
 }
 .cc-clock { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--text-muted); }
-.cc-content { padding: 34px 36px 110px; max-width: 1240px; width: 100%; margin: 0 auto; flex: 1; }
+.cc-content { padding: 34px 36px 110px; max-width: 1400px; width: 100%; margin: 0 auto; flex: 1; }
 
 .cc-rail-status { margin-top: auto; padding: 16px 10px 0; border-top: 1px solid rgba(243, 244, 241, 0.12); }
 .cc-rail-status .cc-navgroup-label { padding: 0 0 6px; }
@@ -706,9 +715,12 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 
   .cc-sidebar[data-open="true"] { transform: none; box-shadow: 0 0 60px rgba(23, 24, 22, 0.32); }
   .cc-topbar { padding: 0 18px; }
-  .cc-content { padding: 18px 18px 104px; }
-  .cc-chatdock-fab { right: 16px; bottom: 16px; }
-  .cc-chatdock { right: 12px; bottom: 12px; width: min(380px, calc(100vw - 24px)); }
+  .cc-content { padding: 18px 18px 110px; }
+  .cc-fade { max-width: none; }
+  .cc-page-header { padding-bottom: 18px; margin-bottom: 20px !important; }
+  .cc-page-header h1 { font-size: 25px !important; }
+  .cc-page-header-sub { font-size: 13px; overflow-wrap: anywhere; }
+  .cc-card-pad { padding: 16px 18px; }
 }
 
 /* Preview queue cards stack on phones; the demo panel must never force the text column wider than the viewport. */
