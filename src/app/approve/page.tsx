@@ -692,7 +692,7 @@ function Header({
       <div>
         <h1
           style={{
-            fontFamily: "var(--font-fraunces), serif",
+            fontFamily: "var(--font-display)",
             fontSize: 27,
             fontWeight: 700,
             color: "var(--text)",
@@ -707,14 +707,7 @@ function Header({
           Personlige udkast fra motoren. Læs hver som et brev, ret hvis nødvendigt, godkend de gode.
           Intet sendes herfra: godkend markerer kun til afsendelse.
         </p>
-        <p style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          Tastatur:
-          <span><span className="cc-kbd">j</span>/<span className="cc-kbd">k</span> flyt</span>
-          <span><span className="cc-kbd">a</span> godkend</span>
-          <span><span className="cc-kbd">r</span> skip</span>
-          <span><span className="cc-kbd">e</span> redigér</span>
-          <span><span className="cc-kbd">space</span> vælg</span>
-        </p>
+
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
@@ -833,7 +826,7 @@ function EmptyState({ filter, total }: { filter: Filter; total: number }) {
         background: "var(--bg-2)",
       }}
     >
-      <p style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 18, color: "var(--text)", margin: 0 }}>
+      <p style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text)", margin: 0 }}>
         {emptyBecauseFilter ? "Intet her endnu" : "Køen er tom"}
       </p>
       <p style={{ marginTop: 8, fontSize: 13.5, color: "var(--text-muted)" }}>
@@ -1026,7 +1019,7 @@ function DraftLetter({
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2
             style={{
-              fontFamily: "var(--font-fraunces), serif",
+              fontFamily: "var(--font-display)",
               fontSize: 19,
               fontWeight: 700,
               color: "var(--text)",

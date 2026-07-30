@@ -154,7 +154,7 @@ export default function BriefForm({
           <FolderOpen size={24} style={{ color: "var(--green)" }} />
         </div>
         <div>
-          <h2 style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: 18, color: "var(--text)" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "var(--text)" }}>
             CLAUDE.md hentet
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
@@ -171,7 +171,7 @@ export default function BriefForm({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          fontFamily: "var(--font-fraunces), serif",
+          fontFamily: "var(--font-display)",
           fontSize: 12,
           color: "var(--text-muted)",
         }}>
@@ -184,7 +184,7 @@ export default function BriefForm({
           </button>
         </div>
         <p style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 360 }}>
-          Brug <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>huashu-design</span> eller <span style={{ color: "var(--text)", fontFamily: "var(--font-fraunces), serif" }}>impeccable</span> skill i Claude Code.
+          Brug <span style={{ color: "var(--text)", fontFamily: "var(--font-display)" }}>huashu-design</span> eller <span style={{ color: "var(--text)", fontFamily: "var(--font-display)" }}>impeccable</span> skill i Claude Code.
         </p>
       </div>
     );
@@ -260,7 +260,7 @@ export default function BriefForm({
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   color: "var(--text-dim)",
-                  fontFamily: "var(--font-fraunces), serif",
+                  fontFamily: "var(--font-display)",
                 }}>
                   {label}
                 </label>

@@ -38,7 +38,7 @@ export default async function LeadsPage() {
   const capped = [...leads].sort((a, b) => b.score - a.score).slice(0, LEADS_CAP);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="kinly-page" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {!sheetsOk && (
         <WarnBanner>
           Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
@@ -46,7 +46,7 @@ export default async function LeadsPage() {
       )}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 className="cc-h1">Lead Pipeline</h1>
+          <h1 className="cc-h1">Pipeline</h1>
           <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
             {[
               { label: "total", value: leads.length, color: "var(--text-muted)" },

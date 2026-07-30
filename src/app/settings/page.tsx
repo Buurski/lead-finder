@@ -2,13 +2,13 @@ import PageHeader from "@/components/shell/PageHeader";
 import SettingsClient from "./SettingsClient";
 import { readSettings, nextRunLabel } from "@/lib/settings";
 
-export const metadata = { title: "Indstillinger · Command Center" };
+export const metadata = { title: "Indstillinger · Kinly Lead System" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const settings = await readSettings();
   return (
-    <div className="cc-fade">
+    <div className="cc-fade kinly-page">
       <PageHeader
         icon="Settings"
         title="Indstillinger"

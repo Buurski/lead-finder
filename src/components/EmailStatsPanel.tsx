@@ -49,7 +49,7 @@ export default function EmailStatsPanel({ leads, activeFilter, onFilter }: Props
             }}
           >
             <div style={{
-              fontFamily: "var(--font-fraunces), serif",
+              fontFamily: "var(--font-display)",
               fontSize: 22,
               fontWeight: 700,
               color: isActive ? "#fff" : color,

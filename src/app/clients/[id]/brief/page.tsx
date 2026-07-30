@@ -49,7 +49,7 @@ export default async function BriefPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6">
       <div>
-        <h1 style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: 22, color: "var(--text)" }}>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "var(--text)" }}>
           Design Brief
         </h1>
         <p style={{ fontSize: 13, marginTop: 4, color: "var(--text-muted)" }}>

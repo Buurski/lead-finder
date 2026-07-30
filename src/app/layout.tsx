@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/shell/AppShell";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-});
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -15,13 +10,13 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Command Center · AgenticOS",
-  description: "AgenticOS — lead & client command center",
+  title: "Kinly Lead System",
+  description: "Kinly · internt lead- og kundeoverblik",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="da" className={`${fraunces.variable} ${jakarta.variable} h-full`}>
+    <html lang="da" className={`${jakarta.variable} h-full`}>
       <body suppressHydrationWarning>
         <AppShell>{children}</AppShell>
       </body>

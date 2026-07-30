@@ -481,7 +481,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
           }}>
             <div className="flex items-start justify-between">
               <div>
-                <h2 style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.3 }}>
+                <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.3 }}>
                   {selected.name}
                 </h2>
                 <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 2 }}>

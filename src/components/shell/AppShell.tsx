@@ -1,14 +1,11 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { NAV_FLAT, ownerGroupFor } from "@/lib/nav-config";
 import Sidebar from "./Sidebar";
-import Clock from "./Clock";
-import CommandPalette from "./CommandPalette";
 import ChatDock from "./ChatDock";
 import Bell from "./Bell";
-import ShortcutsOverlay from "./ShortcutsOverlay";
 import Icon from "./Icon";
 
 interface Counts {
@@ -51,7 +48,7 @@ function crumbsFor(pathname: string): Crumb[] {
       if (!best || i.href.length > best.href.length) best = i;
     }
   }
-  if (!best) return [{ label: "Command Center" }];
+  if (!best) return [{ label: "Kinly Lead System" }];
   const crumbs: Crumb[] = [{ label: best.paletteLabel ?? best.label, href: best.href }];
   const rest = pathname.slice(best.href.length).split("/").filter(Boolean);
   for (const seg of rest) {
@@ -67,53 +64,11 @@ function crumbsFor(pathname: string): Crumb[] {
   return crumbs;
 }
 
-// Globale bogstav-genveje (Bundle G). Kun når man ikke skriver i et felt og
-// ingen dialog er åben — samme guard som /approve's lokale j/k/a/r/e-triage.
-const KEY_NAV: Record<string, string> = { m: "/", g: "/approve", s: "/replies", l: "/leads" };
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>({});
   const [pause, setPause] = useState<PauseInfo | null>(null);
-
-  // Global keys: ⌘K palette, ? overlay, m/g/s/l quick-nav.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = document.activeElement;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable)) return;
-      if (e.key === "Escape") {
-        setShortcutsOpen(false);
-        return;
-      }
-      if (paletteOpen) return;
-      if (e.key === "?") {
-        e.preventDefault();
-        setShortcutsOpen((v) => !v);
-        return;
-      }
-      const dest = KEY_NAV[e.key.toLowerCase()];
-      if (dest && !e.shiftKey) {
-        // /approve har sin egen j/k/a/r/e-triage — m/g/s/l kolliderer ikke.
-        // Bail hvis chat-docken er åben: navigation under en åben dialog er
-        // desorienterende, selv når dock-inputtet ikke har fokus (council B3).
-        if (document.querySelector(".cc-chatdock")) return;
-        e.preventDefault();
-        router.push(dest);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [paletteOpen, router]);
 
   // (The mobile drawer closes itself via Sidebar's onNavigate when a link is
   // tapped, so no route-change effect is needed here.)
@@ -134,7 +89,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  const closePalette = useCallback(() => setPaletteOpen(false), []);
   const crumbs = crumbsFor(pathname);
 
   return (
@@ -167,13 +121,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
-            <Clock />
             <Bell counts={counts} />
-            <button className="cc-cmdk" onClick={() => setPaletteOpen(true)} aria-label="Søg og naviger">
-              <Icon name="Search" style={{ width: 14, height: 14 }} />
-              Søg
-              <span className="cc-kbd">⌘K</span>
-            </button>
           </div>
         </header>
 
@@ -195,8 +143,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="cc-content">{children}</div>
       </div>
 
-      {paletteOpen && <CommandPalette onClose={closePalette} />}
-      {shortcutsOpen && <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
       <ChatDock counts={counts} />
     </div>
   );

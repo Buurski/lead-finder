@@ -280,7 +280,7 @@ export default function RepliesClient() {
     return (
       <div className="cc-card cc-card-pad" role="alert" style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap" }}>
         <Icon name={notConfigured ? "Mail" : "Activity"} style={{ width: 18, height: 18, color: "var(--amber)" }} />
-        <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{notConfigured ? "Gmail er ikke sat op endnu" : "Kunne ikke nå indbakken"}</div>
           <div className="cc-dim" style={{ fontSize: 12.5 }}>{notConfigured ? "Sæt GMAIL_USER + GMAIL_APP_PASSWORD i miljøet, så scanner jeg indbakken for svar. Intet blev rørt." : `${err} — read-only, intet blev rørt.`}</div>
         </div>

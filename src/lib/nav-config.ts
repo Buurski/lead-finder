@@ -11,6 +11,7 @@ export interface NavItem {
   paletteLabel?: string;
   badge?: "queue" | "needs"; // dynamic count slot, filled by the shell
   soon?: boolean; // placeholder surface, not built yet
+  hidden?: boolean; // reachable in ⌘K, but intentionally not in the primary rail
 }
 
 export interface NavNode extends NavItem {
@@ -20,45 +21,34 @@ export interface NavNode extends NavItem {
   children?: NavItem[];
 }
 
-// Nav-model A (Bundle G, 2026-07-03): dropdown-based sidebar. /radar er en
-// coming-soon-side (den rigtige ligger på branch archive/thin-pages-2026-07-02).
-// SMS er død (samme archive-branch) — Godkendelse har derfor 2 kanaler.
-// "Alle kanaler" er droppet: /approve ER den samlede kø, et duplikat-link
-// ville bare pege samme sted som Email.
+// Kinly Lead System IA: the rail answers what Lucas and Charlie use daily.
+// Legacy/experimental routes remain reachable directly and through ⌘K, but do
+// not compete with the daily work surfaces.
 export const NAV_TREE: NavNode[] = [
-  { href: "/", label: "Mission Control", icon: "LayoutDashboard", hint: "Dagens overblik" },
+  { href: "/", label: "I dag", icon: "LayoutDashboard", hint: "Dagens overblik" },
   {
     href: "/approve",
-    label: "Godkendelse",
-    icon: "CheckCheck",
+    label: "Arbejde",
+    icon: "Inbox",
     badge: "queue",
     children: [
-      { href: "/approve", label: "Email", paletteLabel: "Godkendelse · Email", icon: "Mail", hint: "Drafts i kø", badge: "queue" },
-      { href: "/previews", label: "Kinly previews", icon: "PanelTop", hint: "Inbound preview requests" },
-      { href: "/messenger", label: "Messenger", paletteLabel: "Godkendelse · Messenger", icon: "MessageSquare", hint: "FB-drafts, marker sendt" }
+      { href: "/approve", label: "Godkendelse", paletteLabel: "Arbejde · Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
+      { href: "/leads", label: "Pipeline", paletteLabel: "Arbejde · Pipeline", icon: "Users", hint: "Lead-pipeline" },
+      { href: "/leadgen", label: "Find leads", icon: "Radar", hint: "Find nye leads", hidden: true },
+      { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig", badge: "needs" },
     ],
   },
+  { href: "/clients", label: "Kunder & sites", icon: "Briefcase", hint: "Aktive kunder og sites" },
   {
-    href: "/replies",
-    label: "Svar",
-    icon: "Inbox",
-    badge: "needs",
+    href: "/seo",
+    label: "Synlighed",
+    icon: "Search",
     children: [
-      { href: "/replies", label: "Email-indbakke", icon: "Mail", hint: "Indbakke-triage", badge: "needs" },
-      { href: "/messenger", label: "Messenger-indbakke", icon: "MessageSquare", hint: "FB-svar håndteres på Messenger-siden" },
+      { href: "/seo", label: "SEO-overblik", paletteLabel: "Synlighed · SEO-overblik", icon: "Search", hint: "Søgning pr. kunde" },
+      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt", hidden: true },
+      { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
     ],
   },
-  {
-    href: "/leads",
-    label: "Leads",
-    icon: "Users",
-    children: [
-      { href: "/leads", label: "Pipeline", paletteLabel: "Leads · Pipeline", icon: "Users", hint: "Pipeline" },
-      { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Find nye leads" },
-      { href: "/radar", label: "Radar", icon: "Rss", hint: "AI-radar (kommer snart)", soon: true },
-    ],
-  },
-  { href: "/clients", label: "Klienter", icon: "Briefcase", hint: "Aktive kunder" },
   {
     href: "/okonomi",
     label: "Forretning",
@@ -66,41 +56,21 @@ export const NAV_TREE: NavNode[] = [
     children: [
       { href: "/okonomi", label: "Økonomi", paletteLabel: "Forretning · Økonomi", icon: "Target", hint: "Forecast & mål" },
       { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
-      { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer, split & overførsler" },
       { href: "/salg", label: "Salg", icon: "Workflow", hint: "Vægtet deal-pipeline" },
+      { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer, split & overførsler" },
       { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening & trends" },
     ],
   },
   {
-    href: "/seo",
-    label: "SEO",
-    icon: "Search",
+    href: "/hermes",
+    label: "Hjernen",
+    icon: "Sparkles",
     children: [
-      { href: "/seo", label: "Overblik", paletteLabel: "SEO · Overblik", icon: "Search", hint: "Søgning pr. klient" },
-      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt" },
+      { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent og ideer" },
+      { href: "/goals", label: "Mål", icon: "Target", hint: "Aktive 90-dages mål", hidden: true },
+      { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed", hidden: true },
     ],
   },
-  {
-    href: "/studio",
-    label: "Studio",
-    icon: "LayoutGrid",
-    children: [
-      { href: "/studio", label: "Demoer", paletteLabel: "Studio · Demoer", icon: "LayoutGrid", hint: "Demoer & klient-sites" },
-      { href: "/studio/compare", label: "Compare", paletteLabel: "Studio · Compare", icon: "Columns2", hint: "Side-om-side sammenligning" },
-      { href: "/studio/prompt-gen", label: "Prompt-gen", paletteLabel: "Studio · Prompt-gen", icon: "Wand", hint: "Recon → prompt → dispatch" },
-    ],
-  },
-  {
-    href: "/claude",
-    label: "Værktøjer",
-    icon: "Wrench",
-    children: [
-      { href: "/claude", label: "Claude", icon: "Bot", hint: "Claude-chat" },
-      { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent på VPS" },
-      { href: "/goals", label: "Goals", icon: "Target", hint: "90-dages mål (vault)" },
-    ],
-  },
-  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence" },
 ];
 
 // Flat list for the command palette + keyboard nav: leaves only (a parent's
