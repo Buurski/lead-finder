@@ -74,7 +74,7 @@ const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
 
 const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: string }> = {
   pending: { label: "afventer", fg: "var(--amber)", bg: "var(--amber-dim)" },
-  approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--green-dim)" },
+  approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--bg-2)" },
   edited: { label: "redigeret · godkendt", fg: "var(--blue)", bg: "var(--blue-dim)" },
   rejected: { label: "afvist", fg: "var(--red)", bg: "#dc26261a" },
   sent: { label: "sendt (test)", fg: "var(--blue)", bg: "var(--blue-dim)" },
@@ -547,7 +547,7 @@ export default function ApprovePage() {
 
       {/* Send step — the missing piece. Approved = ready; this actually sends. */}
       {counts.approved > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--green-dim)", border: "1px solid var(--green)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--amber-dim)", border: "1px solid var(--amber)" }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse{counts.approvedCharlie > 0 ? ` · Lucas ${counts.approvedLucas} · Charlie ${counts.approvedCharlie}` : ""}</div>
             <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
@@ -557,7 +557,7 @@ export default function ApprovePage() {
             {sendProg && (
               <div style={{ marginTop: 8 }}>
                 <div style={{ height: 7, borderRadius: 99, background: "var(--bg-2)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${sendProg.total ? Math.round((sendProg.processed / sendProg.total) * 100) : 0}%`, background: "var(--green)", transition: "width .3s ease" }} />
+                  <div style={{ height: "100%", width: `${sendProg.total ? Math.round((sendProg.processed / sendProg.total) * 100) : 0}%`, background: "var(--amber)", transition: "width .3s ease" }} />
                 </div>
                 <div style={{ display: "flex", gap: 10, fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   <span style={{ color: "var(--text)", fontWeight: 600 }}>{sendProg.line}</span>
@@ -567,15 +567,15 @@ export default function ApprovePage() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button onClick={() => sendApproved()} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: sendBusy ? "var(--green-dim)" : "var(--green)", color: sendBusy ? "var(--green)" : "white" }}>
+            <button onClick={() => sendApproved()} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: sendBusy ? "var(--bg-2)" : "var(--amber)", color: sendBusy ? "var(--amber)" : "white" }}>
               {sendBusy ? "Sender…" : `Send alle (${counts.approved})`}
             </button>
             {counts.approvedLucas > 0 && counts.approvedCharlie > 0 && (
               <>
-                <button onClick={() => sendApproved("lucas")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                <button onClick={() => sendApproved("lucas")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--amber)", color: "var(--text)" }}>
                   Kun Lucas ({counts.approvedLucas})
                 </button>
-                <button onClick={() => sendApproved("charlie")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--green)", color: "var(--text)" }}>
+                <button onClick={() => sendApproved("charlie")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--amber)", color: "var(--text)" }}>
                   Kun Charlie ({counts.approvedCharlie})
                 </button>
               </>
@@ -746,7 +746,7 @@ function Header({
             onClick={onApproveSelected}
             disabled={selBusy}
             title="Godkend kun de udkast du har sat kryds ved"
-            style={{ ...btnBase, background: selBusy ? "var(--green-dim)" : "var(--green)", color: selBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+            style={{ ...btnBase, background: selBusy ? "var(--bg-2)" : "var(--text)", color: selBusy ? "var(--text-muted)" : "white", padding: "7px 13px", fontSize: 12.5 }}
           >
             {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
           </button>
@@ -758,7 +758,7 @@ function Header({
             title={visiblePending < counts.pending
               ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
               : "Godkend alle afventende udkast"}
-            style={{ ...btnBase, background: bulkBusy ? "var(--green-dim)" : "var(--green)", color: bulkBusy ? "var(--green)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+            style={{ ...btnBase, background: bulkBusy ? "var(--bg-2)" : "var(--text)", color: bulkBusy ? "var(--text-muted)" : "white", padding: "7px 13px", fontSize: 12.5 }}
           >
             {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
           </button>
@@ -1347,8 +1347,8 @@ const btnBase: React.CSSProperties = {
 function btnPrimary(disabled: boolean): React.CSSProperties {
   return {
     ...btnBase,
-    background: disabled ? "var(--green-dim)" : "var(--green)",
-    color: disabled ? "var(--green)" : "white",
+    background: disabled ? "var(--bg-2)" : "var(--text)",
+    color: disabled ? "var(--text-muted)" : "white",
     cursor: disabled ? "default" : "pointer",
   };
 }

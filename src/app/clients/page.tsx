@@ -20,21 +20,32 @@ export default async function ClientsPage() {
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
   const totalSetup = clients.reduce((sum, c) => sum + (parseFloat(c.setupFee) || 0), 0);
   const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
+  const briefMissing = clients.filter((c) => !c.briefFilled).length;
+  const liveCount = clients.filter((c) => c.websiteStatus === "live").length;
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <PageHeader
         icon="Briefcase"
         title="Kunder & sites"
-        subtitle={
+        subtitle={!sheetsOk ? "Google Sheets er offline. Ingen kundedata er slettet." : (
           <>
             {clients.length} i CRM · <strong style={{ color: "var(--text)" }}>{payingCount} betalende</strong>
             {clients.length > 0 && (
               <> · <strong style={{ color: "var(--text)" }}>MRR: {totalMRR.toLocaleString("da-DK")} kr</strong> · Setup: {totalSetup.toLocaleString("da-DK")} kr</>
             )}
           </>
-        }
+        )}
       />
+
+      {sheetsOk && clients.length > 0 && (
+        <div className="cc-numbers kinly-stat-strip" aria-label="Kundeoverblik">
+          <div className="cc-numbers-cell"><div className="cc-stat-n">{clients.length}</div><div className="cc-stat-l">kunder i CRM</div></div>
+          <div className="cc-numbers-cell"><div className="cc-stat-n">{liveCount}</div><div className="cc-stat-l">live sites</div></div>
+          <div className="cc-numbers-cell"><div className="cc-stat-n">{payingCount}</div><div className="cc-stat-l">betalende</div></div>
+          <div className="cc-numbers-cell"><div className="cc-stat-n">{briefMissing}</div><div className="cc-stat-l">mangler brief</div></div>
+        </div>
+      )}
 
       <AddClientForm />
 
