@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import ChatDock from "./ChatDock";
 import Bell from "./Bell";
 import Icon from "./Icon";
+import CommandPalette from "./CommandPalette";
 
 interface Counts {
   queue?: number;
@@ -68,6 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>({});
   const [pause, setPause] = useState<PauseInfo | null>(null);
 
@@ -122,6 +124,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+            <button className="cc-top-search cc-focus" onClick={() => setPaletteOpen(true)} aria-label="Søg og naviger">
+              <Icon name="Search" style={{ width: 15, height: 15 }} />
+              <span>Søg her</span>
+              <span className="cc-top-search-key">/</span>
+            </button>
             <Bell counts={counts} />
             <button
               className="cc-cmdk cc-rail-toggle"
@@ -154,6 +161,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <ChatDock counts={counts} />
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
 }
