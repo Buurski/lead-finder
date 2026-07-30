@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://advertise-dat-returning-monitors.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://roommates-equivalent-shakespeare-hist.trycloudflare.com"
     }
   },
   "crons": [
