@@ -11,6 +11,7 @@ export interface NavItem {
   paletteLabel?: string;
   badge?: "queue" | "needs"; // dynamic count slot, filled by the shell
   soon?: boolean; // placeholder surface, not built yet
+  hidden?: boolean; // reachable in ⌘K, but intentionally not in the primary rail
 }
 
 export interface NavNode extends NavItem {
@@ -33,7 +34,7 @@ export const NAV_TREE: NavNode[] = [
     children: [
       { href: "/approve", label: "Godkendelse", paletteLabel: "Arbejde · Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
       { href: "/leads", label: "Pipeline", paletteLabel: "Arbejde · Pipeline", icon: "Users", hint: "Lead-pipeline" },
-      { href: "/leadgen", label: "Find leads", icon: "Radar", hint: "Find nye leads" },
+      { href: "/leadgen", label: "Find leads", icon: "Radar", hint: "Find nye leads", hidden: true },
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig", badge: "needs" },
     ],
   },
@@ -44,7 +45,7 @@ export const NAV_TREE: NavNode[] = [
     icon: "Search",
     children: [
       { href: "/seo", label: "SEO-overblik", paletteLabel: "Synlighed · SEO-overblik", icon: "Search", hint: "Søgning pr. kunde" },
-      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt" },
+      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt", hidden: true },
       { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
     ],
   },
@@ -66,8 +67,8 @@ export const NAV_TREE: NavNode[] = [
     icon: "Sparkles",
     children: [
       { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent og ideer" },
-      { href: "/goals", label: "Mål", icon: "Target", hint: "Aktive 90-dages mål" },
-      { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed" },
+      { href: "/goals", label: "Mål", icon: "Target", hint: "Aktive 90-dages mål", hidden: true },
+      { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed", hidden: true },
     ],
   },
 ];

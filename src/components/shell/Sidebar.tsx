@@ -136,7 +136,7 @@ export default function Sidebar({
               </button>
               {expanded && (
                 <div className="cc-navchildren">
-                  {node.children.map((item, i) => (
+                  {node.children.filter((item) => !item.hidden).map((item, i) => (
                     <NavLeaf
                       key={`${item.href}-${i}`}
                       item={item}

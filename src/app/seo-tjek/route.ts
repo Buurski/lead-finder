@@ -13,7 +13,7 @@ const FORM_HTML = `<!doctype html>
 <title>Gratis SEO-tjek af din hjemmeside | Buur Web</title>
 <meta name="description" content="Få en gratis rapport om din hjemmesides synlighed på Google og i AI-søgning (ChatGPT). Tager 1 minut, leveres på mail.">
 <style>
-  :root{--bg:#faf8f4;--ink:#2b2620;--muted:#7a7267;--accent:#4a7c59;--border:#e6e0d6}
+  :root{--bg:#fafbfa;--ink:#202320;--muted:#68716b;--accent:#202320;--border:#e1e4e1}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,sans-serif;line-height:1.6}
   .wrap{max-width:560px;margin:0 auto;padding:3rem 1.25rem}

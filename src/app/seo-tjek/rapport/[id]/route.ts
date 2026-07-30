@@ -12,7 +12,7 @@ const NOT_FOUND_HTML = `<!doctype html><html lang="da"><head><meta charset="utf-
 <body style="font-family:ui-sans-serif,system-ui,sans-serif;max-width:560px;margin:4rem auto;padding:0 1.25rem;color:#1f2937">
 <h1>Rapporten findes ikke</h1>
 <p>Linket er forkert, eller rapporten er udløbet. Du kan altid køre et nyt gratis tjek:</p>
-<p><a href="/seo-tjek" style="color:#4a7c59;font-weight:700">Kør et nyt SEO-tjek</a></p>
+<p><a href="/seo-tjek" style="color:#202320;font-weight:700">Kør et nyt SEO-tjek</a></p>
 </body></html>`;
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {

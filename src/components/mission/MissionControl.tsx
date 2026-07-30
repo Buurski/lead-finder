@@ -332,6 +332,16 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
     ? new Date(brief.date + "T00:00:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })
     : "";
 
+  if (!brief?.ok) {
+    return (
+      <div className="cc-brief-empty" aria-label="Hvad skal vi i dag">
+        <Icon name="BookOpen" style={{ width: 16, height: 16 }} />
+        <span>Ingen brief i dag endnu.</span>
+        <span className="cc-dim">Skriv den i daily/{brief?.date ?? "i-dag"}.md, når den skal styre dagen.</span>
+      </div>
+    );
+  }
+
   return (
     <section className="cc-card" aria-label="Hvad skal vi i dag">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: brief?.ok && open ? "1px solid var(--border)" : "none" }}>
@@ -347,14 +357,7 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
         </div>
       </div>
 
-      {!brief?.ok ? (
-        <div className="cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <Icon name="BookOpen" style={{ width: 16, height: 16, color: "var(--text-dim)", marginTop: 2 }} />
-          <div className="cc-dim" style={{ fontSize: 13, lineHeight: 1.55 }}>
-            Ingen note for i dag endnu. Skriv dagens brief i Obsidian (<code style={{ fontSize: 12 }}>daily/{brief?.date ?? "i-dag"}.md</code>) — den dukker op her automatisk, så snart den er pushet.
-          </div>
-        </div>
-      ) : open ? (
+      {open ? (
         <div className="cc-card-pad" style={{ paddingTop: 14 }}>
           <div style={{ maxHeight: 360, overflowY: "auto" }}>
             <MarkdownLite source={brief.body} />
