@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://captain-geometry-edge-roads.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://rfc-loving-priority-singing.trycloudflare.com"
     }
   },
   "crons": [
