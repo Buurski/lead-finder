@@ -4,6 +4,7 @@ import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
 import WarnBanner from "@/components/WarnBanner";
 import EmailDashboardClient from "@/components/EmailDashboardClient";
+import PageHeader from "@/components/shell/PageHeader";
 
 export const revalidate = 60;
 
@@ -44,29 +45,32 @@ export default async function LeadsPage() {
           Kunne ikke nå Google Sheets lige nu — dine leads er der stadig. Genindlæs om et øjeblik.
         </WarnBanner>
       )}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="cc-h1">Pipeline</h1>
-          <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
+      <PageHeader
+        icon="Users"
+        title="Pipeline"
+        subtitle={
+          <span style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {[
               { label: "total", value: leads.length, color: "var(--text-muted)" },
               { label: "nye", value: byStatus.new, color: "var(--blue)" },
               { label: "interesserede", value: byStatus.interested, color: "var(--amber)" },
               { label: "klienter", value: byStatus.client, color: "var(--accent-ink)" },
             ].map(({ label, value, color }) => (
-              <div key={label} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color }}>{value}</span>
+              <span key={label} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                {/* Sheets nede: vis "—", ikke 0 — 0 ligner et tomt kartotek. */}
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: sheetsOk ? color : "var(--text-dim)" }}>{sheetsOk ? value : "—"}</span>
                 <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{label}</span>
-              </div>
+              </span>
             ))}
+          </span>
+        }
+        action={
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <VerifyAllButton />
+            <ScrapeButton />
           </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <VerifyAllButton />
-          <ScrapeButton />
-        </div>
-      </div>
+        }
+      />
 
       {totalLeads > LEADS_CAP && (
         <div className="cc-card cc-card-pad" role="status" style={{ fontSize: 12.5, color: "var(--text-muted)" }}>

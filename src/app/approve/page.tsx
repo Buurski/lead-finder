@@ -51,10 +51,10 @@ interface QueueDraft {
 // Varme-badge (2026-07-18): farve + label pr. varme-trin. "død" = svarede nej —
 // må aldrig kontaktes igen (dedup-gaten blokerer dem også serverside).
 const WARMTH_META: Record<string, { label: string; fg: string; bg: string }> = {
-  varm: { label: "🔥 varm", fg: "#b45309", bg: "#f59e0b1a" },
-  lun:  { label: "lun",     fg: "#92700c", bg: "#eab3081a" },
-  kold: { label: "kold",    fg: "#1d4ed8", bg: "#3b82f61a" },
-  død:  { label: "✕ svarede nej", fg: "var(--red)", bg: "#dc26261a" },
+  varm: { label: "varm",    fg: "var(--amber)", bg: "var(--amber-dim)" },
+  lun:  { label: "lun",     fg: "var(--text-muted)", bg: "var(--bg-3)" },
+  kold: { label: "kold",    fg: "var(--blue)", bg: "var(--blue-dim)" },
+  død:  { label: "✕ svarede nej", fg: "var(--red)", bg: "var(--red-dim)" },
 };
 
 // "seen" (2026-07-17): pending drafts hvis forretning findes i kontakt-
@@ -76,7 +76,7 @@ const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: string }
   pending: { label: "afventer", fg: "var(--amber)", bg: "var(--amber-dim)" },
   approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--bg-2)" },
   edited: { label: "redigeret · godkendt", fg: "var(--blue)", bg: "var(--blue-dim)" },
-  rejected: { label: "afvist", fg: "var(--red)", bg: "#dc26261a" },
+  rejected: { label: "afvist", fg: "var(--red)", bg: "var(--red-dim)" },
   sent: { label: "sendt (test)", fg: "var(--blue)", bg: "var(--blue-dim)" },
 };
 
@@ -736,7 +736,7 @@ function Header({
             onClick={onRejectSelected}
             disabled={rejBusy}
             title="Afvis de udkast du har sat kryds ved — lead'en blokeres 14 dage"
-            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--danger, #b3402e)", opacity: rejBusy ? 0.6 : 1 }}
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--red)", opacity: rejBusy ? 0.6 : 1 }}
           >
             {rejBusy ? "Afviser…" : `Afvis valgte (${selectedCount})`}
           </button>
@@ -758,7 +758,16 @@ function Header({
             title={visiblePending < counts.pending
               ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
               : "Godkend alle afventende udkast"}
-            style={{ ...btnBase, background: bulkBusy ? "var(--bg-2)" : "var(--text)", color: bulkBusy ? "var(--text-muted)" : "white", padding: "7px 13px", fontSize: 12.5 }}
+            style={{
+              ...btnBase,
+              // Én mørk primær ad gangen: har du markeret udkast, er "Godkend valgte"
+              // den primære handling, og bulk-knappen træder tilbage.
+              background: bulkBusy ? "var(--bg-2)" : selectedCount > 0 ? "var(--surface)" : "var(--text)",
+              color: bulkBusy ? "var(--text-muted)" : selectedCount > 0 ? "var(--text)" : "white",
+              border: selectedCount > 0 ? "1px solid var(--border)" : btnBase.border,
+              padding: "7px 13px",
+              fontSize: 12.5,
+            }}
           >
             {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
           </button>
@@ -1040,10 +1049,12 @@ function DraftLetter({
                 h.replied === "aldrig" ? "aldrig svaret" : null,
               ].filter(Boolean);
               return (
-                <span style={{ whiteSpace: "nowrap" }}>
+                <span>
                   <span
                     title={`Denne forretning findes i kontakt-historikken: ${parts.join(" · ")}. Godkend kun hvis du er sikker på det ikke er en for tidlig gensending.`}
                     style={{
+                      display: "inline-block",
+                      maxWidth: "100%",
                       marginLeft: 8,
                       padding: "2px 8px",
                       fontSize: 11,
@@ -1051,8 +1062,8 @@ function DraftLetter({
                       verticalAlign: "middle",
                       borderRadius: 999,
                       color: "var(--red)",
-                      background: "#dc26261a",
-                      whiteSpace: "nowrap",
+                      background: "var(--red-dim)",
+                      overflowWrap: "anywhere",
                     }}
                   >
                     ⚠ set før · {parts.join(" · ")}

@@ -28,14 +28,17 @@ export default function PreviewQueue() {
   const [filter, setFilter] = useState<"alle" | "klar" | "sendt">("alle");
   const [editing, setEditing] = useState<PreviewRequest | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/previews", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setRequests((await res.json()).requests ?? []);
       setError("");
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke hente preview-køen"); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -75,22 +78,33 @@ export default function PreviewQueue() {
         subtitle="Spørgeskemaer fra kinly.dk, demo-links og mailkladder samlet ét sted. Intet sendes automatisk."
         action={<button className="cc-btn" onClick={() => void load()}>Opdatér</button>}
       />
-      <div className="cc-numbers kinly-stat-strip" aria-label="Gratis udkast overblik">
-        <div className="cc-numbers-cell"><div className="cc-stat-n">{newCount}</div><div className="cc-stat-l">nye svar</div></div>
-        <div className="cc-numbers-cell"><div className="cc-stat-n">{readyCount}</div><div className="cc-stat-l">klar til dig</div></div>
-        <div className="cc-numbers-cell"><div className="cc-stat-n">{closedCount}</div><div className="cc-stat-l">afsluttet</div></div>
-        <div className="cc-numbers-cell"><div className="cc-stat-n">{requests.length}</div><div className="cc-stat-l">i alt</div></div>
+      {!loading && !error && newCount > 0 && (
+        <div className="cc-card cc-card-pad kinly-focus-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div>
+            <div className="cc-kicker">Næste skridt</div>
+            <div style={{ marginTop: 4 }}>{newCount} {newCount === 1 ? "nyt svar" : "nye svar"} mangler research og demo.</div>
+          </div>
+          <button className="cc-btn kinly-next-action" style={{ marginLeft: "auto" }} onClick={() => setFilter("alle")}>Vis dem</button>
+        </div>
+      )}
+      <div className="cc-tabs cc-tabs-scroll" role="tablist" aria-label="Filtrér udkast">
+        <button role="tab" aria-selected={filter === "alle"} className="cc-tab" data-active={filter === "alle"} onClick={() => setFilter("alle")}>Alle · {requests.length}</button>
+        <button role="tab" aria-selected={filter === "klar"} className="cc-tab" data-active={filter === "klar"} onClick={() => setFilter("klar")}>Klar til dig · {readyCount}</button>
+        <button role="tab" aria-selected={filter === "sendt"} className="cc-tab" data-active={filter === "sendt"} onClick={() => setFilter("sendt")}>Afsluttet · {closedCount}</button>
       </div>
-      <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <strong>{requests.length} udkast i alt</strong>
-        <span className="cc-dim">·</span>
-        <button className={`cc-btn ${filter === "alle" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("alle")}>Alle</button>
-        <button className={`cc-btn ${filter === "klar" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("klar")}>Klar til dig</button>
-        <button className={`cc-btn ${filter === "sendt" ? "cc-btn-accent" : ""}`} onClick={() => setFilter("sendt")}>Lukkede / afviste</button>
-      </div>
-      {error && <div className="cc-card cc-card-pad" role="alert">Kunne ikke gemme: {error}</div>}
-      {shown.length === 0 && !error && <div className="cc-card cc-card-pad">Ingen udkast i denne visning.</div>}
-      {shown.map((item) => (
+      {error && (
+        <div className="cc-card cc-card-pad" role="alert" style={{ borderColor: "var(--red)", background: "var(--red-dim)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <span>Kunne ikke hente udkastene: {error}</span>
+          <button className="cc-btn" style={{ marginLeft: "auto" }} onClick={() => void load()}>Prøv igen</button>
+        </div>
+      )}
+      {loading && !error && <div className="cc-card cc-card-pad cc-dim">Henter udkast …</div>}
+      {!loading && !error && shown.length === 0 && (
+        <div className="cc-card cc-card-pad">
+          <div className="cc-empty">{filter === "alle" ? "Ingen udkast endnu. De lander her når nogen udfylder spørgeskemaet på kinly.dk." : "Ingen udkast i denne visning."}</div>
+        </div>
+      )}
+      {!loading && shown.map((item) => (
         <PreviewCard key={item.id} item={item} onEdit={() => setEditing(item)} onDecide={decide} onStatus={(status) => void decide(item, status)} />
       ))}
       {editing && <EditPanel item={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load(); }} />}
@@ -109,7 +123,7 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
             <div className="cc-dim" style={{ marginTop: 5 }}>{item.contactName ? `${item.contactName} · ` : ""}{item.channel === "formular" ? "spørgeskema" : "mail"} · {item.email}{item.branch ? ` · ${item.branch}` : ""}</div>
             <div className="cc-dim" style={{ marginTop: 3, fontSize: 11.5 }}>{new Date(item.createdAt).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })}</div>
           </div>
-          <span className="cc-pill">{item.status}</span>
+          <span className="cc-chip" style={ready ? { background: "var(--green-dim)", color: "var(--green)" } : undefined}>{item.status}</span>
         </div>
         <div style={{ display: "grid", gap: 12, marginTop: 18, fontSize: 13 }}>
           <Field label="Hook / research" value={item.research} />
@@ -120,8 +134,8 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
         <div style={{ marginTop: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {item.status === "preview klar" && <button className="cc-btn cc-btn-accent" onClick={() => onDecide(item, "godkendt")}>Godkend udkast</button>}
           {ready && <button className="cc-btn" onClick={onEdit}>Se / redigér mail</button>}
-          {item.status !== "afvist" && item.status !== "sendt/lukket" && <button className="cc-btn" onClick={() => onDecide(item, "afvist")}>Afvis udkast</button>}
-          <select aria-label={`Status for ${item.company}`} value={item.status} onChange={(e) => onStatus(e.target.value as Status)}>
+          {item.status !== "afvist" && item.status !== "sendt/lukket" && <button className="cc-btn kinly-quiet-action" onClick={() => onDecide(item, "afvist")}>Afvis udkast</button>}
+          <select className="cc-btn" aria-label={`Status for ${item.company}`} value={item.status} onChange={(e) => onStatus(e.target.value as Status)} style={{ marginLeft: "auto", paddingRight: 10 }}>
             {statuses.map((status) => <option key={status}>{status}</option>)}
           </select>
         </div>

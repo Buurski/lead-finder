@@ -145,9 +145,10 @@ function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
                 style={{
                   fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase",
                   padding: "2px 7px",
-                  background: item.account === "lucas" ? "rgba(56, 132, 255, 0.12)" : "rgba(168, 85, 247, 0.14)",
-                  color: item.account === "lucas" ? "#3a6cd6" : "#8b3fcb",
-                  border: `1px solid ${item.account === "lucas" ? "rgba(56, 132, 255, 0.3)" : "rgba(168, 85, 247, 0.3)"}`,
+                  // Konto skelnes med ro: samme neutrale chip, kun kant/ink skifter.
+                  background: item.account === "lucas" ? "var(--blue-dim)" : "var(--bg-3)",
+                  color: item.account === "lucas" ? "var(--blue)" : "var(--text-muted)",
+                  border: `1px solid ${item.account === "lucas" ? "var(--blue)" : "var(--border-light)"}`,
                 }}
               >
                 {item.account}
@@ -237,7 +238,7 @@ function ScanNowButton({ onDone }: { onDone: () => void }) {
   }
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <button className="cc-btn" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>
+      <button className="cc-btn kinly-next-action" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>
       {failed && <span className="cc-dim" style={{ fontSize: 12, color: "var(--amber)" }}>Scan fejlede — prøv igen om lidt.</span>}
     </span>
   );
@@ -310,7 +311,7 @@ export default function RepliesClient() {
         </div>
         <ScanNowButton onDone={load} />
         <CopyPromptButton />
-        <button className="cc-btn" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
+        <button className="cc-btn kinly-quiet-action" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
       </div>
 
       <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderColor: armed ? "var(--amber)" : "var(--border)" }}>
