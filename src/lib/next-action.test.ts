@@ -17,6 +17,7 @@ function summary(over: Partial<DeckSummary> = {}): DeckSummary {
     dailySent: [],
     revenue: { monthlyDKK: 0, setupDKK: 0, clientCount: 0, payingClientCount: 0, goalMonthlyDKK: 0 },
     previews: { ready: 0, ok: true },
+    feeds: [],
     clientHealth: { blocked: 0, liveWithoutFee: 0, ok: true },
     pause: null,
     buckets: { indtjening: false, kunder: false, kalender: false, kommunikation: false, moeder: false, opgaver: false, viden: true },
@@ -89,4 +90,24 @@ test("count følger altid den handling der vandt", () => {
   const a = nextAction(summary({ previews: { ready: 4, ok: true }, queue: { count: 0, pending: 0, top: [] } }));
   assert.equal(a.count, 4);
   assert.equal(a.source, "previews");
+});
+
+test("død lead-feed erstatter 'find nye leads' med sandheden", () => {
+  const a = nextAction(summary({
+    numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
+    feeds: [{ key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", status: "dead", at: "2026-07-06T20:10:37.630Z", ageHours: 24 * 25, expectEveryHours: 24 }],
+  }));
+  assert.equal(a.priority, 7);
+  assert.equal(a.degraded, true);
+  assert.match(a.reason, /25 dage/);
+  assert.notEqual(a.label, "Find nye leads");
+});
+
+test("frisk lead-feed lader stigen køre normalt", () => {
+  const a = nextAction(summary({
+    numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
+    feeds: [{ key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", status: "fresh", at: "2026-07-31T06:00:00.000Z", ageHours: 6, expectEveryHours: 24 }],
+  }));
+  assert.equal(a.label, "Find nye leads");
+  assert.notEqual(a.degraded, true);
 });

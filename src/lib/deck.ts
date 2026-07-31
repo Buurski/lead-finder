@@ -18,6 +18,8 @@ import { getSuppressed, isSuppressed } from "./today-overrides.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import { isContactable } from "./leads/contactable.ts";
 import { readPreviewRequests } from "./preview-queue.ts";
+import { FEED_SPECS, classifyFeed, timestampOf, type FeedHealth } from "./feed-health.ts";
+import { readVaultJson } from "./vault.ts";
 
 export interface DeckNumbers {
   newLeads: number;
@@ -94,6 +96,8 @@ export interface DeckSummary {
   // springes over i stedet for at blive læst som "nul at lave".
   previews?: { ready: number; ok: boolean };
   clientHealth?: { blocked: number; liveWithoutFee: number; ok: boolean };
+  /** Alder på de daglige datafeeds — så en død kilde ikke ligner en rolig dag. */
+  feeds?: FeedHealth[];
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
   buckets: Record<
     "indtjening" | "kunder" | "kalender" | "kommunikation" | "opgaver" | "moeder" | "viden",
@@ -305,6 +309,26 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     ok, // Sheets nede => tallene er 0 fordi listen er tom, ikke fordi alt er fint
   };
 
+  // Datafeeds: bedst muligt. Fejler opslaget, står de som "unknown" og nævnes
+  // stadig — tavshed er præcis den fejl der kostede 25 dages lead-generering.
+  let feeds: FeedHealth[] | undefined;
+  try {
+    const now = Date.now();
+    feeds = await Promise.all(
+      FEED_SPECS.map(async (spec) => {
+        try {
+          return classifyFeed(spec, timestampOf(await readVaultJson(spec.path)), now);
+        } catch {
+          // Læsefejl er "unknown", ikke "dead" — vi kan ikke skelne "filen er
+          // væk" fra "GitHub svarede ikke", og en falsk dødsattest er også løgn.
+          return classifyFeed(spec, null, now);
+        }
+      }),
+    );
+  } catch {
+    feeds = undefined;
+  }
+
   const numbers = buildNumbers(leads);
   // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
   // it reflects what actually needs answering (incl. non-lead mail), not just the
@@ -328,6 +352,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     revenue: buildRevenue(clients),
     previews,
     clientHealth,
+    feeds,
     pause,
     buckets: {
       indtjening: clients.length > 0,

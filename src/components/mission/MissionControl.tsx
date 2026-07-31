@@ -11,6 +11,7 @@ import MaalWidget from "./MaalWidget";
 import OmverdenCard from "./OmverdenCard";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import { nextAction } from "@/lib/next-action";
+import { feedSentence } from "@/lib/feed-health";
 import type { SpendSummary } from "@/lib/spend-log";
 
 // Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
@@ -192,7 +193,40 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
           <MaalWidget />
         </div>
       </div>
+      <FeedHealthNote s={s} />
       <CompanySnapshot s={s} />
+    </div>
+  );
+}
+
+
+// Datafeeds der er holdt op med at levere. Tavs når alt er friskt — en linje
+// her betyder altid noget. (Uden den her kunne lead-motoren ligge død i 25
+// dage mens skærmen så helt normal ud. Det skete.)
+function FeedHealthNote({ s }: { s: DeckSummary }) {
+  const bad = (s.feeds ?? []).filter((f) => f.status !== "fresh");
+  if (bad.length === 0) return null;
+  return (
+    <div className="cc-card cc-card-pad" role="status" style={{ display: "grid", gap: 7 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Icon name="Activity" style={{ width: 15, height: 15, color: "var(--amber)" }} />
+        <strong style={{ fontSize: 13.5 }}>Datafeeds</strong>
+      </div>
+      {bad.map((f) => (
+        <div key={f.key} style={{ display: "flex", gap: 9, alignItems: "baseline", fontSize: 12.5, color: "var(--text-muted)" }}>
+          <span
+            className="cc-chip"
+            style={f.status === "dead"
+              ? { background: "var(--red-dim)", color: "var(--red)" }
+              : f.status === "stale"
+                ? { background: "var(--amber-dim)", color: "var(--amber)" }
+                : undefined}
+          >
+            {f.status === "dead" ? "død" : f.status === "stale" ? "forsinket" : "ukendt"}
+          </span>
+          <span style={{ minWidth: 0 }}>{feedSentence(f)}</span>
+        </div>
+      ))}
     </div>
   );
 }

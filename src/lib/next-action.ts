@@ -35,7 +35,7 @@ export interface NextAction {
  *  4. kunde blokeret (mangler brief)
  *  5. økonomi der kræver opmærksomhed (live site uden pris)
  *  6. lead der skal følges op
- *  7. find nye leads
+ *  7. find nye leads (eller: sig det, hvis lead-motoren er gået i stå)
  */
 export function nextAction(s: DeckSummary): NextAction {
   // Sheets nede → leads-, svar- og kundetal er tomme arrays, ikke nuller. Alt
@@ -108,6 +108,22 @@ export function nextAction(s: DeckSummary): NextAction {
       priority: 6,
       source: "leads",
       count: s.needsYou.length,
+    };
+  }
+
+  // Lead-motoren er død: at sige "find nye leads" ville sende Lucas hen til en
+  // side der ikke har fået ny data i ugevis. Sig hvad der faktisk er galt.
+  const deadLeadgen = s.feeds?.find((f) => f.key === "leadgen" && f.status === "dead");
+  if (deadLeadgen) {
+    const days = Math.floor((deadLeadgen.ageHours ?? 0) / 24);
+    return {
+      label: "Lead-motoren er gået i stå",
+      href: "/leadgen",
+      reason: `Nye leads har ikke leveret i ${days} dage — godkendelseskøen får ingen ny data.`,
+      priority: 7,
+      source: "leads",
+      count: days,
+      degraded: true,
     };
   }
 
