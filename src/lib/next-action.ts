@@ -11,6 +11,9 @@
 
 import type { DeckSummary } from "./deck";
 
+/** daily-lead-gen sourcer kun når køen er nede på dette antal. Se scheduler-arkitektur.md. */
+export const LEADGEN_GATE_PENDING = 20;
+
 export type ActionSource = "replies" | "queue" | "previews" | "clients" | "okonomi" | "leads" | "none";
 
 export interface NextAction {
@@ -111,19 +114,25 @@ export function nextAction(s: DeckSummary): NextAction {
     };
   }
 
-  // Lead-motoren er død: at sige "find nye leads" ville sende Lucas hen til en
-  // side der ikke har fået ny data i ugevis. Sig hvad der faktisk er galt.
+  // Lead-feeden er tavs. At sige "find nye leads" ville sende Lucas til en side
+  // der ikke har fået ny data i ugevis. To vidt forskellige årsager, to svar:
+  // enten er køen fuld (daily-lead-gen er gated til kun at source ved ≤20
+  // pending og springer korrekt over), eller også er motoren reelt gået i stå.
   const deadLeadgen = s.feeds?.find((f) => f.key === "leadgen" && f.status === "dead");
   if (deadLeadgen) {
     const days = Math.floor((deadLeadgen.ageHours ?? 0) / 24);
+    const gated = s.queue.pending > LEADGEN_GATE_PENDING;
     return {
-      label: "Lead-motoren er gået i stå",
-      href: "/leadgen",
-      reason: `Nye leads har ikke leveret i ${days} dage — godkendelseskøen får ingen ny data.`,
+      label: gated ? "Tøm godkendelseskøen" : "Lead-motoren er gået i stå",
+      href: gated ? "/approve" : "/leadgen",
+      reason: gated
+        ? `Lead-motoren har holdt pause i ${days} dage med vilje — den sourcer først igen når køen er nede på ${LEADGEN_GATE_PENDING}.`
+        : `Nye leads har ikke leveret i ${days} dage, og køen er tom — motoren burde have kørt.`,
       priority: 7,
       source: "leads",
-      count: days,
-      degraded: true,
+      count: gated ? s.queue.pending : days,
+      // Gated er ikke en fejl — det er systemet der gør som aftalt.
+      degraded: !gated,
     };
   }
 

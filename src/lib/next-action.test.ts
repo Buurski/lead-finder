@@ -92,10 +92,33 @@ test("count følger altid den handling der vandt", () => {
   assert.equal(a.source, "previews");
 });
 
-test("død lead-feed erstatter 'find nye leads' med sandheden", () => {
+const deadLeadgen = (days: number) => ([{
+  key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json",
+  status: "dead" as const, at: "2026-07-06T20:10:37.630Z", ageHours: 24 * days, expectEveryHours: 24,
+}]);
+
+test("tavs lead-feed med FULD kø er gated, ikke i stykker", () => {
+  // Den virkelige sag: 328 pending, motoren springer korrekt over hver morgen.
   const a = nextAction(summary({
     numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
-    feeds: [{ key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", status: "dead", at: "2026-07-06T20:10:37.630Z", ageHours: 24 * 25, expectEveryHours: 24 }],
+    queue: { count: 524, pending: 328, top: [] },
+    feeds: deadLeadgen(25),
+  }));
+  // Køen vinder allerede på trin 2 her — men beskeden må aldrig kalde det en fejl.
+  const gatedCase = nextAction(summary({
+    numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
+    queue: { count: 524, pending: 0, top: [] },
+    feeds: deadLeadgen(25),
+  }));
+  assert.equal(a.source, "queue");            // fuld kø er stadig trin 2
+  assert.equal(gatedCase.degraded, true);     // tom kø + tavs motor = reel fejl
+  assert.match(gatedCase.reason, /burde have kørt/);
+});
+
+test("tavs lead-feed med tom kø er en reel fejl", () => {
+  const a = nextAction(summary({
+    numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
+    feeds: deadLeadgen(25),
   }));
   assert.equal(a.priority, 7);
   assert.equal(a.degraded, true);
@@ -106,7 +129,7 @@ test("død lead-feed erstatter 'find nye leads' med sandheden", () => {
 test("frisk lead-feed lader stigen køre normalt", () => {
   const a = nextAction(summary({
     numbers: { newLeads: 0, contactable: 202, sentToday: 0, repliesPending: 0, wonThisWeek: 0 },
-    feeds: [{ key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", status: "fresh", at: "2026-07-31T06:00:00.000Z", ageHours: 6, expectEveryHours: 24 }],
+    feeds: [{ key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", status: "fresh" as const, at: "2026-07-31T06:00:00.000Z", ageHours: 6, expectEveryHours: 24 }],
   }));
   assert.equal(a.label, "Find nye leads");
   assert.notEqual(a.degraded, true);
