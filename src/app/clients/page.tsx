@@ -1,4 +1,5 @@
 import { getClients, type Client } from "@/lib/sheets";
+import { listInvoices, getSubscriptions, clientEconomy, type ClientEconomy } from "@/lib/invoices";
 import ClientCard from "@/components/ClientCard";
 import AddClientForm from "@/components/AddClientForm";
 import PageHeader from "@/components/shell/PageHeader";
@@ -34,6 +35,23 @@ export default async function ClientsPage() {
     // Couldn't reach Sheets — flag it so an empty list isn't shown as "no
     // clients yet" (which looks like the client list was wiped).
     sheetsOk = false;
+  }
+
+  // Fakturaer hentes ÉN gang og grupperes — ikke ét opslag pr. kundekort.
+  // Fejler kilden, får ingen kunde en økonomi-linje (i stedet for en falsk en).
+  let economy = new Map<string, ClientEconomy>();
+  try {
+    const [invoices, subs] = await Promise.all([listInvoices(), getSubscriptions()]);
+    const today = new Date().toISOString().slice(0, 10);
+    for (const c of clients) {
+      economy.set(c.name, clientEconomy(
+        invoices.filter((i) => i.clientName === c.name),
+        subs.find((sub) => sub.clientName === c.name),
+        today,
+      ));
+    }
+  } catch {
+    economy = new Map();
   }
 
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
@@ -118,7 +136,7 @@ export default async function ClientsPage() {
                 <p className="cc-dim" style={{ fontSize: 12.5, marginTop: 2 }}>{g.sub}</p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12 }}>
-                {g.items.map((client) => <ClientCard key={client.id} client={client} />)}
+                {g.items.map((client) => <ClientCard key={client.id} client={client} economy={economy.get(client.name)} />)}
               </div>
             </section>
           ))}

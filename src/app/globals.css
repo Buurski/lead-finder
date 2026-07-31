@@ -946,6 +946,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .cc-brief-empty .cc-dim { flex-basis: 100%; margin-left: 25px; }
   .cc-top-search { width: 34px; padding: 0; justify-content: center; }
   .cc-top-search span { display: none; }
+  /* Rail-toggle er meningsløs på mobil (sidebaren er en skuffe dér) og var de
+     sidste 4px der skubbede topbaren ud over kanten på en 375px-skærm. */
+  .cc-rail-toggle { display: none; }
 }
 
 /* Reference pass: light utility rail, calm topbar, one clear active state. */

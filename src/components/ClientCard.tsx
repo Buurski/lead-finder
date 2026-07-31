@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen, CheckCircle, Clock, ArrowRight, Pencil } from "lucide-react";
+import { FolderOpen, CheckCircle, Clock, ArrowRight, Pencil, Receipt } from "lucide-react";
 import Link from "next/link";
 import type { Client } from "@/lib/sheets";
+import type { ClientEconomy } from "@/lib/invoices";
 
 const WS_STYLE = {
   demo:          { label: "Demo klar", color: "var(--blue)", bg: "var(--blue-dim)" },
@@ -21,7 +22,7 @@ function safeProjectLabel(value: string): string {
   }
 }
 
-export default function ClientCard({ client }: { client: Client }) {
+export default function ClientCard({ client, economy }: { client: Client; economy?: ClientEconomy }) {
   // Ukendt status må ikke vises som "Demo klar" — så ville en forkert værdi i
   // arket ligne en rigtig tilstand. Vis den rå værdi i stedet.
   const ws = WS_STYLE[client.websiteStatus] ?? { label: client.websiteStatus?.trim() || "Status ukendt", color: "var(--amber)", bg: "var(--amber-dim)" };
@@ -188,6 +189,15 @@ export default function ClientCard({ client }: { client: Client }) {
             style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--accent-ink)", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
             <Pencil size={12} /> {isPaying ? "Rediger" : "Sæt pris"}
           </button>
+        </div>
+      )}
+
+      {/* Økonomi-status. Mangler kilden, står linjen slet ikke — hellere tavshed
+          end et tal ingen kan stole på. */}
+      {economy && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: economy.tone === "red" ? "var(--red)" : economy.tone === "amber" ? "var(--amber)" : "var(--text-dim)" }}>
+          <Receipt size={13} style={{ flexShrink: 0 }} />
+          <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{economy.text}</span>
         </div>
       )}
 

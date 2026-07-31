@@ -236,3 +236,56 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
   const settings = await store.get<BusinessSettings>("settings/business");
   return settings ?? DEFAULT_BUSINESS_SETTINGS;
 }
+
+// ---------------------------------------------------------------------------
+// Økonomi-status pr. kunde — én linje i klartekst til kunde-arbejdsfladen.
+//
+// Ren funktion: kalderen henter fakturaer og abonnementer én gang og grupperer
+// selv, så et kundekort ikke koster et opslag hver. `clientName` er den aftalte
+// nøgle (Sheets row-id skifter, navnet gør ikke).
+
+export type EconomyTone = "neutral" | "amber" | "red" | "green";
+
+export interface ClientEconomy {
+  text: string;
+  tone: EconomyTone;
+}
+
+const DK_MONTH = ["januar", "februar", "marts", "april", "maj", "juni", "juli", "august", "september", "oktober", "november", "december"];
+
+function dkDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d}. ${DK_MONTH[m - 1] ?? ""}`.trim();
+}
+
+/**
+ * Vigtigst-først: forfalden slår sendt, sendt slår kladde, og først når intet
+ * er i gang falder vi tilbage på abonnementets næste træk. Findes hverken
+ * faktura eller abonnement, siges det — ikke "0 kr".
+ */
+export function clientEconomy(invoices: Invoice[], sub: Subscription | undefined, todayISO: string): ClientEconomy {
+  const mine = invoices.filter((i) => i.status !== "betalt");
+
+  const overdue = mine.filter((i) => i.status === "forfalden" || i.status === "rykket" || (i.status === "sendt" && i.dueDate < todayISO));
+  if (overdue.length > 0) {
+    const worst = overdue.sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+    return {
+      text: overdue.length === 1
+        ? `Faktura ${worst.number} er forfalden (${dkDate(worst.dueDate)})`
+        : `${overdue.length} fakturaer er forfaldne — ældste ${dkDate(worst.dueDate)}`,
+      tone: "red",
+    };
+  }
+
+  const sent = mine.filter((i) => i.status === "sendt").sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  if (sent) return { text: `Faktura ${sent.number} sendt — forfalder ${dkDate(sent.dueDate)}`, tone: "neutral" };
+
+  const draft = mine.filter((i) => i.status === "kladde").sort((a, b) => a.number.localeCompare(b.number))[0];
+  if (draft) return { text: `Faktura ${draft.number} ligger som kladde — ikke sendt endnu`, tone: "amber" };
+
+  if (sub?.active) return { text: `Abonnement kører — næste faktura d. ${sub.dayOfMonth}.`, tone: "green" };
+  if (sub) return { text: "Abonnement er sat på pause", tone: "amber" };
+
+  return { text: "Ingen faktura eller abonnement endnu", tone: "neutral" };
+}
