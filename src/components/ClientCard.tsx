@@ -6,9 +6,9 @@ import Link from "next/link";
 import type { Client } from "@/lib/sheets";
 
 const WS_STYLE = {
-  demo:          { label: "Demo klar", color: "#4338ca", bg: "#e0e7ff" },
-  "in progress": { label: "I gang",    color: "#65756e", bg: "#e8eeeb" },
-  live:          { label: "Live",      color: "#15803d", bg: "#dcfce7" },
+  demo:          { label: "Demo klar", color: "var(--blue)", bg: "var(--blue-dim)" },
+  "in progress": { label: "I gang",    color: "var(--text-muted)", bg: "var(--bg-3)" },
+  live:          { label: "Live",      color: "var(--green)", bg: "var(--green-dim)" },
 };
 
 function safeProjectLabel(value: string): string {
@@ -22,7 +22,9 @@ function safeProjectLabel(value: string): string {
 }
 
 export default function ClientCard({ client }: { client: Client }) {
-  const ws = WS_STYLE[client.websiteStatus] ?? WS_STYLE.demo;
+  // Ukendt status må ikke vises som "Demo klar" — så ville en forkert værdi i
+  // arket ligne en rigtig tilstand. Vis den rå værdi i stedet.
+  const ws = WS_STYLE[client.websiteStatus] ?? { label: client.websiteStatus?.trim() || "Status ukendt", color: "var(--amber)", bg: "var(--amber-dim)" };
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [monthly, setMonthly] = useState(client.monthlyFee || "");
@@ -106,12 +108,15 @@ export default function ClientCard({ client }: { client: Client }) {
         </div>
       </div>
 
+      {/* En manglende brief blokerer kun hvis sitet ikke er live endnu. */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
         {client.briefFilled
-          ? <CheckCircle size={13} style={{ color: "#22c55e" }} />
+          ? <CheckCircle size={13} style={{ color: "var(--green)" }} />
           : <Clock size={13} />
         }
-        {client.briefFilled ? "Brief udfyldt" : "Brief mangler"}
+        {client.briefFilled
+          ? "Brief udfyldt"
+          : client.websiteStatus === "live" ? "Brief ikke udfyldt — sitet er live alligevel" : "Brief mangler"}
       </div>
 
       {client.projectFolder && (
@@ -154,10 +159,10 @@ export default function ClientCard({ client }: { client: Client }) {
               />
             </label>
           </div>
-          {err && <span style={{ fontSize: 11, color: "var(--red, #dc2626)" }}>{err}</span>}
+          {err && <span role="alert" style={{ fontSize: 11, color: "var(--red)" }}>{err}</span>}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={save} disabled={saving}
-              style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: "var(--green)", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+              style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: "var(--text)", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
               {saving ? "Gemmer…" : "Gem"}
             </button>
             <button onClick={() => { setEditing(false); setMonthly(client.monthlyFee || ""); setSetup(client.setupFee || ""); setErr(""); }} disabled={saving}
@@ -168,14 +173,15 @@ export default function ClientCard({ client }: { client: Client }) {
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
+          {/* Tom streng betyder "ingen har tastet det ind", ikke "0 kr" — vis forskellen. */}
           {isPaying ? (
             <span>
-              <span style={{ color: "var(--green)", fontWeight: 600 }}>{client.monthlyFee} kr</span>
+              <span style={{ color: "var(--text)", fontWeight: 600 }}>{client.monthlyFee} kr</span>
               <span style={{ color: "var(--text-dim)" }}>/md · </span>
-              <span>{client.setupFee || 0} kr setup</span>
+              <span>{client.setupFee.trim() ? `${client.setupFee} kr setup` : "setup ikke udfyldt"}</span>
             </span>
           ) : (
-            <span style={{ color: "var(--text-dim)" }}>Ingen pris endnu — prospect</span>
+            <span style={{ color: "var(--text-dim)" }}>{client.monthlyFee.trim() ? "0 kr/md — aftalt gratis" : "Pris ikke udfyldt endnu"}</span>
           )}
           <button onClick={() => setEditing(true)}
             title="Rediger pris"
@@ -198,8 +204,11 @@ export default function ClientCard({ client }: { client: Client }) {
             alignItems: "center",
             justifyContent: "center",
             gap: 6,
-            background: "var(--green)",
-            color: "#fff",
+            // Sidens primære handling er "Udfyld brief" i toppen. Kortets egen
+            // knap er sekundær, ellers bliver skærmen en mur af sorte knapper.
+            background: "var(--surface)",
+            color: "var(--text)",
+            border: "1px solid var(--border-light)",
             borderRadius: 8,
             padding: "9px 0",
             fontSize: 13,

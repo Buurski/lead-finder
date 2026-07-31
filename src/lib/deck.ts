@@ -17,6 +17,7 @@ import { loadDigest, summarizeDigest } from "./inbox-digest.ts";
 import { getSuppressed, isSuppressed } from "./today-overrides.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import { isContactable } from "./leads/contactable.ts";
+import { readPreviewRequests } from "./preview-queue.ts";
 
 export interface DeckNumbers {
   newLeads: number;
@@ -88,6 +89,11 @@ export interface DeckSummary {
   // Master send-pause (halt-all). null = status unknown (Sheets unreachable) —
   // the shell banner only shows on a POSITIVE paused signal, never on unknown.
   pause: { paused: boolean; until: string | null } | null;
+  // Optional feeds for the shared next-action ladder (next-action.ts). De er
+  // optional med vilje: mangler feltet, er kilden ikke leveret, og trinnet
+  // springes over i stedet for at blive læst som "nul at lave".
+  previews?: { ready: number; ok: boolean };
+  clientHealth?: { blocked: number; liveWithoutFee: number; ok: boolean };
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
   buckets: Record<
     "indtjening" | "kunder" | "kalender" | "kommunikation" | "opgaver" | "moeder" | "viden",
@@ -281,6 +287,24 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     /* unknown — banner stays hidden */
   }
 
+  // Gratis udkast der venter på Lucas' gennemsyn. Egen store, egen fejl-tilstand
+  // — kan den ikke læses, sættes ok:false og trinnet springes over i stigen.
+  let previews: DeckSummary["previews"];
+  try {
+    const reqs = await readPreviewRequests();
+    previews = { ready: reqs.filter((r) => ["preview klar", "godkendt", "kladde klar"].includes(r.status)).length, ok: true };
+  } catch {
+    previews = { ready: 0, ok: false };
+  }
+
+  // Kunde-huller: blokeret = mangler brief og er ikke live. Live uden pris er et
+  // økonomi-hul, ikke en blokering.
+  const clientHealth: DeckSummary["clientHealth"] = {
+    blocked: clients.filter((c) => !c.briefFilled && c.websiteStatus !== "live").length,
+    liveWithoutFee: clients.filter((c) => c.websiteStatus === "live" && !c.monthlyFee.trim()).length,
+    ok, // Sheets nede => tallene er 0 fordi listen er tom, ikke fordi alt er fint
+  };
+
   const numbers = buildNumbers(leads);
   // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
   // it reflects what actually needs answering (incl. non-lead mail), not just the
@@ -302,6 +326,8 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     pulse,
     dailySent: buildDailySent(leads),
     revenue: buildRevenue(clients),
+    previews,
+    clientHealth,
     pause,
     buckets: {
       indtjening: clients.length > 0,

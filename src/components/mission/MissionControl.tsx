@@ -10,6 +10,7 @@ import UsageSparkline from "./UsageSparkline";
 import MaalWidget from "./MaalWidget";
 import OmverdenCard from "./OmverdenCard";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
+import { nextAction } from "@/lib/next-action";
 import type { SpendSummary } from "@/lib/spend-log";
 
 // Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
@@ -61,18 +62,6 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-// The single most important thing to do right now — replies beat drafts beat
-// new leads. Shown as the header's NEXT-ACTION so the answer to "hvad nu?"
-// never requires scanning the page.
-function nextAction(s: DeckSummary): { label: string; href: string } {
-  if (s.numbers.repliesPending > 0)
-    return { label: `Besvar ${s.numbers.repliesPending} svar`, href: "/replies" };
-  if (s.queue.pending > 0)
-    return { label: `Godkend ${s.queue.pending} udkast`, href: "/approve" };
-  if (s.numbers.contactable > 0) return { label: "Find nye leads", href: "/leadgen" };
-  return { label: "Åbn gratis udkast", href: "/previews" };
-}
-
 export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [details, setDetails] = useState(false);
@@ -105,6 +94,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Link
             href={act.href}
+            title={act.reason}
             className="cc-card kinly-next-action"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 17px", textDecoration: "none", color: "#fff", fontWeight: 700, fontSize: 13.5 }}
           >
@@ -209,15 +199,19 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
 
 // The single most important number, big — what needs attention today.
 function HeroNumber({ s }: { s: DeckSummary }) {
-  const replies = s.numbers.repliesPending;
-  const lead = replies > 0
-    ? { value: replies, label: replies === 1 ? "svar at besvare — åbn det" : "svar at besvare — kig på dem", href: "/replies", tone: "var(--accent)" }
-    : s.queue.pending > 0
-      ? { value: s.queue.pending, label: "udkast venter på dig", href: "/approve", tone: "var(--accent)" }
-      : { value: s.numbers.contactable, label: "klar at kontakte i pipelinen", href: "/leadgen", tone: "var(--text)" };
+  // Samme stige som header-CTA'en — importeret, ikke gentaget. Tallet skal
+  // matche handlingen, ellers peger de to på hver sin ting.
+  const act = nextAction(s);
+  const lead = {
+    value: act.count,
+    label: act.reason,
+    href: act.href,
+    tone: act.degraded ? "var(--text-dim)" : "var(--text)",
+  };
   return (
     <Link href={lead.href} className="cc-card cc-card-pad kinly-focus-card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{lead.value}</div>
+      {/* Offline kilde viser "—", aldrig 0 — et nul ville læses som "intet at lave". */}
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{act.degraded ? "—" : lead.value}</div>
       <div className="cc-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{lead.label} →</div>
     </Link>
   );
