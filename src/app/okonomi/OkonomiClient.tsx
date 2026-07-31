@@ -173,7 +173,7 @@ export default function OkonomiClient({
           <h2 style={H2}>Recurring (MRR)</h2>
           <p style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Den månedlige, tilbagevendende base — det tal der skal vokse.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1.6fr) repeat(2, minmax(130px, 1fr))", gap: 14, alignItems: "start" }}>
+        <div className="cc-metric-row">
           <HeroMetric
             kicker="MRR run-rate"
             value={dkk(runRate)}
@@ -199,7 +199,7 @@ export default function OkonomiClient({
           <h2 style={H2}>Engangs &amp; samlet omsætning</h2>
           <p style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Setup-honorarer booket ved vundne deals, plus den samlede indtjening.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1.6fr) minmax(150px, 1fr)", gap: 14, alignItems: "start" }}>
+        <div className="cc-metric-row" data-cols="2">
           <HeroMetric
             kicker="Samlet omsætning · md"
             value={dkk(totalMonth)}

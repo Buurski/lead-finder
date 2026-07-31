@@ -202,9 +202,9 @@ function fmtMs(ms: number | null): string {
 function LighthouseRow({ s, cached }: { s: LhScores; cached?: boolean }) {
   const items: [string, number][] = [["Perf", s.performance], ["A11y", s.accessibility], ["Best", s.bestPractices], ["SEO", s.seo]];
   return (
-    <div style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "center" }}>
+    <div style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
       <span className="cc-dim" style={{ width: 120, flexShrink: 0 }}>Lighthouse{cached ? " (cache)" : ""}</span>
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {items.map(([k, n]) => (
           <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${scoreColor(n)}`, color: scoreColor(n), display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>{n}</span>

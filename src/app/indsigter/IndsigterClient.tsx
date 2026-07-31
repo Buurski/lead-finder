@@ -220,12 +220,13 @@ export default function IndsigterClient({
           <DecompBar label="Volumen-effekt" value={dec.volumeEffect} max={decMax} sub={`${dec.n0} → ${dec.n1} deals`} />
           <DecompBar label="Værdi-effekt" value={dec.valueEffect} max={decMax} sub={`${dkk(dec.v0)} → ${dkk(dec.v1)} / deal`} />
         </div>
-        <div aria-hidden style={{ display: "grid", gridTemplateColumns: "160px 1fr auto", gap: 10 }}>
+        {/* clamp i stedet for faste 160/92px — ellers er legenden bredere end en telefon. */}
+        <div aria-hidden style={{ display: "grid", gridTemplateColumns: "clamp(60px, 22vw, 160px) minmax(0, 1fr) auto", gap: 10 }}>
           <span />
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", color: DIM, textTransform: "uppercase" }}>
             <span>← negativ</span><span>positiv →</span>
           </div>
-          <span style={{ minWidth: 92 }} />
+          <span style={{ width: "clamp(24px, 12vw, 92px)" }} />
         </div>
       </section>
     </div>

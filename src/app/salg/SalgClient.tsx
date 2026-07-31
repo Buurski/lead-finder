@@ -100,7 +100,7 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
           <p style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Åbne deals vægtet med sandsynlighed pr. stadie — dit deal-bord.</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 1.5fr) repeat(2, minmax(120px, 1fr))", gap: 14, alignItems: "start" }}>
+        <div className="cc-metric-row">
           <HeroMetric kicker="Pipeline-værdi (vægtet)" value={dkk(pipeline.total)} sub="Σ (setup + 12× mdr) × sandsynlighed" />
           <StatTile label="Åbne deals" value={String(openDeals.length)} sub="i pipelinen nu" />
           <StatTile label="Win rate" value={pct(wr.rate)} sub={`${wr.won} vundet · ${wr.lost} tabt`} />
@@ -146,7 +146,7 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
           <h2 style={H2}>Deal-økonomi</h2>
           <p style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Hvad en gennemsnitlig vundet deal er værd, og hvad der ligger åbent.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 1.5fr) repeat(2, minmax(130px, 1fr))", gap: 14, alignItems: "start" }}>
+        <div className="cc-metric-row">
           <HeroMetric kicker="Gns. dealværdi" value={dkk(econ.avgDealValue)} sub={`setup + 12× mdr · ${econ.wonCount} vundne deals`} />
           <StatTile label="Gns. engangs" value={dkk(econ.avgSetup)} sub="setup pr. vundet deal" />
           <StatTile label="Gns. recurring (år)" value={dkk(econ.avgRecurringAnnual)} sub="12× mdr pr. vundet deal" />
@@ -190,7 +190,7 @@ export default function SalgClient({ clients: clientsProp, nowISO }: { clients: 
                 <Clock size={13} style={{ color: "var(--amber)", flexShrink: 0 }} aria-hidden />
                 <span style={{ fontWeight: 600, flex: "1 1 130px" }}>{d.name}</span>
                 <StagePill stage={d.stage} />
-                <span style={{ color: "oklch(45% 0.12 70)", fontWeight: 600, fontVariantNumeric: "tabular-nums lining-nums" }}>{d.daysOverdue} dage forsinket</span>
+                <span style={{ color: "var(--amber)", fontWeight: 600, fontVariantNumeric: "tabular-nums lining-nums" }}>{d.daysOverdue} dage forsinket</span>
                 <span style={{ color: DIM }}>(forventet {d.expectedClose})</span>
               </div>
             ))}

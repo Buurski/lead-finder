@@ -759,6 +759,12 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 .cc-editable .cc-editable-pen { opacity: 0.35; transition: opacity 150ms ease; }
 .cc-editable:hover .cc-editable-pen, .cc-editable:focus-visible .cc-editable-pen { opacity: 1; }
 
+/* Hero-metric + supporting stats. De faste minmax-kolonner summerede til 508px
+   og skubbede hele siden vandret på 390px-skærme — her falder de til én kolonne. */
+.cc-metric-row { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(2, minmax(130px, 1fr)); gap: 14px; align-items: start; }
+.cc-metric-row[data-cols="2"] { grid-template-columns: minmax(220px, 1.6fr) minmax(150px, 1fr); }
+@media (max-width: 720px) { .cc-metric-row, .cc-metric-row[data-cols="2"] { grid-template-columns: 1fr; } }
+
 /* Scannable list rows (deal rows, alert rows). */
 .cc-hoverrow { transition: background 150ms ease, border-color 150ms ease; }
 .cc-hoverrow:hover { background: var(--surface-2); }

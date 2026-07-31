@@ -41,7 +41,16 @@ export default function SeoTjekFunnel() {
       .catch(() => setFailed(true));
   }, []);
 
-  if (failed || (stats && stats.submissions === 0)) return null; // stille når tom/utilgængelig
+  // Tom tragt = stilhed. Men en FEJL må ikke ligne "ingen data" — så siger vi det.
+  if (failed) {
+    return (
+      <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
+        <span>Kunne ikke hente tallene for det gratis SEO-tjek. Selve siden kører videre.</span>
+        <a className="cc-btn" href="" style={{ marginLeft: "auto", textDecoration: "none" }}>Prøv igen</a>
+      </div>
+    );
+  }
+  if (stats && stats.submissions === 0) return null; // stille når tom
 
   return (
     <section className="cc-card" aria-label="Gratis SEO-tjek tragt">

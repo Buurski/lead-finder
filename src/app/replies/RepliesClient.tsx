@@ -136,8 +136,9 @@ function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
         style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
         <span title={`vigtighed ${item.importance}`} style={{ width: 38, flexShrink: 0, fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: item.importance >= 80 ? "var(--accent-ink)" : item.importance >= 55 ? "var(--amber)" : "var(--text-dim)" }}>{item.importance}</span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fromName || item.from}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            {/* minWidth:0 — uden den kan nowrap-navnet ikke krympe, og hele siden bliver bredere end telefonen. */}
+            <span style={{ minWidth: 0, fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fromName || item.from}</span>
             {item.account && (
               <span
                 className="cc-chip"
@@ -299,7 +300,9 @@ export default function RepliesClient() {
   const noise = items.filter((i) => !i.needsReply);
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    // minmax(0, 1fr): grid-items har min-width:auto, så en lang emnelinje ellers
+    // gør hele siden bredere end telefonen i stedet for at blive forkortet.
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
       <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <Icon name="Inbox" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
         <div style={{ flex: 1, minWidth: 180 }}>

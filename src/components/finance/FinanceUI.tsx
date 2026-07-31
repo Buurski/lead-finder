@@ -14,7 +14,9 @@
 
 import { STAGE_LABELS_DA } from "@/lib/finance";
 
-export const CARD: React.CSSProperties = { display: "grid", gap: 16 };
+// minmax(0, 1fr): uden den arver grid-items min-width:auto, og et bredt tal eller
+// en lang etiket skubber hele siden vandret på telefoner.
+export const CARD: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 };
 export const H2: React.CSSProperties = { fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em" };
 export const DIM = "var(--text-dim)";
 
@@ -23,7 +25,7 @@ export type PillTone = "neutral" | "green" | "amber" | "red" | "blue";
 const PILL_STYLE: Record<PillTone, { bg: string; color: string }> = {
   neutral: { bg: "var(--bg-3)", color: "var(--text-muted)" },
   green: { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
-  amber: { bg: "var(--amber-dim)", color: "oklch(45% 0.12 70)" },
+  amber: { bg: "var(--amber-dim)", color: "var(--amber)" },
   red: { bg: "var(--red-dim)", color: "var(--red)" },
   blue: { bg: "var(--blue-dim)", color: "var(--blue)" },
 };
@@ -162,7 +164,7 @@ export function BarRow({
 }) {
   const pct = Math.min(Math.max(frac, 0), 1) * 100;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `${labelWidth}px 1fr auto`, alignItems: "center", gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: `clamp(70px, 26vw, ${labelWidth}px) minmax(0, 1fr) auto`, alignItems: "center", gap: 10 }}>
       <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{label}{sub != null && <span style={{ color: DIM }}> {sub}</span>}</span>
       <div className={tip ? "cc-tip" : undefined} data-tip={tip} style={{ height: 10, borderRadius: 999, background: "var(--bg-3)", overflow: "hidden" }}>
         <div className="cc-grow-x" style={{ width: `${pct}%`, height: "100%", background: muted ? "var(--border-strong)" : "var(--accent)", borderRadius: 999, transition: "width 400ms cubic-bezier(0.22,1,0.36,1)" }} />
@@ -184,7 +186,7 @@ export function Meter({ value, label, cap = 2, tickAt = 1, sub }: { value: numbe
     <div style={{ background: "var(--bg-3)", borderRadius: 10, padding: "13px 15px", display: "grid", gap: 8, alignContent: "start" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
         <span style={{ fontSize: 11.5, color: DIM, fontWeight: 600 }}>{label}</span>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: met ? "var(--accent-ink)" : short ? "oklch(45% 0.12 70)" : "var(--accent-ink)" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: met ? "var(--accent-ink)" : short ? "var(--amber)" : "var(--accent-ink)" }}>
           {met ? "mål nået ✓" : `${value.toFixed(1)}×`}
         </span>
       </div>
@@ -315,7 +317,7 @@ export function Funnel({ steps }: { steps: FunnelStepView[] }) {
         return (
           <div key={s.label}>
             {showRate && (
-              <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 110px", alignItems: "center" }} aria-hidden>
+              <div style={{ display: "grid", gridTemplateColumns: "clamp(64px, 22vw, 110px) minmax(0, 1fr) clamp(64px, 22vw, 110px)", alignItems: "center" }} aria-hidden>
                 <span />
                 <span style={{ justifySelf: "center", fontSize: 10, fontWeight: 700, color: DIM, padding: "1px 0" }}>
                   {s.rate == null ? "↓" : `↓ ${Math.round(s.rate * 100)}%`}
@@ -323,7 +325,7 @@ export function Funnel({ steps }: { steps: FunnelStepView[] }) {
                 <span />
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 110px", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "clamp(64px, 22vw, 110px) minmax(0, 1fr) clamp(64px, 22vw, 110px)", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 12.5, color: "var(--text-muted)", textAlign: "right" }}>{s.label}</span>
               <div style={{ display: "grid", justifyItems: "center" }}>
                 <div
@@ -381,6 +383,8 @@ export function SheetsFallback() {
       <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
         Kunne ikke hente klient-data lige nu. Tallene her er afledt af Sheets — genindlæs om et øjeblik.
       </span>
+      {/* href="" genindlæser den aktuelle URL — retry uden at gøre komponenten client-side. */}
+      <a className="cc-btn" href="" style={{ marginLeft: "auto", textDecoration: "none" }}>Prøv igen</a>
     </div>
   );
 }
