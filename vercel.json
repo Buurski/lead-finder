@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://instructor-colours-implications-listprice.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://cheapest-medal-bizarre-grew.trycloudflare.com"
     }
   },
   "crons": [
