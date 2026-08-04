@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://prostate-raises-climbing-crucial.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://cayman-six-memphis-trucks.trycloudflare.com"
     }
   },
   "crons": [
