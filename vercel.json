@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://flags-fwd-childrens-preliminary.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://burning-motor-series-andrew.trycloudflare.com"
     }
   },
   "crons": [
