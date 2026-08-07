@@ -19,6 +19,7 @@ function summary(over: Partial<DeckSummary> = {}): DeckSummary {
     previews: { ready: 0, ok: true },
     feeds: [],
     clientHealth: { blocked: 0, liveWithoutFee: 0, ok: true },
+    invoicesOverdue: 0,
     pause: null,
     buckets: { indtjening: false, kunder: false, kalender: false, kommunikation: false, moeder: false, opgaver: false, viden: true },
     ...over,

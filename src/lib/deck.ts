@@ -15,6 +15,7 @@ import { readQueue } from "./queue.ts";
 import type { QueueDraft } from "./queue.ts";
 import { loadDigest, summarizeDigest } from "./inbox-digest.ts";
 import { getSuppressed, isSuppressed } from "./today-overrides.ts";
+import { listInvoices } from "./invoices.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import { isContactable } from "./leads/contactable.ts";
 import { readPreviewRequests } from "./preview-queue.ts";
@@ -96,6 +97,9 @@ export interface DeckSummary {
   // springes over i stedet for at blive læst som "nul at lave".
   previews?: { ready: number; ok: boolean };
   clientHealth?: { blocked: number; liveWithoutFee: number; ok: boolean };
+  /** Forfaldne fakturaer (status forfalden/rykket) fra den lokale faktura-store.
+   *  Bell-badget og faktura-strippen deler dette tal, så de aldrig drifter. */
+  invoicesOverdue: number;
   /** Alder på de daglige datafeeds — så en død kilde ikke ligner en rolig dag. */
   feeds?: FeedHealth[];
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.
@@ -330,6 +334,15 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
   }
 
   const numbers = buildNumbers(leads);
+  // Forfaldne fakturaer fra den lokale store — uafhængig af Sheets og egen
+  // fejl-tilstand: kan den ikke læses, viser badget 0 frem for at fælde deck'et.
+  let invoicesOverdue = 0;
+  try {
+    const invoices = await listInvoices();
+    invoicesOverdue = invoices.filter((i) => i.status === "forfalden" || i.status === "rykket").length;
+  } catch {
+    /* ukendt — badge viser 0 */
+  }
   // Prefer the inbox-triage digest's "needs reply" count when a digest exists —
   // it reflects what actually needs answering (incl. non-lead mail), not just the
   // Sheets "replied" flag. Falls back to the Sheets count when no digest yet.
@@ -353,6 +366,7 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
     previews,
     clientHealth,
     feeds,
+    invoicesOverdue,
     pause,
     buckets: {
       indtjening: clients.length > 0,

@@ -182,6 +182,25 @@ export default function FakturaClient({
           <p className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</p>
         ) : (
           <div style={{ display: "grid", gap: 6 }}>
+            <div
+              style={{
+                display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13,
+                padding: "6px 0", borderTop: "1px solid var(--border)",
+              }}
+            >
+              {(() => {
+                const forfaldne = invoices.filter((i) => i.status === "forfalden" || i.status === "rykket");
+                const sendt = invoices.filter((i) => i.status === "sendt");
+                const sum = (list: Invoice[]) => list.reduce((s, i) => s + i.lines.reduce((a, l) => a + l.amount, 0), 0);
+                return (
+                  <>
+                    <span><b>{forfaldne.length}</b> forfaldne · <b>{kr(sum(forfaldne))} forfaldne</b></span>
+                    <span className="cc-dim">·</span>
+                    <span><b>{kr(sum(sendt))} sendt ikke betalt</b></span>
+                  </>
+                );
+              })()}
+            </div>
             {invoices.map((inv) => {
               const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
               const days = daysUntil(inv.dueDate, today);

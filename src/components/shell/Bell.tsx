@@ -6,11 +6,13 @@ import Icon from "./Icon";
 interface Counts {
   queue?: number;
   needs?: number;
+  invoicesOverdue?: number;
 }
 
 // Notifikations-klokke i topbaren (Bundle G): viser summen af ubehandlede
-// drafts + svar-der-kraever-dig paa tvaers af kanaler. Dataen er den samme
-// deck-summary som sidebar-badges bruger, saa de kan aldrig drifte.
+// drafts + svar-der-kraever-dig + forfaldne fakturaer paa tvaers af kanaler.
+// Dataen er den samme deck-summary som sidebar-badges bruger, saa de kan
+// aldrig drifte.
 export default function Bell({ counts }: { counts: Counts }) {
   const [open, setOpen] = useState(false);
 
@@ -28,7 +30,8 @@ export default function Bell({ counts }: { counts: Counts }) {
 
   const queue = counts.queue ?? 0;
   const needs = counts.needs ?? 0;
-  const total = queue + needs;
+  const invoicesOverdue = counts.invoicesOverdue ?? 0;
+  const total = queue + needs + invoicesOverdue;
 
   return (
     <div style={{ position: "relative" }}>
@@ -89,6 +92,13 @@ export default function Bell({ counts }: { counts: Counts }) {
                 <Icon name="Inbox" />
                 <span>{needs} {needs === 1 ? "svar kræver dig" : "svar kræver dig"}</span>
                 <span className="cc-count">{needs}</span>
+              </Link>
+            )}
+            {invoicesOverdue > 0 && (
+              <Link href="/fakturaer" className="cc-navlink" onClick={() => setOpen(false)}>
+                <Icon name="Receipt" />
+                <span>{invoicesOverdue} {invoicesOverdue === 1 ? "forfalden faktura" : "forfaldne fakturaer"}</span>
+                <span className="cc-count">{invoicesOverdue}</span>
               </Link>
             )}
           </div>

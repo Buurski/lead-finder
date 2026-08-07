@@ -12,6 +12,7 @@ import CommandPalette from "./CommandPalette";
 interface Counts {
   queue?: number;
   needs?: number;
+  invoicesOverdue?: number;
 }
 
 interface PauseInfo {
@@ -83,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then((d) => {
         if (!alive || !d) return;
-        setCounts({ queue: d?.queue?.pending, needs: d?.needsYou?.length });
+        setCounts({ queue: d?.queue?.pending, needs: d?.needsYou?.length, invoicesOverdue: d?.invoicesOverdue });
         setPause(d?.pause ?? null);
       })
       .catch(() => {});
