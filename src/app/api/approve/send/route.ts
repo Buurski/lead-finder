@@ -71,6 +71,12 @@ const parseSenderFilter = (req: Request): SenderId | null => {
   return s === "lucas" || s === "charlie" ? s : null;
 };
 
+// Match en draft til dens Sheets-række (leadkø-triage-fix 2026-08-07).
+// Prioritet: (1) numerisk leadId → (2) bizKey by+navn → (3) navn-only kun hvis
+// entydigt. Aldrig first-match på navn (16 ingest-drafts har navnet som leadId,
+// og "Beauty by M" findes i 2 rækker med forskellig score 44 vs 90).
+import { matchLead } from "@/lib/leads/match";
+
 // GET /api/approve/send — PREFLIGHT. Sender INTET. Kører de samme guards som
 // send-løkken (samme rækkefølge, samme ledger-seeding) og svarer med hvad et
 // klik ville gøre: hvor mange sendes nu (SEND_CAP), hvor mange venter, hvem
@@ -115,7 +121,6 @@ export async function GET(req: Request) {
     sheetsOk = false;
     leads = [];
   }
-  const byId = new Map(leads.map((l) => [l.id, l]));
   for (const l of leads) {
     if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
   }
@@ -124,8 +129,7 @@ export async function GET(req: Request) {
   let capped = 0;
   const skipped: { name: string; reason: string }[] = [];
   for (const d of candidates) {
-    const lead = (d.leadId && byId.get(d.leadId)) ||
-      leads.find((l) => l.name.trim().toLowerCase() === d.name.trim().toLowerCase());
+    const lead = matchLead(leads, d) || undefined;
     const target = (d.recipientEmail && d.recipientEmail.trim()) || (lead?.email || "").trim();
     if (!hasUsableEmail(target)) {
       skipped.push({ name: d.name, reason: lead ? "no email" : "ingen modtager-email" });
@@ -262,7 +266,6 @@ export async function POST(req: Request) {
     console.warn(JSON.stringify({ evt: "approve-send.sheets_unavailable", err: String(err) }));
     leads = [];
   }
-  const byId = new Map(leads.map((l) => [l.id, l]));
 
   // Seed the by-address ledger from Sheets too: any lead already emailed (by
   // EITHER Lucas or Charlie) blocks a fresh cold send to that address. Cold-only
@@ -300,8 +303,7 @@ export async function POST(req: Request) {
       try {
         for (const d of candidates) {
           processed++;
-          const lead = (d.leadId && byId.get(d.leadId)) ||
-            leads.find((l) => l.name.trim().toLowerCase() === d.name.trim().toLowerCase());
+          const lead = matchLead(leads, d) || undefined;
 
           // Recipient: the draft's own email wins (ingest leads have no Sheets row),
           // else the matched lead's email.
