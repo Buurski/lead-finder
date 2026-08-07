@@ -192,6 +192,13 @@ export async function saveInvoice(inv: Invoice): Promise<void> {
   await store.put(`invoice/${inv.number}`, inv);
 }
 
+// Slet kladde + evt. arkiveret PDF. Route'en garanterer status === "kladde".
+// deleteAsset er no-op på KV og kan fejle på Blob hvis PDF aldrig blev arkiveret.
+export async function deleteInvoice(number: string): Promise<void> {
+  await store.delete(`invoice/${number}`);
+  await store.deleteAsset(`invoices/faktura-${number}.pdf`).catch(() => {});
+}
+
 export async function getInvoice(number: string): Promise<Invoice | null> {
   return store.get<Invoice>(`invoice/${number}`);
 }

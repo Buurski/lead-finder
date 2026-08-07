@@ -34,6 +34,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "hver linje skal have beskrivelse og beløb > 0" }, { status: 400 });
   }
 
+  // Dublet-guard: samme kunde + identiske linjer som en eksisterende kladde →
+  // sandsynligvis et utilsigtet dobbeltklik. Returnér det eksisterende nummer.
+  const clientName = body.clientName?.trim() || recipientName;
+  const existing = (await listInvoices()).find(
+    (i) => i.status === "kladde" && i.clientName === clientName && JSON.stringify(i.lines) === JSON.stringify(lines),
+  );
+  if (existing) {
+    return NextResponse.json({ error: `kladde findes allerede (faktura ${existing.number})` }, { status: 409 });
+  }
+
   const biz = await getBusinessSettings();
   const issueDate = /^\d{4}-\d{2}-\d{2}$/.test(body.issueDate ?? "")
     ? (body.issueDate as string)

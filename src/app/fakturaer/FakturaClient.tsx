@@ -110,6 +110,22 @@ export default function FakturaClient({
     }
   }
 
+  async function deleteInvoice(inv: Invoice) {
+    if (!window.confirm(`Slet faktura ${inv.number} (${inv.recipient.name})? Kun kladder kan slettes.`)) return;
+    setBusy(inv.number);
+    setError("");
+    try {
+      const res = await fetch(`/api/invoices/${inv.number}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "sletning fejlede");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ukendt fejl");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
       {error && (
@@ -182,6 +198,9 @@ export default function FakturaClient({
                   )}
                   <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
                     <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5 }}>PDF</a>
+                    {inv.status === "kladde" && (
+                      <button className="cc-btn" disabled={isBusy} onClick={() => deleteInvoice(inv)}>Slet</button>
+                    )}
                     {inv.status !== "betalt" && (
                       <button className="cc-btn" disabled={isBusy} onClick={() => sendInvoice(inv)}>Send</button>
                     )}

@@ -90,6 +90,12 @@ function InvoiceDocument({ inv, biz }: { inv: Invoice; biz: BusinessSettings }) 
           </Text>
         </View>
 
+        {inv.note ? (
+          <View style={styles.noteBox}>
+            <Text>{inv.note}</Text>
+          </View>
+        ) : null}
+
         {inv.payerType === "privat" ? (
           <View style={styles.noteBox}>
             {/* react-pdf kollapser whitespace mellem JSX-children — hold teksten i ét udtryk */}

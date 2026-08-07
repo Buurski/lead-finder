@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint src",
     "test": "node --test --experimental-strip-types --conditions react-server src/lib/**/*.test.ts",
+    "test:seo-tjek": "node --conditions=react-server scripts/test_seo_tjek.mjs",
+    "seo:tjek": "node --conditions=react-server scripts/_seo_tjek_run.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },

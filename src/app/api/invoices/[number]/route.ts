@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getInvoice, saveInvoice, type Invoice, type InvoiceLine } from "@/lib/invoices.ts";
+import { getInvoice, saveInvoice, deleteInvoice, type Invoice, type InvoiceLine } from "@/lib/invoices.ts";
 
 // GET /api/invoices/[number] — enkelt faktura.
 // PATCH /api/invoices/[number] — ret felter (datoer/linjer/modtager/note).
+// DELETE /api/invoices/[number] — slet kladde (kun status "kladde").
 // Nummer og status rettes IKKE her (status har egen route, nummer er låst).
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,4 +53,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ number
   };
   await saveInvoice(patched);
   return NextResponse.json({ ok: true, invoice: patched });
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ number: string }> }) {
+  const { number } = await params;
+  const inv = await getInvoice(number);
+  if (!inv) return NextResponse.json({ error: "faktura findes ikke" }, { status: 404 });
+  if (inv.status !== "kladde") {
+    return NextResponse.json({ error: "kun kladder kan slettes — sendte fakturaer bliver" }, { status: 400 });
+  }
+  await deleteInvoice(number);
+  return NextResponse.json({ ok: true });
 }
