@@ -91,10 +91,6 @@ async function fetchLeadgen(now: number): Promise<LeadgenFile> {
   return data;
 }
 
-function norm(s: string): string {
-  return (s || "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
 // Map the sandbox's site_issues/website into the tone-mixer's websiteStatus enum.
 function websiteStatusFor(it: LeadgenItem): string {
   if (!it.website) return "none";
@@ -134,16 +130,18 @@ async function ingest() {
   // Backfill: older drafts were queued BEFORE recipientEmail existed (incl. the
   // 75 "cowork-leadgen" drafts that have NO leadId at all — the old engine wrote
   // them straight to the queue without place_id). Match by leadId first, then by
-  // normalized NAME as fallback, so the already-queued batch becomes sendable
-  // without re-ingesting.
+  // normalized NAME+CITY (bizKey) as fallback, so the already-queued batch
+  // becomes sendable without re-ingesting — and duplicate names in different
+  // cities never cross-wire emails (same trap as matchLead, see leads/match.ts).
   const emailByLeadId = new Map<string, string>();
-  const emailByName = new Map<string, string>();
+  const emailByBizKey = new Map<string, string>();
   for (const it of items) {
     if (!hasUsableEmail(it.email ?? undefined)) continue;
     const email = (it.email as string).trim();
     const lid = (it.place_id || it.name || "").toString();
     if (lid) emailByLeadId.set(lid, email);
-    if (it.name) emailByName.set(norm(it.name), email);
+    const k = bizKey(it.name, it.city);
+    if (k) emailByBizKey.set(k, email);
   }
   let backfilled = 0;
   for (const d of queue) {
@@ -152,7 +150,7 @@ async function ingest() {
     if (d.status === "sent" || d.status === "rejected") continue;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
     let email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
-    if (!email && d.name) email = emailByName.get(norm(d.name));
+    if (!email && d.name) email = emailByBizKey.get(bizKey(d.name, d.city) ?? "");
     if (email) {
       await updateDraft(d.id, { recipientEmail: email });
       backfilled++;
