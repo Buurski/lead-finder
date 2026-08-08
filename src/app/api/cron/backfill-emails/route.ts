@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { hasUsableEmail } from "@/lib/leads/channel";
+import { bizKey } from "@/lib/leads/suppress";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -24,15 +25,12 @@ const LEADGEN_PATH = "data/leadgen.json";
 
 interface LeadgenItem {
   name?: string;
+  city?: string;
   email?: string | null;
   place_id?: string;
 }
 interface LeadgenFile {
   items?: LeadgenItem[];
-}
-
-function norm(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 async function fetchLeadgen(): Promise<LeadgenFile> {
@@ -81,13 +79,14 @@ export async function GET(req: Request) {
   const items = Array.isArray(file.items) ? file.items : [];
 
   const emailByLeadId = new Map<string, string>();
-  const emailByName = new Map<string, string>();
+  const emailByBizKey = new Map<string, string>();
   for (const it of items) {
     if (!hasUsableEmail(it.email ?? undefined)) continue;
     const email = (it.email as string).trim();
     const lid = (it.place_id || it.name || "").toString();
     if (lid) emailByLeadId.set(lid, email);
-    if (it.name) emailByName.set(norm(it.name), email);
+    const k = bizKey(it.name, it.city);
+    if (k) emailByBizKey.set(k, email);
   }
 
   const queue = await readQueue();
@@ -101,7 +100,7 @@ export async function GET(req: Request) {
     scanned++;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
     let email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
-    if (!email && d.name) email = emailByName.get(norm(d.name));
+    if (!email && d.name) email = emailByBizKey.get(bizKey(d.name, d.city) ?? "");
     if (email) {
       await updateDraft(d.id, { recipientEmail: email });
       patched++;
