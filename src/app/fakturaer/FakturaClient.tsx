@@ -248,6 +248,8 @@ function NyFakturaForm({ clients, onCreated }: { clients: { id: string; name: st
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [createdNumber, setCreatedNumber] = useState<string | null>(null);
 
   function updateLine(i: number, patch: Partial<InvoiceLine>) {
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -281,6 +283,7 @@ function NyFakturaForm({ clients, onCreated }: { clients: { id: string; name: st
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "oprettelse fejlede");
+      setCreatedNumber(data.invoice?.number ?? null);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "ukendt fejl");
@@ -325,9 +328,87 @@ function NyFakturaForm({ clients, onCreated }: { clients: { id: string; name: st
 
       {err && <span style={{ fontSize: 12.5, color: "var(--red, #ff8a8a)" }}>{err}</span>}
 
-      <button className="cc-btn cc-btn-accent" style={{ width: "fit-content" }} disabled={saving} onClick={submit}>
-        {saving ? "opretter…" : "Opret kladde"}
-      </button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="cc-btn" style={{ width: "fit-content" }} onClick={() => setShowPreview((v) => !v)}>
+          {showPreview ? "Skjul preview" : "Se preview"}
+        </button>
+        <button className="cc-btn cc-btn-accent" style={{ width: "fit-content" }} disabled={saving} onClick={submit}>
+          {saving ? "opretter…" : "Opret kladde"}
+        </button>
+        {createdNumber && (
+          <a
+            className="cc-btn cc-btn-accent"
+            href={`/api/invoices/${createdNumber}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none" }}
+          >
+            Åbn PDF (faktura {createdNumber})
+          </a>
+        )}
+      </div>
+
+      {showPreview && (
+        <InvoicePreview
+          recipientName={(mode === "client" ? clientName : freeText).trim()}
+          lines={lines}
+          note={note}
+        />
+      )}
+    </div>
+  );
+}
+
+// Live forhåndsvisning — spejler invoice-pdf.tsx-layoutet, så man ser præcis
+// hvad kunden får, før man opretter kladden. Opdateres live under indtastning.
+function InvoicePreview({
+  recipientName, lines, note,
+}: {
+  recipientName: string;
+  lines: InvoiceLine[];
+  note: string;
+}) {
+  const total = lines.reduce((s, l) => s + (l.amount || 0), 0);
+  const today = new Date().toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" });
+  const due = new Date(Date.now() + 14 * 86400000).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" });
+  const box: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface)", padding: "16px 18px", fontFamily: "Helvetica, Arial, sans-serif", color: "#1a1a1a", fontSize: 12, maxWidth: 480 };
+  const muted: React.CSSProperties = { color: "#555", fontSize: 10.5 };
+  const hRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 11 };
+  const hr: React.CSSProperties = { borderTop: "1px solid #ddd", margin: "8px 0" };
+
+  return (
+    <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+      <span className="cc-dim" style={{ fontSize: 12 }}>Forhåndsvisning (sådan ser fakturaen ud)</span>
+      <div style={box}>
+        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 3 }}>FAKTURA {recipientName ? "" : "…"}</div>
+        <div style={muted}>Udstedt {today} · Forfalder {due}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", margin: "12px 0" }}>
+          <div>
+            <div style={muted}>FAKTURA TIL</div>
+            <div>{recipientName || "—"}</div>
+          </div>
+        </div>
+        <div style={hr} />
+        {lines.map((l, i) => (
+          <div style={hRow} key={i}>
+            <span style={{ flex: 1 }}>{l.description || "—"}</span>
+            <span>{l.amount > 0 ? `${l.amount.toLocaleString("da-DK")} kr` : "—"}</span>
+          </div>
+        ))}
+        <div style={hr} />
+        <div style={{ display: "flex", justifyContent: "space-between", width: "60%", marginLeft: "auto", fontWeight: 700, fontSize: 12.5, padding: "2px 0" }}>
+          <span>Total</span>
+          <span>{total.toLocaleString("da-DK")} kr</span>
+        </div>
+        <div style={{ marginTop: 12, padding: 8, background: "#f5f5f5", borderRadius: 6, fontSize: 10, color: "#555" }}>
+          Bankoverførsel · Betales senest {due}
+        </div>
+        {note.trim() && (
+          <div style={{ marginTop: 8, padding: 8, background: "#fafafa", borderRadius: 6, fontSize: 9, color: "#555" }}>
+            {note}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
