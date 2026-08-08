@@ -174,7 +174,7 @@ export default function FakturaClient({
         {showForm && (
           <NyFakturaForm
             clients={clients}
-            onCreated={() => { setShowForm(false); router.refresh(); }}
+            onCreated={() => router.refresh()}
           />
         )}
 
