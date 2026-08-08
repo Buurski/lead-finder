@@ -111,7 +111,7 @@ export default function Sidebar({
       <div className="cc-brand">
         {/* Canonical Kinly wordmark, neutralized for the internal app palette. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="cc-brand-logo" src="/brand/kinly-wordmark-neutral-dark.svg" alt="Kinly" draggable={false} />
+        <img className="cc-brand-logo" src="/brand/kinly-wordmark-sage.svg" alt="Kinly" draggable={false} />
         <span className="cc-brand-sub">Lead System</span>
       </div>
 
