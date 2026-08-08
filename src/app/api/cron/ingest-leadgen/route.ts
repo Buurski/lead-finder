@@ -135,13 +135,20 @@ async function ingest() {
   // cities never cross-wire emails (same trap as matchLead, see leads/match.ts).
   const emailByLeadId = new Map<string, string>();
   const emailByBizKey = new Map<string, string>();
+  const bizKeyWarns: string[] = [];
   for (const it of items) {
     if (!hasUsableEmail(it.email ?? undefined)) continue;
     const email = (it.email as string).trim();
     const lid = (it.place_id || it.name || "").toString();
     if (lid) emailByLeadId.set(lid, email);
     const k = bizKey(it.name, it.city);
-    if (k) emailByBizKey.set(k, email);
+    if (k) {
+      const prev = emailByBizKey.get(k);
+      if (prev && prev !== email) {
+        bizKeyWarns.push(`${it.name} (${it.city ?? "?"}): ${prev} vs ${email}`);
+      }
+      emailByBizKey.set(k, email);
+    }
   }
   let backfilled = 0;
   for (const d of queue) {
@@ -245,6 +252,7 @@ async function ingest() {
     skippedVoice,
     skippedInvalid,
     sheetsDedup: sheetsOk,
+    bizKeyWarns: bizKeyWarns.slice(0, 10),
     note: "kø fyldt — ingen mail sendt",
   };
   return {

@@ -20,8 +20,10 @@ export function matchLead<T extends { name: string; city?: string; id?: string |
   }
   if (d.name) {
     const k = bizKey(d.name, d.city);
-    const byBiz = k ? leads.find((l) => bizKey(l.name, l.city) === k) : undefined;
-    if (byBiz) return byBiz;
+    const byBiz = k ? leads.filter((l) => bizKey(l.name, l.city) === k) : undefined;
+    // Kun entydigt hit — samme navn+by i to rækker (filial/stavefejl) må IKKE
+    // ramme tilfældigt, præcis som navn-only-reglen nedenfor.
+    if (byBiz && byBiz.length === 1) return byBiz[0];
     // Navn-only kun når entydigt — dublet-navn skal IKKE ramme tilfældigt.
     const byName = leads.filter(
       (l) => l.name.trim().toLowerCase() === d.name.trim().toLowerCase()

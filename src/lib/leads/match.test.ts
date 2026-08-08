@@ -29,6 +29,15 @@ test("dublet-navn uden by → undefined (aldrig tilfældig række)", () => {
   assert.equal(hit, undefined);
 });
 
+test("samme navn OG samme by (filial) → undefined, aldrig tilfældig række", () => {
+  const sameCity = [
+    { id: 907, name: "Beauty by M", city: "Herning", score: 44 },
+    { id: 909, name: "Beauty by M", city: "Herning", score: 77 },
+  ];
+  const hit = matchLead(sameCity, { leadId: "", name: "Beauty by M", city: "Herning" });
+  assert.equal(hit, undefined);
+});
+
 test("entydigt navn uden by matcher stadig", () => {
   const hit = matchLead(rows, { leadId: "", name: "Mellow Café" });
   assert.equal(hit?.id, 15);

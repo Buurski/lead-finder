@@ -80,13 +80,20 @@ export async function GET(req: Request) {
 
   const emailByLeadId = new Map<string, string>();
   const emailByBizKey = new Map<string, string>();
+  const bizKeyWarns: string[] = [];
   for (const it of items) {
     if (!hasUsableEmail(it.email ?? undefined)) continue;
     const email = (it.email as string).trim();
     const lid = (it.place_id || it.name || "").toString();
     if (lid) emailByLeadId.set(lid, email);
     const k = bizKey(it.name, it.city);
-    if (k) emailByBizKey.set(k, email);
+    if (k) {
+      const prev = emailByBizKey.get(k);
+      if (prev && prev !== email) {
+        bizKeyWarns.push(`${it.name} (${it.city ?? "?"}): ${prev} vs ${email}`);
+      }
+      emailByBizKey.set(k, email);
+    }
   }
 
   const queue = await readQueue();
@@ -114,5 +121,6 @@ export async function GET(req: Request) {
     scanned,
     patched,
     patches: patches.slice(0, 20),
+    bizKeyWarns: bizKeyWarns.slice(0, 10),
   });
 }
