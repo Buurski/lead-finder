@@ -42,7 +42,7 @@ export default function SettingsClient({ initial, initialNextRun }: { initial: S
     <div style={{ display: "grid", gap: 18, maxWidth: 640 }}>
       <section className="cc-card cc-card-pad">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Icon name="Sparkles" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
+          <Icon name="Sparkles" style={{ width: 20, height: 20, color: "var(--kinly-signal)" }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>Auto-kør motor hver morgen</div>
             <div className="cc-dim" style={{ fontSize: 12.5 }}>
@@ -91,7 +91,7 @@ export default function SettingsClient({ initial, initialNextRun }: { initial: S
 
       <section className="cc-card cc-card-pad">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Icon name="Mail" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
+          <Icon name="Mail" style={{ width: 20, height: 20, color: "var(--kinly-signal)" }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>Indbakke-scan fallback</div>
             <div className="cc-dim" style={{ fontSize: 12.5 }}>

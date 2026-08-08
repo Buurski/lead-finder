@@ -212,7 +212,7 @@ export default function LeadgenPanel() {
     <div style={{ display: "grid", gap: 12 }}>
       <div className="cc-card cc-card-pad" style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <Icon name="Search" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+          <Icon name="Search" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 13.5 }}>Kør Places-scrape nu</div>
             <div className="cc-dim" style={{ fontSize: 12 }}>Gratis hurtig top-up (Google Places). Den dybe rating laver den daglige Cowork-task.</div>

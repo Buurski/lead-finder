@@ -71,7 +71,7 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
   return (
     <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", boxShadow: "0 8px 24px rgba(74,124,89,.12)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-        <Icon name="ArrowUpRight" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="ArrowUpRight" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Overførsler</h2>
         <span className="cc-chip" style={{ marginLeft: "auto", background: "var(--accent-soft)", color: "var(--accent-ink)" }}>Charlie i alt: {kr(charlieTotal)}</span>
       </div>

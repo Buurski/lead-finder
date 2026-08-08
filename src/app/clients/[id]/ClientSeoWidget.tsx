@@ -33,7 +33,7 @@ export default function ClientSeoWidget({ name, domain }: { name: string; domain
   return (
     <section className="cc-card cc-card-pad">
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <Icon name="Search" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="Search" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>SEO-status</h2>
         <input
           value={dom}

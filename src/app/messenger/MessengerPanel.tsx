@@ -126,7 +126,7 @@ export default function MessengerPanel() {
     <div style={{ display: "grid", gap: 12 }}>
       {pool && (
         <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <Icon name="MessageSquare" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+          <Icon name="MessageSquare" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 600, fontSize: 13.5 }}>{pool.remaining} tilbage i puljen · {candidates.length} vist</div>
             <div className="cc-dim" style={{ fontSize: 12 }}>{pool.sent} sendt · {pool.skipped} sprunget over · {pool.eligible} egnede i alt</div>

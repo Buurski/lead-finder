@@ -310,7 +310,7 @@ function DailyBriefCard({ brief }: { brief: DailyBrief | null }) {
   return (
     <section className="cc-card" aria-label="Hvad skal vi i dag">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: brief?.ok && open ? "1px solid var(--border)" : "none" }}>
-        <Icon name="Sun" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Sun" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Hvad skal vi i dag</h2>
         {dateLabel && <span className="cc-dim" style={{ fontSize: 12.5, marginLeft: 2 }}>· {dateLabel}</span>}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -340,7 +340,7 @@ function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { 
   return (
     <section className="cc-card" aria-label="Dagens opgaver">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Coffee" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Coffee" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Dagens opgaver</h2>
         {items.length > 0 && (
           <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5, display: "flex", alignItems: "center", gap: 7 }}>
@@ -354,7 +354,7 @@ function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { 
       {queuePending > 0 && (
         <Link href="/approve" style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)", textDecoration: "none", color: "inherit", background: "var(--accent-soft)" }}>
           <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--surface)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-            <Icon name="CheckCheck" style={{ width: 15, height: 15, color: "var(--accent-ink)" }} />
+            <Icon name="CheckCheck" style={{ width: 15, height: 15, color: "var(--kinly-signal)" }} />
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{queuePending} udkast til godkendelse</div>
@@ -371,7 +371,7 @@ function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { 
       {repliesPending > 0 && (
         <Link href="/replies" style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 22px", borderBottom: "1px solid var(--border)", textDecoration: "none", color: "inherit" }}>
           <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--bg-3)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-            <Icon name="Mail" style={{ width: 15, height: 15, color: "var(--accent-ink)" }} />
+            <Icon name="Mail" style={{ width: 15, height: 15, color: "var(--kinly-signal)" }} />
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{repliesPending} svar at besvare</div>
@@ -425,7 +425,7 @@ function QueueCard({ s }: { s: DeckSummary }) {
   return (
     <section className="cc-card" aria-label="Godkendelses-kø">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: s.queue.top.length ? "1px solid var(--border)" : "none" }}>
-        <Icon name="CheckCheck" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="CheckCheck" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Godkendelses-kø</h2>
         <span className="cc-chip" style={{ marginLeft: "auto" }}>{s.queue.pending} afventer</span>
       </div>
@@ -458,7 +458,7 @@ function PipelineMini({ s }: { s: DeckSummary }) {
   return (
     <section className="cc-card cc-card-pad" aria-label="Dagens pipeline">
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Dagens pipeline</h2>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
@@ -489,7 +489,7 @@ function CompanySnapshot({ s }: { s: DeckSummary }) {
   return (
     <section className="cc-card cc-company-snapshot" aria-label="Virksomhedsoverblik">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Virksomhedsoverblik</h2>
         <Link href="/clients" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>Kunder →</Link>
       </div>
@@ -532,7 +532,7 @@ function FlowGuide() {
   return (
     <section className="cc-card cc-card-pad">
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
-        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Sådan virker det</h2>
       </div>
       <p className="cc-dim" style={{ fontSize: 13, marginBottom: 14 }}>
@@ -586,7 +586,7 @@ function AutoEngineToggle({ cadence }: { cadence?: string | null }) {
 
   return (
     <section className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 11 }}>
-      <Icon name="Calendar" style={{ width: 17, height: 17, color: armed ? "var(--accent-ink)" : "var(--text-dim)" }} />
+      <Icon name="Calendar" style={{ width: 17, height: 17, color: armed ? "var(--kinly-signal)" : "var(--text-dim)" }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600 }}>
           {armed ? `Daglig auto-motor: tændt${cadence ? ` · næste ${cadence}` : ""}` : "Daglig auto-motor: slukket"}
@@ -738,7 +738,7 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
 
       <section className="cc-card cc-card-pad">
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-          <Icon name="CircleDollarSign" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+          <Icon name="CircleDollarSign" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>AI-forbrug</h2>
         </div>
         {spendOn ? (

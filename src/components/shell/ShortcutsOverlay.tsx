@@ -33,7 +33,7 @@ export default function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
         style={{ padding: 18 }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <Icon name="Keyboard" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+          <Icon name="Keyboard" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Genveje</h2>
           <button
             onClick={onClose}

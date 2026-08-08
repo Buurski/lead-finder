@@ -48,7 +48,7 @@ export default function OmverdenCard() {
   return (
     <section className="cc-card" aria-label="Omverden">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Globe" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Globe" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}>Omverden</h2>
         {dateLabel && (
           <span className="cc-dim" style={{ fontSize: 12.5, marginLeft: 2, color: stale ? "var(--amber)" : undefined }}>

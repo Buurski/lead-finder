@@ -80,7 +80,7 @@ export default function HermesRuns() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <Icon name="Moon" style={{ width: 14, height: 14, color: "var(--accent-ink)" }} />
+            <Icon name="Moon" style={{ width: 14, height: 14, color: "var(--kinly-signal)" }} />
             <span style={{ fontSize: 12, fontWeight: 600 }}>Seneste drøm</span>
             <span className="cc-dim" style={{ fontSize: 11, marginLeft: "auto" }}>{fmtRunTs(dreamingJob.runs[0].timestamp)}</span>
           </div>
@@ -108,7 +108,7 @@ export default function HermesRuns() {
                   color: "inherit", textAlign: "left", fontSize: 13, fontWeight: 600,
                 }}
               >
-                <Icon name={meta.icon} style={{ width: 16, height: 16, color: j.last_status === "ok" ? "var(--accent-ink)" : "var(--amber)" }} />
+                <Icon name={meta.icon} style={{ width: 16, height: 16, color: j.last_status === "ok" ? "var(--kinly-signal)" : "var(--amber)" }} />
                 <span>{meta.label}</span>
                 <span className="cc-dim" style={{ fontSize: 11, fontWeight: 400 }}>{relTime(j.last_run_at)}</span>
                 <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} style={{ width: 14, height: 14, color: "var(--text-dim)" }} />

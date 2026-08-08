@@ -50,7 +50,7 @@ export default async function GoalsPage() {
 
         <section className="cc-card cc-card-pad">
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
-            <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+            <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Indtjening vs. mål</h2>
             <span className="cc-chip" style={{ marginLeft: "auto" }}>{summary.numbers.wonThisWeek} vundet i ugen</span>
           </div>

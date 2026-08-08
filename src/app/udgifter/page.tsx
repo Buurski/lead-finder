@@ -139,7 +139,7 @@ export default function OkonomiPage() {
 
         <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", background: "linear-gradient(135deg, var(--accent-soft), var(--surface))" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <Icon name="ArrowUpRight" style={{ width: 20, height: 20, color: "var(--accent-ink)" }} />
+            <Icon name="ArrowUpRight" style={{ width: 20, height: 20, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Charlies månedlige overførsel</h2>
           </div>
           <div style={{ fontSize: 34, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--accent-ink)" }}>{kr(split.owedCharlie - charlieCredits)}</div>
@@ -156,7 +156,7 @@ export default function OkonomiPage() {
         {/* Tjenester */}
         <section className="cc-card cc-card-pad">
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
-            <Icon name="Receipt" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+            <Icon name="Receipt" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Fælles abonnementer</h2>
             <span className="cc-chip" style={{ marginLeft: "auto" }}>{shared.length} aktive</span>
           </div>

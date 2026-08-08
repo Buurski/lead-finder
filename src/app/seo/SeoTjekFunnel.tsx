@@ -55,7 +55,7 @@ export default function SeoTjekFunnel() {
   return (
     <section className="cc-card" aria-label="Gratis SEO-tjek tragt">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Gauge" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+        <Icon name="Gauge" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Gratis SEO-tjek · tragt</h2>
         <a href="/seo-tjek" target="_blank" rel="noreferrer" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>
           Åbn siden →

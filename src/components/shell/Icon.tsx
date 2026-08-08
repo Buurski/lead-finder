@@ -30,5 +30,15 @@ export type IconName = keyof typeof MAP;
 
 export default function Icon({ name, ...props }: { name: string } & LucideProps) {
   const Cmp = MAP[name as IconName] ?? CircleDot;
-  return <Cmp {...props} />;
+  // Glass-glød: let skygge giver ikonerne dybde uden at ændre stilen.
+  // Sættes kun hvis ingen eksplicit dropShadow/color er givet oppefra.
+  return (
+    <Cmp
+      {...props}
+      style={{
+        filter: "drop-shadow(0 1px 1px rgba(23,24,22,0.12))",
+        ...(props.style ?? {}),
+      }}
+    />
+  );
 }

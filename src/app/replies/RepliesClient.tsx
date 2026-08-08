@@ -304,7 +304,7 @@ export default function RepliesClient() {
     // gør hele siden bredere end telefonen i stedet for at blive forkortet.
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
       <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Icon name="Inbox" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Inbox" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontWeight: 600, fontSize: 13.5 }}>{needs.length} kræver svar · {items.length} scannet</div>
           <div className="cc-dim" style={{ fontSize: 12 }}>

@@ -137,7 +137,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <section className="cc-card cc-card-pad" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-          <Icon name="Brain" style={{ width: 17, height: 17, color: "var(--accent-ink)" }} />
+          <Icon name="Brain" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Vault-note</h2>
           <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 12 }}>{note.ok ? `${note.source} · ${note.pathRel}` : "ikke oprettet endnu"}</span>
         </div>
@@ -159,7 +159,7 @@ function Deliverable({ icon, title, children }: { icon: string; title: string; c
   return (
     <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 7 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Icon name={icon} style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+        <Icon name={icon} style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
         <h3 style={{ fontSize: 13.5, fontWeight: 600 }}>{title}</h3>
       </div>
       {children}

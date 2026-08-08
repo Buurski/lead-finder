@@ -42,7 +42,7 @@ export default function FindEmailsButton() {
   return (
     <section className="cc-card cc-card-pad">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Icon name="Search" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Search" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>Find emails</div>
           <div className="cc-dim" style={{ fontSize: 12.5 }}>MX-verificeret opslag på de næste leads uden email. Skriver intet.</div>

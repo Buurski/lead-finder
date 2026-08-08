@@ -135,7 +135,7 @@ export default function FakturaClient({
       {subscriptions.length > 0 && (
         <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="Wallet" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+            <Icon name="Wallet" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Abonnementer</h2>
           </div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -164,7 +164,7 @@ export default function FakturaClient({
 
       <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="Receipt" style={{ width: 16, height: 16, color: "var(--accent-ink)" }} />
+          <Icon name="Receipt" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Alle fakturaer</h2>
           <button className="cc-btn" style={{ marginLeft: "auto" }} onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Luk form" : "+ Ny faktura"}

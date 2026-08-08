@@ -134,7 +134,7 @@ export default function EngineRunner() {
   return (
     <section className="cc-card cc-card-pad">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Icon name="Sparkles" style={{ width: 18, height: 18, color: "var(--accent-ink)" }} />
+        <Icon name="Sparkles" style={{ width: 18, height: 18, color: "var(--kinly-signal)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>Kør motor</div>
           <div className="cc-dim" style={{ fontSize: 12.5 }}>Preview uden at skrive → bekræft → fylder kun køen. Sender aldrig.</div>
