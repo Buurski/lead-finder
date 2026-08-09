@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://eva-doctrine-rides-timber.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://continually-valuation-dressing-attitude.trycloudflare.com"
     }
   },
   "crons": [
