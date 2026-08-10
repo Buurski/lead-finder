@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://tops-jane-criterion-chambers.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://upon-speeches-jacob-blind.trycloudflare.com"
     }
   },
   "crons": [
