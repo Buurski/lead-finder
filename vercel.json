@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://jeff-cotton-languages-riders.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://companion-don-worldwide-talent.trycloudflare.com"
     }
   },
   "crons": [
