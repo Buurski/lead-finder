@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://rear-pichunter-phase-permits.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://virgin-microphone-playstation-hong.trycloudflare.com"
     }
   },
   "crons": [
