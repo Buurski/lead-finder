@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://butter-gen-bones-merge.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://colin-mice-zoning-delays.trycloudflare.com"
     }
   },
   "crons": [
