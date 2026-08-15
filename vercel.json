@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://hans-valium-author-extras.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://collapse-duck-man-misc.trycloudflare.com"
     }
   },
   "crons": [
