@@ -45,6 +45,7 @@ export default function FakturaClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
+  const [sendTarget, setSendTarget] = useState<Invoice | null>(null);
 
   async function generateFromSub(sub: SubWithNext) {
     setBusy(`sub-${sub.clientName}`);
@@ -88,20 +89,18 @@ export default function FakturaClient({
     }
   }
 
-  async function sendInvoice(inv: Invoice) {
-    const to = window.prompt("Send til email:", "");
-    if (!to) return;
-    if (!window.confirm(`Send faktura ${inv.number} til ${to}? Systemet sender ikke automatisk — dette er den eneste knap der gør det.`)) return;
+  async function doSend(inv: Invoice, to: string, dueDate: string, extra: string) {
     setBusy(inv.number);
     setError("");
     try {
       const res = await fetch(`/api/invoices/${inv.number}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to }),
+        body: JSON.stringify({ to, dueDate, extra: extra || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "afsendelse fejlede");
+      setSendTarget(null);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "ukendt fejl");
@@ -221,7 +220,7 @@ export default function FakturaClient({
                       <button className="cc-btn" disabled={isBusy} onClick={() => deleteInvoice(inv)}>Slet</button>
                     )}
                     {inv.status !== "betalt" && (
-                      <button className="cc-btn" disabled={isBusy} onClick={() => sendInvoice(inv)}>Send</button>
+                      <button className="cc-btn" disabled={isBusy} onClick={() => setSendTarget(inv)}>Send</button>
                     )}
                     {inv.status !== "betalt" && (
                       <button className="cc-btn" disabled={isBusy} onClick={() => setStatus(inv.number, "betalt")}>Betalt</button>
@@ -236,6 +235,76 @@ export default function FakturaClient({
           </div>
         )}
       </section>
+
+      {sendTarget && (
+        <SendDialog
+          inv={sendTarget}
+          today={today}
+          busy={busy === sendTarget.number}
+          onCancel={() => setSendTarget(null)}
+          onSend={(to, dueDate, extra) => doSend(sendTarget, to, dueDate, extra)}
+        />
+      )}
+    </div>
+  );
+}
+
+function isoAddDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+function SendDialog({
+  inv, today, busy, onCancel, onSend,
+}: {
+  inv: Invoice;
+  today: string;
+  busy: boolean;
+  onCancel: () => void;
+  onSend: (to: string, dueDate: string, extra: string) => void;
+}) {
+  const [to, setTo] = useState("");
+  const [dueDate, setDueDate] = useState(() => isoAddDays(today, 14));
+  const [extra, setExtra] = useState("");
+  const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
+
+  return (
+    <div style={overlayStyle} onClick={busy ? undefined : onCancel}>
+      <div
+        style={{ background: "var(--surface)", borderRadius: 12, padding: 24, width: "min(520px, 95vw)", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "grid", gap: 14 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>Send faktura {inv.number}</h3>
+          <p className="cc-dim" style={{ margin: "4px 0 0", fontSize: 12.5 }}>
+            {inv.recipient.name} · {kr(total)}. Systemet sender ikke automatisk — dette er den eneste knap der gør det.
+          </p>
+        </div>
+
+        <label style={labelStyle}>
+          Modtager-email
+          <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="kunde@eksempel.dk" style={inputStyle} autoFocus />
+        </label>
+
+        <label style={labelStyle}>
+          Forfaldsdato
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} />
+          <span className="cc-dim" style={{ fontWeight: 400, fontSize: 11.5 }}>Standard: 14 dage fra i dag. Ret den hvis du vil.</span>
+        </label>
+
+        <label style={labelStyle}>
+          Ekstra besked i mailen (valgfri)
+          <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={3} placeholder="Fx: Tak for et godt møde i sidste uge — sig endelig til hvis der er noget." style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
+          <span className="cc-dim" style={{ fontWeight: 400, fontSize: 11.5 }}>Lægges ind i mailen efter beløbslinjen — resten af teksten er som altid.</span>
+        </label>
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="cc-btn" onClick={onCancel} disabled={busy}>Annullér</button>
+          <button className="cc-btn cc-btn-accent" disabled={busy || !to.trim()} onClick={() => onSend(to.trim(), dueDate, extra)}>
+            {busy ? "sender…" : "Send faktura"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -417,3 +486,8 @@ const inputStyle: React.CSSProperties = {
   padding: "6px 9px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--surface)", color: "var(--text)", fontSize: 13,
 };
 const selectStyle: React.CSSProperties = { ...inputStyle };
+const overlayStyle: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+};
+const labelStyle: React.CSSProperties = { display: "grid", gap: 5, fontSize: 12.5, fontWeight: 600 };

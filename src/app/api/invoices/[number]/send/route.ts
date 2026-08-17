@@ -6,10 +6,12 @@ import { store } from "@/lib/store.ts";
 
 // POST /api/invoices/[number]/send — kaldes KUN fra UI-knap (aldrig automatisk).
 // Tilladt fra status "kladde" eller "sendt" (gen-send). Render PDF, arkivér i
-// store, send mail m. attachment, sæt status "sendt" + sentAt. dueDate røres
-// IKKE — den er sat ved oprettelse.
+// store, send mail m. attachment, sæt status "sendt" + sentAt. dueDate sættes
+// fra send-dialogen (default = send-dag + 14) hvis den medsendes.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: Request, { params }: { params: Promise<{ number: string }> }) {
   const { number } = await params;
@@ -19,8 +21,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     return NextResponse.json({ error: `kan ikke sende faktura med status "${inv.status}"` }, { status: 400 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string };
+  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string; extra?: string; dueDate?: string };
   if (!body.to) return NextResponse.json({ error: "mangler modtager-email (to)" }, { status: 400 });
+  if (body.dueDate !== undefined && !ISO.test(body.dueDate)) {
+    return NextResponse.json({ error: "dueDate skal være YYYY-MM-DD" }, { status: 400 });
+  }
+  // Forfaldsdato låses ved afsendelse — så den regnes fra den dag mailen faktisk går ud.
+  if (body.dueDate) inv.dueDate = body.dueDate;
 
   const biz = await getBusinessSettings();
 
@@ -37,10 +44,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
 
     const { total } = invoiceTotal(inv);
     const month = new Date(inv.issueDate).toLocaleDateString("da-DK", { month: "long", year: "numeric" });
+    const dueFmt = new Date(inv.dueDate + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const extra = body.extra?.trim();
     const subject = body.subject || `Faktura ${number} — ${biz.name}`;
     const unsignedText =
       body.body ||
-      `Hej ${inv.recipient.att || inv.recipient.name}\n\nHer er fakturaen for ${month} — ${total.toLocaleString("da-DK")} kr., betales senest ${new Date(inv.dueDate + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.\n\nBetaling via bankoverførsel (nemt at kopiere herfra):\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\nSig endelig til hvis noget driller.`;
+      `Hej ${inv.recipient.att || inv.recipient.name}\n\n` +
+      `Her er fakturaen for ${month} — ${total.toLocaleString("da-DK")} kr., betales senest ${dueFmt}.\n\n` +
+      (extra ? `${extra}\n\n` : "") +
+      `Betaling via bankoverførsel (nemt at kopiere herfra):\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\n` +
+      `Sig endelig til hvis noget driller.`;
     const text = applySignature(unsignedText, "lucas");
 
     const transporter = getTransporter("lucas");
