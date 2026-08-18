@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
-      "HERMES_WEBUI_URL": "https://cgi-dragon-and-relative.trycloudflare.com"
+      "HERMES_WEBUI_URL": "https://struck-module-oakland-dana.trycloudflare.com"
     }
   },
   "crons": [
