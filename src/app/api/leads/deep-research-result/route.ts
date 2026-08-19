@@ -87,8 +87,8 @@ function ctEqual(a: string, b: string): boolean {
 function checkAuth(req: NextRequest): { ok: boolean; reason?: string } {
   const expected = process.env.DEEP_RESEARCH_SECRET;
   if (!expected) {
-    // Allow during local dev when no secret is configured. Loud warn so prod
-    // misconfig is visible in logs.
+    // Fail-closed også lokalt: manglende secret afviser altid (2026-08-19).
+    // Loud warn så misconfig er synlig i logs.
     console.warn(JSON.stringify({ evt: "deep-research-result.auth.no_secret_configured" }));
     return { ok: false, reason: "no_secret_configured" }; // fail-closed (2026-08-19)
   }
