@@ -4,8 +4,7 @@ import { hermesHealth } from "@/lib/hermes";
 export const metadata = { title: "Hermes · AgenticOS" };
 export const dynamic = "force-dynamic";
 
-// Holdes i sync med cloudflare-rotation. Samme fallback som tidligere.
-const FALLBACK_WEBUI_URL = "https://noble-lasting-health-frost.trycloudflare.com";
+// Ingen hardcoded tunnel-fallback (2026-08-19): en død URL er værre end ingen.
 
 export default async function HermesPage() {
   const h = await hermesHealth().catch(() => ({
@@ -16,7 +15,7 @@ export default async function HermesPage() {
     shimStatus: 0,
   }));
 
-  const webuiUrl = (process.env.HERMES_WEBUI_URL ?? FALLBACK_WEBUI_URL).replace(/\/+$/, "");
+  const webuiUrl = (process.env.HERMES_WEBUI_URL ?? "").replace(/\/+$/, "");
 
   const cards = [
     { name: "Hermes-api", ok: h.reachable, detail: h.reachable ? "svarer" : (h.configured ? `fejl ${h.shimStatus}` : "ikke konfigureret") },
@@ -145,26 +144,32 @@ export default async function HermesPage() {
               </p>
             </div>
 
-            <a
-              href={webuiUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 22px",
-                borderRadius: 12,
-                fontWeight: 600,
-                fontSize: 14,
-                textDecoration: "none",
-                color: "#fff",
-                background: "var(--text)",
-                boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
-              }}
-            >
-              Åbn Hermes nu ↗
-            </a>
+            {webuiUrl ? (
+              <a
+                href={webuiUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 22px",
+                  borderRadius: 12,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textDecoration: "none",
+                  color: "#fff",
+                  background: "var(--text)",
+                  boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
+                }}
+              >
+                Åbn Hermes nu ↗
+              </a>
+            ) : (
+              <span className="cc-dim" style={{ fontSize: 13 }}>
+                WebUI ikke konfigureret — sæt HERMES_WEBUI_URL i Vercel env.
+              </span>
+            )}
 
             <span className="cc-dim" style={{ fontSize: 11.5, marginTop: 2, fontFamily: "ui-monospace,monospace" }}>
               {webuiUrl.replace(/^https?:\/\//, "")}

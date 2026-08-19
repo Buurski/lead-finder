@@ -56,3 +56,4 @@ client-assets/
 demos/
 
 .playwright-mcp/
+.triage/

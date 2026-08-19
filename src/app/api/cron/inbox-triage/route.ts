@@ -21,6 +21,7 @@ export async function GET(req: Request) {
   // below, never auth (it used to skip auth entirely, which let anyone trigger a
   // full scan).
   const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 }); // fail-closed (2026-08-19)
   const force = new URL(req.url).searchParams.get("force") === "1";
   if (secret) {
     const auth = req.headers.get("authorization") || "";

@@ -16,6 +16,7 @@ export const maxDuration = 60;
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 }); // fail-closed (2026-08-19)
   if (secret) {
     const auth = req.headers.get("authorization") || "";
     if (auth !== `Bearer ${secret}`) {

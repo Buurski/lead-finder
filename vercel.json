@@ -1,20 +1,45 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "build": {
-    "env": {
-      "HERMES_WEBUI_URL": "https://noble-lasting-health-frost.trycloudflare.com"
-    }
-  },
   "crons": [
-    { "path": "/api/cron/pre-cleanup",    "schedule": "30 4 * * *" },
-    { "path": "/api/cron/sync-replies",   "schedule": "30 4 * * *" },
-    { "path": "/api/cron/engine",         "schedule": "0 * * * *" },
-    { "path": "/api/cron/inbox-triage",   "schedule": "0 * * * *" },
-    { "path": "/api/cron/ingest-leadgen", "schedule": "30 6 * * *" },
-    { "path": "/api/cron/find-emails",    "schedule": "0 7-10 * * *" },
-    { "path": "/api/cron/cleanup-no-email", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/seo-tjek-followup", "schedule": "15 7 * * *" },
-    { "path": "/api/cron/snapshot",       "schedule": "45 3 * * *" },
-    { "path": "/api/cron/invoices",       "schedule": "0 5 * * *" }
+    {
+      "path": "/api/cron/pre-cleanup",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/sync-replies",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/engine",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/inbox-triage",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/ingest-leadgen",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/find-emails",
+      "schedule": "0 7-10 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-no-email",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/seo-tjek-followup",
+      "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron/snapshot",
+      "schedule": "45 3 * * *"
+    },
+    {
+      "path": "/api/cron/invoices",
+      "schedule": "0 5 * * *"
+    }
   ]
 }
