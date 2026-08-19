@@ -438,8 +438,12 @@ function InvoicePreview({
   note: string;
 }) {
   const total = lines.reduce((s, l) => s + (l.amount || 0), 0);
-  const today = new Date().toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" });
-  const due = new Date(Date.now() + 14 * 86400000).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" });
+  // Datoer beregnes én gang pr. mount via lazy useState-initializer — new Date()
+  // direkte i render er impure for React Compiler (lint-fejl).
+  const [{ today, due }] = useState(() => ({
+    today: new Date().toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }),
+    due: new Date(Date.now() + 14 * 86400000).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }),
+  }));
   const box: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface)", padding: "16px 18px", fontFamily: "Helvetica, Arial, sans-serif", color: "#1a1a1a", fontSize: 12, maxWidth: 480 };
   const muted: React.CSSProperties = { color: "#555", fontSize: 10.5 };
   const hRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 11 };

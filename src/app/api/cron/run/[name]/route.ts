@@ -15,7 +15,10 @@ export const maxDuration = 300;
 
 const KNOWN: Record<string, () => Promise<unknown>> = {
   "pre-cleanup": async () => {
-    const r = await preCleanupRoute.GET();
+    const fakeReq = new Request("http://x/api/cron/pre-cleanup", {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
+    });
+    const r = await preCleanupRoute.GET(fakeReq);
     const j = await r.json().catch(() => ({}));
     return { checked: j.checked ?? 0, recovered: j.recovered ?? 0 };
   },
@@ -48,7 +51,8 @@ const KNOWN: Record<string, () => Promise<unknown>> = {
 
 export async function POST(req: Request, ctx: { params: Promise<{ name: string }> }) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
+  if (!secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 }); // fail-closed (2026-08-19)
+  {
     const auth = req.headers.get("authorization") || "";
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

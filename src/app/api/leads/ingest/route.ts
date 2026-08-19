@@ -31,7 +31,7 @@ function checkAuth(req: NextRequest): boolean {
   const expected = process.env.LEADGEN_INGEST_SECRET || process.env.DEEP_RESEARCH_SECRET;
   if (!expected) {
     console.warn(JSON.stringify({ evt: "leads-ingest.auth.no_secret_configured" }));
-    return true;
+    return false; // fail-closed (2026-08-19)
   }
   const m = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
   return Boolean(m && ctEqual(m[1], expected));

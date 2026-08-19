@@ -21,8 +21,10 @@ function ctEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 function checkAuth(req: NextRequest): boolean {
+  // Proxy-injiceret efter basic-auth; strippet udefra i src/proxy.ts (2026-08-19).
+  if (req.headers.get("x-command-center-auth") === "1") return true;
   const expected = process.env.STUDIO_DISPATCH_SECRET || process.env.DEEP_RESEARCH_SECRET;
-  if (!expected) return true; // no secret configured ⇒ local/dev open (same as approve/add)
+  if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
   const m = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
   return Boolean(m && ctEqual(m[1], expected));
 }

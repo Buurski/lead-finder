@@ -17,7 +17,7 @@ export const maxDuration = 30;
 function authorized(req: NextRequest): boolean {
   if (req.headers.get("x-command-center-auth") === "1") return true;
   const expected = process.env.PREVIEW_QUEUE_SECRET || process.env.DEEP_RESEARCH_SECRET;
-  if (!expected) return true;
+  if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
   const got = req.headers.get("authorization") || "";
   return got === `Bearer ${expected}`;
 }

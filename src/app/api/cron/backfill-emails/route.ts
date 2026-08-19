@@ -61,7 +61,7 @@ function checkAuth(req: Request): boolean {
   // prod which makes manual curl awkward, and this endpoint is idempotent +
   // read-patch only, so an open route is acceptable until Lucas sets ADMIN_KEY).
   const expected = process.env.ADMIN_KEY || "";
-  if (!expected) return true; // no key set ⇒ open
+  if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
   const url = new URL(req.url);
   const key = url.searchParams.get("key") || "";
   if (key && key === expected) return true;

@@ -168,6 +168,11 @@ export async function proxy(req: NextRequest): Promise<Response> {
   const SECRET = process.env.AUTH_SESSION_SECRET;
   const previewQueueSecret = process.env.PREVIEW_QUEUE_SECRET;
 
+  // Council-fix (2026-08-19): x-command-center-auth må KUN sættes af proxyen selv
+  // efter godkendt basic-auth. Strip enhver udefrakommende kopi på alle stier.
+  const sanitized = new Headers(req.headers);
+  sanitized.delete("x-command-center-auth");
+
   // The public Kinly questionnaire creates queue records server-to-server. Keep
   // this narrow: only POST /api/previews with the queue secret bypasses the
   // browser Basic Auth; the route still verifies the same bearer token.
@@ -175,7 +180,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     && req.nextUrl.pathname === "/api/previews"
     && Boolean(previewQueueSecret)
     && ctEqual(req.headers.get("authorization") || "", `Bearer ${previewQueueSecret}`);
-  if (isPreviewServiceRequest) return NextResponse.next();
+  if (isPreviewServiceRequest) return NextResponse.next({ request: { headers: sanitized } });
 
   if (USER && PASS && SECRET) {
     let authed = false;
@@ -213,7 +218,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
     // Pass a marker to internal API routes as well. This keeps the browser's
     // Basic Auth session and route-level auth in the same chain.
-    const requestHeaders = new Headers(req.headers);
+    const requestHeaders = new Headers(sanitized);
     requestHeaders.set("x-command-center-auth", "1");
 
     // Mint/refresh session cookie on success.
@@ -231,5 +236,5 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
   // /welcome-first-run-redirectet blev fjernet i Bundle G (2026-07-03) sammen
   // med selve /welcome-siden — internt værktøj, ingen onboarding-flows.
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: sanitized } });
 }

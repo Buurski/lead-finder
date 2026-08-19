@@ -52,9 +52,12 @@ async function mapLimited<T, R>(items: T[], limit: number, fn: (t: T) => Promise
 
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
+  if (!secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 }); // fail-closed (2026-08-19)
+  {
     const auth = req.headers.get("authorization") || "";
-    if (auth !== `Bearer ${secret}`) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
   }
 
   let limit = 50;

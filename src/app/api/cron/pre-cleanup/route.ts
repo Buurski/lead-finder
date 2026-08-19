@@ -12,7 +12,15 @@ const CONCURRENCY = 5;
 
 interface RecoveredLead { id: string; name: string; website: string; method: "direct" | "jina"; }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 }); // fail-closed (2026-08-19)
+  {
+    const auth = req.headers.get("authorization") || "";
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+  }
   try {
     const { checked, recovered, stillDead } = await withCronLog("pre-cleanup", async () => {
       const leads = await getLeads();
@@ -54,4 +62,4 @@ export async function GET() {
   }
 }
 
-export async function POST() { return GET(); }
+export async function POST(req: Request) { return GET(req); }
