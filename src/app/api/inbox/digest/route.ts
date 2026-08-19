@@ -29,7 +29,7 @@ function checkAuth(req: NextRequest): { ok: boolean; reason?: string } {
   const expected = process.env.INBOX_DIGEST_SECRET || process.env.DEEP_RESEARCH_SECRET;
   if (!expected) {
     console.warn(JSON.stringify({ evt: "inbox-digest.auth.no_secret_configured" }));
-    return { ok: true };
+    return { ok: false, reason: "no_secret_configured" }; // fail-closed (2026-08-19)
   }
   const got = req.headers.get("authorization") || "";
   const m = got.match(/^Bearer\s+(.+)$/i);

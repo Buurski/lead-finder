@@ -90,7 +90,7 @@ function checkAuth(req: NextRequest): { ok: boolean; reason?: string } {
     // Allow during local dev when no secret is configured. Loud warn so prod
     // misconfig is visible in logs.
     console.warn(JSON.stringify({ evt: "deep-research-result.auth.no_secret_configured" }));
-    return { ok: true };
+    return { ok: false, reason: "no_secret_configured" }; // fail-closed (2026-08-19)
   }
   const got = req.headers.get("authorization") || "";
   const m = got.match(/^Bearer\s+(.+)$/i);
