@@ -110,10 +110,11 @@ export async function hermesHealth(): Promise<{
   gatewayRunning: boolean;
   cronJobs: number;
   shimStatus: number;
+  webuiUrl: string;
 }> {
   if (!hermesConfigured())
-    return { configured: false, reachable: false, gatewayRunning: false, cronJobs: 0, shimStatus: 0 };
-  const { status, data } = await hermesFetch<{ ok: boolean; gateway_running: boolean; cron_jobs: number }>(
+    return { configured: false, reachable: false, gatewayRunning: false, cronJobs: 0, shimStatus: 0, webuiUrl: "" };
+  const { status, data } = await hermesFetch<{ ok: boolean; gateway_running: boolean; cron_jobs: number; webui_url?: string }>(
     "GET",
     "/api/health",
     undefined,
@@ -124,6 +125,8 @@ export async function hermesHealth(): Promise<{
     reachable: status === 200 && Boolean(data?.ok),
     gatewayRunning: Boolean(data?.gateway_running),
     cronJobs: data?.cron_jobs ?? 0,
+    // Tunnel-URL lever på VPS og roterer uden builds — læses runtime herfra.
+    webuiUrl: (data?.webui_url ?? "").trim(),
     // 0 = ingen forbindelse (URL/netværk), 401 = nået frem men forkert secret.
     shimStatus: status,
   };

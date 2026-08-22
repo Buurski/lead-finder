@@ -13,9 +13,11 @@ export default async function HermesPage() {
     gatewayRunning: false,
     cronJobs: 0,
     shimStatus: 0,
+    webuiUrl: "",
   }));
 
-  const webuiUrl = (process.env.HERMES_WEBUI_URL ?? "").replace(/\/+$/, "");
+  // Runtime-kilde: VPS health-endpointet (webui_url). Ingen builds for tunnel-URL.
+  const webuiUrl = h.webuiUrl.replace(/\/+$/, "");
 
   const cards = [
     { name: "Hermes-api", ok: h.reachable, detail: h.reachable ? "svarer" : (h.configured ? `fejl ${h.shimStatus}` : "ikke konfigureret") },
