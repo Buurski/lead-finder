@@ -36,7 +36,7 @@ async function critique(item) {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.COUNCIL_MODEL || (process.env.DEEPSEEK_API_KEY ? "deepseek-v4-flash-vision-exp" : "@cf/meta/llama-4-scout-17b-16e-instruct"), max_tokens: 900, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model: process.env.COUNCIL_MODEL || (process.env.DEEPSEEK_API_KEY ? "deepseek-v4-flash-vision-exp" : "@cf/meta/llama-4-scout-17b-16e-instruct"), max_tokens: 4000, messages: [{ role: "user", content }] }), // ponytail: 4000 fordi vision-modellen bruger ~1000+ reasoning-tokens før svaret
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw new Error(`openrouter ${res.status}`);
