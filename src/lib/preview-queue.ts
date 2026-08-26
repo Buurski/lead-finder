@@ -37,6 +37,9 @@ export interface PreviewRequest extends PreviewRequestInput {
   mailDraft?: string;
   approvedAt?: string;
   rejectedAt?: string;
+  // Human-review feedback fra Lucas/Charlie på previewet (reel-idé DcWsaXfgKiW,
+  // minimal udgave: fritekst i stedet for inline-kommentarer på siden).
+  reviewNotes?: string;
 }
 
 const KEY = "preview-requests";
@@ -85,7 +88,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
 export async function updatePreviewStatus(
   requestId: string,
   status: PreviewStatus,
-  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey">> = {},
+  fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey" | "reviewNotes">> = {},
 ): Promise<PreviewRequest | null> {
   const records = await readPreviewRequests();
   const index = records.findIndex((item) => item.id === requestId);
@@ -93,7 +96,7 @@ export async function updatePreviewStatus(
   const current = records[index];
   const definedFields = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined),
-  ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey">>;
+  ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey" | "reviewNotes">>;
   const next: PreviewRequest = {
     ...current,
     ...definedFields,

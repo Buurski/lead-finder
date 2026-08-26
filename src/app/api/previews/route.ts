@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { id?: string; status?: PreviewStatus; research?: string; previewUrl?: string; screenshotUrl?: string; mailDraft?: string; contactName?: string; branch?: string; questionnaire?: string; company?: string; demoKey?: string };
+  let body: { id?: string; status?: PreviewStatus; research?: string; previewUrl?: string; screenshotUrl?: string; mailDraft?: string; contactName?: string; branch?: string; questionnaire?: string; company?: string; demoKey?: string; reviewNotes?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (!body.id || !body.status || !PREVIEW_STATUSES.includes(body.status)) {
     return NextResponse.json({ error: "id og gyldig status er påkrævet", statuses: PREVIEW_STATUSES }, { status: 400 });
@@ -64,6 +64,7 @@ export async function PATCH(req: NextRequest) {
     questionnaire: body.questionnaire,
     company: body.company,
     demoKey: body.demoKey,
+    reviewNotes: body.reviewNotes,
   });
   return request ? NextResponse.json({ ok: true, request }) : NextResponse.json({ error: "request_not_found" }, { status: 404 });
 }

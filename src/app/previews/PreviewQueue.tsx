@@ -18,6 +18,7 @@ interface PreviewRequest {
   previewUrl?: string;
   screenshotUrl?: string;
   mailDraft?: string;
+  reviewNotes?: string;
   createdAt: string;
 }
 
@@ -130,6 +131,12 @@ function PreviewCard({ item, onEdit, onDecide, onStatus }: { item: PreviewReques
           <Field label="Kundens svar" value={item.questionnaire} />
           {item.website && <Field label="Kundens side" value={item.website} link />}
           <Field label="Mailkladde" value={item.mailDraft ? "Klar — kan redigeres før send" : "—"} />
+          {item.reviewNotes && (
+            <div style={{ borderLeft: "3px solid var(--accent, var(--text))", paddingLeft: 10 }}>
+              <div className="cc-kicker">Feedback fra jer</div>
+              <div style={{ whiteSpace: "pre-wrap", maxHeight: 100, overflow: "auto" }}>{item.reviewNotes}</div>
+            </div>
+          )}
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {item.status === "preview klar" && <button className="cc-btn cc-btn-accent" onClick={() => onDecide(item, "godkendt")}>Godkend udkast</button>}
@@ -157,12 +164,13 @@ function Screenshot({ item }: { item: PreviewRequest }) {
 function EditPanel({ item, onClose, onSaved }: { item: PreviewRequest; onClose: () => void; onSaved: () => Promise<void> }) {
   const [draft, setDraft] = useState(item.mailDraft || "");
   const [research, setResearch] = useState(item.research || "");
+  const [reviewNotes, setReviewNotes] = useState(item.reviewNotes || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   async function save(status?: Status) {
     setSaving(true); setError("");
     try {
-      const res = await fetch("/api/previews", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, status: status || item.status, mailDraft: draft, research }) });
+      const res = await fetch("/api/previews", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, status: status || item.status, mailDraft: draft, research, reviewNotes }) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await onSaved();
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke gemme"); setSaving(false); }
@@ -171,6 +179,7 @@ function EditPanel({ item, onClose, onSaved }: { item: PreviewRequest; onClose: 
     <section className="cc-card cc-card-pad" style={{ width: "min(900px, 100%)", maxHeight: "92vh", overflow: "auto", display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><div><div className="cc-kicker">Redigér før godkendelse</div><h2 style={{ margin: "5px 0 0" }}>{item.company}</h2></div><button className="cc-btn" onClick={onClose}>Luk</button></div>
       <label><span className="cc-kicker">Research og hook</span><textarea value={research} onChange={(e) => setResearch(e.target.value)} rows={5} style={area} /></label>
+      <label><span className="cc-kicker">Feedback til agenten (hvad skal ændres på demoen?)</span><textarea value={reviewNotes} placeholder="fx: flyt booking-knappen op, brug varmere fotos, kortere overskrift" onChange={(e) => setReviewNotes(e.target.value)} rows={4} style={area} /></label>
       <label><span className="cc-kicker">Mail til {item.email} · fra Lucas</span><textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={14} style={area} /></label>
       {error && <div role="alert">{error}</div>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className="cc-btn" disabled={saving} onClick={() => void save()}>Gem ændringer</button><button className="cc-btn cc-btn-accent" disabled={saving} onClick={() => void save("godkendt")}>Gem og godkend udkast</button></div>
