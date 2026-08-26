@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 const MANIFEST = process.env.SCREENSHOT_MANIFEST || "/tmp/kinly-screenshot-council/manifest.json";
 const OUT_DIR = process.env.COUNCIL_OUT_DIR || "/root/KnowledgeOS/drafts/screenshot-council";
 const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID;
-const KEY = process.env.CLOUDFLARE_GLM_API_KEY || process.env.OPENROUTER_API_KEY;
+const KEY = process.env.DEEPSEEK_API_KEY || process.env.CLOUDFLARE_GLM_API_KEY || process.env.OPENROUTER_API_KEY;
 if (!KEY) { console.error("CLOUDFLARE_GLM_API_KEY mangler"); process.exit(1); }
 
 const PROMPT = `Du er tre uafhængige design/SEO-kritikere, der each bedømmer denne danske lokale virksomheds demo (billede 1 = desktop, billede 2 = mobil).
@@ -30,10 +30,13 @@ async function critique(item) {
   const content = [{ type: "text", text: PROMPT }];
   if (!item.desktop.navigationError) content.push({ type: "image_url", image_url: { url: img(item.desktop.path) } });
   if (!item.mobile.navigationError) content.push({ type: "image_url", image_url: { url: img(item.mobile.path) } });
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/v1/chat/completions`, {
+  const endpoint = process.env.DEEPSEEK_API_KEY
+    ? "https://api.deepseek.com/v1/chat/completions"
+    : `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/v1/chat/completions`;
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.COUNCIL_MODEL || "@cf/meta/llama-4-scout-17b-16e-instruct", max_tokens: 900, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model: process.env.COUNCIL_MODEL || (process.env.DEEPSEEK_API_KEY ? "deepseek-v4-flash-vision-exp" : "@cf/meta/llama-4-scout-17b-16e-instruct"), max_tokens: 900, messages: [{ role: "user", content }] }),
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw new Error(`openrouter ${res.status}`);
