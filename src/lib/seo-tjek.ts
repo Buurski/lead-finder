@@ -529,7 +529,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string, sender: Send
     ``,
     `Rapporten ligger stadig her: ${reportUrl}`,
     ``,
-    `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineText()}`,
+    `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skulle AI nævne jer 5 gange om ugen, og det giver bare 1 ekstra kunde om ugen, hvad er det så værd om måneden for jer? Skal vi tage 15 minutter om det?${bookingLineText()}`,
     ``,
     signature.text,
     ``,
@@ -539,7 +539,7 @@ export function day7Mail(sub: SeoTjekSubmission, reportUrl: string, sender: Send
     [
       `Hej,`,
       `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: <strong>Vida Klinik</strong> scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
-      `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skal vi tage 15 minutter om det?${bookingLineHtml()}`,
+      `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skulle AI nævne jer 5 gange om ugen, og det giver bare 1 ekstra kunde om ugen, hvad er det så værd om måneden for jer? Skal vi tage 15 minutter om det?${bookingLineHtml()}`,
       signature.html,
     ],
     "Se rapporten igen",
