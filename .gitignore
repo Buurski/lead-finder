@@ -57,3 +57,6 @@ demos/
 
 .playwright-mcp/
 .triage/
+
+# leadgen fase-filer (scripts/leadgen/run.mjs)
+.leadgen-work/

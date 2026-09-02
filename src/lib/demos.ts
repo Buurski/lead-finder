@@ -5,6 +5,8 @@
 export interface Demo {
   label: string;
   url: string;
+  /** Optional matching branche-side på kinly.dk (fx /hjemmeside-til-vvs/). */
+  verticalUrl?: string;
 }
 
 // SINGLE SOURCE OF TRUTH for every demo-site URL. email.ts + messenger/compose.ts
@@ -23,6 +25,12 @@ export const DEMO_SITES = {
   ikastAutoservice: "https://ikastautoservice.dk/",
   vestfjends: "https://vestfjends.vercel.app/",
   midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
+  // Rigtige kinly.dk case-sider (reelle kunder) — stærkere social proof end en
+  // demo. Verificeret live i kinly.dk/sitemap.xml (2026-09-02).
+  vidaCase: "https://kinly.dk/case/vida-klinik/",
+  ikastCase: "https://kinly.dk/case/ikast-autoservice/",
+  jernbanecafeenCase: "https://kinly.dk/case/jernbanecafeen/",
+  lejEnKokCase: "https://kinly.dk/case/lej-en-kok/",
 } as const;
 
 const D = {
@@ -37,6 +45,10 @@ const D = {
   ikastAutoservice: { label: "Autoværksted", url: DEMO_SITES.ikastAutoservice },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
   midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
+  vidaCase: { label: "Kunde: VIDA Klinik (skønhedsklinik)", url: DEMO_SITES.vidaCase },
+  ikastCase: { label: "Kunde: Ikast AutoService (autoværksted)", url: DEMO_SITES.ikastCase },
+  jernbanecafeenCase: { label: "Kunde: Jernbanecaféen (café)", url: DEMO_SITES.jernbanecafeenCase },
+  lejEnKokCase: { label: "Kunde: Lej en Kok (catering/mad)", url: DEMO_SITES.lejEnKokCase },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
@@ -96,16 +108,32 @@ export function pickDemos(branch: string, name: string): Demo[] {
   // VIDA (reel kunde på eget domæne vida-klinik.dk) er altid hovedpunktet for
   // skønhed/klinik. Andre demos er supplement — rækkefølgen i array er den
   // rækkefølge de vises i mailen.
-  if (CLINIC.test(t)) return [D.vida];
+  if (CLINIC.test(t)) return [D.vidaCase, D.vida];
   if (BARBER.test(t)) return [D.salonArtec, D.streetcut];
-  if (BEAUTY.test(t)) return [D.vida, D.salonArtec];
+  if (BEAUTY.test(t)) return [D.vidaCase, D.vida, D.salonArtec];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
-  if (FOOD.test(t)) return [D.underKlippen, D.zaytoon];
+  if (FOOD.test(t)) return [D.jernbanecafeenCase, D.underKlippen];
   if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
-  if (AUTO.test(t)) return [D.ikastAutoservice, D.ktvvs];
+  if (AUTO.test(t)) return [D.ikastCase, D.ktvvs];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.ktvvs, D.denlillemaler];
   if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];
   return [D.vestfjends, D.underKlippen];
+}
+
+// Branche-sider på kinly.dk — matcher branch-teksten mod de samme regexes som
+// pickDemos. Bruges ikke af compose.ts endnu (senere spor); kun eksporteret så
+// den findes og er testet. null hvis ingen branche-side passer.
+export function verticalPageFor(branch: string): string | null {
+  const t = branch.toLowerCase();
+  // Samme rækkefølge som pickDemos: CLINIC/BARBER FØR BEAUTY, ellers fanger
+  // BEAUTY's brede regex (den matcher også "frisør"/"salon") dem først.
+  if (CLINIC.test(t)) return "https://kinly.dk/hjemmeside-til-skoenhedsklinik/";
+  if (BARBER.test(t)) return "https://kinly.dk/hjemmeside-til-frisoer/";
+  if (BEAUTY.test(t)) return "https://kinly.dk/hjemmeside-til-skoenhedsklinik/";
+  if (FOOD_INTL.test(t) || FOOD.test(t)) return "https://kinly.dk/hjemmeside-til-restaurant-cafe/";
+  if (AUTO.test(t)) return "https://kinly.dk/hjemmeside-til-automekaniker/";
+  if (CRAFT_UTIL.test(t)) return "https://kinly.dk/hjemmeside-til-vvs/";
+  return null;
 }

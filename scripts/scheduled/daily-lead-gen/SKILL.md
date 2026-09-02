@@ -3,6 +3,8 @@ name: daily-lead-gen
 description: Daglig lead-gen kl 06:00. Source nye leads via Google Places API (direkte, ikke Apify) + CVR-validér + append til Sheets + skriv leadgen.json + git push. Fokuseret task.
 ---
 
+⚠ 2026-09-02: scriptet bor nu i `scripts/leadgen/run.mjs` og skal køre på VPS via `scripts/leadgen/vps-run.sh`. Denne Cowork-task er forældet.
+
 > **Version-tracked kopi.** Den LIVE scheduled task læser
 > `C:\Users\Buur\Documents\Claude\Scheduled\daily-lead-gen\SKILL.md`. Retter du
 > den ene, kopiér til den anden. (Som `lead-engine-morning`.)
@@ -18,7 +20,7 @@ Hent ALTID disse FØR du sourcer noget — Lucas's "favorit-kunder" og kvalifika
    - Café/restaurant (Mellow, Zappa, Zaytoon, Jernbanecafeen, Den Lille Maler)
    - Håndværk (KT VVS, Den Lille Maler)
    - Fotograf (Buurfoto), Advokat (MidtAdvokaterne)
-2. https://github.com/Buurski/KnowledgeOS/blob/master/wiki/os/council-20-lead-qualification-ideas.md — kvalifikations-logik (review-velocity, mobile-score, owner-name, bureau-detect, m.fl.)
+2. https://github.com/Buurski/KnowledgeOS/blob/master/wiki/os/arkiv/council-20-lead-qualification-ideas.md — kvalifikations-logik (review-velocity, mobile-score, owner-name, bureau-detect, m.fl.)
 3. https://github.com/Buurski/KnowledgeOS/blob/master/wiki/os/alle-beslutninger-log.md — seneste beslutninger der ændrer flow
 
 Bekræft kort i resuméet at du har læst alle 3 før sourcing.

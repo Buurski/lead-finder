@@ -22,6 +22,11 @@ export interface IngestLead {
   gap?: string;           // the opportunity: "no online booking", "dated site"…
   fitScore?: number;      // 0–100, the Opus deep-rating
   source?: string;        // "places" | "cowork-opus" | "web-search"…
+  // Scrape-signals from the leadgen scraper (scripts/leadgen/) — feed the
+  // composite score where the ingest route actually computes one (B3).
+  hasViewport?: boolean | null; // no <meta viewport> ⇒ not mobile-friendly
+  bureau?: boolean;             // site fingerprint matched a known agency footer
+  copyrightYear?: number | null; // footer © year, staleness signal
 }
 
 export interface LeadgenItem {
@@ -39,6 +44,10 @@ export interface LeadgenItem {
   hasEmail?: boolean;
   hasMessenger?: boolean;
   hasPhone?: boolean;
+  // Same scrape-signals as IngestLead (B3) — optional, carried through when present.
+  hasViewport?: boolean | null;
+  bureau?: boolean;
+  copyrightYear?: number | null;
 }
 
 export interface LeadgenRun {
@@ -74,6 +83,9 @@ export function normalizeIngest(raw: unknown): IngestLead[] {
       gap: r.gap ? String(r.gap).slice(0, 160) : "",
       fitScore: clamp100(r.fitScore),
       source: r.source ? String(r.source) : "ingest",
+      hasViewport: typeof r.hasViewport === "boolean" ? r.hasViewport : null,
+      bureau: typeof r.bureau === "boolean" ? r.bureau : undefined,
+      copyrightYear: r.copyrightYear != null && Number.isFinite(Number(r.copyrightYear)) ? Number(r.copyrightYear) : null,
     }));
 }
 
