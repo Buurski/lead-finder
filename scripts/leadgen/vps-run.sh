@@ -11,6 +11,9 @@ CREDS=/root/.hermes/credentials.env
 [ -f "$CREDS" ] || { echo "FEJL: $CREDS findes ikke — ingen credentials." >&2; exit 1; }
 # shellcheck disable=SC1090
 set -a; source "$CREDS"; set +a
+# store.ts importerer "server-only" — uden react-server-condition kaster pakken ved
+# plain node (apply fejlede 2026-09-02 på VPS). Samme condition som npm test bruger.
+export NODE_OPTIONS="--conditions=react-server"
 
 mkdir -p /root/.hermes/logs
 LOG="/root/.hermes/logs/leadgen-$(date +%F).log"
