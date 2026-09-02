@@ -16,6 +16,10 @@ set -a; source "$CREDS"; set +a
 export NODE_OPTIONS="--conditions=react-server"
 
 mkdir -p /root/.hermes/logs
+# Dato-lås: Places-kald koster penge — én kørsel pr. dag, uanset hvem der trigger
+# (Hermes-prompt-job, manuel, retry). Slet .done-filen for at tvinge en ny kørsel.
+DONE="/root/.hermes/logs/leadgen-$(date +%F).done"
+if [ -f "$DONE" ]; then echo "leadgen $(date +%F) er allerede kørt ($DONE) — springer over"; exit 0; fi
 LOG="/root/.hermes/logs/leadgen-$(date +%F).log"
 exec >>"$LOG" 2>&1
 echo "=== leadgen $(date -Is) ==="
@@ -39,4 +43,5 @@ node scripts/leadgen/run.mjs apply
 
 cd /root/KnowledgeOS
 bash scripts/safe-push.sh "leadgen $(date +%F)"
+touch "$DONE"
 echo "=== done $(date -Is) ==="
