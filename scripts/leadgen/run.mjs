@@ -100,11 +100,11 @@ const FULL_PLAN = [
   { q: "frisørsalon", cat: "salon" },
   { q: "populær restaurant", cat: "mad" },
   { q: "café", cat: "mad" },
-  { q: "maler", cat: "håndværk" },
-  { q: "vvs", cat: "håndværk" },
-  { q: "fotograf", cat: "foto" },
-  { q: "advokat", cat: "service" },
-]; // ~11 queries/city. barber/neglesalon/bistro dropped from daily plan (backlog full; negle still caught by name-categorisation).
+  // håndværk/foto/service taget ud af dagsplanen 2026-09-02 (council + attribution):
+  // 0 udvalgte af 40 kald i første VPS-kørsel, elektriker 2,8 % svar (n=36) mod
+  // café 19 % / salon 17 %. Sparer ~40 Places-kald/dag. Sæt dem ind igen her
+  // hvis håndværk skal tilbage — DIV_MIN nedenfor skal så også op.
+]; // ~7 queries/city (var 11). barber/neglesalon/bistro dropped from daily plan (backlog full; negle still caught by name-categorisation).
 // Copenhagen kept deliberately light (geo rule: <=20% of batch).
 const CPH_PLAN = [
   { q: "skønhedsklinik", cat: "skin" }, { q: "populær restaurant", cat: "mad" },
@@ -118,7 +118,7 @@ const CPH = ["København", "Frederiksberg"];
 const FIELD_MASK = "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.nationalPhoneNumber,places.id,places.types,places.businessStatus";
 
 // diversity minimums (selection) per 2026-06-21 SKILL
-const DIV_MIN = { skin: 5, salon: 2, mad: 5, "håndværk": 2, foto: 1, service: 1 };
+const DIV_MIN = { skin: 5, salon: 2, mad: 5, "håndværk": 0, foto: 0, service: 0 };
 const CAP = { barber: 2, negle: 2 };          // hard caps (tightened — backlog full)
 const TARGET_DRAFTS = 20;                        // medium-selective daily target
 const SELECT_MAX = 70;                           // over-select to absorb no-email/suppress attrition
@@ -167,6 +167,18 @@ function categorize(name, queryCat) {
 // Hårdt filter — ikke bare +5/+5 i fitScore.
 export function hasContact(c) {
   return Boolean((c && c.phone) || (c && c.email) || (c && c.emailOnSite));
+}
+
+// Candidate -> leadgen.json item. place_id: ingest-ruten (route.ts) bruger it.place_id
+// til leadId/dedup — uden det falder den tilbage til navn, som er en svagere nøgle.
+// gap/site_issues findes ikke i denne pipeline (kun hasViewport/bureau/copyrightYear)
+// — udeladt, ikke opfundet.
+export function toLeadgenItem(c) {
+  return { name: c.name, branch: c.queryBranch, category: c.cat, city: c.city, address: c.address,
+    phone: c.phone, email: c.email || "", website: c.website, rating: c.rating, reviews: c.reviews, fitScore: c.fitScore,
+    place_id: c.place_id,
+    hasViewport: c.hasViewport ?? null, bureau: !!c.bureau, copyrightYear: c.copyrightYear ?? null,
+    source: "places-direct", cvr_flag: c.cvr_flag || "cvr_unchecked", cph: !!c.cph, drafted: !!c.drafted, skip: c.skip || "" };
 }
 
 // =================== PHASE: source ===================
@@ -423,11 +435,7 @@ async function phaseApply() {
   const draftedCat = {}; for (const c of draftedSel) draftedCat[c.cat] = (draftedCat[c.cat] || 0) + 1;
 
   // hasViewport/bureau/copyrightYear/fitScore går videre til ingest-ruten (spor B3)
-  const items = finalSel.map((c) => ({ name: c.name, branch: c.queryBranch, category: c.cat, city: c.city, address: c.address,
-    phone: c.phone, email: c.email || "", website: c.website, rating: c.rating, reviews: c.reviews, fitScore: c.fitScore,
-    hasViewport: c.hasViewport ?? null, bureau: !!c.bureau, copyrightYear: c.copyrightYear ?? null,
-    source: "places-direct", cvr_flag: c.cvr_flag || "cvr_unchecked", cph: !!c.cph, drafted: !!c.drafted, skip: c.skip || "" }))
-    .sort((a, b) => b.fitScore - a.fitScore);
+  const items = finalSel.map(toLeadgenItem).sort((a, b) => b.fitScore - a.fitScore);
 
   const result = { at: nowIso, source: "google-places-direct", budget_used: calls, budget_remaining_today: 1500 - calls,
     candidates_raw: stats.raw, candidates_after_status: stats.after_status, candidates_after_rating_reviews: stats.after_rating_reviews,
