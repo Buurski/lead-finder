@@ -47,7 +47,11 @@ export async function GET() {
     return rec ? { ...d, history: { seenBefore: true, ...rec } } : d;
   });
 
-  return NextResponse.json({ drafts: enriched, count: enriched.length, historyOk });
+  // no-store: mailadresser + kladdetekst må ikke ligge i en mobil-browsers HTTP-cache.
+  return NextResponse.json(
+    { drafts: enriched, count: enriched.length, historyOk },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 interface ActionBody {
@@ -305,6 +309,14 @@ export async function POST(req: Request) {
   }
 
   if (action === "approve") {
+    // Council-fund 2026-09-02: uden denne guard kunne en stale fane (fx /send på
+    // to enheder) approve et allerede SENDT draft tilbage til "approved" og sende
+    // det igen — ingest-leads uden Sheets-række har ingen anden aldrig-igen-guard.
+    const current = (await readQueue()).find((d) => d.id === id);
+    if (!current) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    if (current.status === "sent") {
+      return NextResponse.json({ error: "allerede sendt — kan ikke godkendes igen", status: current.status }, { status: 409 });
+    }
     const updated = await updateDraft(id, { status: "approved" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     // Register back to Sheets so the lead leaves the engine's "new" pool — the

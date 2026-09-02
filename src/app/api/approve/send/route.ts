@@ -8,6 +8,7 @@ import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
 import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
 import { validateDraft } from "@/lib/draft";
+import { parseIds, onlyIds } from "@/lib/send-ids";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
 // go-live 2026-06-07/08). Human, paced sending — NEVER a burst.
@@ -97,10 +98,12 @@ export async function GET(req: Request) {
   const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
 
   const drafts = await readQueue();
-  const candidates = (force
+  const allCandidates = (force
     ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
     : drafts.filter((d) => isApproved(d.status))
   ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
+  // ?ids=… (mobil-fladen /send): kun disse drafts. Se src/lib/send-ids.ts.
+  const candidates = onlyIds(allCandidates, parseIds(req.url));
 
   const sentIds = new Set<string>();
   const sentKeys = new Set<string>();
@@ -232,10 +235,12 @@ export async function POST(req: Request) {
   // also re-included "sent" drafts (a one-time May-migration hack); that is what let
   // an already-sent draft go out again, so it is gone. Use ?force=1 to re-run the
   // legacy migration if ever needed.
-  const candidates = (force
+  const allCandidates = (force
     ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
     : drafts.filter((d) => isApproved(d.status))
   ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
+  // ?ids=… (mobil-fladen /send): kun disse drafts. Se src/lib/send-ids.ts.
+  const candidates = onlyIds(allCandidates, parseIds(req.url));
 
   // Already-sent ledger from the queue itself: a business with a "sent" draft must
   // never be mailed again, even via a different draft. Covers ingest/leadgen leads
