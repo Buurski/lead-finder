@@ -19,6 +19,8 @@ interface Draft {
   recipientEmail?: string;
   status: DraftStatus;
   createdAt: string;
+  hooks?: string[];
+  history?: { seenBefore: boolean; daysSince?: number | null; warmth?: string; replied?: string };
 }
 
 const VISIBLE = 3;
@@ -86,6 +88,13 @@ export default function SendPage() {
       setBusyId(d.id);
       setFlash(null);
       setNotes((p) => ({ ...p, [d.id]: "" }));
+      // Gik send ikke igennem, ryger et pending-kort tilbage til pending — ellers
+      // står det som "approved" og kan blive taget af /approve's "Send alle" uden
+      // at Lucas har set det igen (council-fund 2026-09-02).
+      const wasPending = d.status === "pending";
+      const revert = async () => {
+        if (wasPending) await postJson("/api/approve/queue", { id: d.id, action: "unapprove" }).catch(() => {});
+      };
       try {
         const approved = await postJson("/api/approve/queue", { id: d.id, action: "approve" });
         if (!approved.ok) {
@@ -105,11 +114,13 @@ export default function SendPage() {
             note?: string;
           };
           if (j.ok === false || !res.ok) {
+            await revert();
             note(d.id, j.error ?? "Kunne ikke sende.");
           } else if ((j.sent ?? 0) > 0) {
             drop(d.id);
-            setFlash(`Sendt til ${d.recipientEmail}`);
+            setFlash(`Sendt til ${d.recipientEmail || d.name}`);
           } else {
+            await revert();
             note(d.id, j.note ?? j.error ?? "Intet sendt.");
           }
           return;
@@ -152,15 +163,15 @@ export default function SendPage() {
 
         if (sent > 0) {
           drop(d.id);
-          setFlash(`Sendt til ${d.recipientEmail}`);
-        } else if (skipReason) {
-          note(d.id, `Sprunget over: ${skipReason}`);
-        } else if (failed > 0) {
-          note(d.id, "Afsendelsen fejlede.");
+          setFlash(`Sendt til ${d.recipientEmail || d.name}`);
         } else {
-          note(d.id, "Intet sendt.");
+          await revert();
+          if (skipReason) note(d.id, `Sprunget over: ${skipReason}`);
+          else if (failed > 0) note(d.id, "Afsendelsen fejlede.");
+          else note(d.id, "Intet sendt.");
         }
       } catch (e) {
+        await revert();
         note(d.id, e instanceof Error && e.message ? e.message : "Netværksfejl.");
       } finally {
         setBusyId(null);
@@ -271,16 +282,30 @@ export default function SendPage() {
               <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
                 {[d.city, d.branch].filter(Boolean).join(" · ")}
               </p>
+              {/* Uden recipientEmail slår send-ruten mailen op i Sheets — så Send
+                  bliver ikke låst, ruten svarer selv "ingen modtager-email" hvis intet findes. */}
               <p
                 style={{
                   margin: "2px 0 0",
                   fontSize: 13,
                   wordBreak: "break-all",
-                  color: mail ? "var(--text-muted)" : "var(--red)",
+                  color: mail ? "var(--text-muted)" : "var(--text-dim)",
                 }}
               >
-                {mail || "ingen mail"}
+                {mail || "ingen mail i kladden — slås op ved send"}
               </p>
+              {(d.history?.seenBefore || d.hooks?.[0]) && (
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                  {d.history?.seenBefore && (
+                    <span style={{ color: "var(--red)", fontWeight: 500 }}>
+                      Set før{d.history.daysSince != null ? ` · ${d.history.daysSince} dage siden` : ""}
+                      {d.history.warmth ? ` · ${d.history.warmth}` : ""}
+                      {d.hooks?.[0] ? " — " : ""}
+                    </span>
+                  )}
+                  {d.hooks?.[0]}
+                </p>
+              )}
 
               <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
 
@@ -314,7 +339,7 @@ export default function SendPage() {
                 <button
                   type="button"
                   className="snd-btn snd-send"
-                  disabled={locked || !mail}
+                  disabled={locked}
                   onClick={() => send(d)}
                 >
                   {sending ? "Sender…" : "Send"}
