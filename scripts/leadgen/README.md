@@ -54,3 +54,11 @@ node --test scripts/leadgen/run.test.mjs
 alle faser i rækkefølge, pusher vaulten med `safe-push.sh` og logger til
 `/root/.hermes/logs/leadgen-<dato>.log`. Registreres via `nyt-cronjob.sh`, ikke
 manuelt i `jobs.json`.
+
+## Attributions-rapport
+`node --conditions=react-server scripts/attribution-report.mjs` læser `Leads`-fanen
+read-only og printer udfald (sendt/svaret/bounced/unsub/svar-%) pr. branche, pr.
+score-bucket (0-49/50-69/70-100) samt total og sidste 30 dage. Kun leads med
+`emailSentAt` tælles med; brancher med n < 10 rulles sammen i én linje. Scriptet
+skriver ALDRIG til Sheets og ændrer ingen score-vægte — det er datagrundlag.
+Seneste kørsel er gemt i `KnowledgeOS/wiki/os/attribution-2026-09-02.md`.
