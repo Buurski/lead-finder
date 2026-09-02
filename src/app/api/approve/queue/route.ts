@@ -124,7 +124,7 @@ export async function POST(req: Request) {
   // One-time cleanup (no id): reject any pending/approved draft whose
   // recipientEmail is set-but-blocked (bureau mail, placeholder, junk). Drafts
   // WITHOUT any email stay in the queue so find-emails cron can fill them later.
-  // See /api/cron/cleanup-no-email/route.ts for full rationale.
+  // Cron-ruten /api/cron/cleanup-no-email blev fjernet 2026-09-02 (kørte dagligt trods "one-time"); logikken lever kun her som manuel action.
   if (action === "cleanup-no-email") {
     const drafts = await readQueue();
     let rejected = 0;
