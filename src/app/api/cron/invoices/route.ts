@@ -65,6 +65,7 @@ export async function GET(req: Request) {
     buildStatusNote(current, subs, today),
     `faktura-status ${today} (auto)`,
   );
+  if (!vault.ok) return NextResponse.json({ ok: false, created, overdue, error: vault.reason }, { status: 502 });
 
   return NextResponse.json({ ok: true, created, overdue, vault });
 }
