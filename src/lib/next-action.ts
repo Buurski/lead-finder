@@ -30,6 +30,32 @@ export interface NextAction {
   degraded?: boolean;
 }
 
+export interface ValueChainStage {
+  key: "visibility" | "visits" | "contact" | "leads" | "drafts" | "sent" | "replies" | "customers" | "payment";
+  label: string;
+  value: string;
+  detail: string;
+  href: string;
+  state: "measured" | "missing" | "unknown";
+}
+
+export function buildValueChain(s: DeckSummary): ValueChainStage[] {
+  const number = (value: number) => value.toLocaleString("da-DK");
+  const sheetsValue = (value: number) => s.ok ? number(value) : "Ukendt";
+  const sheetsState = s.ok ? "measured" as const : "unknown" as const;
+  return [
+    { key: "visibility", label: "Synlighed", value: "Ikke koblet", detail: "GSC lever i ugetjekket", href: "/seo", state: "missing" },
+    { key: "visits", label: "Besøg", value: "Ikke koblet", detail: "PostHog lever i ugebriefet", href: "/indsigter", state: "missing" },
+    { key: "contact", label: "Kontakt", value: "Måling mangler", detail: "formular, telefon og mailklik", href: "/indsigter", state: "missing" },
+    { key: "leads", label: "Leads", value: sheetsValue(s.numbers.contactable), detail: "klar at kontakte", href: "/leads", state: sheetsState },
+    { key: "drafts", label: "Kladder", value: number(s.queue.pending), detail: "venter på godkendelse", href: "/approve", state: "measured" },
+    { key: "sent", label: "Sendt", value: sheetsValue(s.numbers.sentToday), detail: "i dag", href: "/leads", state: sheetsState },
+    { key: "replies", label: "Svar", value: sheetsValue(s.numbers.repliesPending), detail: "venter på opfølgning", href: "/replies", state: sheetsState },
+    { key: "customers", label: "Kunder", value: sheetsValue(s.revenue.payingClientCount), detail: "betalende", href: "/clients", state: sheetsState },
+    { key: "payment", label: "Betaling", value: s.ok ? `${number(s.revenue.monthlyDKK)} kr/md` : "Ukendt", detail: "fast månedligt", href: "/okonomi", state: sheetsState },
+  ];
+}
+
 /**
  * Prioritetsstigen — første trin med et positivt signal vinder:
  *  1. svar der kræver Lucas/Charlie

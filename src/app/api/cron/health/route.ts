@@ -19,11 +19,14 @@ interface CronStatus {
 }
 
 const SCHEDULE: Record<string, string> = {
-  "pre-cleanup":    "30 04 * * *",
-  "sync-replies":   "30 04 * * *",
-  "engine":         "00 * * * *",
-  "inbox-triage":   "00 * * * *",
-  "ingest-leadgen": "30 06 * * *",
+  "pre-cleanup": "30 4 * * *",
+  "sync-replies": "30 4 * * *",
+  "engine": "0 * * * *",
+  "ingest-leadgen": "30 6 * * *",
+  "find-emails": "0 7-10 * * *",
+  "seo-tjek-followup": "15 7 * * *",
+  "snapshot": "45 3 * * *",
+  "invoices": "0 5 * * *",
 };
 
 function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {

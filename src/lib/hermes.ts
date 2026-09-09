@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 import { store } from "./store";
+import type { HermesUsageSummary } from "./hermes-client";
 
 export type HermesProfile = "default" | "lucas" | "charlie";
 export const HERMES_PROFILES: HermesProfile[] = ["default", "lucas", "charlie"];
@@ -156,6 +157,13 @@ export async function hermesCronRuns(limit = 5): Promise<HermesCronJobWithRuns[]
   );
   if (status !== 200 || !data) return [];
   return data.jobs ?? [];
+}
+
+export async function hermesUsage(): Promise<HermesUsageSummary | null> {
+  const { status, data } = await hermesFetch<HermesUsageSummary>(
+    "GET", "/api/usage", undefined, 8_000,
+  );
+  return status === 200 && data ? data : null;
 }
 
 export async function hermesCronAction(

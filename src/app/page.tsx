@@ -2,6 +2,7 @@ import { buildDeckSummary } from "@/lib/deck";
 import { readSettings, nextRunLabel } from "@/lib/settings";
 import { loadSpendSummary } from "@/lib/spend-log";
 import { readVaultNote } from "@/lib/vault";
+import { hermesUsage } from "@/lib/hermes";
 import MissionControl from "@/components/mission/MissionControl";
 import type { DailyBrief } from "@/components/mission/MissionControl";
 
@@ -34,13 +35,14 @@ async function loadDailyBrief(): Promise<DailyBrief> {
 }
 
 export default async function HomePage() {
-  const [summary, settings, spend, dailyBrief] = await Promise.all([
+  const [summary, settings, spend, dailyBrief, usage] = await Promise.all([
     buildDeckSummary(),
     readSettings(),
     loadSpendSummary(),
     loadDailyBrief(),
+    hermesUsage(),
   ]);
   const cadence = nextRunLabel(settings);
   const spendAlert = spend.alert ? `AI-forbrug i dag: ${spend.todayDKK.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr` : null;
-  return <MissionControl summary={summary} cadence={cadence} spendAlert={spendAlert} spend={spend} dailyBrief={dailyBrief} />;
+  return <MissionControl summary={summary} cadence={cadence} spendAlert={spendAlert} spend={spend} dailyBrief={dailyBrief} hermesUsage={usage} />;
 }

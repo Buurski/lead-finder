@@ -6,7 +6,7 @@ import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/inbox-triage — the HYBRID fallback for inbox triage.
 //
-// Fires hourly (vercel.json). Runs the scan ITSELF only when:
+// Unscheduled fallback. It runs only from the authenticated "Scan nu" action when:
 //   1. autoInboxFallback is armed in Settings, AND
 //   2. it's past fallbackCutoffHour (Copenhagen), AND
 //   3. the Cowork "daily ops" task hasn't already posted a fresh digest today, AND

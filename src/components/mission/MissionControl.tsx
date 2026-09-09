@@ -10,9 +10,10 @@ import UsageSparkline from "./UsageSparkline";
 import MaalWidget from "./MaalWidget";
 import OmverdenCard from "./OmverdenCard";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
-import { nextAction } from "@/lib/next-action";
+import { buildValueChain, nextAction } from "@/lib/next-action";
 import { feedSentence } from "@/lib/feed-health";
 import type { SpendSummary } from "@/lib/spend-log";
+import { businessLoopState, describeUsageChange, formatTokenCount, type HermesBusinessLoop, type HermesUsageSummary } from "@/lib/hermes-client";
 
 // Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
 // page.tsx and passed down so the "Hvad skal vi i dag" hub can lead with it.
@@ -63,7 +64,7 @@ function greeting(d: Date): string {
   return "God aften";
 }
 
-export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null }) {
+export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief, hermesUsage }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null; hermesUsage?: HermesUsageSummary | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [details, setDetails] = useState(false);
   const [hello, setHello] = useState("Velkommen");
@@ -133,10 +134,10 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
         </div>
       )}
 
-      {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} />}
+      {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} usage={hermesUsage ?? null} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
-      {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} />}
+      {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} usage={hermesUsage ?? null} />}
     </div>
   );
 }
@@ -154,7 +155,7 @@ function summaryLine(s: DeckSummary): string {
 /* ------------------------------------------------------------------ */
 /* TODAY                                                               */
 /* ------------------------------------------------------------------ */
-function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | null }) {
+function TodayTab({ s, dailyBrief, usage }: { s: DeckSummary; dailyBrief: DailyBrief | null; usage: HermesUsageSummary | null }) {
   const router = useRouter();
   const [sel, setSel] = useState(0);
   const n = s.needsYou.length;
@@ -184,7 +185,8 @@ function TodayTab({ s, dailyBrief }: { s: DeckSummary; dailyBrief: DailyBrief | 
         <HeroNumber s={s} />
         <UsageSparkline data={s.dailySent} />
       </div>
-      <NumbersStrip s={s} />
+      <ValueChainCard s={s} />
+      <BusinessLoopsCard usage={usage} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
         <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
         <div style={{ display: "grid", gap: 18 }}>
@@ -251,23 +253,102 @@ function HeroNumber({ s }: { s: DeckSummary }) {
   );
 }
 
-function NumbersStrip({ s }: { s: DeckSummary }) {
-  const n = s.numbers;
-  const items = [
-    { label: "klar at kontakte", value: n.contactable },
-    { label: "sendt i dag", value: n.sentToday },
-    { label: "svar at følge op", value: n.repliesPending },
-    { label: "vundet i ugen", value: n.wonThisWeek },
-  ];
+function ValueChainCard({ s }: { s: DeckSummary }) {
+  const stages = buildValueChain(s);
   return (
-    <div className="cc-card cc-card-pad cc-numbers kinly-stat-strip">
-      {items.map((it) => (
-        <div key={it.label} className="cc-numbers-cell">
-          <div className="cc-stat-n">{it.value}</div>
-          <div className="cc-stat-l">{it.label}</div>
-        </div>
-      ))}
-    </div>
+    <section className="cc-card" aria-label="Værdikæde">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
+        <Icon name="Network" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Værdikæden</h2>
+        <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>fra synlighed til betaling</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 1, background: "var(--border)" }}>
+        {stages.map((st) => {
+          const tone = st.state === "missing" ? "var(--amber)" : st.state === "unknown" ? "var(--text-dim)" : "var(--text)";
+          return (
+            <Link
+              key={st.key}
+              href={st.href}
+              style={{ background: "var(--surface)", padding: "14px 16px", minHeight: 82, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 3, justifyContent: "center" }}
+            >
+              <div className="cc-stat-l" style={{ marginTop: 0 }}>{st.label}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", color: tone }}>{st.value}</div>
+              <div className="cc-dim" style={{ fontSize: 11 }}>{st.detail}</div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+const LOOP_LABELS: Record<string, string> = {
+  "uge-marketing": "Ugentligt synlighedstjek",
+  "posthog-uge-brief": "PostHog-ugebrief",
+  "uge-kundetjek": "Ugentligt kundetjek",
+  "uge-rapport": "Ugerapport",
+  "maaned-marketing": "Månedligt overblik",
+  "authority-backlink-radar-weekly": "Backlink-radar",
+  "geo-citation-loop-ugentlig": "GEO / citations",
+};
+
+// cron-schedule (5 felter) -> dansk kadence
+function loopWhen(loop: HermesBusinessLoop): string {
+  const parts = (loop.schedule ?? "").trim().split(/\s+/);
+  if (parts.length === 5 && /^\d+$/.test(parts[0])) {
+    if (parts[0] === "1") return "den 1. hver måned";
+    const day = Number(parts[4]);
+    if (day === 1) return "mandag";
+    if (day === 2) return "tirsdag";
+    if (day === 3) return "onsdag";
+    if (day === 4) return "torsdag";
+    if (day === 5) return "fredag";
+    if (day === 6 || day === 0) return "søndag";
+    return `dag ${day}`;
+  }
+  return "regelmæssigt";
+}
+
+// De syv forretningsloops: uge- og månedsrytmen. Kører selv, resultatet lander
+// i kanban. En fejl eller forsinkelse her er det som skal vække — ikke tallet.
+function BusinessLoopsCard({ usage }: { usage: HermesUsageSummary | null }) {
+  const loops = usage?.businessLoops ?? [];
+  if (loops.length === 0) return null;
+  return (
+    <section className="cc-card" aria-label="Ugens og månedens rytme">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
+        <Icon name="Calendar" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Ugens og månedens rytme</h2>
+        <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>kører selv · resultat i kanban</span>
+      </div>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        {loops.map((l) => {
+          const state = businessLoopState(l);
+          const chip = state === "ok"
+            ? { label: "ok", color: "var(--accent-ink)", bg: "var(--accent-soft)" }
+            : state === "error"
+              ? { label: "fejl", color: "var(--red)", bg: "var(--red-dim)" }
+              : state === "late"
+                ? { label: "forsinket", color: "var(--amber)", bg: "var(--amber-dim)" }
+                : { label: "venter", color: "var(--text-dim)", bg: "var(--bg-3)" };
+          return (
+            <li key={`${l.profile}:${l.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 22px", borderBottom: "1px solid var(--border)" }}>
+              <span className="cc-chip" style={{ background: chip.bg, color: chip.color }}>{chip.label}</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{LOOP_LABELS[l.name] ?? l.name}</div>
+                <div className="cc-dim" style={{ fontSize: 12 }}>
+                  {loopWhen(l)}
+                  {l.lastRunAt ? ` · sidst ${relTime(l.lastRunAt)}` : " · aldrig kørt"}
+                </div>
+              </div>
+              {l.lastError && (
+                <span className="cc-dim" style={{ fontSize: 11, maxWidth: 230, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>{l.lastError}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -711,7 +792,7 @@ function GoalsTab({ s }: { s: DeckSummary }) {
 /* ------------------------------------------------------------------ */
 /* AGENTS                                                              */
 /* ------------------------------------------------------------------ */
-function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null }) {
+function AgentsTab({ s, spend, usage }: { s: DeckSummary; spend: SpendSummary | null; usage: HermesUsageSummary | null }) {
   const spendCalls = spend ? spend.byModel.reduce((a, b) => a + b.calls, 0) : 0;
   const spendOn = spendCalls > 0;
   const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: n < 10 ? 2 : 0 })} kr`;
@@ -771,6 +852,8 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         )}
       </section>
 
+      <HermesUsageCard usage={usage} />
+
       <section className="cc-card cc-card-pad">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, marginBottom: 10 }}>Skills & motorer</h2>
         <div style={{ display: "grid", gap: 0 }}>
@@ -794,6 +877,56 @@ function AgentsTab({ s, spend }: { s: DeckSummary; spend: SpendSummary | null })
         </div>
       </section>
     </div>
+  );
+}
+
+function HermesUsageCard({ usage }: { usage: HermesUsageSummary | null }) {
+  if (!usage) {
+    return (
+      <section className="cc-card cc-card-pad">
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Hermes-forbrug</h2>
+        <p className="cc-dim" style={{ fontSize: 13, margin: 0 }}>Målingen kan ikke nå VPS&apos;en lige nu. Resten af appen virker stadig.</p>
+      </section>
+    );
+  }
+
+  const change = describeUsageChange(usage.changePct);
+  const changeColor = change.state === "saving" ? "var(--accent-ink)" : change.state === "rising" ? "var(--amber)" : "var(--text-muted)";
+  const activeJobs = usage.jobs.agent + usage.jobs.monitor + usage.jobs.noAgent;
+
+  return (
+    <section className="cc-card cc-card-pad" aria-label="Hermes tokenforbrug">
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, flexWrap: "wrap" }}>
+        <Icon name="Gauge" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Hermes-forbrug</h2>
+        <span className="cc-chip" style={{ marginLeft: "auto", color: changeColor }}>{change.label}</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 18 }}>
+        <div>
+          <div className="cc-stat-n" style={{ color: changeColor }}>{formatTokenCount(usage.current24h.tokens)}</div>
+          <div className="cc-stat-l">tokens · seneste 24 timer</div>
+        </div>
+        <div>
+          <div className="cc-stat-n">{formatTokenCount(usage.previous24h.tokens)}</div>
+          <div className="cc-stat-l">tokens · forrige 24 timer</div>
+        </div>
+        <div>
+          <div className="cc-stat-n">{usage.jobs.noAgent} / {activeJobs}</div>
+          <div className="cc-stat-l">aktive jobs kører uden AI</div>
+        </div>
+        <div>
+          <div className="cc-stat-n">{usage.jobs.agent} + {usage.jobs.monitor}</div>
+          <div className="cc-stat-l">AI-jobs + behovsstyrede monitors</div>
+        </div>
+      </div>
+
+      <div className="cc-dim" style={{ fontSize: 11.5, marginTop: 12, lineHeight: 1.5 }}>
+        {usage.current24h.runs} AI-kørsler i perioden
+        {usage.topCurrent ? ` · mest: ${usage.topCurrent.name} (${formatTokenCount(usage.topCurrent.tokens)})` : ""}.
+        {" "}Måler cronjobs på tværs af alle profiler. Tokens viser arbejdsmængde, ikke en faktura.
+      </div>
+    </section>
   );
 }
 

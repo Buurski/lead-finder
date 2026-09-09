@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nextAction } from "./next-action.ts";
+import { buildValueChain, nextAction } from "./next-action.ts";
 import type { DeckSummary } from "./deck.ts";
 
 // Minimal DeckSummary — kun det stigen kigger på. Resten er nuller/tomme, så
@@ -91,6 +91,18 @@ test("count følger altid den handling der vandt", () => {
   const a = nextAction(summary({ previews: { ready: 4, ok: true }, queue: { count: 0, pending: 0, top: [] } }));
   assert.equal(a.count, 4);
   assert.equal(a.source, "previews");
+});
+
+test("værdikæden viser hele flowet og kalder ukoblede målinger ukendte", () => {
+  const stages = buildValueChain(summary({
+    numbers: { newLeads: 0, contactable: 70, sentToday: 4, repliesPending: 2, wonThisWeek: 1 },
+    queue: { count: 9, pending: 3, top: [] },
+    revenue: { monthlyDKK: 3000, setupDKK: 0, clientCount: 5, payingClientCount: 4, goalMonthlyDKK: 10000 },
+  }));
+  assert.deepEqual(stages.map((s) => s.key), ["visibility", "visits", "contact", "leads", "drafts", "sent", "replies", "customers", "payment"]);
+  assert.equal(stages.find((s) => s.key === "contact")?.state, "missing");
+  assert.equal(stages.find((s) => s.key === "leads")?.value, "70");
+  assert.equal(stages.find((s) => s.key === "payment")?.value, "3.000 kr/md");
 });
 
 const deadLeadgen = (days: number) => ([{

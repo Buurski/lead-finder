@@ -47,6 +47,57 @@ export interface HermesMessage {
   ts: string;
 }
 
+export interface HermesBusinessLoop {
+  id: string;
+  name: string;
+  profile: string;
+  schedule: string | null;
+  lastRunAt: string | null;
+  lastStatus: string | null;
+  lastError: string | null;
+  nextRunAt: string | null;
+}
+
+export interface HermesUsageSummary {
+  generatedAt: string;
+  current24h: { tokens: number; runs: number };
+  previous24h: { tokens: number; runs: number };
+  changePct: number | null;
+  jobs: { agent: number; monitor: number; noAgent: number; paused: number };
+  topCurrent: { id: string; name: string; profile: string; tokens: number } | null;
+  businessLoops: HermesBusinessLoop[];
+}
+
+export function businessLoopState(
+  loop: HermesBusinessLoop,
+  nowMs = Date.now(),
+): "ok" | "error" | "waiting" | "late" {
+  if (loop.lastStatus === "error") return "error";
+  if (!loop.lastRunAt || !loop.lastStatus) return "waiting";
+  const next = loop.nextRunAt ? Date.parse(loop.nextRunAt) : Number.NaN;
+  if (Number.isFinite(next) && next + 60 * 60 * 1000 < nowMs) return "late";
+  return "ok";
+}
+
+export function describeUsageChange(changePct: number | null): {
+  label: string;
+  state: "saving" | "rising" | "neutral";
+} {
+  if (changePct == null) return { label: "sammenligning kommer efter 48 timer", state: "neutral" };
+  const pct = Math.round(Math.abs(changePct));
+  if (changePct < 0) return { label: `${pct}% lavere end forrige døgn`, state: "saving" };
+  if (changePct > 0) return { label: `${pct}% højere end forrige døgn`, state: "rising" };
+  return { label: "samme niveau som forrige døgn", state: "neutral" };
+}
+
+export function formatTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toLocaleString("da-DK", { maximumFractionDigits: 1 })} mio.`;
+  }
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000).toLocaleString("da-DK")}.000`;
+  return tokens.toLocaleString("da-DK");
+}
+
 // Client-safe fetch: kalder lead-systemets egen route (som håndterer HMAC server-side).
 // Sender Basic Auth credentials hvis vi er i browseren (Vercel Password Protection).
 // Brug IKKE denne fra server-context (brug lib/hermes.ts i stedet).
