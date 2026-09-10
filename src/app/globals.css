@@ -1035,8 +1035,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .kinly-decision-panel { position: static; order: -1; }
 }
 @media (max-width: 640px) {
-  .kinly-system-status { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-  .kinly-status-link { grid-column: 2; }
+  /* På mobil bærer 'Næste træk'-panelet status + handling alene — statuskortet
+     ovenover ville dublere beskeden og skubbe nøgletallene under folden. */
+  .kinly-system-status { display: none; }
   .kinly-kpi-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kinly-kpi { padding: 14px; }
   .kinly-flow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
