@@ -39,6 +39,45 @@ export interface ValueChainStage {
   state: "measured" | "missing" | "unknown";
 }
 
+export interface ControlStatus {
+  tone: "ok" | "warning" | "error";
+  title: string;
+  detail: string;
+}
+
+/** Én sand status til header og statuskort, så en død kilde aldrig ledsages af "alt er roligt". */
+export function controlStatus(s: Pick<DeckSummary, "ok" | "feeds" | "pause">): ControlStatus {
+  if (!s.ok) {
+    return {
+      tone: "error",
+      title: "Dataforbindelsen er nede",
+      detail: "Google Sheets svarer ikke. Kun den lokale godkendelseskø kan vurderes lige nu.",
+    };
+  }
+  if (s.pause?.paused) {
+    return {
+      tone: "warning",
+      title: "Udsendelser er sat på pause",
+      detail: "Overblikket er opdateret, men der sendes ikke, før pausen fjernes.",
+    };
+  }
+  // Alt der ikke er "fresh" skal nævnes — også "unknown". En feed vi ikke kan
+  // læse er ikke det samme som en feed der er i orden (25-dages-læren).
+  const badFeeds = (s.feeds ?? []).filter((feed) => feed.status !== "fresh");
+  if (badFeeds.length > 0) {
+    return {
+      tone: "warning",
+      title: `${badFeeds.length} datafeed${badFeeds.length === 1 ? "" : "s"} kræver et blik`,
+      detail: "Tal fra de berørte feeds kan være forsinkede eller kunne ikke læses. De øvrige kilder er stadig brugbare.",
+    };
+  }
+  return {
+    tone: "ok",
+    title: "Overblikket er opdateret",
+    detail: "Google Sheets og den lokale godkendelseskø svarer.",
+  };
+}
+
 export function buildValueChain(s: DeckSummary): ValueChainStage[] {
   const number = (value: number) => value.toLocaleString("da-DK");
   const sheetsValue = (value: number) => s.ok ? number(value) : "Ukendt";

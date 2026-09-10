@@ -23,7 +23,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "exclude": ["**/*.test.ts", "**/*.spec.ts", "src/lib/**/*.bak"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",
@@ -32,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts", "src/lib/**/*.bak"]
 }
