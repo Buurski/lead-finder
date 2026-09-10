@@ -35,10 +35,21 @@ function SiteCard({ site }: { site: SynlighedSite }) {
   const gsc = site.gsc?.status === "ok" ? site.gsc : null;
   return (
     <section className="cc-card" aria-label={site.name}>
-      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
         <Icon name="Search" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{site.name}</h3>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>
+          <a href={`https://${site.name}`} target="_blank" rel="noreferrer" className="cc-link" style={{ color: "inherit" }}>{site.name} ↗</a>
+        </h3>
         <span className="cc-chip" style={{ marginLeft: "auto" }}>{ga ? "GA4 live" : "GA4 mangler"}{gsc ? " · GSC live" : " · GSC ikke koblet"}</span>
+        <a
+          href={`https://search.google.com/search-console?resource_id=${encodeURIComponent(`sc-domain:${site.name}`)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="cc-link"
+          style={{ fontSize: 12, fontWeight: 600 }}
+        >
+          Åbn i Search Console ↗
+        </a>
       </div>
 
       <div className="cc-numbers" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
@@ -67,11 +78,39 @@ function SiteCard({ site }: { site: SynlighedSite }) {
               <span>CTR <strong style={{ color: "var(--text)" }}>{((gsc.totals?.ctr ?? 0) * 100).toFixed(1)}%</strong></span>
               <span>pos. <strong style={{ color: "var(--text)" }}>{(gsc.totals?.position ?? 0).toFixed(1)}</strong></span>
             </div>
+            {gsc.topPages && gsc.topPages.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div className="cc-dim" style={{ fontSize: 11 }}>Sider der henter visninger</div>
+                {gsc.topPages.slice(0, 4).map((p) => (
+                  <div key={p.page} style={{ display: "flex", gap: 10, alignItems: "baseline", fontSize: 12.5, padding: "3px 0" }}>
+                    <a
+                      href={p.page}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cc-link"
+                      style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "inherit" }}
+                    >
+                      {p.page.replace(/^https?:\/\/[^/]+/, "") || "/"} ↗
+                    </a>
+                    <span className="cc-dim">{Math.round(p.clicks)} klik</span>
+                    <span className="cc-dim">pos. {p.position.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {gsc.topQueries && gsc.topQueries.length > 0 && (
               <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0 }}>
                 {gsc.topQueries.slice(0, 5).map((q) => (
                   <li key={q.query} style={{ display: "flex", gap: 10, alignItems: "baseline", fontSize: 12.5, padding: "4px 0", borderTop: "1px solid var(--border)" }}>
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</span>
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(q.query)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cc-link"
+                      style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "inherit" }}
+                    >
+                      {q.query} ↗
+                    </a>
                     <span className="cc-dim">{Math.round(q.impressions)} visn.</span>
                     <span className="cc-dim">{Math.round(q.clicks)} klik</span>
                     <span className="cc-dim">pos. {q.position.toFixed(1)}</span>

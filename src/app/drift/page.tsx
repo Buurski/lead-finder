@@ -1,7 +1,7 @@
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import Link from "next/link";
-import { hermesKanban, hermesCronList } from "@/lib/hermes";
+import { hermesKanban, hermesCronList, hermesCronRuns } from "@/lib/hermes";
 import type { HermesKanbanCard } from "@/lib/hermes-client";
 
 // Drift & OS — read-only spejl af Hermes' kanban + cron (samme tal som OS-boardet).
@@ -31,6 +31,14 @@ const PROFILE_DA: Record<string, string> = {
   default: "Hermes",
   lucas: "Lucas",
 };
+
+function firstMeaningful(excerpt: string | null | undefined): string {
+  const lines = (excerpt ?? "")
+    .split("\n")
+    .map((l) => l.replace(/^[#>*\-\s]+/, "").trim())
+    .filter((l) => l && !l.startsWith("```") && l !== "---");
+  return (lines.slice(0, 2).join(" ") || "").slice(0, 200);
+}
 
 function da(status: string | null | undefined): string {
   if (!status) return "ukendt";
@@ -65,10 +73,18 @@ function CardRow({ card, tone }: { card: HermesKanbanCard; tone?: "amber" | "mut
 }
 
 export default async function DriftPage() {
-  const [kanban, jobs] = await Promise.all([
+  const [kanban, jobs, runsByJob] = await Promise.all([
     hermesKanban().catch(() => null),
     hermesCronList().catch(() => []),
+    hermesCronRuns(2).catch(() => []),
   ]);
+
+  // "Hvad har agenterne lavet": nyeste kørsler på tværs af jobs, med et uddrag af
+  // rapporten (første meningsfulde linje) — så man ikke skal ind i Hermes.
+  const recentRuns = runsByJob
+    .flatMap((j) => (j.runs ?? []).map((r) => ({ job: j.name ?? j.id, ...r })))
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+    .slice(0, 10);
 
   const blocked = kanban?.blocked ?? [];
   const active = kanban?.active ?? [];
@@ -138,6 +154,33 @@ export default async function DriftPage() {
               <div className="cc-empty"><Icon name="Workflow" /><div>Ingen kort i kø lige nu.</div></div>
             ) : (
               <ul className="kinly-drift-list">{active.map((c) => <CardRow key={c.id} card={c} />)}</ul>
+            )}
+          </section>
+
+          <section className="cc-card" id="korsler" aria-label="Hvad agenterne har lavet">
+            <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: recentRuns.length ? "1px solid var(--border)" : "none" }}>
+              <Icon name="FileText" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Hvad agenterne har lavet</h2>
+              <span className="cc-chip" style={{ marginLeft: "auto" }}>{recentRuns.length ? `seneste ${recentRuns.length}` : "ingen kørsler"}</span>
+            </div>
+            {recentRuns.length === 0 ? (
+              <div className="cc-empty"><Icon name="FileText" /><div>Ingen rapporter fundet endnu.</div></div>
+            ) : (
+              <ul className="kinly-drift-list">
+                {recentRuns.map((r) => (
+                  <li key={`${r.job}-${r.file}`} className="kinly-drift-row" style={{ alignItems: "flex-start" }}>
+                    <span className="kinly-drift-dot" data-tone={r.status === "error" ? "amber" : "ok"} style={{ marginTop: 6 }} aria-hidden />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{r.job}</div>
+                      <div className="cc-dim" style={{ fontSize: 11.5 }}>
+                        {String(r.timestamp).replace(/-/g, ":").replace(":", " ").slice(0, 16)}
+                        {r.status === "error" ? " · fejlede" : ""}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{firstMeaningful(r.excerpt)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 

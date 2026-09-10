@@ -9,6 +9,7 @@ import FindEmailsButton from "./FindEmailsButton";
 import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import { buildValueChain, controlStatus, nextAction } from "@/lib/next-action";
+import { feedSentence, FEED_LINK } from "@/lib/feed-health";
 import type { SpendSummary } from "@/lib/spend-log";
 import { businessLoopState, describeUsageChange, formatTokenCount, type HermesUsageSummary, type HermesKanbanSummary, type SynlighedSnapshot } from "@/lib/hermes-client";
 
@@ -149,7 +150,9 @@ function TodayTab({ s, dailyBrief, usage, os }: { s: DeckSummary; dailyBrief: Da
         <main className="kinly-control-main">
           <KpiRail s={s} />
           <DriftCard os={os} />
+          <AnalyticsCard os={os} />
           <ValueChainCard s={s} />
+          <DataFeedsCard s={s} />
           <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
           <UsageSparkline data={s.dailySent} />
         </main>
@@ -169,7 +172,7 @@ function SystemStatusCard({ s }: { s: DeckSummary }) {
         <p>{status.detail}</p>
       </div>
       {status.tone !== "ok" && (
-        <Link href="/settings" className="kinly-status-link">Se status →</Link>
+        <Link href="#datafeeds" className="kinly-status-link">Se feeds →</Link>
       )}
     </section>
   );
@@ -288,6 +291,101 @@ function DriftCard({ os }: { os: OsData | null }) {
             {syn?.ok && syn.generatedAt ? ` · synlighed opdateret for ${relTime(syn.generatedAt)} siden` : ""}
           </div>
         </>
+      )}
+    </section>
+  );
+}
+
+
+// Feeds med handling: hver advarsel siger nu HVOR den laves, og hvor man ser resultatet.
+function DataFeedsCard({ s }: { s: DeckSummary }) {
+  const feeds = s.feeds ?? [];
+  if (feeds.length === 0) return null;
+  const bad = feeds.filter((f) => f.status !== "fresh");
+  return (
+    <section className="cc-card" id="datafeeds" aria-label="Datafeeds">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: bad.length ? "1px solid var(--border)" : "none" }}>
+        <Icon name="Activity" style={{ width: 17, height: 17, color: bad.length ? "var(--amber)" : "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Datafeeds</h2>
+        <span className="cc-chip" style={{ marginLeft: "auto", background: bad.length ? "var(--amber-dim)" : "var(--accent-soft)", color: bad.length ? "var(--amber)" : "var(--text)" }}>
+          {bad.length ? `${bad.length} kræver et blik` : "alle friske"}
+        </span>
+      </div>
+      {bad.length === 0 ? (
+        <div className="cc-empty"><Icon name="CheckCheck" /><div>Alle feeds har leveret inden for kadencen.</div></div>
+      ) : (
+        <ul className="kinly-drift-list">
+          {bad.map((f) => {
+            const link = FEED_LINK[f.key];
+            return (
+              <li key={f.key} className="kinly-drift-row" style={{ alignItems: "flex-start" }}>
+                <span className="kinly-drift-dot" data-tone="amber" style={{ marginTop: 6 }} aria-hidden />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>
+                    {f.label} <span className="cc-dim" style={{ fontWeight: 400 }}>· {f.feeds}</span>
+                  </div>
+                  <div className="cc-dim" style={{ fontSize: 11.5 }}>{feedSentence(f)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{f.source}</div>
+                </div>
+                {link && (
+                  <Link href={link.href} className="cc-link" style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>
+                    {link.label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// Analytics på forsiden: de målte tal pr. site (GA4 + GSC), ét klik til /seo.
+function AnalyticsCard({ os }: { os: OsData | null }) {
+  const syn = os?.synlighed ?? null;
+  const sites = syn?.ok ? Object.entries(syn.sites ?? {}) : [];
+  const nf = (n: number) => n.toLocaleString("da-DK", { maximumFractionDigits: 0 });
+  const delta = (cur: number, prev?: number) => (prev == null || prev === 0 ? null : Math.round(((cur - prev) / prev) * 100));
+  return (
+    <section className="cc-card" aria-label="Analytics">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: sites.length ? "1px solid var(--border)" : "none" }}>
+        <Icon name="Gauge" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Analytics · 30 dage</h2>
+        <Link href="/seo" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>Detaljer →</Link>
+      </div>
+      {sites.length === 0 ? (
+        <div className="cc-empty">
+          <Icon name="Gauge" />
+          <div>Snapshot ikke hentet endnu.</div>
+          <div className="cc-dim" style={{ fontSize: 12 }}>GA4 og GSC hentes fra VPS&apos;en hvert 6. time.</div>
+        </div>
+      ) : (
+        <div className="cc-numbers" style={{ gridTemplateColumns: `repeat(${Math.max(2, Math.min(4, sites.length * 2))}, minmax(0, 1fr))` }}>
+          {sites.map(([key, site]) => {
+            const ga = site.ga4?.status === "ok" ? site.ga4.current : null;
+            const prev = site.ga4?.status === "ok" ? site.ga4.previous?.totals : undefined;
+            const gsc = site.gsc?.status === "ok" ? site.gsc.totals : null;
+            const d = delta(ga?.totals.users ?? 0, prev?.users);
+            return (
+              <div className="cc-numbers-cell" key={key}>
+                <div className="cc-stat-n" style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  {ga ? nf(ga.totals.users) : "—"}
+                  {d != null && (
+                    <span className="cc-chip" style={{ background: d >= 0 ? "var(--accent-soft)" : "var(--red-dim)", color: d >= 0 ? "var(--text)" : "var(--red)", fontWeight: 700 }}>
+                      {d >= 0 ? "+" : ""}{d}%
+                    </span>
+                  )}
+                </div>
+                <div className="cc-stat-l">{site.name} · brugere</div>
+                <div className="cc-dim" style={{ fontSize: 11, marginTop: 3 }}>
+                  {ga ? `${nf(ga.totals.sessions)} sessioner` : "GA4 mangler"}
+                  {gsc ? ` · ${nf(gsc.clicks)} klik (GSC, pos. ${gsc.position.toFixed(1)})` : ""}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </section>
   );

@@ -145,6 +145,8 @@ export interface HermesCronRun {
   size: number;
   status: "ok" | "error";
   error: string;
+  /** Uddrag af rapporten (første ~600 tegn) — vises på /drift. */
+  excerpt?: string;
 }
 
 export interface HermesCronJobWithRuns extends HermesCronJob {

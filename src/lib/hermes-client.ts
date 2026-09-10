@@ -91,6 +91,7 @@ export interface SynlighedGsc {
   period?: string;
   totals?: { clicks: number; impressions: number; ctr: number; position: number } | null;
   topQueries?: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  topPages?: { page: string; clicks: number; impressions: number; position: number }[];
 }
 
 export interface SynlighedSite {

@@ -23,6 +23,8 @@ export interface FeedHealth {
   /** Hvad der går i stå når denne feed dør — vises i klartekst. */
   feeds: string;
   path: string;
+  /** Hvem/hvad der producerer feedet (frivillig — ældre fixtures har den ikke). */
+  source?: string;
   status: FeedStatus;
   at: string | null;
   ageHours: number | null;
@@ -35,14 +37,24 @@ export interface FeedSpec {
   feeds: string;
   path: string;
   expectEveryHours: number;
+  /** Hvem/hvad der producerer feedet — så man ved HVOR man retter det. */
+  source?: string;
 }
+
+/** Feed -> hvor resultatet ses (så en advarsel altid har en vej videre). */
+export const FEED_LINK: Record<string, { href: string; label: string }> = {
+  leadgen: { href: "/leads", label: "Se leads →" },
+  inbox: { href: "/replies", label: "Se svar →" },
+  messenger: { href: "/messenger", label: "Se messenger →" },
+  omverden: { href: "/drift", label: "Se OS →" },
+};
 
 // Kadencerne følger de faktiske planlagte kørsler (scheduler-arkitektur.md).
 const FEEDS: FeedSpec[] = [
-  { key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", expectEveryHours: 24 },
-  { key: "inbox", label: "Indbakke-triage", feeds: "svar-siden", path: "data/inbox.json", expectEveryHours: 24 },
-  { key: "messenger", label: "Messenger", feeds: "Messenger-emner", path: "data/messenger.json", expectEveryHours: 24 },
-  { key: "omverden", label: "Omverden", feeds: "omverdens-kortet", path: "data/omverden.json", expectEveryHours: 24 },
+  { key: "leadgen", label: "Nye leads", feeds: "godkendelseskøen", path: "data/leadgen.json", expectEveryHours: 24, source: "Laves af VPS-scriptet leadgen_daglig.sh (cron) — se /drift." },
+  { key: "inbox", label: "Indbakke-triage", feeds: "svar-siden", path: "data/inbox.json", expectEveryHours: 24, source: "Laves af Cowork-tasken inbox-triage på Lucas' maskine — kør den, så opdateres denne." },
+  { key: "messenger", label: "Messenger", feeds: "Messenger-emner", path: "data/messenger.json", expectEveryHours: 24, source: "Laves af Cowork-tasken messenger på Lucas' maskine." },
+  { key: "omverden", label: "Omverden", feeds: "omverdens-kortet", path: "data/omverden.json", expectEveryHours: 24, source: "Laves af Claude Code-tasken omverden (omverdens-kortet)." },
 ];
 
 const STALE_FACTOR = 2;          // over det dobbelte af kadencen = forsinket

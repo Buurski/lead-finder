@@ -65,6 +65,23 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
   const month = new Date().toISOString().slice(0, 7);
   const charlieThisMonth = payments.filter((p) => p.from === "charlie" && p.date.startsWith(month)).reduce((s, p) => s + p.amount, 0);
   const charlieTotal = payments.filter((p) => p.from === "charlie").reduce((s, p) => s + p.amount, 0);
+
+  // Løbende status: hvor meget skylder Charlie LIGE NU (siden seneste overførsel)?
+  // Måneds-anniversar: hver gang d. X i måneden passerer, forfalder endnu en andel.
+  const charliePays = payments.filter((p) => p.from === "charlie").sort((a, b) => b.date.localeCompare(a.date));
+  const last = charliePays[0] ?? null;
+  const monthsBetween = (fromISO: string, to: Date) => {
+    const from = new Date(fromISO + "T00:00:00");
+    if (Number.isNaN(from.getTime())) return 0;
+    let n = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+    if (to.getDate() < from.getDate()) n -= 1; // anniversaren er ikke passeret endnu
+    return Math.max(0, n);
+  };
+  const today = new Date();
+  const dueSince = last ? monthsBetween(last.date, today) : 0;
+  const paidSince = last ? charliePays.filter((p) => p.date > last.date).reduce((s, p) => s + p.amount, 0) : 0;
+  const balance = last ? Math.max(0, dueSince * owedPerMonth - paidSince) : owedPerMonth;
+  const balancePct = owedPerMonth > 0 ? Math.min(100, (balance / (owedPerMonth * 2)) * 100) : 0;
   const monthPct = owedPerMonth > 0 ? Math.min(100, (charlieThisMonth / owedPerMonth) * 100) : 0;
   const sorted = [...payments].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -94,6 +111,32 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
           </div>
         );
       })()}
+
+      {/* Løbende status: hvad skyldes der NU (siden seneste registrerede overførsel) */}
+      <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: balance > 0 ? "linear-gradient(135deg, var(--amber-dim), var(--surface))" : "var(--accent-soft)", border: balance > 0 ? "1px solid color-mix(in srgb, var(--amber) 35%, transparent)" : "none" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <div className="cc-dim" style={{ fontSize: 12 }}>
+              {last ? `Charlie skylder nu (siden ${last.date.split("-").reverse().join("/")} · ${kr(last.amount)})` : "Charlie skylder nu (ingen overførsel registreret endnu)"}
+            </div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: balance > 0 ? "var(--amber)" : "var(--accent-ink)", fontVariantNumeric: "tabular-nums" }}>
+              {kr(balance)}
+            </div>
+            {last && dueSince > 0 && (
+              <div className="cc-dim" style={{ fontSize: 11.5 }}>
+                {dueSince} forfalden{dueSince === 1 ? "" : "e"} måned{dueSince === 1 ? "" : "er"} × {kr(owedPerMonth)}{paidSince > 0 ? ` − ${kr(paidSince)} betalt siden` : ""}
+              </div>
+            )}
+            {last && dueSince === 0 && <div className="cc-dim" style={{ fontSize: 11.5 }}>seneste andel er dækket — næste forfalder på årsdagen</div>}
+          </div>
+          <div style={{ minWidth: 120, flex: "0 1 160px" }}>
+            <div style={{ height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
+              <div style={{ width: `${balancePct}%`, height: "100%", background: balance > 0 ? "var(--amber)" : "var(--accent)", borderRadius: 4, transition: "width .3s" }} />
+            </div>
+            <div className="cc-dim" style={{ fontSize: 11, marginTop: 4, textAlign: "right" }}>måler mod 2 måneders andel</div>
+          </div>
+        </div>
+      </div>
 
       {/* Denne måned: Charlie's ½ selskab */}
       <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: "var(--accent-soft)" }}>
