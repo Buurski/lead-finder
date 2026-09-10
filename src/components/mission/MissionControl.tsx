@@ -7,13 +7,10 @@ import MarkdownLite from "@/components/shell/MarkdownLite";
 import EngineRunner from "./EngineRunner";
 import FindEmailsButton from "./FindEmailsButton";
 import UsageSparkline from "./UsageSparkline";
-import MaalWidget from "./MaalWidget";
-import OmverdenCard from "./OmverdenCard";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
-import { buildValueChain, nextAction } from "@/lib/next-action";
-import { feedSentence } from "@/lib/feed-health";
+import { buildValueChain, controlStatus, nextAction } from "@/lib/next-action";
 import type { SpendSummary } from "@/lib/spend-log";
-import { businessLoopState, describeUsageChange, formatTokenCount, type HermesBusinessLoop, type HermesUsageSummary } from "@/lib/hermes-client";
+import { businessLoopState, describeUsageChange, formatTokenCount, type HermesUsageSummary } from "@/lib/hermes-client";
 
 // Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
 // page.tsx and passed down so the "Hvad skal vi i dag" hub can lead with it.
@@ -55,28 +52,9 @@ function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void
   );
 }
 
-function greeting(d: Date): string {
-  const h = d.getHours();
-  if (h < 5) return "Sent oppe";
-  if (h < 10) return "God morgen";
-  if (h < 14) return "God formiddag";
-  if (h < 18) return "God eftermiddag";
-  return "God aften";
-}
-
 export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief, hermesUsage }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null; hermesUsage?: HermesUsageSummary | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [details, setDetails] = useState(false);
-  const [hello, setHello] = useState("Velkommen");
-
-  useEffect(() => {
-    // Client-only greeting: server can't know the viewer's local hour, so we set
-    // it after mount to avoid a hydration mismatch (SSR renders "Velkommen").
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHello(greeting(new Date()));
-  }, []);
-
-  const act = nextAction(summary);
 
   // Closing details returns to the Today view so the extra tabs never linger.
   function toggleDetails() {
@@ -90,19 +68,10 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       <header className="kinly-page-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
-          <h1 className="cc-h1">{hello}.</h1>
+          <h1 className="cc-h1">Overblik.</h1>
           <p className="cc-sub">{summaryLine(summary)}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <Link
-            href={act.href}
-            title={act.reason}
-            className="cc-card kinly-next-action"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 17px", textDecoration: "none", color: "#fff", fontWeight: 700, fontSize: 13.5 }}
-          >
-            {act.label}
-            <Icon name="ArrowRight" style={{ width: 14, height: 14 }} />
-          </Link>
           <button
             onClick={toggleDetails}
             aria-expanded={details}
@@ -118,14 +87,6 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
       {/* Pipeline / Goals / Agents are detail views — hidden until asked for. */}
       {details && <TabNav tab={tab} setTab={setTab} secondary />}
 
-      {!summary.ok && (
-        <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
-          <Icon name="Activity" style={{ width: 17, height: 17, color: "var(--amber)" }} />
-          <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-            Kunne ikke nå Google Sheets — viser hvad køen ved lokalt. Tal opdateres når forbindelsen er der.
-          </span>
-        </div>
-      )}
 
       {spendAlert && (
         <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
@@ -145,6 +106,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
 // Day-at-a-glance one-liner: only the two numbers that drive the day —
 // drafts waiting for approval and replies waiting for an answer.
 function summaryLine(s: DeckSummary): string {
+  if (!s.ok) return "Kun lokale kødata vises, indtil Google Sheets svarer igen.";
   const bits: string[] = [];
   if (s.queue.pending) bits.push(`${s.queue.pending} udkast venter`);
   if (s.numbers.repliesPending) bits.push(`${s.numbers.repliesPending} svar venter`);
@@ -178,98 +140,124 @@ function TodayTab({ s, dailyBrief, usage }: { s: DeckSummary; dailyBrief: DailyB
   }, [n, router, sel, s.needsYou]);
 
   return (
-    <div className="kinly-today" style={{ display: "grid", gap: 18 }}>
-      <DailyBriefCard brief={dailyBrief} />
-      <OmverdenCard />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(0, 1.2fr)", gap: 18, alignItems: "stretch" }} className="cc-today-cols">
-        <HeroNumber s={s} />
-        <UsageSparkline data={s.dailySent} />
+    <div className="kinly-today">
+      <SystemStatusCard s={s} />
+      {dailyBrief?.ok ? <DailyBriefCard brief={dailyBrief} /> : null}
+      <div className="kinly-control-grid">
+        <main className="kinly-control-main">
+          <KpiRail s={s} />
+          <ValueChainCard s={s} />
+          <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
+          <UsageSparkline data={s.dailySent} />
+        </main>
+        <DecisionPanel s={s} usage={usage} />
       </div>
-      <ValueChainCard s={s} />
-      <BusinessLoopsCard usage={usage} />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="cc-today-cols">
-        <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
-        <div style={{ display: "grid", gap: 18 }}>
-          <QueueCard s={s} />
-          <PipelineMini s={s} />
-          <MaalWidget />
-        </div>
-      </div>
-      <FeedHealthNote s={s} />
-      <CompanySnapshot s={s} />
     </div>
   );
 }
 
-
-// Datafeeds der er holdt op med at levere. Tavs når alt er friskt — en linje
-// her betyder altid noget. (Uden den her kunne lead-motoren ligge død i 25
-// dage mens skærmen så helt normal ud. Det skete.)
-function FeedHealthNote({ s }: { s: DeckSummary }) {
-  const bad = (s.feeds ?? []).filter((f) => f.status !== "fresh");
-  if (bad.length === 0) return null;
+function SystemStatusCard({ s }: { s: DeckSummary }) {
+  const status = controlStatus(s);
   return (
-    <div className="cc-card cc-card-pad" role="status" style={{ display: "grid", gap: 7 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Icon name="Activity" style={{ width: 15, height: 15, color: "var(--amber)" }} />
-        <strong style={{ fontSize: 13.5 }}>Datafeeds</strong>
+    <section className="kinly-system-status" data-tone={status.tone} aria-label="Systemstatus">
+      <span className="kinly-status-dot" aria-hidden />
+      <div>
+        <strong>{status.title}</strong>
+        <p>{status.detail}</p>
       </div>
-      {bad.map((f) => (
-        <div key={f.key} style={{ display: "flex", gap: 9, alignItems: "baseline", fontSize: 12.5, color: "var(--text-muted)" }}>
-          <span
-            className="cc-chip"
-            style={f.status === "dead"
-              ? { background: "var(--red-dim)", color: "var(--red)" }
-              : f.status === "stale"
-                ? { background: "var(--amber-dim)", color: "var(--amber)" }
-                : undefined}
-          >
-            {f.status === "dead" ? "død" : f.status === "stale" ? "forsinket" : "ukendt"}
-          </span>
-          <span style={{ minWidth: 0 }}>{feedSentence(f)}</span>
-        </div>
+      {status.tone !== "ok" && (
+        <Link href="/settings" className="kinly-status-link">Se status →</Link>
+      )}
+    </section>
+  );
+}
+
+function KpiRail({ s }: { s: DeckSummary }) {
+  const unavailable = "—";
+  const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr`;
+  const metrics = [
+    { label: "Leads klar", value: s.ok ? s.numbers.contactable.toLocaleString("da-DK") : unavailable, href: "/leads", local: false },
+    { label: "Til godkendelse", value: s.queue.pending.toLocaleString("da-DK"), href: "/approve", local: true },
+    { label: "Svar venter", value: s.ok ? s.numbers.repliesPending.toLocaleString("da-DK") : unavailable, href: "/replies", local: false },
+    { label: "Fast pr. måned", value: s.ok ? kr(s.revenue.monthlyDKK) : unavailable, href: "/okonomi", local: false },
+  ];
+  return (
+    <section className="kinly-kpi-rail" aria-label="Vigtigste tal">
+      {metrics.map((metric) => (
+        <Link key={metric.label} href={metric.href} className="kinly-kpi">
+          <span>{metric.label}</span>
+          <strong>{metric.value}</strong>
+          <small>{metric.local ? "lokal kø" : s.ok ? "Google Sheets" : "kilde utilgængelig"}</small>
+        </Link>
       ))}
+    </section>
+  );
+}
+
+function DecisionPanel({ s, usage }: { s: DeckSummary; usage: HermesUsageSummary | null }) {
+  const action = nextAction(s);
+  const loops = usage?.businessLoops ?? [];
+  const loopIssues = loops.filter((loop) => businessLoopState(loop) !== "ok").length;
+  return (
+    <aside className="kinly-decision-panel" aria-label="Kontekst og næste træk">
+      <div className="kinly-decision-kicker"><Icon name="Sparkles" /> Næste træk</div>
+      <div className="kinly-decision-number">{action.degraded ? "!" : action.count || "✓"}</div>
+      <h2>{action.label}</h2>
+      <p>{action.reason}</p>
+      <Link href={action.href} className="kinly-decision-action">Åbn handling <Icon name="ArrowRight" /></Link>
+
+      <div className="kinly-source-list">
+        <h3>Datagrundlag</h3>
+        <DataSource label="Leads og kunder" state={s.ok ? "live" : "fejl"} detail="Google Sheets" />
+        <DataSource label="Godkendelser" state="live" detail="lokal kø" />
+        <DataSource label="Synlighed" state="brief" detail="GSC · ugetjek" />
+        <DataSource label="Besøg" state="brief" detail="PostHog · ugebrief" />
+      </div>
+
+      {s.pulse.length > 0 && (
+        <Link href="/clients" className="kinly-panel-pulse">
+          <Icon name="HeartPulse" />
+          {s.pulse.length} kundesag{s.pulse.length === 1 ? "" : "er"} kræver opmærksomhed →
+        </Link>
+      )}
+
+      <div className="kinly-panel-foot">
+        <span>{loops.length ? `${loops.length - loopIssues}/${loops.length} loops uden fejl` : "Loops ikke nået"}</span>
+        <strong>Sender aldrig selv</strong>
+      </div>
+    </aside>
+  );
+}
+
+function DataSource({ label, state, detail }: { label: string; state: "live" | "fejl" | "brief"; detail: string }) {
+  return (
+    <div className="kinly-source-row">
+      <span className="kinly-source-state" data-state={state} aria-hidden />
+      <span>{label}</span>
+      <small>{detail}</small>
     </div>
   );
 }
 
-// The single most important number, big — what needs attention today.
-function HeroNumber({ s }: { s: DeckSummary }) {
-  // Samme stige som header-CTA'en — importeret, ikke gentaget. Tallet skal
-  // matche handlingen, ellers peger de to på hver sin ting.
-  const act = nextAction(s);
-  const lead = {
-    value: act.count,
-    label: act.reason,
-    href: act.href,
-    tone: act.degraded ? "var(--text-dim)" : "var(--text)",
-  };
-  return (
-    <Link href={lead.href} className="cc-card cc-card-pad kinly-focus-card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", textDecoration: "none", color: "inherit", minHeight: 96 }}>
-      {/* Offline kilde viser "—", aldrig 0 — et nul ville læses som "intet at lave". */}
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 54, lineHeight: 1, letterSpacing: "-0.03em", color: lead.tone }}>{act.degraded ? "—" : lead.value}</div>
-      <div className="cc-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{lead.label} →</div>
-    </Link>
-  );
-}
 
 function ValueChainCard({ s }: { s: DeckSummary }) {
-  const stages = buildValueChain(s);
+  const stages = buildValueChain(s).filter((stage) => !["visibility", "visits", "contact"].includes(stage.key));
   return (
-    <section className="cc-card" aria-label="Værdikæde">
+    <section className="cc-card kinly-flow" aria-label="Lead-flow">
       <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
         <Icon name="Network" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Værdikæden</h2>
-        <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>fra synlighed til betaling</span>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Lead-flow</h2>
+        <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>fra lead til fast kunde</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 1, background: "var(--border)" }}>
+      <div className="kinly-flow-grid">
         {stages.map((st) => {
           const tone = st.state === "missing" ? "var(--amber)" : st.state === "unknown" ? "var(--text-dim)" : "var(--text)";
           return (
             <Link
               key={st.key}
               href={st.href}
-              style={{ background: "var(--surface)", padding: "14px 16px", minHeight: 82, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 3, justifyContent: "center" }}
+              className="kinly-flow-step"
+              data-state={st.state}
             >
               <div className="cc-stat-l" style={{ marginTop: 0 }}>{st.label}</div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", color: tone }}>{st.value}</div>
@@ -278,76 +266,6 @@ function ValueChainCard({ s }: { s: DeckSummary }) {
           );
         })}
       </div>
-    </section>
-  );
-}
-
-const LOOP_LABELS: Record<string, string> = {
-  "uge-marketing": "Ugentligt synlighedstjek",
-  "posthog-uge-brief": "PostHog-ugebrief",
-  "uge-kundetjek": "Ugentligt kundetjek",
-  "uge-rapport": "Ugerapport",
-  "maaned-marketing": "Månedligt overblik",
-  "authority-backlink-radar-weekly": "Backlink-radar",
-  "geo-citation-loop-ugentlig": "GEO / citations",
-};
-
-// cron-schedule (5 felter) -> dansk kadence
-function loopWhen(loop: HermesBusinessLoop): string {
-  const parts = (loop.schedule ?? "").trim().split(/\s+/);
-  if (parts.length === 5 && /^\d+$/.test(parts[0])) {
-    if (parts[0] === "1") return "den 1. hver måned";
-    const day = Number(parts[4]);
-    if (day === 1) return "mandag";
-    if (day === 2) return "tirsdag";
-    if (day === 3) return "onsdag";
-    if (day === 4) return "torsdag";
-    if (day === 5) return "fredag";
-    if (day === 6 || day === 0) return "søndag";
-    return `dag ${day}`;
-  }
-  return "regelmæssigt";
-}
-
-// De syv forretningsloops: uge- og månedsrytmen. Kører selv, resultatet lander
-// i kanban. En fejl eller forsinkelse her er det som skal vække — ikke tallet.
-function BusinessLoopsCard({ usage }: { usage: HermesUsageSummary | null }) {
-  const loops = usage?.businessLoops ?? [];
-  if (loops.length === 0) return null;
-  return (
-    <section className="cc-card" aria-label="Ugens og månedens rytme">
-      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Calendar" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Ugens og månedens rytme</h2>
-        <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>kører selv · resultat i kanban</span>
-      </div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {loops.map((l) => {
-          const state = businessLoopState(l);
-          const chip = state === "ok"
-            ? { label: "ok", color: "var(--accent-ink)", bg: "var(--accent-soft)" }
-            : state === "error"
-              ? { label: "fejl", color: "var(--red)", bg: "var(--red-dim)" }
-              : state === "late"
-                ? { label: "forsinket", color: "var(--amber)", bg: "var(--amber-dim)" }
-                : { label: "venter", color: "var(--text-dim)", bg: "var(--bg-3)" };
-          return (
-            <li key={`${l.profile}:${l.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 22px", borderBottom: "1px solid var(--border)" }}>
-              <span className="cc-chip" style={{ background: chip.bg, color: chip.color }}>{chip.label}</span>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{LOOP_LABELS[l.name] ?? l.name}</div>
-                <div className="cc-dim" style={{ fontSize: 12 }}>
-                  {loopWhen(l)}
-                  {l.lastRunAt ? ` · sidst ${relTime(l.lastRunAt)}` : " · aldrig kørt"}
-                </div>
-              </div>
-              {l.lastError && (
-                <span className="cc-dim" style={{ fontSize: 11, maxWidth: 230, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>{l.lastError}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
     </section>
   );
 }
@@ -502,98 +420,6 @@ function NeedsYouCard({ items, sel, onSelect, queuePending, repliesPending }: { 
   );
 }
 
-function QueueCard({ s }: { s: DeckSummary }) {
-  return (
-    <section className="cc-card" aria-label="Godkendelses-kø">
-      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: s.queue.top.length ? "1px solid var(--border)" : "none" }}>
-        <Icon name="CheckCheck" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Godkendelses-kø</h2>
-        <span className="cc-chip" style={{ marginLeft: "auto" }}>{s.queue.pending} afventer</span>
-      </div>
-      {s.queue.top.length === 0 ? (
-        <div className="cc-empty">
-          <Icon name="Inbox" />
-          <div>Køen er tom.</div>
-        </div>
-      ) : (
-        <>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {s.queue.top.map((d) => (
-              <li key={d.id} style={{ padding: "11px 22px", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                <div className="cc-dim" style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.subject || `${d.branch} · ${d.city}`}</div>
-              </li>
-            ))}
-          </ul>
-          <div style={{ padding: "12px 22px" }}>
-            <Link href="/approve" className="cc-link" style={{ fontSize: 12.5, fontWeight: 600 }}>Åbn godkendelse →</Link>
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-function PipelineMini({ s }: { s: DeckSummary }) {
-  const p = s.pipeline;
-  return (
-    <section className="cc-card cc-card-pad" aria-label="Dagens pipeline">
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-        <Icon name="Workflow" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Dagens pipeline</h2>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
-        <Mini label="drafts i alt" value={p.totalDrafts} />
-        <Mini label="afventer" value={p.pending} />
-        <Mini label="godkendt" value={p.approved} />
-        <Mini label="afvist" value={p.rejected} />
-      </div>
-      <div className="cc-dim" style={{ fontSize: 12, marginTop: 12 }}>
-        {p.lastRunAt ? `Sidste kørsel: ${relTime(p.lastRunAt)}` : "Motoren har ikke kørt endnu."}
-      </div>
-    </section>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <span style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 600 }}>{value}</span>
-      <span className="cc-dim" style={{ fontSize: 12, marginLeft: 6 }}>{label}</span>
-    </div>
-  );
-}
-
-function CompanySnapshot({ s }: { s: DeckSummary }) {
-  const rev = s.revenue;
-  const kr = (n: number) => `${n.toLocaleString("da-DK", { maximumFractionDigits: 0 })} kr`;
-  return (
-    <section className="cc-card cc-company-snapshot" aria-label="Virksomhedsoverblik">
-      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
-        <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Virksomhedsoverblik</h2>
-        <Link href="/clients" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>Kunder →</Link>
-      </div>
-      <div className="cc-company-grid">
-        <div><div className="cc-stat-n">{rev.clientCount}</div><div className="cc-stat-l">kunder i CRM</div></div>
-        <div><div className="cc-stat-n">{rev.payingClientCount}</div><div className="cc-stat-l">betalende kunder</div></div>
-        <div><div className="cc-stat-n">{kr(rev.monthlyDKK)}</div><div className="cc-stat-l">fast pr. måned</div></div>
-        <div className="cc-company-note">
-          <div style={{ fontWeight: 600, fontSize: 13 }}>Næste blik</div>
-          <div className="cc-dim" style={{ fontSize: 12 }}>Google Analytics er ikke koblet på endnu.</div>
-          <Link href="/indsigter" className="cc-link" style={{ fontSize: 12, fontWeight: 600 }}>Åbn indsigter →</Link>
-        </div>
-      </div>
-      {s.pulse.length > 0 && (
-        <div className="cc-company-attention">
-          <Icon name="HeartPulse" style={{ width: 15, height: 15 }} />
-          <span><strong>{s.pulse.length}</strong> kundesag{ s.pulse.length === 1 ? "" : "er" } kræver opmærksomhed.</span>
-          <Link href="/clients" className="cc-link" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Se kunder →</Link>
-        </div>
-      )}
-    </section>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* PIPELINE                                                            */
