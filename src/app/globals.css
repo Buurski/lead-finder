@@ -1046,3 +1046,43 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   .kinly-decision-panel { padding: 20px; }
   .kinly-decision-number { margin-top: 18px; font-size: 48px; }
 }
+
+
+/* --- 10-09: design-løft (token-lag, council-godkendt) -------------------
+   Varm off-white flade, hvide kort, hairline-kanter, ét accent (sage).
+   Gamle variabel-navne beholdes — kun værdierne strammes op. */
+:root {
+  --bg: #f6f6f2;
+  --bg-2: #efefea;
+  --border: #e6e7e1;
+  --border-light: #d7d9d0;
+  --text: #16211c;
+  --text-muted: #4a564f;
+  --text-dim: #79847d;
+  --kinly-ink: #14211b;
+  --kinly-paper: #f6f6f2;
+  --kinly-line: #e6e7e1;
+  --pastel-sage: #e8f0e4;
+  --pastel-sky: #e6eef5;
+  --pastel-sand: #f6efe3;
+  --pastel-clay: #f3e9e3;
+  --pastel-lav: #edeaf5;
+  --shadow-xs: 0 1px 2px rgba(20, 33, 27, 0.04);
+  --shadow-card: 0 1px 2px rgba(20, 33, 27, 0.04), 0 1px 3px rgba(20, 33, 27, 0.06);
+}
+
+/* KPI-fliser: pastel som etikette — aldrig som dekoration. */
+.kinly-kpi[data-tone="sage"] { background: var(--pastel-sage); }
+.kinly-kpi[data-tone="sky"] { background: var(--pastel-sky); }
+.kinly-kpi[data-tone="sand"] { background: var(--pastel-sand); }
+.kinly-kpi[data-tone="clay"] { background: var(--pastel-clay); }
+.kinly-kpi[data-tone]:hover { filter: brightness(0.985); }
+.kinly-kpi > strong, .cc-stat-n { font-variant-numeric: tabular-nums; }
+
+/* Drift-lister (kanban-kort, cron-rækker). */
+.kinly-drift-list { list-style: none; margin: 0; padding: 0; }
+.kinly-drift-row { display: flex; align-items: center; gap: 11px; padding: 11px 22px; border-bottom: 1px solid var(--border); }
+.kinly-drift-row:last-child { border-bottom: none; }
+.kinly-drift-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); flex: 0 0 auto; }
+.kinly-drift-dot[data-tone="amber"] { background: var(--amber); }
+.kinly-drift-dot[data-tone="ok"] { background: var(--kinly-signal); }

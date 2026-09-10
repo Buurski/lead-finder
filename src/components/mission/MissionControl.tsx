@@ -10,7 +10,7 @@ import UsageSparkline from "./UsageSparkline";
 import type { DeckSummary, NeedsYouItem } from "@/lib/deck";
 import { buildValueChain, controlStatus, nextAction } from "@/lib/next-action";
 import type { SpendSummary } from "@/lib/spend-log";
-import { businessLoopState, describeUsageChange, formatTokenCount, type HermesUsageSummary } from "@/lib/hermes-client";
+import { businessLoopState, describeUsageChange, formatTokenCount, type HermesUsageSummary, type HermesKanbanSummary, type SynlighedSnapshot } from "@/lib/hermes-client";
 
 // Today's brief from the Obsidian vault (daily/<date>.md). Built server-side in
 // page.tsx and passed down so the "Hvad skal vi i dag" hub can lead with it.
@@ -52,7 +52,9 @@ function TabNav({ tab, setTab, secondary }: { tab: Tab; setTab: (t: Tab) => void
   );
 }
 
-export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief, hermesUsage }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null; hermesUsage?: HermesUsageSummary | null }) {
+export type OsData = { kanban: HermesKanbanSummary | null; synlighed: SynlighedSnapshot | null };
+
+export default function MissionControl({ summary, cadence, spendAlert, spend, dailyBrief, hermesUsage, os }: { summary: DeckSummary; cadence?: string | null; spendAlert?: string | null; spend?: SpendSummary | null; dailyBrief?: DailyBrief | null; hermesUsage?: HermesUsageSummary | null; os?: OsData | null }) {
   const [tab, setTab] = useState<Tab>("today");
   const [details, setDetails] = useState(false);
 
@@ -95,7 +97,7 @@ export default function MissionControl({ summary, cadence, spendAlert, spend, da
         </div>
       )}
 
-      {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} usage={hermesUsage ?? null} />}
+      {tab === "today" && <TodayTab s={summary} dailyBrief={dailyBrief ?? null} usage={hermesUsage ?? null} os={os ?? null} />}
       {tab === "pipeline" && <PipelineTab s={summary} cadence={cadence} />}
       {tab === "goals" && <GoalsTab s={summary} />}
       {tab === "agents" && <AgentsTab s={summary} spend={spend ?? null} usage={hermesUsage ?? null} />}
@@ -117,7 +119,7 @@ function summaryLine(s: DeckSummary): string {
 /* ------------------------------------------------------------------ */
 /* TODAY                                                               */
 /* ------------------------------------------------------------------ */
-function TodayTab({ s, dailyBrief, usage }: { s: DeckSummary; dailyBrief: DailyBrief | null; usage: HermesUsageSummary | null }) {
+function TodayTab({ s, dailyBrief, usage, os }: { s: DeckSummary; dailyBrief: DailyBrief | null; usage: HermesUsageSummary | null; os: OsData | null }) {
   const router = useRouter();
   const [sel, setSel] = useState(0);
   const n = s.needsYou.length;
@@ -146,11 +148,12 @@ function TodayTab({ s, dailyBrief, usage }: { s: DeckSummary; dailyBrief: DailyB
       <div className="kinly-control-grid">
         <main className="kinly-control-main">
           <KpiRail s={s} />
+          <DriftCard os={os} />
           <ValueChainCard s={s} />
           <NeedsYouCard items={s.needsYou} sel={sel} onSelect={setSel} queuePending={s.queue.pending} repliesPending={s.numbers.repliesPending} />
           <UsageSparkline data={s.dailySent} />
         </main>
-        <DecisionPanel s={s} usage={usage} />
+        <DecisionPanel s={s} usage={usage} os={os} />
       </div>
     </div>
   );
@@ -194,7 +197,7 @@ function KpiRail({ s }: { s: DeckSummary }) {
   );
 }
 
-function DecisionPanel({ s, usage }: { s: DeckSummary; usage: HermesUsageSummary | null }) {
+function DecisionPanel({ s, usage, os }: { s: DeckSummary; usage: HermesUsageSummary | null; os: OsData | null }) {
   const action = nextAction(s);
   const loops = usage?.businessLoops ?? [];
   const loopIssues = loops.filter((loop) => businessLoopState(loop) !== "ok").length;
@@ -210,8 +213,8 @@ function DecisionPanel({ s, usage }: { s: DeckSummary; usage: HermesUsageSummary
         <h3>Datagrundlag</h3>
         <DataSource label="Leads og kunder" state={s.ok ? "live" : "fejl"} detail="Google Sheets" />
         <DataSource label="Godkendelser" state="live" detail="lokal kø" />
-        <DataSource label="Synlighed" state="brief" detail="GSC · ugetjek" />
-        <DataSource label="Besøg" state="brief" detail="PostHog · ugebrief" />
+        <DataSource label="Kanban" state={os?.kanban?.ok ? "live" : "fejl"} detail={os?.kanban?.ok ? `${os.kanban.blocked?.length ?? 0} venter · ${os.kanban.doneLast7d ?? 0} færdige 7 d` : "VPS svarer ikke"} />
+        <DataSource label="Synlighed" state={os?.synlighed?.ok ? "live" : "brief"} detail={os?.synlighed?.ok ? "GA4 · VPS-snapshot" : "GA4 afventer snapshot"} />
       </div>
 
       {s.pulse.length > 0 && (
@@ -226,6 +229,67 @@ function DecisionPanel({ s, usage }: { s: DeckSummary; usage: HermesUsageSummary
         <strong>Sender aldrig selv</strong>
       </div>
     </aside>
+  );
+}
+
+
+/* ------------------------------------------------------------------ */
+/* OS-DRIFT                                                            */
+/* ------------------------------------------------------------------ */
+// Kanban + synlighed fra Hermes (VPS). Samme tal som OS-boardet — ingen writes.
+function DriftCard({ os }: { os: OsData | null }) {
+  const k = os?.kanban ?? null;
+  const syn = os?.synlighed ?? null;
+  const sites = syn?.ok ? Object.values(syn.sites ?? {}) : [];
+  const ga4Ok = sites.filter((s) => s.ga4?.status === "ok").length;
+  const gscOk = sites.filter((s) => s.gsc?.status === "ok").length;
+  const blocked = k?.blocked?.length ?? 0;
+  const active = k?.active?.length ?? 0;
+
+  return (
+    <section className="cc-card kinly-flow" aria-label="Agenter og drift">
+      <div className="cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid var(--border)" }}>
+        <Icon name="Activity" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Agenter &amp; drift</h2>
+        <Link href="/drift" className="cc-link" style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>Hele OS&apos;et →</Link>
+      </div>
+      {!k?.ok && !syn?.ok ? (
+        <div className="cc-empty">
+          <Icon name="Activity" />
+          <div>VPS&apos;en svarer ikke lige nu.</div>
+          <div className="cc-dim" style={{ fontSize: 12 }}>Kanban og synlighed hentes fra Hermes — prøv igen om lidt.</div>
+        </div>
+      ) : (
+        <>
+          <div className="kinly-flow-grid">
+            <Link href="/drift" className="kinly-flow-step" data-state={blocked > 0 ? "missing" : "measured"}>
+              <div className="cc-stat-l" style={{ marginTop: 0 }}>Venter på dig</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: blocked > 0 ? "var(--amber)" : "var(--text)" }}>{blocked}</div>
+              <div className="cc-dim" style={{ fontSize: 11 }}>{k?.ok ? `af ${k.total ?? 0} kort i alt` : "kanban ikke læst"}</div>
+            </Link>
+            <Link href="/drift" className="kinly-flow-step">
+              <div className="cc-stat-l" style={{ marginTop: 0 }}>I arbejde</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>{active}</div>
+              <div className="cc-dim" style={{ fontSize: 11 }}>agenterne lige nu</div>
+            </Link>
+            <Link href="/drift" className="kinly-flow-step">
+              <div className="cc-stat-l" style={{ marginTop: 0 }}>Færdige 7 dage</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>{k?.doneLast7d ?? 0}</div>
+              <div className="cc-dim" style={{ fontSize: 11 }}>lukkede kort</div>
+            </Link>
+            <Link href="/seo" className="kinly-flow-step">
+              <div className="cc-stat-l" style={{ marginTop: 0 }}>Synlighed</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>{sites.length ? `${ga4Ok}/${sites.length}` : "—"}</div>
+              <div className="cc-dim" style={{ fontSize: 11 }}>{gscOk > 0 ? `GA4 · GSC på ${gscOk}` : "GA4 live · GSC mangler"}</div>
+            </Link>
+          </div>
+          <div className="cc-dim" style={{ fontSize: 11, padding: "10px 22px" }}>
+            {k?.ok && k.generatedAt ? `kanban læst for ${relTime(k.generatedAt)} siden` : "kanban ikke læst"}
+            {syn?.ok && syn.generatedAt ? ` · synlighed opdateret for ${relTime(syn.generatedAt)} siden` : ""}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

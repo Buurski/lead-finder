@@ -47,6 +47,67 @@ export interface HermesMessage {
   ts: string;
 }
 
+// ---------- OS-drift: kanban (Hermes' kort) + synlighed (GA4/GSC) ----------
+
+export interface HermesKanbanCard {
+  id: string;
+  title: string;
+  status: string;
+  assignee: string | null;
+  blockKind: string | null;
+  createdAt: string | null;
+  completedAt: string | null;
+}
+
+/** Read-only overblik over Hermes' kanban.db — samme tal som OS-boardet. */
+export interface HermesKanbanSummary {
+  ok: boolean;
+  note?: string;
+  generatedAt?: string;
+  total?: number;
+  counts?: Record<string, number>;
+  active?: HermesKanbanCard[];
+  blocked?: HermesKanbanCard[];
+  doneLast7d?: number;
+  perPerson?: Record<string, number>;
+}
+
+export interface SynlighedGa4Totals {
+  users: number;
+  sessions: number;
+  views: number;
+}
+
+export interface SynlighedGa4 {
+  status: "ok" | "fejl";
+  period?: string;
+  current?: { totals: SynlighedGa4Totals; daily: (SynlighedGa4Totals & { date: string })[] } | null;
+  previous?: { totals: SynlighedGa4Totals } | null;
+}
+
+export interface SynlighedGsc {
+  status: "ok" | "ikke-koblet";
+  note?: string;
+  period?: string;
+  totals?: { clicks: number; impressions: number; ctr: number; position: number } | null;
+  topQueries?: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+}
+
+export interface SynlighedSite {
+  name: string;
+  ga4: SynlighedGa4;
+  gsc: SynlighedGsc;
+}
+
+/** Snapshot fra synlighed_snapshot.py (GA4 via Composio; GSC hvis forbundet). */
+export interface SynlighedSnapshot {
+  ok: boolean;
+  note?: string;
+  generatedAt?: string;
+  period?: { start: string; end: string };
+  sites?: Record<string, SynlighedSite>;
+}
+
 export interface HermesBusinessLoop {
   id: string;
   name: string;

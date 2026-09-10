@@ -67,6 +67,7 @@ export const NAV_TREE: NavNode[] = [
     icon: "Sparkles",
     children: [
       { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent og ideer" },
+      { href: "/drift", label: "Drift & OS", icon: "Activity", hint: "Kanban, cron og agenter — samme tal som boardet" },
       { href: "/goals", label: "Mål", icon: "Target", hint: "Aktive 90-dages mål", hidden: true },
       { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed", hidden: true },
     ],

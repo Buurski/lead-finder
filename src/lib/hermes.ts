@@ -9,7 +9,7 @@
 
 import crypto from "node:crypto";
 import { store } from "./store";
-import type { HermesUsageSummary } from "./hermes-client";
+import type { HermesUsageSummary, HermesKanbanSummary, SynlighedSnapshot } from "./hermes-client";
 
 export type HermesProfile = "default" | "lucas" | "charlie";
 export const HERMES_PROFILES: HermesProfile[] = ["default", "lucas", "charlie"];
@@ -162,6 +162,22 @@ export async function hermesCronRuns(limit = 5): Promise<HermesCronJobWithRuns[]
 export async function hermesUsage(): Promise<HermesUsageSummary | null> {
   const { status, data } = await hermesFetch<HermesUsageSummary>(
     "GET", "/api/usage", undefined, 8_000,
+  );
+  return status === 200 && data ? data : null;
+}
+
+// OS-drift: Hermes' kanban (kort, blokerede, pr. agent) — samme kilde som boardet.
+export async function hermesKanban(): Promise<HermesKanbanSummary | null> {
+  const { status, data } = await hermesFetch<HermesKanbanSummary>(
+    "GET", "/api/kanban", undefined, 8_000,
+  );
+  return status === 200 && data ? data : null;
+}
+
+// Synlighed: GA4 (og GSC når forbundet) pr. kunde-site — snapshot fra VPS'ens cache.
+export async function hermesSynlighed(): Promise<SynlighedSnapshot | null> {
+  const { status, data } = await hermesFetch<SynlighedSnapshot>(
+    "GET", "/api/synlighed", undefined, 8_000,
   );
   return status === 200 && data ? data : null;
 }
