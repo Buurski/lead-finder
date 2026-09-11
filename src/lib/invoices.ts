@@ -103,6 +103,34 @@ export function isOverdue(inv: Pick<Invoice, "status" | "dueDate">, today: strin
   return inv.status === "sendt" && inv.dueDate < today;
 }
 
+/**
+ * Runtime-guard for fakturalinjer (untrusted JSON): beskrivelse + endeligt,
+ * positivt tal. Strenge som "1000" ville ellers passere `> 0` og forgifte
+ * totalerne med streng-konkatenering.
+ */
+export function validInvoiceLines(value: unknown, allowEmpty = false): value is InvoiceLine[] {
+  if (!Array.isArray(value)) return false;
+  if (!allowEmpty && value.length === 0) return false;
+  return value.every((entry) => {
+    const { description, amount } = (entry ?? {}) as { description?: unknown; amount?: unknown };
+    return typeof description === "string" && description.trim().length > 0
+      && typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+  });
+}
+
+/**
+ * Ny status + timestamp-oprydning, så betalingshistorikken ikke løber utroværdig:
+ * paidAt findes kun ved "betalt"; remindedAt bevares kun ved "rykket"/"betalt".
+ */
+export function applyStatusChange(inv: Invoice, status: InvoiceStatus, now: string): Invoice {
+  const next: Invoice = { ...inv, status };
+  if (status === "betalt") next.paidAt = now;
+  else delete next.paidAt;
+  if (status === "rykket") next.remindedAt = now;
+  else if (status !== "betalt") delete next.remindedAt;
+  return next;
+}
+
 const kr = (n: number) => `${n.toLocaleString("da-DK")} kr`;
 const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000);

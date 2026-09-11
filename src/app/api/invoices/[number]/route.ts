@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getInvoice, saveInvoice, deleteInvoice, type Invoice, type InvoiceLine } from "@/lib/invoices.ts";
+import { getInvoice, saveInvoice, deleteInvoice, validInvoiceLines, type Invoice, type InvoiceLine } from "@/lib/invoices.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // GET /api/invoices/[number] — enkelt faktura.
@@ -44,8 +44,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ number
     return NextResponse.json({ error: "dueDate skal være YYYY-MM-DD" }, { status: 400 });
   }
   if (body.lines !== undefined) {
-    if (!Array.isArray(body.lines) || body.lines.length === 0 || body.lines.some((l) => !l.description?.trim() || !(l.amount > 0))) {
-      return NextResponse.json({ error: "lines skal have beskrivelse og beløb > 0" }, { status: 400 });
+    if (!validInvoiceLines(body.lines)) {
+      return NextResponse.json({ error: "lines skal have beskrivelse og et endeligt beløb > 0" }, { status: 400 });
     }
   }
 

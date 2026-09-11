@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clientBalance, invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue, buildStatusNote, type Invoice } from "./invoices.ts";
+import { applyStatusChange, clientBalance, invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue, buildStatusNote, validInvoiceLines, type Invoice } from "./invoices.ts";
 
 test("invoiceTotal — vatRate 0", () => {
   const r = invoiceTotal({ lines: [{ description: "a", amount: 1000 }, { description: "b", amount: 500 }], vatRate: 0 });
@@ -165,4 +165,38 @@ test("clientBalance: kun kladde → ingen frist (kladde er ikke sendt)", () => {
   const bal = clientBalance([inv({ number: "009", status: "kladde", dueDate: "2026-07-20" })], "2026-07-17");
   assert.equal(bal.openCount, 1);
   assert.equal(bal.nextDueDate, null);
+});
+
+// --- validInvoiceLines + applyStatusChange (økonomisk dataintegritet) ---
+
+test("validInvoiceLines: afviser strenge, NaN, Infinity og 0/negative beløb", () => {
+  assert.equal(validInvoiceLines([{ description: "x", amount: "1000" }]), false);
+  assert.equal(validInvoiceLines([{ description: "x", amount: Number.NaN }]), false);
+  assert.equal(validInvoiceLines([{ description: "x", amount: Number.POSITIVE_INFINITY }]), false);
+  assert.equal(validInvoiceLines([{ description: "x", amount: 0 }]), false);
+  assert.equal(validInvoiceLines([{ description: "x", amount: -5 }]), false);
+  assert.equal(validInvoiceLines([{ description: "  ", amount: 10 }]), false);
+  assert.equal(validInvoiceLines([]), false);
+  assert.equal(validInvoiceLines("nope"), false);
+});
+
+test("validInvoiceLines: accepterer gyldige linjer; allowEmpty til abonnementer", () => {
+  assert.equal(validInvoiceLines([{ description: "Hosting", amount: 250 }]), true);
+  assert.equal(validInvoiceLines([], true), true);
+});
+
+test("applyStatusChange: betalt sætter paidAt — andet status rydder det igen", () => {
+  const paid = applyStatusChange(inv({ status: "sendt" }), "betalt", "2026-09-11T12:00:00Z");
+  assert.equal(paid.paidAt, "2026-09-11T12:00:00Z");
+  const back = applyStatusChange({ ...paid, remindedAt: "2026-09-01T00:00:00Z" }, "kladde", "2026-09-12T12:00:00Z");
+  assert.equal(back.paidAt, undefined);
+  assert.equal(back.remindedAt, undefined);
+});
+
+test("applyStatusChange: rykket sætter remindedAt; betalt efter rykket beholder remindedAt", () => {
+  const rykket = applyStatusChange(inv({ status: "forfalden" }), "rykket", "2026-09-11T12:00:00Z");
+  assert.equal(rykket.remindedAt, "2026-09-11T12:00:00Z");
+  const paid = applyStatusChange(rykket, "betalt", "2026-09-12T12:00:00Z");
+  assert.equal(paid.paidAt, "2026-09-12T12:00:00Z");
+  assert.equal(paid.remindedAt, "2026-09-11T12:00:00Z");
 });

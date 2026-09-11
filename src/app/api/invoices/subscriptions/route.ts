@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSubscriptions, saveSubscriptions, type Subscription } from "@/lib/invoices.ts";
+import { getSubscriptions, saveSubscriptions, validInvoiceLines, type Subscription } from "@/lib/invoices.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // GET /api/invoices/subscriptions — liste (UI-redigering fra /fakturaer).
@@ -23,8 +23,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "mangler subscriptions-array" }, { status: 400 });
   }
   for (const sub of body.subscriptions) {
-    if (!sub.clientName?.trim() || !Array.isArray(sub.lines) || typeof sub.dayOfMonth !== "number") {
-      return NextResponse.json({ error: "hvert abonnement skal have clientName, lines og dayOfMonth" }, { status: 400 });
+    if (!sub.clientName?.trim() || !validInvoiceLines(sub.lines, true) || typeof sub.dayOfMonth !== "number") {
+      return NextResponse.json({ error: "hvert abonnement skal have clientName, gyldige linjer (beskrivelse + endeligt beløb) og dayOfMonth" }, { status: 400 });
     }
     // dayOfMonth 29-31 ville aldrig være due i korte måneder (nextDueDate clamper ikke).
     if (sub.dayOfMonth < 1 || sub.dayOfMonth > 28) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getInvoice, saveInvoice, type InvoiceStatus } from "@/lib/invoices.ts";
+import { getInvoice, saveInvoice, applyStatusChange, type InvoiceStatus } from "@/lib/invoices.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // POST /api/invoices/[number]/status — manuelt statusskift (fra UI). Sætter
@@ -25,11 +25,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
   }
 
   const status = body.status as InvoiceStatus;
-  inv.status = status;
-  const now = new Date().toISOString();
-  if (status === "betalt") inv.paidAt = now;
-  if (status === "rykket") inv.remindedAt = now;
-  await saveInvoice(inv);
+  const updated = applyStatusChange(inv, status, new Date().toISOString());
+  await saveInvoice(updated);
 
-  return NextResponse.json({ ok: true, invoice: inv });
+  return NextResponse.json({ ok: true, invoice: updated });
 }

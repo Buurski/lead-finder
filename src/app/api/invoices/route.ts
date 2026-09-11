@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  listInvoices, saveInvoice, getInvoice, nextInvoiceNumber, addDays, getBusinessSettings,
+  listInvoices, saveInvoice, getInvoice, nextInvoiceNumber, addDays, getBusinessSettings, validInvoiceLines,
   type Invoice, type InvoiceLine,
 } from "@/lib/invoices.ts";
 import { store } from "@/lib/store.ts";
@@ -43,8 +43,8 @@ export async function POST(req: Request) {
 
   const lines = Array.isArray(body.lines) ? body.lines : [];
   if (lines.length === 0) return NextResponse.json({ error: "mindst én linje er påkrævet" }, { status: 400 });
-  if (lines.some((l) => !l.description?.trim() || !(l.amount > 0))) {
-    return NextResponse.json({ error: "hver linje skal have beskrivelse og beløb > 0" }, { status: 400 });
+  if (!validInvoiceLines(lines)) {
+    return NextResponse.json({ error: "hver linje skal have beskrivelse og et endeligt beløb > 0" }, { status: 400 });
   }
 
   const clientName = body.clientName?.trim() || recipientName;
