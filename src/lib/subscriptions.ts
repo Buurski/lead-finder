@@ -34,6 +34,8 @@ export const RATES: Record<Currency, number> = { DKK: 1, USD: 6.9, EUR: 7.46 };
 // Beløb verificeret mod kvitteringer i buur.aigro 2026-07-04 (Vercel #2006-3513,
 // Google "Betaling modtaget" 3/7, Contabo ordre 15069280). Kie.ai holdt ude —
 // uregelmæssige kredit-køb, tages op hvis det bliver månedligt.
+// 2026-09-11: MiniMax udgået (bruges ikke længere); DeepSeek tilføjet som estimat
+// efter Lucas' opgørelse (~65 EUR kredit-topups til dags dato).
 export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 6, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
   { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, renewalDay: 1, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
@@ -42,7 +44,7 @@ export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Google Cloud (Places API m.m.)", amount: 137, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 1, note: "Kvittering 1/8: 137,29 kr — variabel, budget-guard aktiv" },
   { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", renewalDay: 10, note: "Hjernen — fælles, oprettet 10/6" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — mange små: 8–10/6 og 19–21/7 (mailtjek 10/9)" },
-  { name: "Minimax (Hermes-modeller)", amount: 20, currency: "USD", period: "md", share: "selskab", payer: "lucas", note: "Fast abonnement" },
+  { name: "DeepSeek (Hermes-modeller)", amount: 65, currency: "EUR", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups, varierer med forbrug — ca. 65 EUR i alt til dags dato (Lucas 11/9). Erstatter MiniMax." },
   { name: "Simply.com — fælles hosting", amount: 29.70, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 8, note: "Ny/lille Simply.com — allerede betalt til Lucas" },
   { name: "ChatGPT-abonnement", amount: 179, currency: "DKK", period: "md", share: "selskab", payer: "charlie", note: "Charlie betaler hele OpenAI-abonnementet — hans ½ (89,50 kr) modregnes i gælden til Lucas" },
 

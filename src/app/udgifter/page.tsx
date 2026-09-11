@@ -169,8 +169,9 @@ export default function OkonomiPage() {
           {personal.map((s) => <SubRow key={s.name} s={s} max={max} />)}
 
           <p className="cc-dim" style={{ fontSize: 12, marginTop: 12 }}>
-            Beløb verificeret mod kvitteringer 4/7. Kurser: 1 USD ≈ 6,90 kr · 1 EUR ≈ 7,46 kr.
-            Kie.ai er holdt ude (uregelmæssige kredit-køb — tages op hvis det bliver fast).
+            Faste beløb verificeret mod kvitteringer 4/7; DeepSeek-forbrug opdateret 11/9 (Lucas).
+            Kurser: 1 USD ≈ 6,90 kr · 1 EUR ≈ 7,46 kr. Kie.ai er holdt ude (uregelmæssige
+            kredit-køb — tages op hvis det bliver fast).
           </p>
         </section>
       </div>
