@@ -107,14 +107,17 @@ test("CRM next-action deep-linker til den mest presserende opgave", () => {
   assert.match(withoutId.label, /forfaldne opgaver/);
 });
 
-test("mostUrgentOpenTask vælger ældste frist og springer færdige/uden frist over", () => {
-  const base = { clientName: "Kunde", at: "2026-09-11T00:00:00.000Z", done: false };
+test("mostUrgentOpenTask: ældste frist, tie-break på oprettelsestid og id, muterer aldrig input", () => {
+  const base = { clientName: "Kunde", done: false };
   const tasks = [
-    { ...base, id: "task_b", title: "senere", due: "2026-10-01" },
-    { ...base, id: "task_a", title: "ældst", due: "2026-09-01" },
-    { ...base, id: "task_c", title: "færdig", due: "2026-08-01", done: true },
-    { ...base, id: "task_d", title: "uden frist", due: "" },
+    { ...base, id: "task_b", title: "senere", due: "2026-10-01", at: "2026-09-01T00:00:00.000Z" },
+    { ...base, id: "task_a", title: "samme frist, nyere", due: "2026-09-01", at: "2026-09-02T00:00:00.000Z" },
+    { ...base, id: "task_e", title: "samme frist, ældst oprettet", due: "2026-09-01", at: "2026-08-01T00:00:00.000Z" },
+    { ...base, id: "task_c", title: "færdig", due: "2026-08-01", at: "2026-01-01T00:00:00.000Z", done: true },
+    { ...base, id: "task_d", title: "uden frist", due: "", at: "2026-05-01T00:00:00.000Z" },
   ];
-  assert.equal(mostUrgentOpenTask(tasks)?.id, "task_a");
+  const original = tasks.map((task) => task.id);
+  assert.equal(mostUrgentOpenTask(tasks)?.id, "task_e");
   assert.equal(mostUrgentOpenTask([]), undefined);
+  assert.deepEqual(tasks.map((task) => task.id), original);
 });

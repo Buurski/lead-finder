@@ -34,11 +34,18 @@ export interface CrmTask {
   deletedAt?: string;
 }
 
-/** Åbneste opgave med tidligste frist — forfaldne først, opgaver uden frist sidst. */
+/** Deterministisk urgency-rækkefølge: tidligste frist (uden frist sidst), derefter tidligste oprettelse, derefter id. */
+function compareUrgency(a: CrmTask, b: CrmTask): number {
+  const due = (a.due || "9999-99-99").localeCompare(b.due || "9999-99-99");
+  if (due !== 0) return due;
+  const at = a.at.localeCompare(b.at);
+  if (at !== 0) return at;
+  return a.id.localeCompare(b.id);
+}
+
+/** Åbneste opgave med tidligste frist — muterer aldrig input (kopi sorteres), med deterministisk tie-break. */
 export function mostUrgentOpenTask(tasks: CrmTask[]): CrmTask | undefined {
-  return tasks
-    .filter((task) => !task.done)
-    .sort((a, b) => (a.due || "9999-99-99").localeCompare(b.due || "9999-99-99"))[0];
+  return [...tasks].filter((task) => !task.done).sort(compareUrgency)[0];
 }
 
 /** Kastet når CRM-lageret reelt er nede (netværksfejl eller 5xx) — UI'et skal så låse. */
