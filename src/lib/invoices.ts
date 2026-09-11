@@ -296,3 +296,34 @@ export function clientEconomy(invoices: Invoice[], sub: Subscription | undefined
 
   return { text: "Ingen faktura eller abonnement endnu", tone: "neutral" };
 }
+
+export interface ClientBalance {
+  unpaidTotal: number;
+  overdueTotal: number;
+  overdueCount: number;
+  openCount: number;
+  nextDueDate: string | null;
+}
+
+/**
+ * Saldo pr. kunde til kundeprofilen: hvad der ikke er betalt, hvor meget der er
+ * forfaldent, og næste frist blandt sendte fakturaer. Ren funktion — kalderen
+ * grupperer selv (samme mønster som clientEconomy).
+ */
+export function clientBalance(invoices: Invoice[], todayISO: string): ClientBalance {
+  const open = invoices.filter((inv) => inv.status !== "betalt");
+  const overdue = open.filter(
+    (inv) => inv.status === "forfalden" || inv.status === "rykket" || (inv.status === "sendt" && inv.dueDate < todayISO),
+  );
+  const nextDue = open
+    .filter((inv) => inv.status === "sendt" && inv.dueDate >= todayISO)
+    .map((inv) => inv.dueDate)
+    .sort()[0];
+  return {
+    unpaidTotal: open.reduce((sum, inv) => sum + invoiceTotal(inv).total, 0),
+    overdueTotal: overdue.reduce((sum, inv) => sum + invoiceTotal(inv).total, 0),
+    overdueCount: overdue.length,
+    openCount: open.length,
+    nextDueDate: nextDue ?? null,
+  };
+}

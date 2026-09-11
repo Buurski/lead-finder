@@ -4,6 +4,7 @@ import {
   type Invoice, type InvoiceLine,
 } from "@/lib/invoices.ts";
 import { store } from "@/lib/store.ts";
+import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // GET /api/invoices — liste (nyeste først, allerede sorteret af listInvoices).
 // POST /api/invoices — opret kladde: nummer via nextInvoiceNumber, dueDate = issueDate+14.
@@ -30,6 +31,11 @@ interface CreateBody {
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: Request) {
+  try {
+    await assertWriteRequest(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "afvist" }, { status: 403 });
+  }
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
   const recipientName = body.recipient?.name?.trim();

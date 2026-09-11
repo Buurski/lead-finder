@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue, buildStatusNote, type Invoice } from "./invoices.ts";
+import { clientBalance, invoiceTotal, nextDueDate, addDays, subscriptionsDue, isOverdue, buildStatusNote, type Invoice } from "./invoices.ts";
 
 test("invoiceTotal — vatRate 0", () => {
   const r = invoiceTotal({ lines: [{ description: "a", amount: 1000 }, { description: "b", amount: 500 }], vatRate: 0 });
@@ -134,4 +134,35 @@ test("buildStatusNote: aktivt abonnement viser næste fakturadato", () => {
 test("buildStatusNote: inaktivt abonnement udelades", () => {
   const subs = [{ clientName: "Gammel", dayOfMonth: 1, active: false, lines: [{ description: "x", amount: 1 }] }];
   assert.match(buildStatusNote([], subs, "2026-07-17"), /## Abonnementer \(0 aktive\)\n\nIngen\./);
+});
+
+// --- clientBalance (kundeprofilens saldo) ---
+
+test("clientBalance: ubetalt, forfaldent og næste frist", () => {
+  const bal = clientBalance([
+    inv({ number: "001", status: "sendt", dueDate: "2026-07-10" }),   // sendt + passeret = forfalden
+    inv({ number: "002", status: "forfalden", dueDate: "2026-07-01" }),
+    inv({ number: "003", status: "sendt", dueDate: "2026-07-25" }),   // næste frist
+    inv({ number: "004", status: "kladde", dueDate: "2026-07-20" }),  // kladde tæller i ubetalt, ikke som frist
+    inv({ number: "005", status: "betalt", paidAt: "2026-07-05T10:00:00Z" }),
+  ], "2026-07-17");
+  assert.equal(bal.unpaidTotal, 250 * 4);
+  assert.equal(bal.overdueCount, 2);
+  assert.equal(bal.overdueTotal, 250 * 2);
+  assert.equal(bal.openCount, 4);
+  assert.equal(bal.nextDueDate, "2026-07-25");
+});
+
+test("clientBalance: intet åbent → nul og ingen frist", () => {
+  const bal = clientBalance([inv({ status: "betalt", paidAt: "2026-07-05T10:00:00Z" })], "2026-07-17");
+  assert.equal(bal.unpaidTotal, 0);
+  assert.equal(bal.overdueCount, 0);
+  assert.equal(bal.openCount, 0);
+  assert.equal(bal.nextDueDate, null);
+});
+
+test("clientBalance: kun kladde → ingen frist (kladde er ikke sendt)", () => {
+  const bal = clientBalance([inv({ number: "009", status: "kladde", dueDate: "2026-07-20" })], "2026-07-17");
+  assert.equal(bal.openCount, 1);
+  assert.equal(bal.nextDueDate, null);
 });

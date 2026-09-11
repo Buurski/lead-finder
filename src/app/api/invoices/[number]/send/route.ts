@@ -3,6 +3,7 @@ import { getInvoice, saveInvoice, getBusinessSettings, invoiceTotal } from "@/li
 import { renderInvoicePdf } from "@/lib/invoice-pdf.tsx";
 import { getTransporter, formatFrom, applySignature, applySignatureHtml } from "@/lib/senders.ts";
 import { store } from "@/lib/store.ts";
+import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // POST /api/invoices/[number]/send — kaldes KUN fra UI-knap (aldrig automatisk).
 // Tilladt fra status "kladde" eller "sendt" (gen-send). Render PDF, arkivér i
@@ -14,6 +15,11 @@ export const runtime = "nodejs";
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: Request, { params }: { params: Promise<{ number: string }> }) {
+  try {
+    await assertWriteRequest(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "afvist" }, { status: 403 });
+  }
   const { number } = await params;
   const inv = await getInvoice(number);
   if (!inv) return NextResponse.json({ error: "invoice not found" }, { status: 404 });

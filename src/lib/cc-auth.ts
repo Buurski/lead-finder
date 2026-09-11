@@ -43,3 +43,21 @@ export async function isCommandCenterRequest(req: Request): Promise<boolean> {
   if (!marker) return false;
   return ctEqual(marker, await ccAuthMarker(secret));
 }
+
+/**
+ * Fælles skrive-guard for API-ruter (fakturaer m.fl.): proxy-marker påkrævet
+ * når auth er konfigureret, og kalderen SKAL være same-origin. Samme
+ * tillidskæde som CRM-ruterne bruger (crm.ts) — læse-ruter er urørt.
+ */
+export async function assertWriteRequest(req: Request): Promise<void> {
+  const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+  if (authConfigured && !(await isCommandCenterRequest(req))) {
+    throw new Error("kræver en godkendt Command Center-session");
+  }
+  const origin = req.headers.get("origin");
+  if (!origin) throw new Error("kald uden Origin afvist");
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || new URL(req.url).host;
+  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || new URL(req.url).protocol.replace(":", "");
+  if (origin.toLowerCase() !== `${proto}://${host}`.toLowerCase()) throw new Error("cross-origin kald afvist");
+  if (req.headers.get("sec-fetch-site") === "cross-site") throw new Error("cross-site kald afvist");
+}

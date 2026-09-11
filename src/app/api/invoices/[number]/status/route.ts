@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInvoice, saveInvoice, type InvoiceStatus } from "@/lib/invoices.ts";
+import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // POST /api/invoices/[number]/status — manuelt statusskift (fra UI). Sætter
 // paidAt/remindedAt timestamps ved overgang til "betalt"/"rykket".
@@ -9,6 +10,11 @@ export const runtime = "nodejs";
 const VALID_STATUSES: InvoiceStatus[] = ["kladde", "sendt", "betalt", "forfalden", "rykket"];
 
 export async function POST(req: Request, { params }: { params: Promise<{ number: string }> }) {
+  try {
+    await assertWriteRequest(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "afvist" }, { status: 403 });
+  }
   const { number } = await params;
   const inv = await getInvoice(number);
   if (!inv) return NextResponse.json({ error: "invoice not found" }, { status: 404 });

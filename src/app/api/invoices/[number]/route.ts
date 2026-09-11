@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInvoice, saveInvoice, deleteInvoice, type Invoice, type InvoiceLine } from "@/lib/invoices.ts";
+import { assertWriteRequest } from "@/lib/cc-auth.ts";
 
 // GET /api/invoices/[number] — enkelt faktura.
 // PATCH /api/invoices/[number] — ret felter (datoer/linjer/modtager/note).
@@ -26,6 +27,11 @@ interface PatchBody {
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ number: string }> }) {
+  try {
+    await assertWriteRequest(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "afvist" }, { status: 403 });
+  }
   const { number } = await params;
   const inv = await getInvoice(number);
   if (!inv) return NextResponse.json({ error: "faktura findes ikke" }, { status: 404 });
@@ -55,7 +61,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ number
   return NextResponse.json({ ok: true, invoice: patched });
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ number: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ number: string }> }) {
+  try {
+    await assertWriteRequest(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "afvist" }, { status: 403 });
+  }
   const { number } = await params;
   const inv = await getInvoice(number);
   if (!inv) return NextResponse.json({ error: "faktura findes ikke" }, { status: 404 });

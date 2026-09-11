@@ -8,9 +8,10 @@ import WarnBanner from "@/components/WarnBanner";
 import { getClients } from "@/lib/sheets";
 import { readVaultNote } from "@/lib/vault";
 import { clientNoteRel } from "@/lib/client-notes";
-import { listInvoicesFor, getSubscriptions, nextDueDate, type InvoiceStatus } from "@/lib/invoices.ts";
+import { clientBalance, getSubscriptions, invoiceTotal, listInvoicesFor, nextDueDate, type InvoiceStatus } from "@/lib/invoices.ts";
 import { listActivities, listContacts, listTasks } from "@/lib/crm";
 import CrmSections from "./CrmSections";
+import InvoiceStatusButton from "./InvoiceStatusButton";
 
 // ponytail: samme farve-mapping som FakturaClient.tsx — duplikeret 5 linjer
 // frem for et delt lib for to brugssteder.
@@ -66,6 +67,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     listTasks(client.name).catch(() => null),
   ]);
   const subscription = subscriptions.find((item) => item.clientName === client.name);
+  const balance = clientBalance(invoices, today);
   const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
 
   return (
@@ -77,7 +79,63 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         action={<Link href="/clients" className="cc-btn">← Klienter</Link>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }} className="cc-client-grid">
+      <Deliverable icon="Receipt" title="Fakturaer">
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {subscription && (
+            <span className="cc-dim" style={{ fontSize: 12.5 }}>
+              Abonnement · {kr(invoiceTotal({ lines: subscription.lines, vatRate: 0 }).total)}/md · næste faktura {fmtDate(nextDueDate(subscription, today))}
+            </span>
+          )}
+          <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-btn cc-btn-accent" style={{ textDecoration: "none", marginLeft: "auto" }}>Opret faktura</Link>
+        </div>
+
+        {invoices.length === 0 ? (
+          <span className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</span>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
+              <span><b>{kr(balance.unpaidTotal)}</b> <span className="cc-dim">ubetalt</span></span>
+              {balance.overdueCount > 0 && (
+                <span style={{ color: "var(--red, #ff8a8a)" }}>
+                  <b>{kr(balance.overdueTotal)}</b> forfaldent ({balance.overdueCount})
+                </span>
+              )}
+              {balance.nextDueDate && <span className="cc-dim">næste forfald {fmtDate(balance.nextDueDate)}</span>}
+              {balance.overdueCount > 0 && (
+                <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-link" style={{ fontSize: 12.5 }}>Følg op →</Link>
+              )}
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {invoices.map((inv) => {
+                const total = invoiceTotal(inv).total;
+                const days = Math.round(
+                  (new Date(inv.dueDate + "T00:00:00Z").getTime() - new Date(today + "T00:00:00Z").getTime()) / 86400000,
+                );
+                const style = inv.status === "sendt" && days < 0 ? STATUS_STYLE.forfalden : STATUS_STYLE[inv.status];
+                return (
+                  <div key={inv.number} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 600 }}>{inv.number}</span>
+                    <span className="cc-dim">{kr(total)}</span>
+                    <span className="cc-chip" style={{ background: style.bg, color: style.fg, border: "none" }}>{style.label}</span>
+                    {inv.status !== "kladde" && inv.status !== "betalt" && (
+                      <span className="cc-dim" style={{ fontSize: 11.5 }}>
+                        {days >= 0 ? `forfalder om ${days} dage` : `${Math.abs(days)} dage forfalden`}
+                      </span>
+                    )}
+                    <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5 }}>PDF</a>
+                    {(inv.status === "sendt" || inv.status === "forfalden" || inv.status === "rykket") && (
+                      <span style={{ marginLeft: "auto" }}><InvoiceStatusButton number={inv.number} /></span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+        <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
+      </Deliverable>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginTop: 16 }} className="cc-client-grid">
         <Deliverable icon="FileText" title="Aftale">
           <Row k="Setup" v={client.setupFee ? `${client.setupFee} kr` : "—"} />
           <Row k="Pr. måned" v={client.monthlyFee ? `${client.monthlyFee} kr` : "—"} />
@@ -114,40 +172,6 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div style={{ marginTop: 16 }}>
         <ClientSeoWidget name={client.name} domain={domain} />
       </div>
-
-      <Deliverable icon="Receipt" title="Fakturaer">
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {subscription && <span className="cc-dim" style={{ fontSize: 12.5 }}>Abonnement · næste faktura {nextDueDate(subscription, today)}</span>}
-          <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-btn cc-btn-accent" style={{ textDecoration: "none", marginLeft: "auto" }}>Opret faktura</Link>
-        </div>
-        {invoices.length === 0 ? (
-          <span className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</span>
-        ) : (
-          <div style={{ display: "grid", gap: 6 }}>
-            {invoices.map((inv) => {
-              const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
-              const days = Math.round(
-                (new Date(inv.dueDate + "T00:00:00Z").getTime() - new Date(today + "T00:00:00Z").getTime()) / 86400000,
-              );
-              const style = STATUS_STYLE[inv.status];
-              return (
-                <div key={inv.number} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <span style={{ fontWeight: 600 }}>{inv.number}</span>
-                  <span className="cc-dim">{total.toLocaleString("da-DK")} kr</span>
-                  <span className="cc-chip" style={{ background: style.bg, color: style.fg, border: "none" }}>{style.label}</span>
-                  {inv.status !== "kladde" && inv.status !== "betalt" && (
-                    <span className="cc-dim" style={{ fontSize: 11.5 }}>
-                      {days >= 0 ? `forfalder om ${days} dage` : `${Math.abs(days)} dage forfalden`}
-                    </span>
-                  )}
-                  <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5 }}>PDF</a>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
-      </Deliverable>
 
       <CrmSections
         clientName={client.name}
@@ -196,4 +220,12 @@ function Row({ k, v }: { k: string; v: string }) {
       <span style={{ fontWeight: 500 }}>{v}</span>
     </div>
   );
+}
+
+function kr(n: number): string {
+  return `${n.toLocaleString("da-DK")} kr`;
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "UTC" });
 }
