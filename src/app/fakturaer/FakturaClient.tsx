@@ -34,16 +34,17 @@ function kr(n: number): string {
 }
 
 export default function FakturaClient({
-  invoices, subscriptions, clients, today,
+  invoices, subscriptions, clients, today, initialClientName = "",
 }: {
   invoices: Invoice[];
   subscriptions: SubWithNext[];
   clients: { id: string; name: string }[];
   today: string;
+  initialClientName?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(Boolean(initialClientName));
   const [error, setError] = useState("");
   const [sendTarget, setSendTarget] = useState<Invoice | null>(null);
 
@@ -173,6 +174,7 @@ export default function FakturaClient({
         {showForm && (
           <NyFakturaForm
             clients={clients}
+            initialClientName={initialClientName}
             onCreated={() => router.refresh()}
           />
         )}
@@ -309,9 +311,10 @@ function SendDialog({
   );
 }
 
-function NyFakturaForm({ clients, onCreated }: { clients: { id: string; name: string }[]; onCreated: () => void }) {
+function NyFakturaForm({ clients, initialClientName, onCreated }: { clients: { id: string; name: string }[]; initialClientName?: string; onCreated: () => void }) {
+  const selectedInitial = initialClientName && clients.some((client) => client.name === initialClientName) ? initialClientName : clients[0]?.name ?? "";
   const [mode, setMode] = useState<"client" | "free">(clients.length > 0 ? "client" : "free");
-  const [clientName, setClientName] = useState(clients[0]?.name ?? "");
+  const [clientName, setClientName] = useState(selectedInitial);
   const [freeText, setFreeText] = useState("");
   const [lines, setLines] = useState<InvoiceLine[]>([{ description: "", amount: 0 }]);
   const [note, setNote] = useState("");

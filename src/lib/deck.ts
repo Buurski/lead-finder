@@ -100,6 +100,8 @@ export interface DeckSummary {
   /** Forfaldne fakturaer (status forfalden/rykket) fra den lokale faktura-store.
    *  Bell-badget og faktura-strippen deler dette tal, så de aldrig drifter. */
   invoicesOverdue: number;
+  /** CRM-tasklag, kun sat af /crm. Holdes optional så Mission Control ikke får ny I/O. */
+  crm?: { overdueTasks: number; dueTasks: number; overdueInvoices: number };
   /** Alder på de daglige datafeeds — så en død kilde ikke ligner en rolig dag. */
   feeds?: FeedHealth[];
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.

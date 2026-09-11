@@ -8,7 +8,9 @@ import WarnBanner from "@/components/WarnBanner";
 import { getClients } from "@/lib/sheets";
 import { readVaultNote } from "@/lib/vault";
 import { clientNoteRel } from "@/lib/client-notes";
-import { listInvoicesFor, type InvoiceStatus } from "@/lib/invoices.ts";
+import { listInvoicesFor, getSubscriptions, nextDueDate, type InvoiceStatus } from "@/lib/invoices.ts";
+import { listActivities, listContacts, listTasks } from "@/lib/crm";
+import CrmSections from "./CrmSections";
 
 // ponytail: samme farve-mapping som FakturaClient.tsx — duplikeret 5 linjer
 // frem for et delt lib for to brugssteder.
@@ -55,8 +57,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const note = await readVaultNote(clientNoteRel(client.name).replace(/\.md$/, ""));
   const fm = note.ok ? note.frontmatter : {};
   const domain = fm.domain || "";
-  const invoices = await listInvoicesFor(client.name);
   const today = new Date().toISOString().slice(0, 10);
+  const [invoices, subscriptions, contactsResult, activitiesResult, tasksResult] = await Promise.all([
+    listInvoicesFor(client.name),
+    getSubscriptions(),
+    listContacts(client.name).catch(() => null),
+    listActivities(client.name, 80).catch(() => null),
+    listTasks(client.name).catch(() => null),
+  ]);
+  const subscription = subscriptions.find((item) => item.clientName === client.name);
+  const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
 
   return (
     <div className="cc-fade">
@@ -106,6 +116,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <Deliverable icon="Receipt" title="Fakturaer">
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {subscription && <span className="cc-dim" style={{ fontSize: 12.5 }}>Abonnement · næste faktura {nextDueDate(subscription, today)}</span>}
+          <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-btn cc-btn-accent" style={{ textDecoration: "none", marginLeft: "auto" }}>Opret faktura</Link>
+        </div>
         {invoices.length === 0 ? (
           <span className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</span>
         ) : (
@@ -135,6 +149,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
       </Deliverable>
 
+      <CrmSections
+        clientName={client.name}
+        initialContacts={contactsResult ?? []}
+        initialActivities={activitiesResult ?? []}
+        initialTasks={tasksResult ?? []}
+        today={today}
+        dataOk={crmDataOk}
+      />
       <section className="cc-card cc-card-pad" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
           <Icon name="Brain" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />

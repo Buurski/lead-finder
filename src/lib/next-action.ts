@@ -14,7 +14,7 @@ import type { DeckSummary } from "./deck";
 /** daily-lead-gen sourcer kun når køen er nede på dette antal. Se scheduler-arkitektur.md. */
 export const LEADGEN_GATE_PENDING = 20;
 
-export type ActionSource = "replies" | "queue" | "previews" | "clients" | "okonomi" | "leads" | "none";
+export type ActionSource = "replies" | "queue" | "previews" | "clients" | "okonomi" | "leads" | "crm" | "none";
 
 export interface NextAction {
   label: string;
@@ -109,6 +109,39 @@ export function nextAction(s: DeckSummary): NextAction {
   // Sheets nede → leads-, svar- og kundetal er tomme arrays, ikke nuller. Alt
   // der stammer derfra springes over, så "0" ikke læses som "intet at lave".
   const sheets = s.ok;
+
+  // CRM-fladen har sin egen først-prioritet, men bruger samme NextAction-model
+  // som resten af systemet, så label/href/reason aldrig splittes.
+  if (s.crm?.overdueTasks && s.crm.overdueTasks > 0) {
+    return {
+      label: `Færdiggør ${s.crm.overdueTasks} forfaldne opgaver`,
+      href: "/crm",
+      reason: "En CRM-opgave er forfalden og skal lukkes eller flyttes.",
+      priority: 0,
+      source: "crm",
+      count: s.crm.overdueTasks,
+    };
+  }
+  if (s.crm?.dueTasks && s.crm.dueTasks > 0) {
+    return {
+      label: `Tag ${s.crm.dueTasks} opgaver i dag`,
+      href: "/crm",
+      reason: "Der ligger CRM-opgaver med frist i dag.",
+      priority: 0,
+      source: "crm",
+      count: s.crm.dueTasks,
+    };
+  }
+  if (s.crm?.overdueInvoices && s.crm.overdueInvoices > 0) {
+    return {
+      label: `Se ${s.crm.overdueInvoices} forfaldne fakturaer`,
+      href: "/fakturaer",
+      reason: "En faktura kræver økonomisk handling.",
+      priority: 0,
+      source: "crm",
+      count: s.crm.overdueInvoices,
+    };
+  }
 
   if (sheets && s.numbers.repliesPending > 0) {
     return {

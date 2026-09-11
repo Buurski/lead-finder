@@ -38,7 +38,15 @@ export const NAV_TREE: NavNode[] = [
       { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig", badge: "needs" },
     ],
   },
-  { href: "/clients", label: "Kunder & sites", icon: "Briefcase", hint: "Aktive kunder og sites" },
+  {
+    href: "/crm",
+    label: "Kunder",
+    icon: "Users",
+    children: [
+      { href: "/crm", label: "CRM", paletteLabel: "Kunder · CRM", icon: "Users", hint: "Opgaver, aktivitet og næste handling" },
+      { href: "/clients", label: "Kunder & sites", paletteLabel: "Kunder · Kunder & sites", icon: "Briefcase", hint: "Kundeprofiler, sites og leverancer" },
+    ],
+  },
   {
     href: "/seo",
     label: "Synlighed",

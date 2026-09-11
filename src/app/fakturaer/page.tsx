@@ -6,8 +6,10 @@ import FakturaClient from "./FakturaClient";
 export const metadata = { title: "Fakturaer · Command Center" };
 export const dynamic = "force-dynamic";
 
-export default async function FakturaerPage() {
+export default async function FakturaerPage({ searchParams }: { searchParams: Promise<{ clientName?: string }> }) {
   const today = new Date().toISOString().slice(0, 10);
+  const query = await searchParams;
+  const initialClientName = typeof query.clientName === "string" ? query.clientName : "";
 
   let clients: { id: string; name: string }[] = [];
   try {
@@ -24,7 +26,7 @@ export default async function FakturaerPage() {
   return (
     <div className="cc-fade">
       <PageHeader icon="Receipt" title="Fakturaer" subtitle={`${invoices.length} fakturaer · ${subsWithNext.length} aktive abonnementer`} />
-      <FakturaClient invoices={invoices} subscriptions={subsWithNext} clients={clients} today={today} />
+      <FakturaClient invoices={invoices} subscriptions={subsWithNext} clients={clients} today={today} initialClientName={initialClientName} />
     </div>
   );
 }
