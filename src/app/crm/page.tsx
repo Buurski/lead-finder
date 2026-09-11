@@ -4,6 +4,7 @@ import { buildDeckSummary } from "@/lib/deck";
 import { nextAction } from "@/lib/next-action";
 import { getClients } from "@/lib/sheets";
 import { listActivities, listTasks } from "@/lib/crm";
+import { mostUrgentOpenTask } from "@/lib/crm-client";
 import CrmClient from "./CrmClient";
 
 export const metadata = { title: "CRM · Command Center" };
@@ -37,7 +38,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const openTasks = tasks.filter((task) => !task.done);
   const overdueTasks = openTasks.filter((task) => task.due && task.due < today).length;
   const dueTasks = openTasks.filter((task) => task.due === today).length;
-  const urgent = openTasks.find((task) => task.due && task.due < today) ?? openTasks.find((task) => task.due === today) ?? openTasks[0];
+  const urgent = mostUrgentOpenTask(tasks);
   const action = nextAction({ ...summary, crm: { overdueTasks, dueTasks, overdueInvoices: summary.invoicesOverdue, topTaskId: urgent?.id } });
 
   return (

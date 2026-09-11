@@ -76,6 +76,7 @@ export default function CrmClient({
   }
 
   async function addTask() {
+    if (busy || !dataOk) return;
     if (!clientName || !title.trim()) {
       setError("Vælg en kunde og skriv en opgave");
       return;

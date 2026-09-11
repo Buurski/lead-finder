@@ -63,6 +63,7 @@ export default function CrmSections({
   }
 
   async function saveContact() {
+    if (busy || !dataOk) return;
     if (!draft.name.trim()) { setError("Kontaktens navn mangler"); return; }
     await run(async () => {
       const { contact } = await crmRequest<{ contact: CrmContact }>("/api/crm/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: editingId ?? undefined, clientName }) });
@@ -73,6 +74,7 @@ export default function CrmSections({
   }
 
   async function removeContact(contact: CrmContact) {
+    if (busy || !dataOk) return;
     if (!window.confirm(`Fjern ${contact.name} fra ${clientName}?`)) return;
     await run(async () => {
       await crmRequest(`/api/crm/contacts?clientName=${encodeURIComponent(clientName)}&id=${encodeURIComponent(contact.id)}`, { method: "DELETE" });
@@ -81,6 +83,7 @@ export default function CrmSections({
   }
 
   async function addActivity() {
+    if (busy || !dataOk) return;
     if (!activityText.trim()) { setError("Aktivitetsteksten mangler"); return; }
     await run(async () => {
       const { activity } = await crmRequest<{ activity: CrmActivity }>("/api/crm/activity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, type: activityType, text: activityText, actor: "teamet" }) });
@@ -90,6 +93,7 @@ export default function CrmSections({
   }
 
   async function addTask() {
+    if (busy || !dataOk) return;
     if (!taskTitle.trim()) { setError("Opgavetitlen mangler"); return; }
     await run(async () => {
       const { task } = await crmRequest<{ task: CrmTask }>("/api/crm/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, title: taskTitle, due: taskDue }) });

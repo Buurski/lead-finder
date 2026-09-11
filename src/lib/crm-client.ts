@@ -34,6 +34,13 @@ export interface CrmTask {
   deletedAt?: string;
 }
 
+/** Åbneste opgave med tidligste frist — forfaldne først, opgaver uden frist sidst. */
+export function mostUrgentOpenTask(tasks: CrmTask[]): CrmTask | undefined {
+  return tasks
+    .filter((task) => !task.done)
+    .sort((a, b) => (a.due || "9999-99-99").localeCompare(b.due || "9999-99-99"))[0];
+}
+
 /** Kastet når CRM-lageret reelt er nede (netværksfejl eller 5xx) — UI'et skal så låse. */
 export class CrmStoreError extends Error {
   constructor(message: string) {

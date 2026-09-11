@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { assertCrmMutationRequest, encodedClientName, validDate, validText, CrmInputError } from "./crm.ts";
 import { ccAuthMarker } from "./cc-auth.ts";
+import { mostUrgentOpenTask } from "./crm-client.ts";
 import { nextAction, type NextAction } from "./next-action.ts";
 import type { DeckSummary } from "./deck.ts";
 
@@ -104,4 +105,16 @@ test("CRM next-action deep-linker til den mest presserende opgave", () => {
   const withoutId: NextAction = nextAction({ ...summary({ numbers }), crm: { overdueTasks: 1, dueTasks: 0, overdueInvoices: 0 } });
   assert.equal(withoutId.href, "/crm");
   assert.match(withoutId.label, /forfaldne opgaver/);
+});
+
+test("mostUrgentOpenTask vælger ældste frist og springer færdige/uden frist over", () => {
+  const base = { clientName: "Kunde", at: "2026-09-11T00:00:00.000Z", done: false };
+  const tasks = [
+    { ...base, id: "task_b", title: "senere", due: "2026-10-01" },
+    { ...base, id: "task_a", title: "ældst", due: "2026-09-01" },
+    { ...base, id: "task_c", title: "færdig", due: "2026-08-01", done: true },
+    { ...base, id: "task_d", title: "uden frist", due: "" },
+  ];
+  assert.equal(mostUrgentOpenTask(tasks)?.id, "task_a");
+  assert.equal(mostUrgentOpenTask([]), undefined);
 });
