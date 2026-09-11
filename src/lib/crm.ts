@@ -2,6 +2,7 @@ import "server-only";
 
 import { getClients, type Client } from "./sheets.ts";
 import { store } from "./store.ts";
+import { isCommandCenterRequest } from "./cc-auth.ts";
 import { ACTIVITY_TYPES, type ActivityType, type CrmActivity, type CrmContact, type CrmTask } from "./crm-client.ts";
 
 export { ACTIVITY_TYPES } from "./crm-client.ts";
@@ -19,18 +20,26 @@ export class CrmInputError extends Error {
 }
 
 /**
- * Mutations are behind the existing proxy auth in production. The origin checks
- * still matter on previews/local browser sessions: cross-site forms must not
- * mutate CRM state. Server-to-server callers can use the proxy marker.
+ * Mutations run behind the proxy auth. Når Command Center-auth er konfigureret
+ * kræves proxyens HMAC-marker — den kan ikke forfalskes af en klient, fordi
+ * proxyen stripper alle indgående kopier og kun udsteder sin egen. Derudover
+ * skal browser-kald bære et eksplicit same-origin; kald uden Origin afvises.
  */
-export function assertCrmMutationRequest(req: Request): void {
-  const marker = req.headers.get("x-command-center-auth");
-  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET && marker !== "1") {
+export async function assertCrmMutationRequest(req: Request): Promise<void> {
+  const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+  if (authConfigured && !(await isCommandCenterRequest(req))) {
     throw new CrmInputError("CRM kræver en godkendt Command Center-session");
   }
   const origin = req.headers.get("origin");
-  if (origin && origin !== new URL(req.url).origin) throw new CrmInputError("cross-origin CRM-kald afvist");
+  if (!origin) throw new CrmInputError("CRM-kald uden Origin afvist");
+  if (origin.toLowerCase() !== expectedCrmOrigin(req).toLowerCase()) throw new CrmInputError("cross-origin CRM-kald afvist");
   if (req.headers.get("sec-fetch-site") === "cross-site") throw new CrmInputError("cross-site CRM-kald afvist");
+}
+
+function expectedCrmOrigin(req: Request): string {
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || new URL(req.url).host;
+  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || new URL(req.url).protocol.replace(":", "");
+  return `${proto}://${host}`;
 }
 
 export function encodedClientName(clientName: string): string {

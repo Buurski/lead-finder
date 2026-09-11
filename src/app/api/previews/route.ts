@@ -7,6 +7,7 @@ import {
   type PreviewChannel,
   type PreviewStatus,
 } from "@/lib/preview-queue";
+import { isCommandCenterRequest } from "@/lib/cc-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -14,8 +15,8 @@ export const maxDuration = 30;
 // Hermes contract: GET reads the queue; POST creates an inbound request;
 // PATCH attaches research/build/draft results or moves the manual approval point.
 // All writes are data-only. This route never sends email.
-function authorized(req: NextRequest): boolean {
-  if (req.headers.get("x-command-center-auth") === "1") return true;
+async function authorized(req: NextRequest): Promise<boolean> {
+  if (await isCommandCenterRequest(req)) return true;
   const expected = process.env.PREVIEW_QUEUE_SECRET || process.env.DEEP_RESEARCH_SECRET;
   if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
   const got = req.headers.get("authorization") || "";
@@ -23,7 +24,7 @@ function authorized(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const status = req.nextUrl.searchParams.get("status") as PreviewStatus | null;
   const requests = await readPreviewRequests();
   return NextResponse.json({
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (body.channel !== "formular" && body.channel !== "mail") {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   let body: { id?: string; status?: PreviewStatus; research?: string; previewUrl?: string; screenshotUrl?: string; mailDraft?: string; contactName?: string; branch?: string; questionnaire?: string; company?: string; demoKey?: string; reviewNotes?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (!body.id || !body.status || !PREVIEW_STATUSES.includes(body.status)) {

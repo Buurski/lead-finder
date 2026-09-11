@@ -9,7 +9,10 @@ import CrmClient from "./CrmClient";
 export const metadata = { title: "CRM · Command Center" };
 export const dynamic = "force-dynamic";
 
-export default async function CrmPage() {
+export default async function CrmPage({ searchParams }: { searchParams: Promise<{ task?: string }> }) {
+  const query = await searchParams;
+  const focusTaskId = typeof query.task === "string" && /^[a-z0-9_-]{3,80}$/i.test(query.task) ? query.task : undefined;
+
   let clients;
   try {
     clients = await getClients();
@@ -22,6 +25,7 @@ export default async function CrmPage() {
     );
   }
 
+  const today = new Date().toISOString().slice(0, 10);
   const [summary, tasksResult, activitiesResult] = await Promise.all([
     buildDeckSummary(),
     listTasks().catch(() => null),
@@ -30,9 +34,11 @@ export default async function CrmPage() {
   const tasks = tasksResult ?? [];
   const activities = activitiesResult ?? [];
   const dataOk = tasksResult !== null && activitiesResult !== null;
-  const overdueTasks = tasks.filter((task) => !task.done && task.due && task.due < new Date().toISOString().slice(0, 10)).length;
-  const dueTasks = tasks.filter((task) => !task.done && task.due === new Date().toISOString().slice(0, 10)).length;
-  const action = nextAction({ ...summary, crm: { overdueTasks, dueTasks, overdueInvoices: summary.invoicesOverdue } });
+  const openTasks = tasks.filter((task) => !task.done);
+  const overdueTasks = openTasks.filter((task) => task.due && task.due < today).length;
+  const dueTasks = openTasks.filter((task) => task.due === today).length;
+  const urgent = openTasks.find((task) => task.due && task.due < today) ?? openTasks.find((task) => task.due === today) ?? openTasks[0];
+  const action = nextAction({ ...summary, crm: { overdueTasks, dueTasks, overdueInvoices: summary.invoicesOverdue, topTaskId: urgent?.id } });
 
   return (
     <div className="cc-fade">
@@ -42,8 +48,9 @@ export default async function CrmPage() {
         initialTasks={tasks}
         activities={activities}
         nextAction={action}
-        today={new Date().toISOString().slice(0, 10)}
+        today={today}
         dataOk={dataOk}
+        focusTaskId={focusTaskId}
       />
     </div>
   );

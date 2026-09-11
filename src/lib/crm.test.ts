@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assertCrmMutationRequest, encodedClientName, validDate, validText, CrmInputError } from "./crm.ts";
+import { ccAuthMarker } from "./cc-auth.ts";
 import { nextAction, type NextAction } from "./next-action.ts";
 import type { DeckSummary } from "./deck.ts";
 
@@ -20,6 +21,26 @@ function summary(over: Partial<DeckSummary> = {}): DeckSummary {
   };
 }
 
+function withoutAuthEnv<T>(fn: () => T): T {
+  const saved = {
+    user: process.env.VERCEL_BASIC_AUTH_USER,
+    pass: process.env.VERCEL_BASIC_AUTH_PASS,
+    secret: process.env.AUTH_SESSION_SECRET,
+  };
+  delete process.env.VERCEL_BASIC_AUTH_USER;
+  delete process.env.VERCEL_BASIC_AUTH_PASS;
+  delete process.env.AUTH_SESSION_SECRET;
+  try {
+    return fn();
+  } finally {
+    if (saved.user !== undefined) process.env.VERCEL_BASIC_AUTH_USER = saved.user;
+    if (saved.pass !== undefined) process.env.VERCEL_BASIC_AUTH_PASS = saved.pass;
+    if (saved.secret !== undefined) process.env.AUTH_SESSION_SECRET = saved.secret;
+  }
+}
+
+const CRM_URL = "https://kinly.test/api/crm/tasks";
+
 test("CRM-keyen bevarer clientName og koder kun storage-segmentet", () => {
   const name = "Jernbane/caféen & Co.";
   assert.equal(decodeURIComponent(encodedClientName(name)), name);
@@ -33,31 +54,54 @@ test("CRM-validering afviser tom tekst og ugyldige datoer", () => {
   assert.equal(validDate(""), "");
 });
 
-test("CRM mutationer afviser cross-origin browser-kald", () => {
-  assert.throws(() => assertCrmMutationRequest(new Request("https://kinly.test/api/crm/tasks", { method: "POST", headers: { origin: "https://evil.test" } })), CrmInputError);
-  assert.doesNotThrow(() => assertCrmMutationRequest(new Request("https://kinly.test/api/crm/tasks", { method: "POST", headers: { origin: "https://kinly.test" } })));
+test("CRM afviser kald uden Origin og cross-origin kald", async () => {
+  await withoutAuthEnv(async () => {
+    await assert.rejects(assertCrmMutationRequest(new Request(CRM_URL, { method: "POST" })), CrmInputError);
+    await assert.rejects(
+      assertCrmMutationRequest(new Request(CRM_URL, { method: "POST", headers: { origin: "https://evil.test" } })),
+      CrmInputError,
+    );
+    await assert.doesNotReject(
+      assertCrmMutationRequest(new Request(CRM_URL, { method: "POST", headers: { origin: "https://kinly.test" } })),
+    );
+  });
 });
 
-test("production CRM mutationer kræver proxyens auth-marker", () => {
-  const previous = { env: process.env.VERCEL_ENV, user: process.env.VERCEL_BASIC_AUTH_USER, pass: process.env.VERCEL_BASIC_AUTH_PASS, secret: process.env.AUTH_SESSION_SECRET };
+test("CRM kræver proxyens HMAC-marker når auth er konfigureret — og afviser forfalskning", async () => {
+  const saved = {
+    user: process.env.VERCEL_BASIC_AUTH_USER,
+    pass: process.env.VERCEL_BASIC_AUTH_PASS,
+    secret: process.env.AUTH_SESSION_SECRET,
+  };
   try {
-    process.env.VERCEL_ENV = "production";
     process.env.VERCEL_BASIC_AUTH_USER = "test";
     process.env.VERCEL_BASIC_AUTH_PASS = "test";
-    process.env.AUTH_SESSION_SECRET = "test";
-    assert.throws(() => assertCrmMutationRequest(new Request("https://kinly.test/api/crm/tasks", { method: "POST" })), CrmInputError);
-    assert.doesNotThrow(() => assertCrmMutationRequest(new Request("https://kinly.test/api/crm/tasks", { method: "POST", headers: { "x-command-center-auth": "1" } })));
+    process.env.AUTH_SESSION_SECRET = "test-secret";
+    const headers = { origin: "https://kinly.test" };
+    // Uden marker og med klient-gættet "1" — begge skal afvises.
+    await assert.rejects(assertCrmMutationRequest(new Request(CRM_URL, { method: "POST", headers })), CrmInputError);
+    await assert.rejects(
+      assertCrmMutationRequest(new Request(CRM_URL, { method: "POST", headers: { ...headers, "x-command-center-auth": "1" } })),
+      CrmInputError,
+    );
+    // Kun den HMAC proxyen selv kan udlede accepteres.
+    const marker = await ccAuthMarker("test-secret");
+    await assert.doesNotReject(
+      assertCrmMutationRequest(new Request(CRM_URL, { method: "POST", headers: { ...headers, "x-command-center-auth": marker } })),
+    );
   } finally {
-    if (previous.env === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = previous.env;
-    if (previous.user === undefined) delete process.env.VERCEL_BASIC_AUTH_USER; else process.env.VERCEL_BASIC_AUTH_USER = previous.user;
-    if (previous.pass === undefined) delete process.env.VERCEL_BASIC_AUTH_PASS; else process.env.VERCEL_BASIC_AUTH_PASS = previous.pass;
-    if (previous.secret === undefined) delete process.env.AUTH_SESSION_SECRET; else process.env.AUTH_SESSION_SECRET = previous.secret;
+    if (saved.user === undefined) delete process.env.VERCEL_BASIC_AUTH_USER; else process.env.VERCEL_BASIC_AUTH_USER = saved.user;
+    if (saved.pass === undefined) delete process.env.VERCEL_BASIC_AUTH_PASS; else process.env.VERCEL_BASIC_AUTH_PASS = saved.pass;
+    if (saved.secret === undefined) delete process.env.AUTH_SESSION_SECRET; else process.env.AUTH_SESSION_SECRET = saved.secret;
   }
 });
 
-test("CRM next-action prioriterer forfaldne opgaver foran øvrige feeds", () => {
-  const action: NextAction = nextAction({ ...summary({ numbers: { newLeads: 0, contactable: 4, sentToday: 0, repliesPending: 2, wonThisWeek: 0 } }), crm: { overdueTasks: 1, dueTasks: 0, overdueInvoices: 0 } });
-  assert.equal(action.href, "/crm");
-  assert.equal(action.source, "crm");
-  assert.match(action.label, /forfaldne opgaver/);
+test("CRM next-action deep-linker til den mest presserende opgave", () => {
+  const numbers = { newLeads: 0, contactable: 4, sentToday: 0, repliesPending: 2, wonThisWeek: 0 };
+  const withId: NextAction = nextAction({ ...summary({ numbers }), crm: { overdueTasks: 1, dueTasks: 0, overdueInvoices: 0, topTaskId: "task_9" } });
+  assert.equal(withId.href, "/crm?task=task_9");
+  assert.equal(withId.source, "crm");
+  const withoutId: NextAction = nextAction({ ...summary({ numbers }), crm: { overdueTasks: 1, dueTasks: 0, overdueInvoices: 0 } });
+  assert.equal(withoutId.href, "/crm");
+  assert.match(withoutId.label, /forfaldne opgaver/);
 });

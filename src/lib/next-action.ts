@@ -115,7 +115,7 @@ export function nextAction(s: DeckSummary): NextAction {
   if (s.crm?.overdueTasks && s.crm.overdueTasks > 0) {
     return {
       label: `Færdiggør ${s.crm.overdueTasks} forfaldne opgaver`,
-      href: "/crm",
+      href: s.crm.topTaskId ? `/crm?task=${encodeURIComponent(s.crm.topTaskId)}` : "/crm",
       reason: "En CRM-opgave er forfalden og skal lukkes eller flyttes.",
       priority: 0,
       source: "crm",
@@ -125,7 +125,7 @@ export function nextAction(s: DeckSummary): NextAction {
   if (s.crm?.dueTasks && s.crm.dueTasks > 0) {
     return {
       label: `Tag ${s.crm.dueTasks} opgaver i dag`,
-      href: "/crm",
+      href: s.crm.topTaskId ? `/crm?task=${encodeURIComponent(s.crm.topTaskId)}` : "/crm",
       reason: "Der ligger CRM-opgaver med frist i dag.",
       priority: 0,
       source: "crm",

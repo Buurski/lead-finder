@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     return NextResponse.json({ contact: await saveContact(await req.json()) });
   } catch (error) {
     return errorResponse(error);
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     const url = new URL(req.url);
     await deleteContact(url.searchParams.get("clientName") ?? "", url.searchParams.get("id") ?? "");
     return NextResponse.json({ ok: true });

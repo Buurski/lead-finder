@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Icon from "@/components/shell/Icon";
-import type { ActivityType, CrmActivity, CrmContact, CrmTask } from "@/lib/crm-client";
+import { CrmStoreError, crmRequest, type ActivityType, type CrmActivity, type CrmContact, type CrmTask } from "@/lib/crm-client";
 
 const ACTIVITY_TYPES: { value: ActivityType; label: string }[] = [
   { value: "note", label: "Note" },
@@ -30,7 +30,7 @@ export default function CrmSections({
   initialActivities,
   initialTasks,
   today,
-  dataOk,
+  dataOk: initialDataOk,
 }: {
   clientName: string;
   initialContacts: CrmContact[];
@@ -51,14 +51,22 @@ export default function CrmSections({
   const [taskDue, setTaskDue] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dataOk, setDataOk] = useState(initialDataOk);
+
+  function reportFailure(cause: unknown, fallback: string) {
+    if (cause instanceof CrmStoreError) {
+      setError(cause.message);
+      setDataOk(false);
+      return;
+    }
+    setError(cause instanceof Error ? cause.message : fallback);
+  }
 
   async function saveContact() {
     if (!draft.name.trim()) { setError("Kontaktens navn mangler"); return; }
     await run(async () => {
-      const response = await fetch("/api/crm/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: editingId ?? undefined, clientName }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke gemme kontakt");
-      setContacts((current) => [data.contact, ...current.filter((item) => item.id !== data.contact.id)].sort((a, b) => a.name.localeCompare(b.name, "da")));
+      const { contact } = await crmRequest<{ contact: CrmContact }>("/api/crm/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: editingId ?? undefined, clientName }) });
+      setContacts((current) => [contact, ...current.filter((item) => item.id !== contact.id)].sort((a, b) => a.name.localeCompare(b.name, "da")));
       setDraft(EMPTY_CONTACT);
       setEditingId(null);
     });
@@ -67,9 +75,7 @@ export default function CrmSections({
   async function removeContact(contact: CrmContact) {
     if (!window.confirm(`Fjern ${contact.name} fra ${clientName}?`)) return;
     await run(async () => {
-      const response = await fetch(`/api/crm/contacts?clientName=${encodeURIComponent(clientName)}&id=${encodeURIComponent(contact.id)}`, { method: "DELETE" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke fjerne kontakt");
+      await crmRequest(`/api/crm/contacts?clientName=${encodeURIComponent(clientName)}&id=${encodeURIComponent(contact.id)}`, { method: "DELETE" });
       setContacts((current) => current.filter((item) => item.id !== contact.id));
     });
   }
@@ -77,10 +83,8 @@ export default function CrmSections({
   async function addActivity() {
     if (!activityText.trim()) { setError("Aktivitetsteksten mangler"); return; }
     await run(async () => {
-      const response = await fetch("/api/crm/activity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, type: activityType, text: activityText, actor: "teamet" }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke gemme aktivitet");
-      setActivities((current) => [data.activity, ...current]);
+      const { activity } = await crmRequest<{ activity: CrmActivity }>("/api/crm/activity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, type: activityType, text: activityText, actor: "teamet" }) });
+      setActivities((current) => [activity, ...current]);
       setActivityText("");
     });
   }
@@ -88,28 +92,25 @@ export default function CrmSections({
   async function addTask() {
     if (!taskTitle.trim()) { setError("Opgavetitlen mangler"); return; }
     await run(async () => {
-      const response = await fetch("/api/crm/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, title: taskTitle, due: taskDue }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke gemme opgave");
-      setTasks((current) => [data.task, ...current]);
+      const { task } = await crmRequest<{ task: CrmTask }>("/api/crm/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientName, title: taskTitle, due: taskDue }) });
+      setTasks((current) => [task, ...current]);
       setTaskTitle("");
       setTaskDue("");
     });
   }
 
   async function toggleTask(task: CrmTask) {
+    if (busy || !dataOk) return;
     await run(async () => {
-      const response = await fetch("/api/crm/tasks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id, clientName, done: !task.done }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke opdatere opgave");
-      setTasks((current) => current.map((item) => item.id === task.id ? data.task : item));
+      const { task: saved } = await crmRequest<{ task: CrmTask }>("/api/crm/tasks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id, clientName, done: !task.done }) });
+      setTasks((current) => current.map((item) => item.id === task.id ? saved : item));
     });
   }
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError("");
-    try { await action(); } catch (cause) { setError(cause instanceof Error ? cause.message : "handlingen fejlede"); } finally { setBusy(false); }
+    try { await action(); } catch (cause) { reportFailure(cause, "handlingen fejlede"); } finally { setBusy(false); }
   }
 
   return (
@@ -118,7 +119,7 @@ export default function CrmSections({
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <Icon name="Users" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, marginRight: "auto" }}>CRM</h2>
-        {!dataOk && <span className="cc-chip" style={{ color: "var(--amber)", background: "var(--amber-dim)" }}>data kunne ikke hentes</span>}
+        {!dataOk && <span className="cc-chip" style={{ color: "var(--amber)", background: "var(--amber-dim)" }}>data kunne ikke hentes — felterne er låst</span>}
       </div>
       <div role="tablist" aria-label="CRM-sektioner" style={{ display: "flex", gap: 5, borderBottom: "1px solid var(--border)", marginBottom: 14, overflowX: "auto" }}>
         {([["contacts", "Kontakter"], ["activity", "Aktivitet"], ["tasks", "Opgaver"]] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className="cc-btn" style={{ borderRadius: "8px 8px 0 0", borderBottom: tab === value ? "2px solid var(--kinly-signal)" : "2px solid transparent", background: tab === value ? "var(--bg-3)" : "transparent" }}>{label}{value === "contacts" ? ` (${contacts.length})` : value === "activity" ? ` (${activities.length})` : ` (${tasks.filter((task) => !task.done).length} åbne)`}</button>)}
@@ -143,7 +144,7 @@ export default function CrmSections({
             <div style={{ minWidth: 180, flex: "1 1 220px" }}><strong style={{ fontSize: 13.5 }}>{contact.name}</strong><span className="cc-dim" style={{ display: "block", fontSize: 11.5 }}>{contact.role || "rolle ikke sat"}{contact.channel ? ` · ${contact.channel}` : ""}</span></div>
             {contact.email && <a className="cc-link" href={`mailto:${contact.email}`} style={{ fontSize: 12.5 }}>{contact.email}</a>}
             {contact.phone && <a className="cc-link" href={`tel:${contact.phone}`} style={{ fontSize: 12.5 }}>{contact.phone}</a>}
-            <div style={{ display: "flex", gap: 5, marginLeft: "auto" }}><button type="button" className="cc-btn" onClick={() => { setEditingId(contact.id); setDraft({ name: contact.name, role: contact.role, email: contact.email, phone: contact.phone, channel: contact.channel, note: contact.note }); }}>Redigér</button><button type="button" className="cc-btn" onClick={() => removeContact(contact)}>Fjern</button></div>
+            <div style={{ display: "flex", gap: 5, marginLeft: "auto" }}><button type="button" className="cc-btn" onClick={() => { setEditingId(contact.id); setDraft({ name: contact.name, role: contact.role, email: contact.email, phone: contact.phone, channel: contact.channel, note: contact.note }); }}>Redigér</button><button type="button" className="cc-btn" disabled={busy || !dataOk} onClick={() => removeContact(contact)}>Fjern</button></div>
           </div>)}
         </div>}
       </div>}
@@ -163,7 +164,7 @@ export default function CrmSections({
           <label style={labelStyle}>Frist<input aria-label="Ny opgavefrist" type="date" value={taskDue} onChange={(event) => setTaskDue(event.target.value)} style={inputStyle} /></label>
           <button type="button" className="cc-btn cc-btn-accent" onClick={addTask} disabled={busy || !dataOk} style={{ alignSelf: "end" }}>Tilføj</button>
         </div>
-        {tasks.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen opgaver for kunden.</p> : tasks.map((task) => <div key={task.id} style={{ display: "flex", gap: 9, alignItems: "center", padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1 }}><input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} onChange={() => toggleTask(task)} style={{ width: 17, height: 17 }} /><span style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", fontSize: 13.5 }}>{task.title}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{task.due ? `frist ${formatDate(task.due)}` : "uden frist"}{!task.done && task.due && task.due < today ? " · forfalden" : ""}</span></div>)}
+        {tasks.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen opgaver for kunden.</p> : tasks.map((task) => <div key={task.id} style={{ display: "flex", gap: 9, alignItems: "center", padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1 }}><input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} disabled={busy || !dataOk} onChange={() => toggleTask(task)} style={{ width: 17, height: 17 }} /><span style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", fontSize: 13.5 }}>{task.title}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{task.due ? `frist ${formatDate(task.due)}` : "uden frist"}{!task.done && task.due && task.due < today ? " · forfalden" : ""}</span></div>)}
       </div>}
     </section>
   );

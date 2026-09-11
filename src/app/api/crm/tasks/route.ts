@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     return NextResponse.json({ task: await saveTask(await req.json()) });
   } catch (error) {
     return errorResponse(error);
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     const body = await req.json();
     if (typeof body.id !== "string" || typeof body.clientName !== "string" || typeof body.done !== "boolean") throw new CrmInputError("opgave-status er ugyldig");
     return NextResponse.json({ task: await updateTask(body.id, body.clientName, body.done) });
@@ -40,7 +40,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     const params = new URL(req.url).searchParams;
     await deleteTask(params.get("id") ?? "", params.get("clientName") ?? "");
     return NextResponse.json({ ok: true });

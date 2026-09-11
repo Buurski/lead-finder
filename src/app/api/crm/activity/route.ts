@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    assertCrmMutationRequest(req);
+    await assertCrmMutationRequest(req);
     return NextResponse.json({ activity: await addActivity(await req.json()) });
   } catch (error) {
     return errorResponse(error);

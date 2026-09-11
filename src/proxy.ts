@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { CC_AUTH_HEADER, ccAuthMarker, hmacHex } from "@/lib/cc-auth";
 
 // Proxy (Next 16's renamed middleware) — shared-password access for Lucas +
 // Charlie (one code, same access).
@@ -62,21 +63,7 @@ function parseBasic(header: string): { user: string; pass: string } | null {
   return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) };
 }
 
-// HMAC-SHA256 hex via Web Crypto (Edge-compatible).
-async function hmacHex(key: string, msg: string): Promise<string> {
-  const k = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(key),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg));
-  const bytes = new Uint8Array(sig);
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
-  return hex;
-}
+// HMAC + session-helpers kommer fra src/lib/cc-auth.ts (delt med API-ruterne).
 
 async function issueSession(user: string, secret: string): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + SESSION_TTL_S;
@@ -219,7 +206,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     // Pass a marker to internal API routes as well. This keeps the browser's
     // Basic Auth session and route-level auth in the same chain.
     const requestHeaders = new Headers(sanitized);
-    requestHeaders.set("x-command-center-auth", "1");
+    requestHeaders.set(CC_AUTH_HEADER, await ccAuthMarker(SECRET));
 
     // Mint/refresh session cookie on success.
     const fresh = await issueSession(USER, SECRET);

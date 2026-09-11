@@ -101,7 +101,7 @@ export interface DeckSummary {
    *  Bell-badget og faktura-strippen deler dette tal, så de aldrig drifter. */
   invoicesOverdue: number;
   /** CRM-tasklag, kun sat af /crm. Holdes optional så Mission Control ikke får ny I/O. */
-  crm?: { overdueTasks: number; dueTasks: number; overdueInvoices: number };
+  crm?: { overdueTasks: number; dueTasks: number; overdueInvoices: number; /** Id på den mest presserende åbne opgave — CTA'en deep-linker til den. */ topTaskId?: string };
   /** Alder på de daglige datafeeds — så en død kilde ikke ligner en rolig dag. */
   feeds?: FeedHealth[];
   // 7-bucket coverage tags so Mission Control can prove nothing is missing.

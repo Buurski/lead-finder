@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
 import type { NextAction } from "@/lib/next-action";
-import type { CrmActivity, CrmTask } from "@/lib/crm-client";
+import { CrmStoreError, crmRequest, type CrmActivity, type CrmTask } from "@/lib/crm-client";
 
 type ClientRow = { id: string; name: string; branch: string };
 
@@ -36,7 +36,8 @@ export default function CrmClient({
   activities: initialActivities,
   nextAction,
   today,
-  dataOk,
+  dataOk: initialDataOk,
+  focusTaskId,
 }: {
   clients: ClientRow[];
   initialTasks: CrmTask[];
@@ -44,6 +45,7 @@ export default function CrmClient({
   nextAction: NextAction;
   today: string;
   dataOk: boolean;
+  focusTaskId?: string;
 }) {
   const [tasks, setTasks] = useState(() => sortTasks(initialTasks));
   const [activities, setActivities] = useState(initialActivities);
@@ -52,10 +54,26 @@ export default function CrmClient({
   const [due, setDue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [dataOk, setDataOk] = useState(initialDataOk);
+
+  useEffect(() => {
+    if (!focusTaskId) return;
+    const element = document.getElementById(`crm-task-${focusTaskId}`);
+    if (element) element.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusTaskId]);
 
   const openTasks = tasks.filter((task) => !task.done);
   const attention = clients.filter((client) => openTasks.some((task) => task.clientName === client.name));
   const clientByName = new Map(clients.map((client) => [client.name, client]));
+
+  function reportFailure(cause: unknown, fallback: string) {
+    if (cause instanceof CrmStoreError) {
+      setError(cause.message);
+      setDataOk(false);
+      return;
+    }
+    setError(cause instanceof Error ? cause.message : fallback);
+  }
 
   async function addTask() {
     if (!clientName || !title.trim()) {
@@ -65,40 +83,40 @@ export default function CrmClient({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/crm/tasks", {
+      const { task } = await crmRequest<{ task: CrmTask }>("/api/crm/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientName, title, due }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke gemme opgaven");
-      setTasks((current) => sortTasks([data.task, ...current.filter((item) => item.id !== data.task.id)]));
+      setTasks((current) => sortTasks([task, ...current.filter((item) => item.id !== task.id)]));
       setTitle("");
       setDue("");
-      setActivities((current) => [{ id: `local-${data.task.id}`, clientName, at: new Date().toISOString(), type: "task", text: `Opgave oprettet: ${data.task.title}`, actor: "teamet" }, ...current]);
+      setActivities((current) => [{ id: `local-${task.id}`, clientName, at: new Date().toISOString(), type: "task", text: `Opgave oprettet: ${task.title}`, actor: "teamet" }, ...current]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "kunne ikke gemme opgaven");
+      reportFailure(cause, "kunne ikke gemme opgaven");
     } finally {
       setBusy(false);
     }
   }
 
   async function toggleTask(task: CrmTask) {
+    if (busy || !dataOk) return;
     setError("");
+    setBusy(true);
     const nextDone = !task.done;
     setTasks((current) => current.map((item) => item.id === task.id ? { ...item, done: nextDone } : item));
     try {
-      const response = await fetch("/api/crm/tasks", {
+      const { task: saved } = await crmRequest<{ task: CrmTask }>("/api/crm/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: task.id, clientName: task.clientName, done: nextDone }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "kunne ikke opdatere opgaven");
-      setTasks((current) => sortTasks(current.map((item) => item.id === task.id ? data.task : item)));
+      setTasks((current) => sortTasks(current.map((item) => item.id === task.id ? saved : item)));
     } catch (cause) {
       setTasks((current) => current.map((item) => item.id === task.id ? task : item));
-      setError(cause instanceof Error ? cause.message : "kunne ikke opdatere opgaven");
+      reportFailure(cause, "kunne ikke opdatere opgaven");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -144,15 +162,23 @@ export default function CrmClient({
             <div style={{ display: "grid" }}>
               {tasks.slice(0, 12).map((task) => {
                 const overdue = !task.done && task.due && task.due < today;
-                return <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1 }}>
-                  <input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} onChange={() => toggleTask(task)} style={{ width: 17, height: 17, flexShrink: 0 }} />
-                  <Link href={`/clients/${clientByName.get(task.clientName)?.id ?? ""}`} style={{ minWidth: 0, flex: 1, textDecoration: "none", color: "inherit" }}>
+                const clientId = clientByName.get(task.clientName)?.id;
+                const focused = task.id === focusTaskId;
+                const inner = (
+                  <>
                     <div style={{ fontSize: 13.5, fontWeight: 600, textDecoration: task.done ? "line-through" : "none" }}>{task.title}</div>
                     <div className="cc-dim" style={{ fontSize: 11.5 }}>{task.clientName}{task.due ? ` · frist ${formatDate(task.due)}` : " · uden frist"}</div>
-                  </Link>
+                  </>
+                );
+                return <div key={task.id} id={`crm-task-${task.id}`} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1, ...(focused ? { boxShadow: "inset 3px 0 0 var(--kinly-signal)", background: "var(--bg-3)", borderRadius: 8 } : {}) }}>
+                  <input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} disabled={busy || !dataOk} onChange={() => toggleTask(task)} style={{ width: 17, height: 17, flexShrink: 0 }} />
+                  {clientId
+                    ? <Link href={`/clients/${clientId}`} style={{ minWidth: 0, flex: 1, textDecoration: "none", color: "inherit" }}>{inner}</Link>
+                    : <div style={{ minWidth: 0, flex: 1 }}>{inner}</div>}
                   {overdue && <span className="cc-chip" style={{ color: "var(--red)", background: "var(--red-dim)" }}>forfalden</span>}
                 </div>;
               })}
+              {tasks.length > 12 && <p className="cc-dim" style={{ fontSize: 12, marginTop: 8 }}>Viser 12 af {tasks.length} opgaver — resten ligger på kundeprofilerne.</p>}
             </div>
           )}
         </section>
@@ -178,12 +204,18 @@ export default function CrmClient({
           <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>nyeste først</span>
         </div>
         {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen aktivitet endnu. Den første note, opgave eller kundekontakt kommer her.</p> : <div>
-          {activities.slice(0, 12).map((item) => <div key={item.id} className="crm-activity-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
-            <span className="cc-chip">{activityLabel[item.type]}</span>
-            <Link href={`/clients/${clientByName.get(item.clientName)?.id ?? ""}`} style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{item.clientName}</Link>
-            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{item.text}</span>
-            <span className="cc-dim" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>{formatActivityDate(item.at)}</span>
-          </div>)}
+          {activities.slice(0, 12).map((item) => {
+            const clientId = clientByName.get(item.clientName)?.id;
+            return <div key={item.id} className="crm-activity-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
+              <span className="cc-chip">{activityLabel[item.type]}</span>
+              {clientId
+                ? <Link href={`/clients/${clientId}`} style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{item.clientName}</Link>
+                : <span style={{ fontWeight: 600 }}>{item.clientName}</span>}
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{item.text}</span>
+              <span className="cc-dim" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>{formatActivityDate(item.at)}</span>
+            </div>;
+          })}
+          {activities.length > 12 && <p className="cc-dim" style={{ fontSize: 12, marginTop: 8 }}>Viser 12 af {activities.length} aktiviteter.</p>}
         </div>}
       </section>
     </div>

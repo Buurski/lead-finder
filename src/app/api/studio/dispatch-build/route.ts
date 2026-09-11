@@ -4,6 +4,7 @@ import { buildClaudeCodePrompt } from "@/lib/prompt-builder";
 import { templateBySlug, templateForBranch } from "@/lib/design-templates";
 import { slugify } from "@/lib/customer-recon";
 import { store } from "@/lib/store";
+import { isCommandCenterRequest } from "@/lib/cc-auth";
 
 // POST /api/studio/dispatch-build { name, branch, websiteUrl?, gmbUrl?, igNotes?, templateSlug? }
 // Builds the Claude Code build-prompt from cached (or fresh) recon + the branch
@@ -20,9 +21,9 @@ function ctEqual(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
-function checkAuth(req: NextRequest): boolean {
-  // Proxy-injiceret efter basic-auth; strippet udefra i src/proxy.ts (2026-08-19).
-  if (req.headers.get("x-command-center-auth") === "1") return true;
+async function checkAuth(req: NextRequest): Promise<boolean> {
+  // Proxy-injiceret HMAC efter basic-auth; alle udefrakommende kopier strippes i src/proxy.ts.
+  if (await isCommandCenterRequest(req)) return true;
   const expected = process.env.STUDIO_DISPATCH_SECRET || process.env.DEEP_RESEARCH_SECRET;
   if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
   const m = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
@@ -30,7 +31,7 @@ function checkAuth(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await checkAuth(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   let b: Partial<FullReconInput> & { templateSlug?: string };
   try {
