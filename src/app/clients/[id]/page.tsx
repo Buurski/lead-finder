@@ -59,13 +59,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const fm = note.ok ? note.frontmatter : {};
   const domain = fm.domain || "";
   const today = new Date().toISOString().slice(0, 10);
-  const [invoices, subscriptions, contactsResult, activitiesResult, tasksResult] = await Promise.all([
-    listInvoicesFor(client.name),
-    getSubscriptions(),
+  const [invoicesData, subscriptionsData, contactsResult, activitiesResult, tasksResult] = await Promise.all([
+    listInvoicesFor(client.name).catch(() => null),
+    getSubscriptions().catch(() => null),
     listContacts(client.name).catch(() => null),
     listActivities(client.name, 80).catch(() => null),
     listTasks(client.name).catch(() => null),
   ]);
+  // Økonomi-doktrin: et fejlet opslag må ikke ligne "0 kr" — panelet skjuler
+  // saldoen og siger det højt i stedet (samme mønster som CRM-sektionens dataOk).
+  const moneyOk = invoicesData !== null && subscriptionsData !== null;
+  const invoices = invoicesData ?? [];
+  const subscriptions = subscriptionsData ?? [];
   const subscription = subscriptions.find((item) => item.clientName === client.name);
   const balance = clientBalance(invoices, today);
   const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
@@ -89,7 +94,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-btn cc-btn-accent" style={{ textDecoration: "none", marginLeft: "auto" }}>Opret faktura</Link>
         </div>
 
-        {invoices.length === 0 ? (
+        {!moneyOk ? (
+          <span className="cc-dim" style={{ fontSize: 13 }}>Faktura-data kunne ikke hentes lige nu — der vises ingen saldo, så et tomt tal ikke narrer. Genindlæs om et øjeblik.</span>
+        ) : invoices.length === 0 ? (
           <span className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</span>
         ) : (
           <>

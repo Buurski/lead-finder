@@ -25,7 +25,7 @@ export default async function FakturaerPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="cc-fade">
-      <PageHeader icon="Receipt" title="Fakturaer" subtitle={`${invoices.length} fakturaer · ${subsWithNext.length} aktive abonnementer`} />
+      <PageHeader icon="Receipt" title="Fakturaer" subtitle={`${invoices.length} ${invoices.length === 1 ? "faktura" : "fakturaer"} · ${subsWithNext.length} ${subsWithNext.length === 1 ? "aktivt abonnement" : "aktive abonnementer"}`} />
       <FakturaClient invoices={invoices} subscriptions={subsWithNext} clients={clients} today={today} initialClientName={initialClientName} />
     </div>
   );
