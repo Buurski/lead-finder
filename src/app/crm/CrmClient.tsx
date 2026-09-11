@@ -30,6 +30,10 @@ function sortTasks(items: CrmTask[]): CrmTask[] {
   });
 }
 
+function openLabel(count: number): string {
+  return count === 1 ? "1 åben" : `${count} åbne`;
+}
+
 export default function CrmClient({
   clients,
   initialTasks,
@@ -142,7 +146,7 @@ export default function CrmClient({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Icon name="ListChecks" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700 }}>Opgaver</h2>
-            <span className="cc-chip" style={{ marginLeft: "auto" }}>{openTasks.length} åbne</span>
+            <span className="cc-chip" style={{ marginLeft: "auto" }}>{openLabel(openTasks.length)}</span>
           </div>
           <div className="crm-task-form" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 125px auto", gap: 8, marginBottom: 14 }}>
             <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: "var(--text-muted)" }}>Kunde
@@ -192,7 +196,7 @@ export default function CrmClient({
           {attention.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen kunder med åbne CRM-opgaver.</p> : <div style={{ display: "grid", gap: 8 }}>
             {attention.map((client) => <Link key={client.id} href={`/clients/${client.id}`} className="cc-hoverrow" style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", color: "inherit", textDecoration: "none", fontSize: 13.5 }}>
               <span><strong>{client.name}</strong><span className="cc-dim" style={{ display: "block", fontSize: 11.5 }}>{client.branch}</span></span>
-              <span className="cc-chip">{openTasks.filter((task) => task.clientName === client.name).length} åbne</span>
+              <span className="cc-chip">{openLabel(openTasks.filter((task) => task.clientName === client.name).length)}</span>
             </Link>)}
           </div>}
         </section>

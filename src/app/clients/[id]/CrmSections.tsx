@@ -24,6 +24,10 @@ function activityDate(value: string): string {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
+function openLabel(count: number): string {
+  return count === 1 ? "1 åben" : `${count} åbne`;
+}
+
 export default function CrmSections({
   clientName,
   initialContacts,
@@ -126,7 +130,7 @@ export default function CrmSections({
         {!dataOk && <span className="cc-chip" style={{ color: "var(--amber)", background: "var(--amber-dim)" }}>data kunne ikke hentes — felterne er låst</span>}
       </div>
       <div role="tablist" aria-label="CRM-sektioner" style={{ display: "flex", gap: 5, borderBottom: "1px solid var(--border)", marginBottom: 14, overflowX: "auto" }}>
-        {([["contacts", "Kontakter"], ["activity", "Aktivitet"], ["tasks", "Opgaver"]] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className="cc-btn" style={{ borderRadius: "8px 8px 0 0", borderBottom: tab === value ? "2px solid var(--kinly-signal)" : "2px solid transparent", background: tab === value ? "var(--bg-3)" : "transparent" }}>{label}{value === "contacts" ? ` (${contacts.length})` : value === "activity" ? ` (${activities.length})` : ` (${tasks.filter((task) => !task.done).length} åbne)`}</button>)}
+        {([["contacts", "Kontakter"], ["activity", "Aktivitet"], ["tasks", "Opgaver"]] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className="cc-btn" style={{ borderRadius: "8px 8px 0 0", borderBottom: tab === value ? "2px solid var(--kinly-signal)" : "2px solid transparent", background: tab === value ? "var(--bg-3)" : "transparent" }}>{label}{value === "contacts" ? ` (${contacts.length})` : value === "activity" ? ` (${activities.length})` : ` (${openLabel(tasks.filter((task) => !task.done).length)})`}</button>)}
       </div>
       {error && <p role="alert" style={{ color: "var(--red)", fontSize: 12.5, margin: "0 0 10px" }}>{error}</p>}
 
