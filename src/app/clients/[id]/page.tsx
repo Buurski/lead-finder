@@ -23,6 +23,12 @@ const STATUS_STYLE: Record<InvoiceStatus, { bg: string; fg: string; label: strin
   rykket: { bg: "var(--red-soft, #4a1f1f)", fg: "var(--red, #ff8a8a)", label: "rykket" },
 };
 
+// Rå status-værdier oversat, så siden ikke viser "in progress" midt i dansk UI.
+const WS_LABEL: Record<string, string> = { demo: "Demo", "in progress": "I gang", live: "Live" };
+function wsLabel(status: string): string {
+  return WS_LABEL[status] ?? (status.trim() || "Status ukendt");
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -76,11 +82,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
 
   return (
-    <div className="cc-fade">
+    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
         icon="Briefcase"
         title={client.name}
-        subtitle={`${client.branch} · ${client.websiteStatus}`}
+        subtitle={`${client.branch} · ${wsLabel(client.websiteStatus)}`}
         action={<Link href="/clients" className="cc-btn">← Klienter</Link>}
       />
 
@@ -112,7 +118,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-link" style={{ fontSize: 12.5 }}>Følg op →</Link>
               )}
             </div>
-            <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gap: 8 }}>
               {invoices.map((inv) => {
                 const total = invoiceTotal(inv).total;
                 const days = Math.round(
@@ -142,12 +148,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
       </Deliverable>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginTop: 16 }} className="cc-client-grid">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, alignItems: "start" }} className="cc-client-grid">
         <Deliverable icon="FileText" title="Aftale">
           <Row k="Setup" v={client.setupFee ? `${client.setupFee} kr` : "—"} />
           <Row k="Pr. måned" v={client.monthlyFee ? `${client.monthlyFee} kr` : "—"} />
-          <Row k="Brief" v={client.briefFilled ? "udfyldt" : "mangler"} />
-          <Link href={`/clients/${id}/brief`} className="cc-link" style={{ fontSize: 12.5, marginTop: 4, display: "inline-block" }}>Åbn brief →</Link>
+          <Row k="Sitet" v={wsLabel(client.websiteStatus)} />
         </Deliverable>
 
         <Deliverable icon="LayoutGrid" title="Redigér (CMS)">
@@ -176,26 +181,42 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </Deliverable>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <ClientSeoWidget name={client.name} domain={domain} />
-      </div>
+      <ClientSeoWidget name={client.name} domain={domain} />
 
       <CrmSections
         clientName={client.name}
         initialContacts={contactsResult ?? []}
-        initialActivities={activitiesResult ?? []}
         initialTasks={tasksResult ?? []}
+        initialActivities={activitiesResult ?? []}
         today={today}
         dataOk={crmDataOk}
       />
-      <section className="cc-card cc-card-pad" style={{ marginTop: 16 }}>
+
+      <section className="cc-card cc-card-pad">
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
           <Icon name="Brain" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Vault-note</h2>
           <span className="cc-dim" style={{ marginLeft: "auto", fontSize: 12 }}>{note.ok ? `${note.source} · ${note.pathRel}` : "ikke oprettet endnu"}</span>
         </div>
         {note.ok ? (
-          <MarkdownLite source={note.body} />
+          <>
+            {/* Noten er lang historik — vis et kort uddrag og lad resten være ét klik væk.
+                Fuld dump gjorde siden uoverskuelig (Lucas 13/9). */}
+            <p className="cc-dim" style={{ fontSize: 12.5, marginBottom: 8 }}>
+              {note.body.split("\n").filter((l) => l.trim()).length} linjer · opdateres i Obsidian
+            </p>
+            <details>
+              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--accent-ink)" }}>
+                Vis hele noten
+              </summary>
+              <div style={{ marginTop: 12 }}>
+                <MarkdownLite source={note.body} />
+              </div>
+            </details>
+            <a href={`https://github.com/Buurski/KnowledgeOS/blob/master/${note.pathRel}`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5, marginTop: 10, display: "inline-block" }}>
+              Åbn noten på GitHub ↗
+            </a>
+          </>
         ) : (
           <p className="cc-dim" style={{ fontSize: 13 }}>
             Noten oprettes automatisk når et lead bliver til klient. Den kan også laves manuelt i KnowledgeOS/{note.pathRel}.
@@ -210,7 +231,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
 function Deliverable({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 7 }}>
+    <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Icon name={icon} style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
         <h3 style={{ fontSize: 13.5, fontWeight: 600 }}>{title}</h3>

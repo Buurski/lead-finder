@@ -9,18 +9,13 @@ import Link from "next/link";
 export const revalidate = 0;
 
 // Kunde-arbejdsflade, ikke kartotek. Kunderne grupperes efter afstand til
-// handling — rækkefølgen ER prioriteringen, så det der blokerer ligger øverst.
+// handling — rækkefølgen ER prioriteringen.
 //
 // Bevidst udeladt i v1: "seneste lead eller svar" pr. kunde. Den eneste
 // join-nøgle mellem Client og leads/svar/udkast er firmanavn-strengen (fri
 // tekst, ingen normalisering), og et forkert match ville vise én kundes svar
 // på en andens kort. Det står som en ærlig note nederst i stedet.
 
-// Blokeret = kan ikke bygges videre på. Live sites er aldrig blokerede, selv
-// hvis brief-feltet står tomt — dér mangler der data, ikke arbejde.
-function isBlocked(c: Client): boolean {
-  return !c.briefFilled && c.websiteStatus !== "live";
-}
 // Live kunde uden pris = leverer gratis, eller nogen har glemt at taste den ind.
 function missingPrice(c: Client): boolean {
   return c.websiteStatus === "live" && !c.monthlyFee.trim();
@@ -57,15 +52,13 @@ export default async function ClientsPage() {
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
   const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
 
-  const blocked = clients.filter(isBlocked);
-  const running = clients.filter((c) => !isBlocked(c) && c.websiteStatus === "live");
-  const inProgress = clients.filter((c) => !isBlocked(c) && c.websiteStatus !== "live");
+  const running = clients.filter((c) => c.websiteStatus === "live");
+  const inProgress = clients.filter((c) => c.websiteStatus !== "live");
   const priceGaps = running.filter(missingPrice);
 
   const groups: { key: string; title: string; sub: string; items: Client[] }[] = [
-    { key: "blocked", title: "Kræver handling", sub: "Mangler brief, og sitet er ikke live endnu — der kan ikke bygges videre.", items: blocked },
-    { key: "progress", title: "I gang", sub: "Demo eller under bygning. Ikke blokeret.", items: inProgress },
-    { key: "running", title: "Kører", sub: "Live sites. En manglende brief her blokerer intet — sitet står allerede oppe.", items: running },
+    { key: "running", title: "Kører", sub: "Live sites — leveres der.", items: running },
+    { key: "progress", title: "I gang", sub: "Demo eller under bygning — ikke live endnu.", items: inProgress },
   ];
 
   return (
@@ -94,36 +87,27 @@ export default async function ClientsPage() {
       ) : (
         <>
           {/* Næste skridt — én konkret handling, aldrig en liste af lige vigtige ting. */}
-          {blocked.length > 0 ? (
+          {priceGaps.length > 0 ? (
             <div className="cc-card cc-card-pad kinly-focus-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ minWidth: 0 }}>
                 <div className="cc-kicker">Næste skridt</div>
                 <div style={{ marginTop: 4 }}>
-                  {blocked.length === 1
-                    ? <>{blocked[0].name} mangler brief.</>
-                    : <>{blocked.length} kunder mangler brief — start med {blocked[0].name}.</>}
+                  {priceGaps.length === 1
+                    ? <>{priceGaps[0].name} er live uden pris.</>
+                    : <>{priceGaps.length} live sites mangler pris — start med {priceGaps[0].name}.</>}
                 </div>
               </div>
-              <Link href={`/clients/${blocked[0].id}/brief`} className="cc-btn kinly-next-action" style={{ marginLeft: "auto", textDecoration: "none" }}>
-                Udfyld brief
+              <Link href="/clients" className="cc-btn kinly-next-action" style={{ marginLeft: "auto", textDecoration: "none" }}>
+                Sæt pris
               </Link>
             </div>
           ) : (
             <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 9, alignItems: "center", color: "var(--text-muted)", fontSize: 13.5 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--kinly-signal)", flexShrink: 0 }} />
-              Ingen kunder er blokerede.{" "}
-              {priceGaps.length > 0
-                ? `${priceGaps.length} live ${priceGaps.length === 1 ? "site mangler" : "sites mangler"} pris.`
-                : inProgress.length > 0
-                  ? `${inProgress.length} ${inProgress.length === 1 ? "kunde er" : "kunder er"} i gang.`
-                  : "Alt kører."}
-            </div>
-          )}
-
-          {priceGaps.length > 0 && (
-            <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
-              <span className="cc-chip" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>økonomi</span>
-              <span style={{ minWidth: 0 }}>Live uden pris: {priceGaps.map((c) => c.name).join(", ")}. Prisfeltet er tomt — er det aftalt gratis, så skriv 0.</span>
+              Ingen kunder kræver handling.{" "}
+              {inProgress.length > 0
+                ? `${inProgress.length} ${inProgress.length === 1 ? "kunde er" : "kunder er"} i gang.`
+                : "Alt kører."}
             </div>
           )}
 

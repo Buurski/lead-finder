@@ -18,7 +18,7 @@ function summary(over: Partial<DeckSummary> = {}): DeckSummary {
     revenue: { monthlyDKK: 0, setupDKK: 0, clientCount: 0, payingClientCount: 0, goalMonthlyDKK: 0 },
     previews: { ready: 0, ok: true },
     feeds: [],
-    clientHealth: { blocked: 0, liveWithoutFee: 0, ok: true },
+    clientHealth: { liveWithoutFee: 0, ok: true },
     invoicesOverdue: 0,
     pause: null,
     buckets: { indtjening: false, kunder: false, kalender: false, kommunikation: false, moeder: false, opgaver: false, viden: true },
@@ -37,16 +37,15 @@ test("svar slår alt andet", () => {
   assert.ok(a.reason.length > 0);
 });
 
-test("stigen følger rækkefølgen svar → kø → udkast → brief → økonomi", () => {
+test("stigen følger rækkefølgen svar → kø → udkast → økonomi", () => {
   assert.equal(nextAction(summary({ queue: { count: 3, pending: 3, top: [] } })).source, "queue");
   assert.equal(nextAction(summary({ previews: { ready: 1, ok: true } })).source, "previews");
-  assert.equal(nextAction(summary({ clientHealth: { blocked: 2, liveWithoutFee: 1, ok: true } })).source, "clients");
-  assert.equal(nextAction(summary({ clientHealth: { blocked: 0, liveWithoutFee: 1, ok: true } })).source, "okonomi");
+  assert.equal(nextAction(summary({ clientHealth: { liveWithoutFee: 1, ok: true } })).source, "okonomi");
 });
 
 test("offline Sheets bliver aldrig en presserende handling", () => {
   // ok:false betyder tomme arrays, ikke "ingenting at lave".
-  const a = nextAction(summary({ ok: false, clientHealth: { blocked: 0, liveWithoutFee: 0, ok: false } }));
+  const a = nextAction(summary({ ok: false, clientHealth: { liveWithoutFee: 0, ok: false } }));
   assert.equal(a.degraded, true);
   assert.equal(a.priority, 99);
   assert.equal(a.source, "none");
@@ -60,8 +59,9 @@ test("offline kilde blokerer ikke en pålidelig kø", () => {
 });
 
 test("manglende previews-felt springes over i stedet for at tælle som nul", () => {
-  const a = nextAction(summary({ previews: undefined, clientHealth: { blocked: 3, liveWithoutFee: 0, ok: true } }));
-  assert.equal(a.source, "clients");
+  const a = nextAction(summary({ previews: undefined, clientHealth: { liveWithoutFee: 1, ok: true } }));
+  assert.equal(a.source, "okonomi");
+  assert.equal(a.priority, 5);
 });
 
 test("lead-opfølgning slår 'find nye leads'", () => {

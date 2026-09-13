@@ -100,10 +100,9 @@ export function buildValueChain(s: DeckSummary): ValueChainStage[] {
  *  1. svar der kræver Lucas/Charlie
  *  2. godkendelseskøen
  *  3. gratis udkast klar til gennemsyn
- *  4. kunde blokeret (mangler brief)
- *  5. økonomi der kræver opmærksomhed (live site uden pris)
- *  6. lead der skal følges op
- *  7. find nye leads (eller: sig det, hvis lead-motoren er gået i stå)
+ *  4. økonomi der kræver opmærksomhed (live site uden pris)
+ *  5. lead der skal følges op
+ *  6. find nye leads (eller: sig det, hvis lead-motoren er gået i stå)
  */
 export function nextAction(s: DeckSummary): NextAction {
   // Sheets nede → leads-, svar- og kundetal er tomme arrays, ikke nuller. Alt
@@ -176,17 +175,6 @@ export function nextAction(s: DeckSummary): NextAction {
       priority: 3,
       source: "previews",
       count: s.previews.ready,
-    };
-  }
-
-  if (s.clientHealth?.ok && s.clientHealth.blocked > 0) {
-    return {
-      label: s.clientHealth.blocked === 1 ? "Udfyld manglende brief" : `Udfyld ${s.clientHealth.blocked} manglende briefs`,
-      href: "/clients",
-      reason: "Der kan ikke bygges videre på kunden før briefen er udfyldt.",
-      priority: 4,
-      source: "clients",
-      count: s.clientHealth.blocked,
     };
   }
 

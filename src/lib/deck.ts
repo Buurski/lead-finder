@@ -96,7 +96,7 @@ export interface DeckSummary {
   // optional med vilje: mangler feltet, er kilden ikke leveret, og trinnet
   // springes over i stedet for at blive læst som "nul at lave".
   previews?: { ready: number; ok: boolean };
-  clientHealth?: { blocked: number; liveWithoutFee: number; ok: boolean };
+  clientHealth?: { liveWithoutFee: number; ok: boolean };
   /** Forfaldne fakturaer (status forfalden/rykket) fra den lokale faktura-store.
    *  Bell-badget og faktura-strippen deler dette tal, så de aldrig drifter. */
   invoicesOverdue: number;
@@ -310,7 +310,6 @@ export async function buildDeckSummary(): Promise<DeckSummary> {
   // Kunde-huller: blokeret = mangler brief og er ikke live. Live uden pris er et
   // økonomi-hul, ikke en blokering.
   const clientHealth: DeckSummary["clientHealth"] = {
-    blocked: clients.filter((c) => !c.briefFilled && c.websiteStatus !== "live").length,
     liveWithoutFee: clients.filter((c) => c.websiteStatus === "live" && !c.monthlyFee.trim()).length,
     ok, // Sheets nede => tallene er 0 fordi listen er tom, ikke fordi alt er fint
   };

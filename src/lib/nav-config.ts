@@ -45,6 +45,7 @@ export const NAV_TREE: NavNode[] = [
     children: [
       { href: "/crm", label: "CRM", paletteLabel: "Kunder · CRM", icon: "Users", hint: "Opgaver, aktivitet og næste handling" },
       { href: "/clients", label: "Kunder & sites", paletteLabel: "Kunder · Kunder & sites", icon: "Briefcase", hint: "Kundeprofiler, sites og leverancer" },
+      { href: "/fakturaer", label: "Fakturaer", paletteLabel: "Kunder · Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
     ],
   },
   {

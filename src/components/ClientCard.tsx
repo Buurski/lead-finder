@@ -1,15 +1,15 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen, CheckCircle, Clock, ArrowRight, Pencil, Receipt } from "lucide-react";
+import { FolderOpen, ArrowRight, Pencil, Receipt } from "lucide-react";
 import Link from "next/link";
 import type { Client } from "@/lib/sheets";
 import type { ClientEconomy } from "@/lib/invoices";
 
-const WS_STYLE = {
-  demo:          { label: "Demo klar", color: "var(--blue)", bg: "var(--blue-dim)" },
-  "in progress": { label: "I gang",    color: "var(--text-muted)", bg: "var(--bg-3)" },
-  live:          { label: "Live",      color: "var(--green)", bg: "var(--green-dim)" },
+const WS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  demo:          { label: "Demo",    color: "var(--blue)", bg: "var(--blue-dim)" },
+  "in progress": { label: "I gang",  color: "var(--text-muted)", bg: "var(--bg-3)" },
+  live:          { label: "Live",    color: "var(--green)", bg: "var(--green-dim)" },
 };
 
 function safeProjectLabel(value: string): string {
@@ -23,7 +23,7 @@ function safeProjectLabel(value: string): string {
 }
 
 export default function ClientCard({ client, economy }: { client: Client; economy?: ClientEconomy }) {
-  // Ukendt status må ikke vises som "Demo klar" — så ville en forkert værdi i
+  // Ukendt status må ikke vises som "Demo" — så ville en forkert værdi i
   // arket ligne en rigtig tilstand. Vis den rå værdi i stedet.
   const ws = WS_STYLE[client.websiteStatus] ?? { label: client.websiteStatus?.trim() || "Status ukendt", color: "var(--amber)", bg: "var(--amber-dim)" };
   const router = useRouter();
@@ -79,7 +79,7 @@ export default function ClientCard({ client, economy }: { client: Client; econom
         padding: 20,
         display: "flex",
         flexDirection: "column",
-        gap: 14,
+        gap: 16,
         transition: "border-color 0.15s",
       }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border-light)"}
@@ -107,17 +107,6 @@ export default function ClientCard({ client, economy }: { client: Client; econom
             {removing ? "Fjerner…" : "Fjern"}
           </button>
         </div>
-      </div>
-
-      {/* En manglende brief blokerer kun hvis sitet ikke er live endnu. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
-        {client.briefFilled
-          ? <CheckCircle size={13} style={{ color: "var(--green)" }} />
-          : <Clock size={13} />
-        }
-        {client.briefFilled
-          ? "Brief udfyldt"
-          : client.websiteStatus === "live" ? "Brief ikke udfyldt — sitet er live alligevel" : "Brief mangler"}
       </div>
 
       {client.projectFolder && (
@@ -201,38 +190,12 @@ export default function ClientCard({ client, economy }: { client: Client; econom
         </div>
       )}
 
-      <Link href={`/clients/${client.id}`}
-        style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "var(--accent-ink)", textDecoration: "none", marginTop: client.briefFilled ? "auto" : 0 }}
+      {/* Én tydelig primær handling — resten hører hjemme på klientens side. */}
+      <Link href={`/clients/${client.id}`} className="cc-btn cc-btn-accent"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", padding: "10px 0", fontSize: 13.5, fontWeight: 600, marginTop: "auto" }}
       >
-        Åbn klient <ArrowRight size={13} />
+        Åbn klient <ArrowRight size={14} />
       </Link>
-
-      {!client.briefFilled && (
-        <Link href={`/clients/${client.id}/brief`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            // Sidens primære handling er "Udfyld brief" i toppen. Kortets egen
-            // knap er sekundær, ellers bliver skærmen en mur af sorte knapper.
-            background: "var(--surface)",
-            color: "var(--text)",
-            border: "1px solid var(--border-light)",
-            borderRadius: 8,
-            padding: "9px 0",
-            fontSize: 13,
-            fontWeight: 600,
-            textDecoration: "none",
-            marginTop: "auto",
-            transition: "opacity 0.15s",
-          }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.85"}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
-        >
-          Start Design <ArrowRight size={14} />
-        </Link>
-      )}
     </div>
   );
 }
