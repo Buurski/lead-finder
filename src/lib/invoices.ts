@@ -3,6 +3,7 @@
 // store-funktioner nederst efter mønsteret i queue.ts (import { store }).
 
 import { store } from "./store.ts";
+import { canonicalClientName } from "./client-alias.ts";
 
 export interface InvoiceLine {
   description: string;
@@ -244,7 +245,8 @@ export async function listInvoices(): Promise<Invoice[]> {
 
 export async function listInvoicesFor(clientName: string): Promise<Invoice[]> {
   const all = await listInvoices();
-  return all.filter((inv) => inv.clientName === clientName);
+  // Alias-normaliseret sammenligning — 'Vida' og 'VIDA Skønhedsklinik' er samme kunde.
+  return all.filter((inv) => canonicalClientName(inv.clientName) === canonicalClientName(clientName));
 }
 
 export async function getSubscriptions(): Promise<Subscription[]> {

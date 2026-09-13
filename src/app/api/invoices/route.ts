@@ -5,6 +5,7 @@ import {
 } from "@/lib/invoices.ts";
 import { store } from "@/lib/store.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
+import { appendSystemActivity } from "@/lib/crm.ts";
 
 // GET /api/invoices — liste (nyeste først, allerede sorteret af listInvoices).
 // POST /api/invoices — opret kladde: nummer via nextInvoiceNumber, dueDate = issueDate+14.
@@ -109,5 +110,7 @@ export async function POST(req: Request) {
   };
 
   await saveInvoice(inv);
+  // System-hændelse i CRM-loggen (per-dag-dedup) — må ikke blokere en gemt faktura.
+  await appendSystemActivity(clientName, `inv_${number}_created_${issueDate}`, `Faktura ${number} oprettet som kladde`).catch(() => {});
   return NextResponse.json({ ok: true, invoice: inv });
 }

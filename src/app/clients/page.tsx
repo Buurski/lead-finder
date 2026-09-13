@@ -1,5 +1,6 @@
 import { getClients, type Client } from "@/lib/sheets";
 import { listInvoices, getSubscriptions, clientEconomy, type ClientEconomy } from "@/lib/invoices";
+import { canonicalClientName, unmatchedNames } from "@/lib/client-alias";
 import ClientCard from "@/components/ClientCard";
 import AddClientForm from "@/components/AddClientForm";
 import PageHeader from "@/components/shell/PageHeader";
@@ -35,19 +36,30 @@ export default async function ClientsPage() {
   // Fakturaer hentes ÉN gang og grupperes — ikke ét opslag pr. kundekort.
   // Fejler kilden, får ingen kunde en økonomi-linje (i stedet for en falsk en).
   let economy = new Map<string, ClientEconomy>();
+  let allInvoices: Awaited<ReturnType<typeof listInvoices>> = [];
+  let allSubs: Awaited<ReturnType<typeof getSubscriptions>> = [];
   try {
     const [invoices, subs] = await Promise.all([listInvoices(), getSubscriptions()]);
+    allInvoices = invoices;
+    allSubs = subs;
     const today = new Date().toISOString().slice(0, 10);
     for (const c of clients) {
       economy.set(c.name, clientEconomy(
-        invoices.filter((i) => i.clientName === c.name),
-        subs.find((sub) => sub.clientName === c.name),
+        invoices.filter((i) => canonicalClientName(i.clientName) === canonicalClientName(c.name)),
+        subs.find((sub) => canonicalClientName(sub.clientName) === canonicalClientName(c.name)),
         today,
       ));
     }
   } catch {
     economy = new Map();
   }
+
+  // Council-krav 13/9: faktura-navne der ikke kan kobles til en kunde skal
+  // FLAGES — ikke forsvinde stille. (Kilde til stille fejl: forkert kunde.)
+  const orphanNames = unmatchedNames(
+    [...allInvoices.map((i) => i.clientName), ...allSubs.map((s) => s.clientName)],
+    clients.map((c) => c.name),
+  );
 
   const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
   const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
@@ -108,6 +120,15 @@ export default async function ClientsPage() {
               {inProgress.length > 0
                 ? `${inProgress.length} ${inProgress.length === 1 ? "kunde er" : "kunder er"} i gang.`
                 : "Alt kører."}
+            </div>
+          )}
+
+          {orphanNames.length > 0 && (
+            <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
+              <span className="cc-chip" style={{ background: "var(--red-dim)", color: "var(--red)" }}>tjek</span>
+              <span style={{ minWidth: 0 }}>
+                Faktura-navne uden kunde: {orphanNames.join(", ")} — opret kunden eller tilføj et alias i <code>client-alias.ts</code>.
+              </span>
             </div>
           )}
 

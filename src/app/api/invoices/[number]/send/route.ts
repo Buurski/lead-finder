@@ -4,6 +4,7 @@ import { renderInvoicePdf } from "@/lib/invoice-pdf.tsx";
 import { getTransporter, formatFrom, applySignature, applySignatureHtml } from "@/lib/senders.ts";
 import { store } from "@/lib/store.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
+import { appendSystemActivity } from "@/lib/crm.ts";
 
 // POST /api/invoices/[number]/send — kaldes KUN fra UI-knap (aldrig automatisk).
 // Tilladt fra status "kladde" eller "sendt" (gen-send). Render PDF, arkivér i
@@ -76,6 +77,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     inv.sentAt = new Date().toISOString();
     inv.pdfUrl = pdfUrl;
     await saveInvoice(inv);
+
+    // System-hændelse i CRM-loggen (per-dag-dedup).
+    await appendSystemActivity(inv.clientName, `inv_${number}_sent_${new Date().toISOString().slice(0, 10)}`, `Faktura ${number} sendt`).catch(() => {});
 
     return NextResponse.json({ ok: true, invoice: inv });
   } catch (err) {

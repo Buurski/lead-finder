@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getInvoice, saveInvoice, applyStatusChange, type InvoiceStatus } from "@/lib/invoices.ts";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
+import { appendSystemActivity } from "@/lib/crm.ts";
 
 // POST /api/invoices/[number]/status — manuelt statusskift (fra UI). Sætter
 // paidAt/remindedAt timestamps ved overgang til "betalt"/"rykket".
@@ -27,6 +28,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
   const status = body.status as InvoiceStatus;
   const updated = applyStatusChange(inv, status, new Date().toISOString());
   await saveInvoice(updated);
+
+  // System-hændelse i CRM-loggen (per-dag-dedup).
+  const today = new Date().toISOString().slice(0, 10);
+  const statusText: Record<InvoiceStatus, string> = {
+    kladde: "tilbage til kladde", sendt: "markeret sendt", betalt: "markeret betalt",
+    forfalden: "markeret forfalden", rykket: "rykket",
+  };
+  await appendSystemActivity(inv.clientName, `inv_${number}_${status}_${today}`, `Faktura ${number} ${statusText[status]}`).catch(() => {});
 
   return NextResponse.json({ ok: true, invoice: updated });
 }

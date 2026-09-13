@@ -9,6 +9,7 @@ import { getClients } from "@/lib/sheets";
 import { readVaultNote } from "@/lib/vault";
 import { clientNoteRel } from "@/lib/client-notes";
 import { clientBalance, getSubscriptions, invoiceTotal, listInvoicesFor, nextDueDate, type InvoiceStatus } from "@/lib/invoices.ts";
+import { canonicalClientName } from "@/lib/client-alias.ts";
 import { listActivities, listContacts, listTasks } from "@/lib/crm";
 import CrmSections from "./CrmSections";
 import InvoiceStatusButton from "./InvoiceStatusButton";
@@ -77,7 +78,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const moneyOk = invoicesData !== null && subscriptionsData !== null;
   const invoices = invoicesData ?? [];
   const subscriptions = subscriptionsData ?? [];
-  const subscription = subscriptions.find((item) => item.clientName === client.name);
+  const subscription = subscriptions.find((item) => canonicalClientName(item.clientName) === canonicalClientName(client.name));
   const balance = clientBalance(invoices, today);
   const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
 

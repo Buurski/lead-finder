@@ -26,8 +26,20 @@ export function clientSlug(name: string): string {
   return slugify(name);
 }
 
+// Eksplicitte note-overrides: navne der ikke kan slugges til det faktiske
+// filnavn i wiki/kunder/. (VIDA's kanoniske navn slugger til "vida-skoenhedsklinik",
+// men noten hedder kunde-info-vida.md; KT VVS → ktvvs.md.)
+const NOTE_OVERRIDES: Record<string, string> = {
+  "VIDA Skønhedsklinik": "kunde-info-vida",
+  "KT VVS": "ktvvs",
+};
+
+export function clientNoteFile(name: string): string {
+  return NOTE_OVERRIDES[name.trim()] ?? clientSlug(name);
+}
+
 export function clientNoteRel(name: string): string {
-  return `wiki/kunder/${clientSlug(name)}.md`;
+  return `wiki/kunder/${clientNoteFile(name)}.md`;
 }
 
 function template(c: ClientLike): string {
@@ -86,7 +98,7 @@ export interface EnsureResult {
 // Create the note if it doesn't exist. Never overwrites an existing note.
 export function ensureClientNote(c: ClientLike): EnsureResult {
   const rel = clientNoteRel(c.name);
-  const abs = path.join(process.cwd(), "KnowledgeOS", "wiki", "kunder", `${clientSlug(c.name)}.md`);
+  const abs = path.join(process.cwd(), "KnowledgeOS", "wiki", "kunder", `${clientNoteFile(c.name)}.md`);
   try {
     if (fs.existsSync(abs)) return { ok: true, rel, created: false };
     fs.mkdirSync(KUNDER_DIR, { recursive: true });

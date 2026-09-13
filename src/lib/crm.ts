@@ -170,6 +170,33 @@ export async function addActivity(input: Partial<CrmActivity>): Promise<CrmActiv
   return activity;
 }
 
+/**
+ * System-hændelse (fx "Faktura 009 oprettet som kladde"). Append-only med
+ * per-dag-dedupe på eventKey, actor: "system", type: "invoice". Skriver KUN
+ * for kendte kunder (ukendte navne flagges på /clients i stedet), og må aldrig
+ * blokere den underliggende handling — kalderen .catch'er.
+ * Council-krav 13/9: systemhændelser holdes adskilt fra menneskelig aktivitet.
+ */
+export async function appendSystemActivity(clientName: string, eventKey: string, text: string): Promise<void> {
+  let client: Client;
+  try {
+    client = await assertKnownClient(clientName);
+  } catch {
+    return;
+  }
+  const actId = `sys_${eventKey}`;
+  const all = await store.readAll(ACTIVITY_KEY);
+  if (all.map(parseActivity).some((a) => a?.id === actId)) return;
+  await store.append(ACTIVITY_KEY, {
+    id: actId,
+    clientName: client.name,
+    at: new Date().toISOString(),
+    type: "invoice",
+    text: validText(text, "tekst", 500),
+    actor: "system",
+  } satisfies CrmActivity);
+}
+
 function parseTask(value: unknown): CrmTask | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<CrmTask>;
