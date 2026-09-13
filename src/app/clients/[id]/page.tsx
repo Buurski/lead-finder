@@ -52,7 +52,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   }
   if (!sheetsOk) {
     return (
-      <div className="cc-fade">
+      <div className="cc-fade cc-client-page">
         <PageHeader icon="Briefcase" title="Klient" subtitle="kunne ikke hentes" action={<Link href="/clients" className="cc-btn">← Klienter</Link>} />
         <WarnBanner>
           Kunne ikke nå Google Sheets lige nu — klienten er der stadig. Genindlæs om et øjeblik.
@@ -83,7 +83,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const crmDataOk = contactsResult !== null && activitiesResult !== null && tasksResult !== null;
 
   return (
-    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="cc-fade" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <PageHeader
         icon="Briefcase"
         title={client.name}
@@ -119,7 +119,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <Link href={`/fakturaer?clientName=${encodeURIComponent(client.name)}`} className="cc-link" style={{ fontSize: 12.5 }}>Følg op →</Link>
               )}
             </div>
-            <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
               {invoices.map((inv) => {
                 const total = invoiceTotal(inv).total;
                 const days = Math.round(
@@ -146,10 +146,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             </div>
           </>
         )}
-        <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 2, display: "inline-block" }}>Åbn fakturaer →</Link>
+        <Link href="/fakturaer" className="cc-link" style={{ fontSize: 12.5, marginTop: 14, display: "inline-block" }}>Åbn fakturaer →</Link>
       </Deliverable>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, alignItems: "start" }} className="cc-client-grid">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }} className="cc-client-grid">
         <Deliverable icon="FileText" title="Aftale">
           <Row k="Setup" v={client.setupFee ? `${client.setupFee} kr` : "—"} />
           <Row k="Pr. måned" v={client.monthlyFee ? `${client.monthlyFee} kr` : "—"} />
@@ -203,11 +203,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <>
             {/* Noten er lang historik — vis et kort uddrag og lad resten være ét klik væk.
                 Fuld dump gjorde siden uoverskuelig (Lucas 13/9). */}
-            <p className="cc-dim" style={{ fontSize: 12.5, marginBottom: 8 }}>
+            <p className="cc-dim" style={{ fontSize: 12.5, marginBottom: 12 }}>
               {note.body.split("\n").filter((l) => l.trim()).length} linjer · opdateres i Obsidian
             </p>
             <details>
-              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--accent-ink)" }}>
+              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--accent-ink)", marginTop: 10, display: "inline-block" }}>
                 Vis hele noten
               </summary>
               <div style={{ marginTop: 12 }}>

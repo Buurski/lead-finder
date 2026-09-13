@@ -122,9 +122,9 @@ export default function CrmSections({
   }
 
   return (
-    <section className="cc-card cc-card-pad" style={{ marginTop: 16 }}>
+    <section className="cc-card cc-card-pad">
       <style>{`@media(max-width:760px){.crm-contact-form{grid-template-columns:1fr!important}.crm-profile-actions{flex-direction:column!important;align-items:stretch!important}}`}</style>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
         <Icon name="Users" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, marginRight: "auto" }}>CRM</h2>
         {!dataOk && <span className="cc-chip" style={{ color: "var(--amber)", background: "var(--amber-dim)" }}>data kunne ikke hentes — felterne er låst</span>}
@@ -135,7 +135,7 @@ export default function CrmSections({
       {error && <p role="alert" style={{ color: "var(--red)", fontSize: 12.5, margin: "0 0 10px" }}>{error}</p>}
 
       {tab === "contacts" && <div role="tabpanel">
-        <div className="crm-contact-form" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
+        <div className="crm-contact-form" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, marginBottom: 18 }}>
           <Field label="Navn" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
           <Field label="Rolle" value={draft.role} onChange={(value) => setDraft({ ...draft, role: value })} />
           <Field label="E-mail" value={draft.email} onChange={(value) => setDraft({ ...draft, email: value })} type="email" />
@@ -163,7 +163,7 @@ export default function CrmSections({
           <label style={labelStyle}>Hvad skete der?<textarea aria-label="Aktivitetstekst" rows={2} value={activityText} onChange={(event) => setActivityText(event.target.value)} style={{ ...inputStyle, resize: "vertical" }} /></label>
           <button type="button" className="cc-btn cc-btn-accent" onClick={addActivity} disabled={busy || !dataOk} style={{ alignSelf: "end" }}>Gem</button>
         </div>
-        {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen historik endnu.</p> : activities.map((item) => <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span className="cc-chip" style={item.actor === "system" ? { opacity: 0.7 } : undefined}>{item.actor === "system" ? `system · ${item.type}` : item.type}</span><span style={{ flex: 1 }}>{item.text}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{activityDate(item.at)}</span></div>)}
+        {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen historik endnu.</p> : activities.map((item) => <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "11px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span className="cc-chip" style={item.actor === "system" ? { opacity: 0.7 } : undefined}>{item.actor === "system" ? `system · ${item.type}` : item.type}</span><span style={{ flex: 1 }}>{item.text}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{activityDate(item.at)}</span></div>)}
       </div>}
 
       {tab === "tasks" && <div role="tabpanel">
@@ -172,7 +172,7 @@ export default function CrmSections({
           <label style={labelStyle}>Frist<input aria-label="Ny opgavefrist" type="date" value={taskDue} onChange={(event) => setTaskDue(event.target.value)} style={inputStyle} /></label>
           <button type="button" className="cc-btn cc-btn-accent" onClick={addTask} disabled={busy || !dataOk} style={{ alignSelf: "end" }}>Tilføj</button>
         </div>
-        {tasks.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen opgaver for kunden.</p> : tasks.map((task) => <div key={task.id} style={{ display: "flex", gap: 9, alignItems: "center", padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1 }}><input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} disabled={busy || !dataOk} onChange={() => toggleTask(task)} style={{ width: 17, height: 17 }} /><span style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", fontSize: 13.5 }}>{task.title}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{task.due ? `frist ${formatDate(task.due)}` : "uden frist"}{!task.done && task.due && task.due < today ? " · forfalden" : ""}</span></div>)}
+        {tasks.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen opgaver for kunden.</p> : tasks.map((task) => <div key={task.id} style={{ display: "flex", gap: 9, alignItems: "center", padding: "11px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1 }}><input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} disabled={busy || !dataOk} onChange={() => toggleTask(task)} style={{ width: 17, height: 17 }} /><span style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", fontSize: 13.5 }}>{task.title}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{task.due ? `frist ${formatDate(task.due)}` : "uden frist"}{!task.done && task.due && task.due < today ? " · forfalden" : ""}</span></div>)}
       </div>}
     </section>
   );

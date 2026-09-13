@@ -32,7 +32,7 @@ export default function ClientSeoWidget({ name, domain }: { name: string; domain
 
   return (
     <section className="cc-card cc-card-pad">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <Icon name="Search" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>SEO-status</h2>
         <input
@@ -53,7 +53,7 @@ export default function ClientSeoWidget({ name, domain }: { name: string; domain
           <Line k="Lighthouse" v={result.lighthouse?.note ?? "n/a"} />
         </div>
       )}
-      {state === "idle" && <p className="cc-dim" style={{ fontSize: 12.5, marginTop: 8 }}>Kører schema-scan + Lighthouse (hvis installeret). Skriver intet.</p>}
+      {state === "idle" && <p className="cc-dim" style={{ fontSize: 12.5, marginTop: 10 }}>Kører schema-scan + Lighthouse (hvis installeret). Skriver intet.</p>}
     </section>
   );
 }

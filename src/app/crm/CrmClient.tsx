@@ -141,14 +141,14 @@ export default function CrmClient({
 
       {!dataOk && <div className="cc-card cc-card-pad" style={{ borderColor: "var(--amber)", color: "var(--amber)", fontSize: 13 }}>CRM-lageret svarer ikke. Dine indtastninger er ikke gemt, og knapperne er låst indtil forbindelsen er tilbage.</div>}
 
-      <div className="crm-hub-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(300px, .9fr)", gap: 16, alignItems: "start" }}>
+      <div className="crm-hub-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(300px, .9fr)", gap: 24, alignItems: "start" }}>
         <section className="cc-card cc-card-pad">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <Icon name="ListChecks" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700 }}>Opgaver</h2>
             <span className="cc-chip" style={{ marginLeft: "auto" }}>{openLabel(openTasks.length)}</span>
           </div>
-          <div className="crm-task-form" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 125px auto", gap: 8, marginBottom: 14 }}>
+          <div className="crm-task-form" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 125px auto", gap: 10, marginBottom: 18 }}>
             <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: "var(--text-muted)" }}>Kunde
               <select aria-label="Kunde til opgave" value={clientName} onChange={(event) => setClientName(event.target.value)} style={inputStyle}>
                 {clients.map((client) => <option key={client.id} value={client.name}>{client.name}</option>)}
@@ -175,7 +175,7 @@ export default function CrmClient({
                     <div className="cc-dim" style={{ fontSize: 11.5 }}>{task.clientName}{task.due ? ` · frist ${formatDate(task.due)}` : " · uden frist"}</div>
                   </>
                 );
-                return <div key={task.id} id={`crm-task-${task.id}`} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1, ...(focused ? { boxShadow: "inset 3px 0 0 var(--kinly-signal)", background: "var(--bg-3)", borderRadius: 8 } : {}) }}>
+                return <div key={task.id} id={`crm-task-${task.id}`} style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 0", borderTop: "1px solid var(--border)", opacity: task.done ? .55 : 1, ...(focused ? { boxShadow: "inset 3px 0 0 var(--kinly-signal)", background: "var(--bg-3)", borderRadius: 8 } : {}) }}>
                   <input type="checkbox" aria-label={`${task.done ? "Genåbn" : "Færdigmarkér"}: ${task.title}`} checked={task.done} disabled={busy || !dataOk} onChange={() => toggleTask(task)} style={{ width: 17, height: 17, flexShrink: 0 }} />
                   {clientId
                     ? <Link href={`/clients/${clientId}`} style={{ minWidth: 0, flex: 1, textDecoration: "none", color: "inherit" }}>{inner}</Link>
@@ -189,12 +189,12 @@ export default function CrmClient({
         </section>
 
         <section className="cc-card cc-card-pad">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <Icon name="Briefcase" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700 }}>Kræver handling</h2>
           </div>
           {attention.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen kunder med åbne CRM-opgaver.</p> : <div style={{ display: "grid", gap: 8 }}>
-            {attention.map((client) => <Link key={client.id} href={`/clients/${client.id}`} className="cc-hoverrow" style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", color: "inherit", textDecoration: "none", fontSize: 13.5 }}>
+            {attention.map((client) => <Link key={client.id} href={`/clients/${client.id}`} className="cc-hoverrow" style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "11px 0", borderTop: "1px solid var(--border)", color: "inherit", textDecoration: "none", fontSize: 13.5 }}>
               <span><strong>{client.name}</strong><span className="cc-dim" style={{ display: "block", fontSize: 11.5 }}>{client.branch}</span></span>
               <span className="cc-chip">{openLabel(openTasks.filter((task) => task.clientName === client.name).length)}</span>
             </Link>)}
@@ -211,7 +211,7 @@ export default function CrmClient({
         {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen aktivitet endnu. Den første note, opgave eller kundekontakt kommer her.</p> : <div>
           {activities.slice(0, 12).map((item) => {
             const clientId = clientByName.get(item.clientName)?.id;
-            return <div key={item.id} className="crm-activity-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
+            return <div key={item.id} className="crm-activity-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
               <span className="cc-chip" style={item.actor === "system" ? { opacity: 0.7 } : undefined}>{item.actor === "system" ? `system · ${activityLabel[item.type]}` : activityLabel[item.type]}</span>
               {clientId
                 ? <Link href={`/clients/${clientId}`} style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{item.clientName}</Link>

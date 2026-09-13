@@ -231,10 +231,13 @@ export function buildRevenue(clients: Client[], goalMonthlyDKK = 10000): Revenue
     return Number.isFinite(n) ? n : 0;
   };
   return {
-    monthlyDKK: clients.reduce((a, c) => a + num(c.monthlyFee), 0),
+    // Kun LIVE kunder tæller som løbende indtægt — aftaler under bygning
+    // (fx Jernbanecaféen) må ikke puste MRR op (Lucas 13/9).
+    monthlyDKK: clients.filter((c) => c.websiteStatus === "live").reduce((a, c) => a + num(c.monthlyFee), 0),
     setupDKK: clients.reduce((a, c) => a + num(c.setupFee), 0),
     clientCount: clients.length,
-    payingClientCount: clients.filter((c) => num(c.monthlyFee) > 0).length,
+    // "Betalende" = live kunde med et beløb (samme definition som MRR ovenfor).
+    payingClientCount: clients.filter((c) => c.websiteStatus === "live" && num(c.monthlyFee) > 0).length,
     goalMonthlyDKK,
   };
 }

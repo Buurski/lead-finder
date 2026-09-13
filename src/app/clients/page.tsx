@@ -61,8 +61,11 @@ export default async function ClientsPage() {
     clients.map((c) => c.name),
   );
 
-  const totalMRR = clients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
-  const payingCount = clients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
+  // MRR = kun LIVE kunder (samme definition som forsiden/deck) — aftaler under
+  // bygning tæller ikke med, før de er live (Lucas 13/9).
+  const liveClients = clients.filter((c) => c.websiteStatus === "live");
+  const totalMRR = liveClients.reduce((sum, c) => sum + (parseFloat(c.monthlyFee) || 0), 0);
+  const payingCount = liveClients.filter((c) => (parseFloat(c.monthlyFee) || 0) > 0).length;
 
   const running = clients.filter((c) => c.websiteStatus === "live");
   const inProgress = clients.filter((c) => c.websiteStatus !== "live");

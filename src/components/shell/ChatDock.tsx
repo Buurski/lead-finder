@@ -17,8 +17,10 @@ function screenLabel(pathname: string): string {
 }
 
 // Skjul "Spørg Claude" widget på Hermes-sider (Buur Agent er det primære chat-UI der)
+// og på kunde-/faktura-fladerne, hvor den dækkede CRM- og fakturakort (Lucas 13/9).
 function shouldHideChatDock(pathname: string): boolean {
-  return pathname === "/hermes" || pathname.startsWith("/hermes/");
+  if (pathname === "/hermes" || pathname.startsWith("/hermes/")) return true;
+  return pathname === "/crm" || pathname.startsWith("/clients") || pathname.startsWith("/fakturaer");
 }
 
 // The contextual chat widget. Two modes:

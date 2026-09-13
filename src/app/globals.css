@@ -164,6 +164,12 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
 .cc-numbers { box-shadow: 0 1px 2px rgba(23, 24, 22, 0.025); }
 .cc-card-pad { padding: 22px 24px; }
 
+/* Kort i arbejdsfladerne må ikke klæbe sammen (Lucas 13/9) — særligt
+   "Næste handling" op ad "Opgaver"/"Kræver handling". */
+.crm-hub > * + * { margin-top: 24px; }
+
+.cc-client-page > * + * { margin-top: 24px; }
+
 @keyframes cc-spin { to { transform: rotate(360deg); } }
 .cc-spin { animation: cc-spin 0.7s linear infinite; }
 
