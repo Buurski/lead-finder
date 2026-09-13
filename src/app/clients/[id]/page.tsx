@@ -108,7 +108,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         ) : (
           <>
             <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
-              <span><b>{kr(balance.unpaidTotal)}</b> <span className="cc-dim">ubetalt</span></span>
+              <span><b>{kr(balance.unpaidTotal)}</b> <span className="cc-dim">ubetalt{balance.draftTotal > 0 ? ` (heraf ${kr(balance.draftTotal)} i kladde — ikke sendt)` : ""}</span></span>
               {balance.overdueCount > 0 && (
                 <span style={{ color: "var(--red, #ff8a8a)" }}>
                   <b>{kr(balance.overdueTotal)}</b> forfaldent ({balance.overdueCount})

@@ -163,7 +163,7 @@ export default function CrmSections({
           <label style={labelStyle}>Hvad skete der?<textarea aria-label="Aktivitetstekst" rows={2} value={activityText} onChange={(event) => setActivityText(event.target.value)} style={{ ...inputStyle, resize: "vertical" }} /></label>
           <button type="button" className="cc-btn cc-btn-accent" onClick={addActivity} disabled={busy || !dataOk} style={{ alignSelf: "end" }}>Gem</button>
         </div>
-        {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen historik endnu.</p> : activities.map((item) => <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span className="cc-chip">{item.type}</span><span style={{ flex: 1 }}>{item.text}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{activityDate(item.at)}</span></div>)}
+        {activities.length === 0 ? <p className="cc-dim" style={{ fontSize: 13 }}>Ingen historik endnu.</p> : activities.map((item) => <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span className="cc-chip" style={item.actor === "system" ? { opacity: 0.7 } : undefined}>{item.actor === "system" ? `system · ${item.type}` : item.type}</span><span style={{ flex: 1 }}>{item.text}</span><span className="cc-dim" style={{ fontSize: 11.5 }}>{activityDate(item.at)}</span></div>)}
       </div>}
 
       {tab === "tasks" && <div role="tabpanel">

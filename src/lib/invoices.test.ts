@@ -156,9 +156,20 @@ test("clientBalance: ubetalt, forfaldent og næste frist", () => {
 test("clientBalance: intet åbent → nul og ingen frist", () => {
   const bal = clientBalance([inv({ status: "betalt", paidAt: "2026-07-05T10:00:00Z" })], "2026-07-17");
   assert.equal(bal.unpaidTotal, 0);
+  assert.equal(bal.draftTotal, 0);
   assert.equal(bal.overdueCount, 0);
   assert.equal(bal.openCount, 0);
   assert.equal(bal.nextDueDate, null);
+});
+
+test("clientBalance: kladder holdes adskilt fra (og med i) ubetalt", () => {
+  const bal = clientBalance(
+    [inv({ number: "009", status: "kladde", dueDate: "2026-09-15" }), inv({ number: "008", status: "sendt", dueDate: "2026-09-20" })],
+    "2026-09-13",
+  );
+  assert.equal(bal.unpaidTotal, 500);
+  assert.equal(bal.draftTotal, 250);
+  assert.equal(bal.nextDueDate, "2026-09-20");
 });
 
 test("clientBalance: kun kladde → ingen frist (kladde er ikke sendt)", () => {

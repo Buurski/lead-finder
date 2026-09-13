@@ -329,6 +329,7 @@ export function clientEconomy(invoices: Invoice[], sub: Subscription | undefined
 
 export interface ClientBalance {
   unpaidTotal: number;
+  draftTotal: number;
   overdueTotal: number;
   overdueCount: number;
   openCount: number;
@@ -349,8 +350,11 @@ export function clientBalance(invoices: Invoice[], todayISO: string): ClientBala
     .filter((inv) => inv.status === "sendt" && inv.dueDate >= todayISO)
     .map((inv) => inv.dueDate)
     .sort()[0];
+  // Kladder vises særskilt: "ubetalt" må ikke blandes sammen med "endnu ikke sendt".
+  const drafts = open.filter((inv) => inv.status === "kladde");
   return {
     unpaidTotal: open.reduce((sum, inv) => sum + invoiceTotal(inv).total, 0),
+    draftTotal: drafts.reduce((sum, inv) => sum + invoiceTotal(inv).total, 0),
     overdueTotal: overdue.reduce((sum, inv) => sum + invoiceTotal(inv).total, 0),
     overdueCount: overdue.length,
     openCount: open.length,

@@ -18,6 +18,11 @@ export function canonicalClientName(name: string): string {
   return CLIENT_ALIASES[clean] ?? clean;
 }
 
+/** Find den kanoniske kunde bag et navn (alias-normaliseret). */
+export function findClientByName<T extends { name: string }>(clients: T[], name: string): T | undefined {
+  return clients.find((c) => canonicalClientName(c.name) === canonicalClientName(name));
+}
+
 /** Navne (fx på fakturaer) der ikke kan kobles til nogen kendt kunde. Returnerer kanoniske navne uden match. */
 export function unmatchedNames(names: string[], knownClients: string[]): string[] {
   const known = new Set(knownClients.map(canonicalClientName));

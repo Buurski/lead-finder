@@ -212,7 +212,7 @@ export default function CrmClient({
           {activities.slice(0, 12).map((item) => {
             const clientId = clientByName.get(item.clientName)?.id;
             return <div key={item.id} className="crm-activity-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
-              <span className="cc-chip">{activityLabel[item.type]}</span>
+              <span className="cc-chip" style={item.actor === "system" ? { opacity: 0.7 } : undefined}>{item.actor === "system" ? `system · ${activityLabel[item.type]}` : activityLabel[item.type]}</span>
               {clientId
                 ? <Link href={`/clients/${clientId}`} style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{item.clientName}</Link>
                 : <span style={{ fontWeight: 600 }}>{item.clientName}</span>}

@@ -3,6 +3,7 @@ import "server-only";
 import { getClients, type Client } from "./sheets.ts";
 import { store } from "./store.ts";
 import { isCommandCenterRequest } from "./cc-auth.ts";
+import { findClientByName } from "./client-alias.ts";
 import { ACTIVITY_TYPES, type ActivityType, type CrmActivity, type CrmContact, type CrmTask } from "./crm-client.ts";
 
 export { ACTIVITY_TYPES } from "./crm-client.ts";
@@ -84,7 +85,7 @@ export async function assertKnownClient(value: unknown): Promise<Client> {
   } catch {
     throw new CrmInputError("kundedata kunne ikke hentes fra Google Sheets");
   }
-  const client = clients.find((item) => item.name === name);
+  const client = findClientByName(clients, name);
   if (!client) throw new CrmInputError("kunden findes ikke i Clients");
   return client;
 }

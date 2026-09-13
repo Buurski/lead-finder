@@ -111,6 +111,6 @@ export async function POST(req: Request) {
 
   await saveInvoice(inv);
   // System-hændelse i CRM-loggen (per-dag-dedup) — må ikke blokere en gemt faktura.
-  await appendSystemActivity(clientName, `inv_${number}_created_${issueDate}`, `Faktura ${number} oprettet som kladde`).catch(() => {});
+  await appendSystemActivity(clientName, `inv_${number}_created_${new Date().toISOString().slice(0, 10)}`, `Faktura ${number} oprettet som kladde`).catch(() => {});
   return NextResponse.json({ ok: true, invoice: inv });
 }
