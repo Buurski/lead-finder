@@ -40,7 +40,7 @@ export const SUBSCRIPTIONS: Subscription[] = [
   { name: "Claude Max (Lucas)", amount: 112.5, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 6, note: "Egen plan — kvittering 6/6, fornyes ~6. hver md" },
   { name: "Claude Pro (Charlie)", amount: 22.5, currency: "EUR", period: "md", share: "charlie", payer: "charlie", personal: true, renewalDay: 1, note: "Egen plan — kvittering #2112… 1/7, €22,50 hver md" },
   { name: "Wispr Flow (Lucas)", amount: 15, currency: "EUR", period: "md", share: "lucas", payer: "lucas", personal: true, renewalDay: 28, note: "Tale-til-tekst — kvittering 28/6. Mail 19/8: \"Flow Pro access ends soon\" — verificér om den stadig trækkes" },
-  { name: "Vercel Pro (2 seats)", amount: 50, currency: "USD", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "Hosting — $40 + 25% moms. Kvittering hver måned: 3/6, 3/7, 3/8, 3/9" },
+  { name: "Vercel Pro", amount: 32, currency: "USD", period: "md", share: "selskab", payer: "lucas", renewalDay: 3, note: "1 sæde — Pro $20 + forbrug (~$5,6) + 25 % moms; kvittering 3/9 (#2075-1032) = $31,99. +$25/md hvis Charlie-seat tilføjes." },
   { name: "Google Cloud (Places API m.m.)", amount: 137, currency: "DKK", period: "md", share: "selskab", payer: "lucas", renewalDay: 1, note: "Kvittering 1/8: 137,29 kr — variabel, budget-guard aktiv" },
   { name: "Contabo VPS (Hermes)", amount: 6.88, currency: "EUR", period: "md", share: "selskab", payer: "lucas", renewalDay: 10, note: "Hjernen — fælles, oprettet 10/6" },
   { name: "OpenRouter (Hermes-modeller)", amount: 60, currency: "DKK", period: "md", share: "selskab", payer: "lucas", estimate: true, note: "Kredit-topups efter forbrug — mange små: 8–10/6 og 19–21/7 (mailtjek 10/9)" },
