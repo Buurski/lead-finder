@@ -42,6 +42,10 @@ interface QueueDraft {
     lead: number | null;
     draft: number | null;
     flags: string[];
+    grade?: "A" | "B" | "C" | "?";
+    priority?: number | null;
+    links?: { kind: "web" | "maps" | "facebook" | "mail"; label: string; href: string }[];
+    facts?: string[];
   };
   // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
   // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
@@ -70,6 +74,15 @@ const WARMTH_META: Record<string, { label: string; fg: string; bg: string }> = {
   lun:  { label: "lun",     fg: "var(--text-muted)", bg: "var(--bg-3)" },
   kold: { label: "kold",    fg: "var(--blue)", bg: "var(--blue-dim)" },
   død:  { label: "✕ svarede nej", fg: "var(--red)", bg: "var(--red-dim)" },
+};
+
+// A/B/C-karakter (2026-09-20): fra jev.priority (lead-grade.ts, samme vægtning
+// som jevPriority herunder). "?" = endnu ikke vurderet, hverken lead eller kladde.
+const GRADE_META: Record<string, { fg: string; bg: string; border: string }> = {
+  A: { fg: "var(--green)", bg: "var(--bg-2)", border: "var(--green)" },
+  B: { fg: "var(--amber)", bg: "var(--amber-dim)", border: "var(--amber)" },
+  C: { fg: "var(--text-muted)", bg: "var(--bg-3)", border: "var(--border)" },
+  "?": { fg: "var(--text-dim)", bg: "transparent", border: "var(--border)" },
 };
 
 // "seen" (2026-07-17): pending drafts hvis forretning findes i kontakt-
@@ -314,6 +327,9 @@ export default function ApprovePage() {
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
+  // A/B/C-filter (2026-09-20): gælder i alle faner, ikke kun Afventer — Lucas
+  // vil kunne se "kun A" i Godkendt/Alle også.
+  const [gradeFilter, setGradeFilter] = useState<"all" | "A" | "B" | "C">("all");
   const branches = useMemo(
     () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
     [drafts]
@@ -339,10 +355,11 @@ export default function ApprovePage() {
     else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
     else base = drafts;
     if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
+    if (gradeFilter !== "all") base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
     const needle = q.trim().toLowerCase();
     if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
     return base;
-  }, [drafts, filter, branchFilter, q, pendingSort]);
+  }, [drafts, filter, branchFilter, gradeFilter, q, pendingSort]);
 
   // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
   // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
@@ -539,17 +556,50 @@ export default function ApprovePage() {
       />
 
       {/* Prioritering af Afventer (2026-09-20): Jev-rangering er standard, toggle falder tilbage til nyeste først. */}
-      {filter === "pending" && (
+      <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+        {filter === "pending" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sortering</span>
+            <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
+              {([["jev", "Jev-prioritet"], ["newest", "Nyeste først"]] as const).map(([key, label]) => {
+                const active = pendingSort === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPendingSort(key)}
+                    style={{
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "5px 13px",
+                      borderRadius: 6,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      color: active ? "var(--text)" : "var(--text-muted)",
+                      background: active ? "var(--surface)" : "transparent",
+                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* A/B/C-filter (2026-09-20): så Lucas kan sende de bedste først. */}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sortering</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Karakter</span>
           <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-            {([["jev", "Jev-prioritet"], ["newest", "Nyeste først"]] as const).map(([key, label]) => {
-              const active = pendingSort === key;
+            {(["all", "A", "B", "C"] as const).map((key) => {
+              const active = gradeFilter === key;
               return (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setPendingSort(key)}
+                  onClick={() => setGradeFilter(key)}
                   style={{
                     border: "none",
                     cursor: "pointer",
@@ -563,13 +613,13 @@ export default function ApprovePage() {
                     boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
                   }}
                 >
-                  {label}
+                  {key === "all" ? "Alle" : key}
                 </button>
               );
             })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
       {drafts.length > 10 && (
@@ -1183,21 +1233,88 @@ function DraftLetter({
             </div>
           )}
         </div>
-        <span
-          style={{
-            flexShrink: 0,
-            fontSize: 11.5,
-            fontWeight: 600,
-            color: meta.fg,
-            background: meta.bg,
-            padding: "4px 10px",
-            borderRadius: 999,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {meta.label}
-        </span>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          {(() => {
+            const g = draft.jev?.grade ?? "?";
+            const gm = GRADE_META[g] ?? GRADE_META["?"];
+            const p = draft.jev?.priority;
+            return (
+              <span
+                title={`Prioritet: ${p ?? "ikke vurderet"}/100 (kladde-kvalitet vejer tungest, lead-attraktivitet sekundært)`}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: gm.fg,
+                  background: gm.bg,
+                  border: `1.5px solid ${gm.border}`,
+                  padding: "3px 9px",
+                  borderRadius: 8,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {g}
+                {p != null && <span style={{ fontWeight: 600, fontSize: 11, marginLeft: 5, opacity: 0.85 }}>{p}</span>}
+              </span>
+            );
+          })()}
+          <span
+            style={{
+              fontSize: 11.5,
+              fontWeight: 600,
+              color: meta.fg,
+              background: meta.bg,
+              padding: "4px 10px",
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {meta.label}
+          </span>
+        </div>
       </div>
+
+      {/* Nøglefakta + forretningslinks (2026-09-20): hvor stor/seriøs er virksomheden,
+          og direkte links til at tjekke den — uden at trigge kortets egen klik-handler. */}
+      {((draft.jev?.facts?.length ?? 0) > 0 || (draft.jev?.links?.length ?? 0) > 0) && (
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+          {(draft.jev?.facts?.length ?? 0) > 0 && (
+            <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)" }}>
+              {draft.jev!.facts!.join(" · ")}
+            </p>
+          )}
+          {(draft.jev?.links?.length ?? 0) > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {draft.jev!.links!.map((l) => (
+                <a
+                  key={l.kind}
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text-muted)",
+                    background: "var(--bg-3)",
+                    padding: "3px 9px",
+                    borderRadius: 999,
+                    textDecoration: "none",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <span aria-hidden="true">
+                    {l.kind === "web" ? "🌐" : l.kind === "maps" ? "📍" : l.kind === "facebook" ? "📘" : "✉️"}
+                  </span>
+                  {l.label}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* afsender — hvem mailen sendes fra (Lucas/Charlie). Read-only når sendt. */}
       {draft.status === "sent" ? (

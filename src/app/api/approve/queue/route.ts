@@ -6,8 +6,9 @@ import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer"
 import { getLeads } from "@/lib/sheets";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 import { buildContactIndex } from "@/lib/leads/contact-history";
-import { loadShadow } from "@/lib/leads/jev-shadow";
+import { loadShadow, type JevShadowRecord } from "@/lib/leads/jev-shadow";
 import { loadDraftShadow } from "@/lib/leads/draft-judgments";
+import { priority, grade, businessLinks, factLine } from "@/lib/leads/lead-grade";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -48,9 +49,12 @@ export async function GET() {
   // + kladde-kvalitet (draft-judgments, samme cron fase 2). Best-effort — en
   // tom/manglende shadow giver bare null-badges, aldrig en fejlet request.
   let leadJev = new Map<string, number | null>();
+  let leadShadow = new Map<string, JevShadowRecord>();
   let draftJev = new Map<string, { quality: number | null; flags: string[] }>();
   try {
-    leadJev = new Map((await loadShadow()).map((r) => [r.leadId, r.attractiveness]));
+    const shadow = await loadShadow();
+    leadJev = new Map(shadow.map((r) => [r.leadId, r.attractiveness]));
+    leadShadow = new Map(shadow.map((r) => [r.leadId, r]));
   } catch {
     // shadow store nede — lead-badge udelades
   }
@@ -63,9 +67,21 @@ export async function GET() {
   const enriched = drafts.map((d) => {
     const rec = index?.lookup(d.name, d.city, d.recipientEmail);
     const dj = draftJev.get(d.id);
+    const leadAttr = leadJev.get(d.leadId) ?? null;
+    const draftQuality = dj?.quality ?? null;
+    const sh = leadShadow.get(d.leadId);
+    const p = priority(leadAttr, draftQuality);
     const withJev = {
       ...d,
-      jev: { lead: leadJev.get(d.leadId) ?? null, draft: dj?.quality ?? null, flags: dj?.flags ?? [] },
+      jev: {
+        lead: leadAttr,
+        draft: draftQuality,
+        flags: dj?.flags ?? [],
+        grade: grade(p),
+        priority: p,
+        links: businessLinks(sh?.name ?? d.name, sh?.city ?? d.city, sh?.url ?? "", d.recipientEmail),
+        facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, judgment: sh?.judgment }),
+      },
     };
     return rec ? { ...withJev, history: { seenBefore: true, ...rec } } : withJev;
   });
