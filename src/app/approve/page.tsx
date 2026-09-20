@@ -44,7 +44,7 @@ interface QueueDraft {
     flags: string[];
     grade?: "A" | "B" | "C" | "?";
     priority?: number | null;
-    links?: { kind: "web" | "maps" | "facebook" | "mail"; label: string; href: string }[];
+    links?: { kind: "web" | "maps" | "facebook" | "instagram" | "mail"; label: string; href: string }[];
     facts?: string[];
   };
   // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
@@ -324,12 +324,40 @@ export default function ApprovePage() {
   // nyeste-først rækkefølge (køen kommer allerede createdAt-sorteret fra API'et).
   const [pendingSort, setPendingSort] = useState<"jev" | "newest">("jev");
 
+  // "Vurdér kladder nu" (2026-09-20): kør en Jev-batch on-demand i stedet for
+  // at vente på nat-cronnen (03:30, som Lucas ikke selv kan trigge — den
+  // hemmelighed kan han ikke læse i Vercel). Ruten kører bag samme basic auth
+  // som resten af siden. limit=30 så et enkelt klik ikke løber for langt ud
+  // over Vercels 120s-loft.
+  const [jevRunBusy, setJevRunBusy] = useState(false);
+  const [jevRunMsg, setJevRunMsg] = useState("");
+  const runJevNow = useCallback(async () => {
+    if (jevRunBusy) return;
+    setJevRunBusy(true);
+    setJevRunMsg("Vurderer…");
+    try {
+      const res = await fetch("/api/jev-run?limit=30", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      setJevRunMsg(
+        res.ok && d.ok
+          ? `${d.leads?.judged ?? 0} leads · ${d.drafts?.judged ?? 0} kladder vurderet.`
+          : (d.error ?? "Kunne ikke vurdere.")
+      );
+      await load();
+    } catch {
+      setJevRunMsg("Netværksfejl.");
+    } finally {
+      setJevRunBusy(false);
+    }
+  }, [jevRunBusy, load]);
+
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
   // A/B/C-filter (2026-09-20): gælder i alle faner, ikke kun Afventer — Lucas
-  // vil kunne se "kun A" i Godkendt/Alle også.
-  const [gradeFilter, setGradeFilter] = useState<"all" | "A" | "B" | "C">("all");
+  // vil kunne se "kun A" i Godkendt/Alle også. "best" (2026-09-20): kun A-kladder
+  // uden "send ikke"-flag — Lucas' egen genvej til "hvad kan jeg sende lige nu".
+  const [gradeFilter, setGradeFilter] = useState<"all" | "best" | "A" | "B" | "C">("all");
   const branches = useMemo(
     () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
     [drafts]
@@ -355,7 +383,13 @@ export default function ApprovePage() {
     else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
     else base = drafts;
     if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
-    if (gradeFilter !== "all") base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
+    if (gradeFilter === "best") {
+      base = base
+        .filter((d) => (d.jev?.grade ?? "?") === "A" && !(d.jev?.flags ?? []).includes("send ikke"))
+        .sort((a, b) => jevPriority(b) - jevPriority(a));
+    } else if (gradeFilter !== "all") {
+      base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
+    }
     const needle = q.trim().toLowerCase();
     if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
     return base;
@@ -557,6 +591,19 @@ export default function ApprovePage() {
 
       {/* Prioritering af Afventer (2026-09-20): Jev-rangering er standard, toggle falder tilbage til nyeste først. */}
       <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={runJevNow}
+            disabled={jevRunBusy}
+            title="Kør en Jev-vurdering nu i stedet for at vente på nat-cronnen"
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: jevRunBusy ? 0.6 : 1 }}
+          >
+            {jevRunBusy ? "Vurderer…" : "Vurdér kladder nu"}
+          </button>
+          {jevRunMsg && !jevRunBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{jevRunMsg}</span>}
+        </div>
+
         {filter === "pending" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sortering</span>
@@ -593,7 +640,7 @@ export default function ApprovePage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Karakter</span>
           <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-            {(["all", "A", "B", "C"] as const).map((key) => {
+            {(["best", "all", "A", "B", "C"] as const).map((key) => {
               const active = gradeFilter === key;
               return (
                 <button
@@ -613,7 +660,7 @@ export default function ApprovePage() {
                     boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
                   }}
                 >
-                  {key === "all" ? "Alle" : key}
+                  {key === "best" ? "Bedste" : key === "all" ? "Alle" : key}
                 </button>
               );
             })}
@@ -1310,7 +1357,7 @@ function DraftLetter({
                   }}
                 >
                   <span aria-hidden="true">
-                    {l.kind === "web" ? "🌐" : l.kind === "maps" ? "📍" : l.kind === "facebook" ? "📘" : "✉️"}
+                    {l.kind === "web" ? "🌐" : l.kind === "maps" ? "📍" : l.kind === "facebook" ? "📘" : l.kind === "instagram" ? "📷" : "✉️"}
                   </span>
                   {l.label}
                 </a>

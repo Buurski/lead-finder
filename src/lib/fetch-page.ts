@@ -20,6 +20,8 @@ export interface PageText {
   /** Last up to 3 distinct copyright years found in the HTML, ascending. */
   copyrightYears: string[];
   wordCount: number;
+  /** First plausible real profile link found in the HTML (not a share/plugin/intent URL). */
+  socials: { facebook?: string; instagram?: string };
 }
 
 const UA =
@@ -32,6 +34,47 @@ const PHONE_RE = /(?:\+45[\s-]?)?(?:\d{2}[\s-]?){3}\d{2}\b/g;
 const BOOKING_RE =
   /\b(book|booking|bestil tid|online tidsbestilling|onlinebooking|planway|easypractice|terapeutbooking|fresha)\b/i;
 const MAX_REDIRECTS = 3;
+
+// Social links (2026-09-20): a real profile URL beats a "search Google for
+// their Facebook" chip. Matched straight off the raw HTML (hrefs), not the
+// stripped text. Share/plugin/intent URLs are not profiles — skip them.
+const FACEBOOK_URL_RE = /https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>]+/gi;
+const INSTAGRAM_URL_RE = /https?:\/\/(?:www\.)?instagram\.com\/[^\s"'<>]+/gi;
+const SOCIAL_IGNORE_RE = /sharer|\/share|\/plugins\/|intent/i;
+const MAX_SOCIAL_URL_CHARS = 200;
+
+/** Strips tracking query params. `profile.php?id=...` keeps only `id` (the
+ * one param that actually identifies the profile) — everything else
+ * (fbclid, ref, rdid...) is tracking noise, and without `id` the URL is
+ * useless (`facebook.com/profile.php`, no one). */
+function cleanSocialUrl(candidate: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    return undefined;
+  }
+  if (url.pathname.toLowerCase().endsWith("/profile.php")) {
+    const id = url.searchParams.get("id");
+    url.search = id ? `?id=${id}` : "";
+  } else {
+    url.search = "";
+  }
+  url.hash = "";
+  return url.toString().slice(0, MAX_SOCIAL_URL_CHARS);
+}
+
+/** First plausible profile URL matching `re` in the raw HTML, or undefined. */
+function extractSocialUrl(raw: string, re: RegExp): string | undefined {
+  re.lastIndex = 0;
+  for (const m of raw.matchAll(re)) {
+    const candidate = m[0].replace(/&amp;/g, "&");
+    if (SOCIAL_IGNORE_RE.test(candidate)) continue;
+    const cleaned = cleanSocialUrl(candidate);
+    if (cleaned) return cleaned;
+  }
+  return undefined;
+}
 
 export function stripHtmlToText(raw: string): string {
   let t = raw.replace(/<(script|style|noscript|svg)[^>]*>[\s\S]*?<\/\1>/gi, " ");
@@ -97,6 +140,11 @@ export function extractPage(url: string, raw: string, maxChars = 6000): PageText
     new Set(Array.from(raw.matchAll(/(?:©|&copy;|copyright)\D{0,15}((?:19|20)\d\d)/gi), (m) => m[1])),
   ).sort();
   const text = redact(stripHtmlToText(raw));
+  const socials: PageText["socials"] = {};
+  const facebook = extractSocialUrl(raw, FACEBOOK_URL_RE);
+  if (facebook) socials.facebook = facebook;
+  const instagram = extractSocialUrl(raw, INSTAGRAM_URL_RE);
+  if (instagram) socials.instagram = instagram;
   return {
     url,
     title: title ? redact(stripHtmlToText(title[1])).slice(0, 200) : "",
@@ -107,6 +155,7 @@ export function extractPage(url: string, raw: string, maxChars = 6000): PageText
     bookingKeywordFound: BOOKING_RE.test(raw),
     copyrightYears: years.slice(-3),
     wordCount: text.split(" ").filter(Boolean).length,
+    socials,
   };
 }
 

@@ -53,6 +53,35 @@ test("toJudgment rejects out-of-range or unknown answers", () => {
   assert.equal(toJudgment({ ...ok, budget_signal: { ...ok.budget_signal, choice: "premium" } }), null);
 });
 
+test("extractPage picks the real facebook/instagram profile, not a share/plugin link", () => {
+  const html = `<html><body>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=https://vida-klinik.dk">Del</a>
+    <a href="https://www.facebook.com/vidaklinik9000">Følg os</a>
+    <a href="https://www.instagram.com/vida_klinik">Instagram</a>
+  </body></html>`;
+  const p = extractPage("https://vida-klinik.dk/", html);
+  assert.equal(p.socials.facebook, "https://www.facebook.com/vidaklinik9000");
+  assert.equal(p.socials.instagram, "https://www.instagram.com/vida_klinik");
+});
+
+test("extractPage keeps plain profile URLs as-is (street-cut.dk case)", () => {
+  const html = `<a href="https://www.facebook.com/streetcutdk">FB</a><a href="https://www.instagram.com/streetcutcph">IG</a>`;
+  const p = extractPage("https://street-cut.dk/", html);
+  assert.equal(p.socials.facebook, "https://www.facebook.com/streetcutdk");
+  assert.equal(p.socials.instagram, "https://www.instagram.com/streetcutcph");
+});
+
+test("extractPage keeps only the id= param on profile.php links, dropping tracking params", () => {
+  const html = `<a href="https://www.facebook.com/profile.php?id=100057123456789&amp;fbclid=abc123">Facebook</a>`;
+  const p = extractPage("https://ikastautoservice.dk/", html);
+  assert.equal(p.socials.facebook, "https://www.facebook.com/profile.php?id=100057123456789");
+});
+
+test("extractPage has no socials when none are present", () => {
+  const p = extractPage("https://example.dk/", "<html><body>Hej</body></html>");
+  assert.deepEqual(p.socials, {});
+});
+
 test("readCapped stops at the byte cap and rejects oversized content-length", async () => {
   const { readCapped } = await import("./fetch-page.ts");
   const big = new Response(new ReadableStream({

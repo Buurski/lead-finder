@@ -46,6 +46,30 @@ test("businessLinks: never throws on empty input", () => {
   assert.doesNotThrow(() => businessLinks("", "", "", ""));
 });
 
+test("businessLinks: no socials falls back to the honest 'Søg FB' search chip", () => {
+  const links = businessLinks("Frisør Anna", "Herning", "");
+  const fb = links.find((l) => l.kind === "facebook");
+  assert.equal(fb?.label, "Søg FB");
+  assert.ok(fb?.href.startsWith("https://www.google.com/search?q="));
+  assert.ok(!links.some((l) => l.kind === "instagram"));
+});
+
+test("businessLinks: a real facebook profile replaces the search chip", () => {
+  const links = businessLinks("Frisør Anna", "Herning", "", undefined, { facebook: "https://www.facebook.com/frisoeranna" });
+  const fb = links.find((l) => l.kind === "facebook");
+  assert.equal(fb?.label, "Facebook");
+  assert.equal(fb?.href, "https://www.facebook.com/frisoeranna");
+});
+
+test("businessLinks: a real instagram profile is added alongside the facebook chip", () => {
+  const links = businessLinks("Frisør Anna", "Herning", "", undefined, { instagram: "https://www.instagram.com/frisoeranna" });
+  const ig = links.find((l) => l.kind === "instagram");
+  assert.equal(ig?.label, "Instagram");
+  assert.equal(ig?.href, "https://www.instagram.com/frisoeranna");
+  // No facebook profile → still falls back to the search chip.
+  assert.equal(links.find((l) => l.kind === "facebook")?.label, "Søg FB");
+});
+
 test("factLine skips missing values, never prints 'ukendt'", () => {
   const facts = factLine({ reviewsCount: 0, isChain: false, judgment: null });
   assert.deepEqual(facts, []);

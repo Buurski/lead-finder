@@ -23,14 +23,21 @@ export function grade(p: number | null): Grade {
 }
 
 export interface BusinessLink {
-  kind: "web" | "maps" | "facebook" | "mail";
+  kind: "web" | "maps" | "facebook" | "instagram" | "mail";
   label: string;
   href: string;
 }
 
-/** Real link (website) when we have one, honest SEARCH links otherwise —
- * never a fabricated facebook/maps profile URL (none exists in our data). */
-export function businessLinks(name: string, city: string, website: string, email?: string): BusinessLink[] {
+/** Real link (website) when we have one, real social profile links when
+ * fetch-page.ts found one in the site's HTML, honest SEARCH links otherwise
+ * — never a fabricated facebook/maps profile URL. */
+export function businessLinks(
+  name: string,
+  city: string,
+  website: string,
+  email?: string,
+  socials?: { facebook?: string; instagram?: string },
+): BusinessLink[] {
   const links: BusinessLink[] = [];
   const n = (name ?? "").trim();
   const c = (city ?? "").trim();
@@ -41,7 +48,14 @@ export function businessLinks(name: string, city: string, website: string, email
   }
   const q = `${n} ${c}`.trim();
   links.push({ kind: "maps", label: "Maps", href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` });
-  links.push({ kind: "facebook", label: "Facebook", href: `https://www.google.com/search?q=${encodeURIComponent(`${q} facebook`.trim())}` });
+  if (socials?.facebook) {
+    links.push({ kind: "facebook", label: "Facebook", href: socials.facebook });
+  } else {
+    links.push({ kind: "facebook", label: "Søg FB", href: `https://www.google.com/search?q=${encodeURIComponent(`${q} facebook`.trim())}` });
+  }
+  if (socials?.instagram) {
+    links.push({ kind: "instagram", label: "Instagram", href: socials.instagram });
+  }
   const e = (email ?? "").trim();
   if (e) links.push({ kind: "mail", label: "Mail", href: `mailto:${e}` });
   return links;

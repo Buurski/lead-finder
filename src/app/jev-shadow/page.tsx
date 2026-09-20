@@ -1,5 +1,6 @@
 import PageHeader from "@/components/shell/PageHeader";
 import { loadShadow } from "@/lib/leads/jev-shadow";
+import RunButton from "./run-button";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function JevShadowPage() {
         icon="Sparkles"
         title="Jev-skygge: attraktivitet (observerer kun, ændrer intet)"
         subtitle={`${judged} vurderet · ${errors} fejl${lastJudgedAt ? ` · sidst vurderet ${new Date(lastJudgedAt).toLocaleString("da-DK")}` : ""}`}
+        action={<RunButton />}
       />
       <section className="cc-card cc-card-pad" style={{ overflowX: "auto" }}>
         {ranked.length === 0 ? (
