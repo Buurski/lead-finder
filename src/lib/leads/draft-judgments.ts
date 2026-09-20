@@ -10,6 +10,7 @@
 // intet corporate-sprog, ingen em-dash, ingen pris.
 
 import { store } from "../store.ts";
+import { redact as sharedRedact } from "../fetch-page.ts";
 import { jevAsk, noul, score, type JevAnswers, type JevQuestion } from "../jev.ts";
 import type { QueueDraft } from "../queue.ts";
 
@@ -56,12 +57,11 @@ export const DRAFT_QUESTIONS: Record<string, JevQuestion> = {
   },
 };
 
-const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-const PHONE_RE = /(\+45\s?)?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}\b/g;
 const MAX_TEXT_CHARS = 3000;
 
+// One shared redactor for every string sent to Jev (email, CPR, phone) — Codex TSJ-002.
 function redact(text: string): string {
-  return text.replace(EMAIL_RE, "[email]").replace(PHONE_RE, "[tlf]").slice(0, MAX_TEXT_CHARS);
+  return sharedRedact(text).slice(0, MAX_TEXT_CHARS);
 }
 
 /** State sent to Jev. No recipient email is ever included. */

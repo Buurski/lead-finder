@@ -43,7 +43,7 @@ export default async function JevRepliesPage() {
       <PageHeader
         icon="Sparkles"
         title="Svar der venter på dig (Jev-forslag, observerer kun)"
-        subtitle={`${judged} vurderet · ${errors} fejl · Jev foreslår næste skridt, sender og ændrer intet — se dem i `}
+        subtitle={`${judged} vurderet · ${errors} fejl · Jev foreslår næste skridt, sender og ændrer intet. SLÅET FRA indtil databehandleraftale med TypeSafe er på plads (JEV_REPLIES=1). Se dem i `}
       />
       <p style={{ margin: "-8px 0 16px", fontSize: 12.5 }}>
         <a href="/replies" className="cc-link">/replies</a> for at svare.

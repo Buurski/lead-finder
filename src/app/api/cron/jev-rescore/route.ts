@@ -28,6 +28,7 @@ const MAX_REPLY_BATCH = 30;
 const MAX_BATCH = 60;
 const CONCURRENCY = 5;
 const DEADLINE_MS = 95_000;
+const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export function clampBatch(raw: string | number | null | undefined): number {
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
@@ -95,9 +96,14 @@ export async function GET(req: Request): Promise<NextResponse> {
       const draftShadow = await loadDraftShadow();
       const draftJudgedAt = new Map(draftShadow.map((r) => [r.draftId, r.judgedAt]));
       const pendingDrafts = queue.filter((d) => d.status === "pending");
+      // Retryable errors (Codex TSJ-003): a record with `error` is re-judged
+      // once it is older than RETRY_AFTER_MS, so a transient Jev failure never
+      // leaves a draft/reply unscored for good.
+      const draftErrorAt = new Map(draftShadow.filter((r) => r.error).map((r) => [r.draftId, r.judgedAt]));
+      const retryDue = (iso: string | undefined) => !!iso && Date.now() - new Date(iso).getTime() > RETRY_AFTER_MS;
       const unjudgedDrafts = pendingDrafts.filter((d) => {
         const j = draftJudgedAt.get(d.id);
-        return !j || j < d.updatedAt;
+        return !j || j < d.updatedAt || retryDue(draftErrorAt.get(d.id));
       });
       const draftBatch = unjudgedDrafts.slice(0, MAX_DRAFT_BATCH);
 
@@ -116,6 +122,10 @@ export async function GET(req: Request): Promise<NextResponse> {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, draftBatch.length) }, draftWorker));
       const draftsRemaining = Math.max(0, unjudgedDrafts.length - draftsJudged);
 
+      // DPA gate (council TSJ-001): reply text is customer correspondence. Phase 3
+      // stays OFF until Lucas has documented TypeSafe as data processor; then
+      // JEV_REPLIES=1 in Vercel env turns it on. Built, reviewed, not active.
+      const repliesEnabled = process.env.JEV_REPLIES === "1";
       // Phase 3: warm replies that need a "what now?" suggestion. Same
       // deadline as phase 1+2, OBSERVES ONLY. Reply body text isn't stored on
       // the Lead row (sync-replies.ts only stamps emailStatus="replied") — the
@@ -125,7 +135,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       const REPLY_INELIGIBLE_STATUS = new Set(["client", "dead"]);
       const digest = await loadDigest().catch(() => null);
       const digestByLead = new Map((digest?.items ?? []).filter((it) => it.leadId).map((it) => [it.leadId as string, it]));
-      const repliedLeads = leads.filter((l) => l.emailStatus === "replied" && !REPLY_INELIGIBLE_STATUS.has(l.status));
+      const repliedLeads = repliesEnabled ? leads.filter((l) => l.emailStatus === "replied" && !REPLY_INELIGIBLE_STATUS.has(l.status)) : [];
       const replyShadow = await loadReplyShadow();
       const replyJudgedAt = new Map(replyShadow.map((r) => [r.leadId, r.judgedAt]));
       const noTextYet = new Set(replyShadow.filter((r) => r.error === "no-reply-text").map((r) => r.leadId));
@@ -139,9 +149,11 @@ export async function GET(req: Request): Promise<NextResponse> {
           if (it.leadId && it.snippet && !digestByLead.get(it.leadId)?.snippet) digestByLead.set(it.leadId, it);
         }
       }
+      const replyErrorAt = new Map(replyShadow.filter((r) => r.error && r.error !== "no-reply-text").map((r) => [r.leadId, r.judgedAt]));
       const unjudgedReplies = repliedLeads.filter((l) => {
         const j = replyJudgedAt.get(l.id);
         if (!j) return true; // never judged
+        if (retryDue(replyErrorAt.get(l.id))) return true; // transient error, retry
         const item = digestByLead.get(l.id);
         if (noTextYet.has(l.id) && item?.snippet) return true; // text arrived since the no-text record
         return !!item?.date && item.date > j; // a newer reply came in since the last judgment
