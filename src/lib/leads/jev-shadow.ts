@@ -9,7 +9,7 @@ import { store } from "../store.ts";
 import type { Lead } from "../sheets.ts";
 import { fetchPageText } from "../fetch-page.ts";
 import { jevAsk, type JevAnswers } from "../jev.ts";
-import { SITE_QUESTIONS, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
+import { SITE_QUESTIONS, MIN_WORDS_FOR_JUDGMENT, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
 import { isChain } from "../chains.ts";
 
 export interface JevShadowRecord {
@@ -21,6 +21,8 @@ export interface JevShadowRecord {
   sheetScore: number;
   sheetTier: string;
   sheetStatus: string;
+  /** Google review count at scrape time (sheet column T); size signal for the policy. */
+  reviewsCount?: number;
   /** Raw Jev answers (distributions + confidence) for later calibration. */
   answers?: JevAnswers | null;
   judgment: SiteJudgment | null;
@@ -48,7 +50,7 @@ export async function loadShadow(): Promise<JevShadowRecord[]> {
 export function rescore(rec: JevShadowRecord): JevShadowRecord {
   const chain = isChain(rec.name);
   if (!rec.judgment) return { ...rec, isChain: chain };
-  const attr = attractiveness(rec.judgment, chain);
+  const attr = attractiveness(rec.judgment, { isChain: chain, reviewsCount: rec.reviewsCount });
   return { ...rec, isChain: chain, attractiveness: attr.score, reasons: attr.reasons };
 }
 
@@ -95,6 +97,7 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
     sheetScore: lead.score,
     sheetTier: lead.websiteQualityTier,
     sheetStatus: lead.status,
+    reviewsCount: lead.reviewsCount,
     // Name only. `extra` extends the CHAIN_CONTAINS list, so passing the branch
     // ("Frisør") flagged every salon as a chain (seen in the first shadow run).
     isChain: isChain(lead.name),
@@ -105,6 +108,12 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
   if (!page) {
     return { ...base, judgment: null, attractiveness: null, reasons: [], model: null, inputFingerprint: null, error: "fetch" };
   }
+  // Input-quality gate (Lucas 2026-09-20, the Alchemist case): a JavaScript-
+  // rendered shell has almost no text, and Jev would confidently judge the
+  // shell as "dated". No text, no judgment.
+  if (page.wordCount < MIN_WORDS_FOR_JUDGMENT) {
+    return { ...base, judgment: null, attractiveness: null, reasons: [`kun ${page.wordCount} ord i HTML (JavaScript-side?) — vurder manuelt`], model: null, inputFingerprint: null, error: "thin-page" };
+  }
 
   const result = await jevAsk(siteState(page, lead), SITE_QUESTIONS, { timeoutMs: 15_000 });
   const judgment = toJudgment(result?.answers);
@@ -112,7 +121,7 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
   if (!judgment) {
     return { ...base, judgment: null, attractiveness: null, reasons: [], model: result?.model ?? null, inputFingerprint: fingerprint, error: "no-judgment" };
   }
-  const attr = attractiveness(judgment, base.isChain);
+  const attr = attractiveness(judgment, { isChain: base.isChain, reviewsCount: lead.reviewsCount });
   return {
     ...base,
     answers: result?.answers ?? null, // full distributions + confidence, for calibration later

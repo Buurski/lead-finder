@@ -43,6 +43,8 @@ test("toJudgment rejects out-of-range or unknown answers", () => {
     online_booking: { type: "noul" as const, noul: 0.05 },
     eeat: { type: "choice" as const, choice: "fuld", confidence: 0.8, probabilities: {} },
     budget_signal: { type: "choice" as const, choice: "hoejt", confidence: 0.6, probabilities: {} },
+    virksomhedstype: { type: "choice" as const, choice: "lokal_ejerledet", confidence: 0.7, probabilities: {} },
+    ligner_kinlys_kunder: { type: "noul" as const, noul: 0.8 },
   };
   assert.ok(toJudgment(ok));
   assert.equal(toJudgment({ ...ok, redesign: { ...ok.redesign, score: 4.5 } }), null);
