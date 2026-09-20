@@ -6,6 +6,8 @@ import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer"
 import { getLeads } from "@/lib/sheets";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 import { buildContactIndex } from "@/lib/leads/contact-history";
+import { loadShadow } from "@/lib/leads/jev-shadow";
+import { loadDraftShadow } from "@/lib/leads/draft-judgments";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -42,9 +44,30 @@ export async function GET() {
     // Sheets nede — badge degraderet, køen leveres alligevel.
   }
 
+  // Jev-badges (2026-09-20): lead-attraktivitet (site-judgments, natlig shadow)
+  // + kladde-kvalitet (draft-judgments, samme cron fase 2). Best-effort — en
+  // tom/manglende shadow giver bare null-badges, aldrig en fejlet request.
+  let leadJev = new Map<string, number | null>();
+  let draftJev = new Map<string, { quality: number | null; flags: string[] }>();
+  try {
+    leadJev = new Map((await loadShadow()).map((r) => [r.leadId, r.attractiveness]));
+  } catch {
+    // shadow store nede — lead-badge udelades
+  }
+  try {
+    draftJev = new Map((await loadDraftShadow()).map((r) => [r.draftId, { quality: r.quality, flags: r.flags }]));
+  } catch {
+    // shadow store nede — kladde-badge udelades
+  }
+
   const enriched = drafts.map((d) => {
     const rec = index?.lookup(d.name, d.city, d.recipientEmail);
-    return rec ? { ...d, history: { seenBefore: true, ...rec } } : d;
+    const dj = draftJev.get(d.id);
+    const withJev = {
+      ...d,
+      jev: { lead: leadJev.get(d.leadId) ?? null, draft: dj?.quality ?? null, flags: dj?.flags ?? [] },
+    };
+    return rec ? { ...withJev, history: { seenBefore: true, ...rec } } : withJev;
   });
 
   // no-store: mailadresser + kladdetekst må ikke ligge i en mobil-browsers HTTP-cache.

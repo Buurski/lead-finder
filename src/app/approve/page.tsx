@@ -36,6 +36,13 @@ interface QueueDraft {
   updatedAt: string;
   sender?: "lucas" | "charlie";
   sentBy?: "lucas" | "charlie";
+  // Jev-vurdering (2026-09-20): sat af /api/approve/queue fra jev-shadow (lead)
+  // + jev-draft-shadow (denne kladde). Begge kan være null (ikke vurderet endnu).
+  jev?: {
+    lead: number | null;
+    draft: number | null;
+    flags: string[];
+  };
   // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
   // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
   history?: {
@@ -46,6 +53,14 @@ interface QueueDraft {
     replied?: "ja" | "nej" | "aldrig";
     warmth?: "varm" | "lun" | "kold" | "død";
   };
+}
+
+// Jev-prioritet for "Afventer"-fanen (2026-09-20): kladde-kvalitet vejer
+// tungest (det Lucas sender ud), lead-attraktivitet er sekundær. Ingen
+// vurdering endnu (null) → neutral 50 så ikke-vurderede kladder ikke synker
+// til bunds eller springer foran gode.
+function jevPriority(d: QueueDraft): number {
+  return (d.jev?.draft ?? 50) * 0.6 + (d.jev?.lead ?? 50) * 0.4;
 }
 
 // Varme-badge (2026-07-18): farve + label pr. varme-trin. "død" = svarede nej —
@@ -291,6 +306,11 @@ export default function ApprovePage() {
     }
   }, [resetBusy, sendBusy, counts.approved, load]);
 
+  // Prioritering af "Afventer" (2026-09-20): Jev-vurdering øverst som standard
+  // så de bedste kladder sendes først — toggle falder tilbage til den gamle
+  // nyeste-først rækkefølge (køen kommer allerede createdAt-sorteret fra API'et).
+  const [pendingSort, setPendingSort] = useState<"jev" | "newest">("jev");
+
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
@@ -301,7 +321,10 @@ export default function ApprovePage() {
 
   const visible = useMemo(() => {
     let base: QueueDraft[];
-    if (filter === "pending") base = drafts.filter((d) => d.status === "pending" && !d.history?.seenBefore);
+    if (filter === "pending") {
+      base = drafts.filter((d) => d.status === "pending" && !d.history?.seenBefore);
+      if (pendingSort === "jev") base = [...base].sort((a, b) => jevPriority(b) - jevPriority(a));
+    }
     else if (filter === "seen") {
       // Varmest øverst; døde (svarede nej) nederst. Sekundært: kortest tid
       // siden kontakt først.
@@ -319,7 +342,7 @@ export default function ApprovePage() {
     const needle = q.trim().toLowerCase();
     if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
     return base;
-  }, [drafts, filter, branchFilter, q]);
+  }, [drafts, filter, branchFilter, q, pendingSort]);
 
   // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
   // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
@@ -514,6 +537,39 @@ export default function ApprovePage() {
         rejBusy={rejBusy}
         visiblePending={visible.filter((d) => d.status === "pending").length}
       />
+
+      {/* Prioritering af Afventer (2026-09-20): Jev-rangering er standard, toggle falder tilbage til nyeste først. */}
+      {filter === "pending" && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sortering</span>
+          <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
+            {([["jev", "Jev-prioritet"], ["newest", "Nyeste først"]] as const).map(([key, label]) => {
+              const active = pendingSort === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPendingSort(key)}
+                  style={{
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "5px 13px",
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    color: active ? "var(--text)" : "var(--text-muted)",
+                    background: active ? "var(--surface)" : "transparent",
+                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
       {drafts.length > 10 && (
@@ -960,6 +1016,8 @@ function DraftLetter({
   }
   const decided = draft.status !== "pending";
   const meta = STATUS_META[draft.status];
+  const jevFlags = draft.jev?.flags ?? [];
+  const sendIkke = jevFlags.includes("send ikke");
 
   const act = useCallback(
     async (action: "approve" | "edit" | "reject") => {
@@ -1006,6 +1064,7 @@ function DraftLetter({
       style={{
         background: "var(--surface)",
         border: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
+        borderLeft: sendIkke ? "4px solid var(--red)" : focused ? "1px solid var(--accent)" : "1px solid var(--border)",
         boxShadow: focused ? "0 0 0 3px var(--accent-soft)" : "none",
         borderRadius: 14,
         padding: "22px 24px",
@@ -1096,6 +1155,33 @@ function DraftLetter({
               <span style={{ color: "var(--text-dim)" }}> — {draft.professionalism}</span>
             ) : null}
           </p>
+          {draft.jev && (
+            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                Lead {draft.jev.lead ?? "–"}/100 · Kladde {draft.jev.draft ?? "–"}/100
+              </span>
+              {jevFlags.filter((f) => f !== "send ikke").map((f) => (
+                <span
+                  key={f}
+                  style={{
+                    padding: "1px 7px",
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    color: "var(--red)",
+                    background: "var(--red-dim)",
+                  }}
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
+          )}
+          {sendIkke && (
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "var(--red)" }}>
+              Send ikke — {jevFlags.join(", ")}
+            </div>
+          )}
         </div>
         <span
           style={{
