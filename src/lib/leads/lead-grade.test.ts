@@ -56,13 +56,22 @@ test("factLine includes what's known", () => {
   const facts = factLine({
     reviewsCount: 42,
     isChain: true,
-    judgment: { virksomhedstype: "lokal_ejerledet", budget: "hoejt", redesign: 2.6 },
+    sheetTier: "old",
+    judgment: { virksomhedstype: "lokal_ejerledet", budget: "hoejt" },
   });
   assert.deepEqual(facts, [
     "42 Google-anmeldelser",
     "lokal, ejerledet",
     "budget-signal: høj",
-    "død side",
+    "forældet side",
     "kæde",
   ]);
+});
+
+test("factLine bruger det gemte ark-tier, ikke en udledt værdi", () => {
+  // Regression: en side med redesign-behov 2,6 blev vist som "død side".
+  // "død" betyder at siden ikke svarer — det står i arket, ikke i Jevs score.
+  assert.deepEqual(factLine({ sheetTier: "dead" }), ["død side"]);
+  assert.deepEqual(factLine({ sheetTier: "" }), []);
+  assert.deepEqual(factLine({ sheetTier: "sludder" }), []);
 });

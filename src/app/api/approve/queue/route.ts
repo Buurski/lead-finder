@@ -80,7 +80,7 @@ export async function GET() {
         grade: grade(p),
         priority: p,
         links: businessLinks(sh?.name ?? d.name, sh?.city ?? d.city, sh?.url ?? "", d.recipientEmail),
-        facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, judgment: sh?.judgment }),
+        facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, sheetTier: sh?.sheetTier, judgment: sh?.judgment }),
       },
     };
     return rec ? { ...withJev, history: { seenBefore: true, ...rec } } : withJev;

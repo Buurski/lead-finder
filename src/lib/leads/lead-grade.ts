@@ -56,15 +56,23 @@ const VTYPE_DA: Record<string, string> = {
 
 const BUDGET_DA: Record<string, string> = { lavt: "lav", middel: "middel", hoejt: "høj" };
 
-const SITE_TIER_DA = ["moderne side", "middelmådig side", "forældet side", "død side"];
+// Real stored field (Sheets kolonne L, sat af verify-all) — foretrækkes frem for
+// at udlede en "tier" af Jevs redesign-score, som allerede tæller i karakteren.
+const SHEET_TIER_DA: Record<string, string> = {
+  modern: "moderne side",
+  mediocre: "middelmådig side",
+  old: "forældet side",
+  dead: "død side",
+};
 
 export interface FactInput {
   reviewsCount?: number;
   isChain?: boolean;
+  /** Sheets kolonne L: modern | mediocre | old | dead. */
+  sheetTier?: string;
   judgment?: {
     virksomhedstype?: string;
     budget?: string;
-    redesign?: number;
   } | null;
 }
 
@@ -79,11 +87,7 @@ export function factLine(j: FactInput): string[] {
   if (vtype && VTYPE_DA[vtype]) out.push(VTYPE_DA[vtype]);
   const budget = j.judgment?.budget;
   if (budget && BUDGET_DA[budget]) out.push(`budget-signal: ${BUDGET_DA[budget]}`);
-  const redesign = j.judgment?.redesign;
-  if (typeof redesign === "number" && Number.isFinite(redesign)) {
-    const tier = SITE_TIER_DA[Math.max(0, Math.min(3, Math.round(redesign)))];
-    out.push(tier);
-  }
+  if (j.sheetTier && SHEET_TIER_DA[j.sheetTier]) out.push(SHEET_TIER_DA[j.sheetTier]);
   if (j.isChain) out.push("kæde");
   return out;
 }
