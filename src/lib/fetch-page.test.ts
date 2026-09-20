@@ -50,3 +50,14 @@ test("toJudgment rejects out-of-range or unknown answers", () => {
   assert.equal(toJudgment({ ...ok, eeat: { ...ok.eeat, choice: "whatever" } }), null);
   assert.equal(toJudgment({ ...ok, budget_signal: { ...ok.budget_signal, choice: "premium" } }), null);
 });
+
+test("readCapped stops at the byte cap and rejects oversized content-length", async () => {
+  const { readCapped } = await import("./fetch-page.ts");
+  const big = new Response(new ReadableStream({
+    start(c) { for (let i = 0; i < 50; i++) c.enqueue(new TextEncoder().encode("x".repeat(1000))); c.close(); },
+  }));
+  const out = await readCapped(big, 2500);
+  assert.ok(out !== null && out.length <= 3000 && out.length >= 2500);
+  const declared = new Response("small", { headers: { "content-length": "9999999" } });
+  assert.equal(await readCapped(declared, 2500), null);
+});

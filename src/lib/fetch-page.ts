@@ -110,12 +110,78 @@ export function extractPage(url: string, raw: string, maxChars = 6000): PageText
   };
 }
 
-/** Returns null on unsafe URL, any network/HTTP failure, or too many redirects. */
+const MAX_BYTES = 2_000_000;
+
+/** IPv4 dotted-quad public check (shared by literal and resolved addresses). */
+function publicV4(ip: string): boolean {
+  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  return true;
+}
+
+/**
+ * Resolve the hostname and require every address to be public (Codex
+ * JEV-REV-002: `169.254.169.254.nip.io`-style names pass the literal check).
+ * DNS rebinding between this lookup and the fetch is not prevented; that would
+ * need a pinned-address egress proxy, out of proportion for a Vercel cron
+ * with no internal services.
+ */
+export async function resolvesPublic(hostname: string): Promise<boolean> {
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(hostname, { all: true });
+    if (addrs.length === 0) return false;
+    return addrs.every((a) => (a.family === 4 ? publicV4(a.address) : /^[23][0-9a-f]{3}:/i.test(a.address)));
+  } catch {
+    return false;
+  }
+}
+
+/** Read at most `max` bytes from a response body, cancelling the stream after (Codex JEV-REV-001). */
+export async function readCapped(res: Response, max = MAX_BYTES): Promise<string | null> {
+  const len = Number(res.headers.get("content-length") ?? 0);
+  if (len > max) return null;
+  if (!res.body) return (await res.text()).slice(0, max);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < max) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        total += value.byteLength;
+      }
+    }
+  } finally {
+    try { await reader.cancel(); } catch { /* stream already closed */ }
+  }
+  const buf = new Uint8Array(Math.min(total, max));
+  let off = 0;
+  for (const c of chunks) {
+    const n = Math.min(c.byteLength, buf.length - off);
+    if (n <= 0) break;
+    buf.set(c.subarray(0, n), off);
+    off += n;
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(buf);
+}
+
+/** Returns null on unsafe URL, any network/HTTP failure, oversized body, or too many redirects. */
 export async function fetchPageText(url: string, timeoutMs = 9000): Promise<PageText | null> {
   const started = Date.now();
   let current = url.trim();
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (!isSafeUrl(current)) return null;
+    const host = new URL(current).hostname;
+    if (!/^[\d.]+$/.test(host) && !host.includes(":") && !(await resolvesPublic(host))) return null;
     const left = timeoutMs - (Date.now() - started);
     if (left <= 0) return null;
     let res: Response;
@@ -140,8 +206,8 @@ export async function fetchPageText(url: string, timeoutMs = 9000): Promise<Page
     }
     if (!res.ok) return null;
     try {
-      const raw = (await res.text()).slice(0, 2_000_000);
-      return extractPage(current, raw);
+      const raw = await readCapped(res);
+      return raw === null ? null : extractPage(current, raw);
     } catch {
       return null;
     }

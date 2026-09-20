@@ -53,8 +53,11 @@ export function rescore(rec: JevShadowRecord): JevShadowRecord {
 }
 
 export async function saveShadow(rec: JevShadowRecord): Promise<void> {
-  await store.put(SHADOW_PREFIX + rec.leadId, rec);
+  // Append-only log FIRST (audit source of truth, Codex JEV-REV-005). If the
+  // put then fails, the lead simply has no current record and is re-judged
+  // next night; the reverse order could leave an unlogged visible record.
   await store.append(LOG_KEY, rec);
+  await store.put(SHADOW_PREFIX + rec.leadId, rec);
 }
 
 const INELIGIBLE_STATUS = new Set(["client", "dead"]);
