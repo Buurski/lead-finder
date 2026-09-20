@@ -3,8 +3,9 @@ import ScrapeButton from "@/components/ScrapeButton";
 import VerifyAllButton from "@/components/VerifyAllButton";
 import BulkEmailPanel from "@/components/BulkEmailPanel";
 import WarnBanner from "@/components/WarnBanner";
-import EmailDashboardClient from "@/components/EmailDashboardClient";
+import EmailDashboardClient, { type JevInfo } from "@/components/EmailDashboardClient";
 import PageHeader from "@/components/shell/PageHeader";
+import { loadShadow } from "@/lib/leads/jev-shadow";
 
 export const revalidate = 60;
 
@@ -37,6 +38,29 @@ export default async function LeadsPage() {
   const totalLeads = leads.length;
   // Hand the client only the top-scored slice so mobile doesn't OOM.
   const capped = [...leads].sort((a, b) => b.score - a.score).slice(0, LEADS_CAP);
+
+  // Jev shadow scores (observe-only, separate store) — best-effort, never
+  // blocks the page if the store is unreachable.
+  let jevByLead: Record<string, JevInfo> = {};
+  try {
+    const shadow = await loadShadow();
+    jevByLead = Object.fromEntries(
+      shadow.map((r) => [
+        r.leadId,
+        {
+          attractiveness: r.attractiveness,
+          reasons: r.reasons,
+          error: r.error,
+          judgedAt: r.judgedAt,
+          redesign: r.judgment?.redesign,
+          budget: r.judgment?.budget,
+          isChain: r.isChain,
+        },
+      ]),
+    );
+  } catch {
+    // Shadow store unreachable — table just falls back to "ikke vurderet".
+  }
 
   return (
     <div className="kinly-page" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -80,7 +104,7 @@ export default async function LeadsPage() {
 
       <BulkEmailPanel />
 
-      <EmailDashboardClient leads={capped} sheetsOk={sheetsOk} />
+      <EmailDashboardClient leads={capped} sheetsOk={sheetsOk} jev={jevByLead} />
     </div>
   );
 }

@@ -7,6 +7,17 @@ import type { EnrichedInfo } from "@/app/api/leads/[id]/enrich/route";
 import EmailPanel from "./EmailPanel";
 import type { EmailFilter } from "./EmailStatsPanel";
 
+/** Per-lead Jev shadow-score summary (observe-only, see src/lib/leads/jev-shadow.ts). */
+export interface JevInfo {
+  attractiveness: number | null;
+  reasons: string[];
+  error?: string;
+  judgedAt: string;
+  redesign?: number;
+  budget?: string;
+  isChain: boolean;
+}
+
 const STATUS: Record<LeadStatus, { color: string; bg: string; label: string }> = {
   new:        { color: "#4338ca", bg: "#e0e7ff", label: "Ny" },
   called:     { color: "#b45309", bg: "#fef3c7", label: "Ringet" },
@@ -59,10 +70,33 @@ function ScoreCell({ rank, score }: { rank: number; score: number }) {
   );
 }
 
+const JEV_ERROR_LABEL: Record<string, string> = {
+  "thin-page": "kunne ikke læses",
+  fetch: "ingen side",
+};
+
+function JevCell({ info }: { info: JevInfo | undefined }) {
+  if (!info || info.attractiveness == null) {
+    const title = info?.error ? (JEV_ERROR_LABEL[info.error] ?? info.error) : "ikke vurderet";
+    return <span style={{ fontSize: 12, color: "var(--text-dim)" }} title={title}>–</span>;
+  }
+  const a = info.attractiveness;
+  const c = a >= 70 ? { color: "#14532d", bg: "#bbf7d0" } : a >= 40 ? { color: "#b45309", bg: "#fef3c7" } : { color: "#64748b", bg: "#f1f5f9" };
+  return (
+    <span
+      title={info.reasons.join(" · ")}
+      style={{ background: c.bg, color: c.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}
+    >
+      {a}
+    </span>
+  );
+}
+
 type FilterStatus = LeadStatus | "all";
 type ScoreTier = "all" | "A" | "B" | "C";
+type SortBy = "score" | "jev";
 
-export default function LeadTable({ leads: initial, emailFilter = "all", sheetsOk = true }: { leads: Lead[]; emailFilter?: EmailFilter; sheetsOk?: boolean }) {
+export default function LeadTable({ leads: initial, emailFilter = "all", sheetsOk = true, jev = {} }: { leads: Lead[]; emailFilter?: EmailFilter; sheetsOk?: boolean; jev?: Record<string, JevInfo> }) {
   const [leads, setLeads] = useState(initial);
   const [selected, setSelected] = useState<Lead | null>(null);
   const [notes, setNotes] = useState("");
@@ -80,6 +114,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
   const [filterCity, setFilterCity] = useState("all");
   const [filterWebsite, setFilterWebsite] = useState<"all" | "has" | "none">("all");
   const [filterWebRating, setFilterWebRating] = useState<"all" | "none" | "dead" | "old" | "mediocre" | "modern">("all");
+  const [sortBy, setSortBy] = useState<SortBy>("score");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -93,7 +128,19 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
     return Array.from(set).sort();
   }, [leads]);
 
-  const sorted = useMemo(() => [...leads].sort((a, b) => b.score - a.score), [leads]);
+  const sorted = useMemo(() => {
+    if (sortBy === "jev") {
+      return [...leads].sort((a, b) => {
+        const ja = jev[a.id]?.attractiveness;
+        const jb = jev[b.id]?.attractiveness;
+        if (ja == null && jb == null) return 0;
+        if (ja == null) return 1; // nulls last
+        if (jb == null) return -1;
+        return jb - ja;
+      });
+    }
+    return [...leads].sort((a, b) => b.score - a.score);
+  }, [leads, sortBy, jev]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -211,7 +258,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
 
   // Reset to first page whenever filters change — done during render (React's
   // recommended pattern for derived resets) instead of in an effect.
-  const filterSig = [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter].join("|");
+  const filterSig = [searchQuery, filterStatus, filterTier, filterBranch, filterCity, filterWebsite, filterWebRating, emailFilter, sortBy].join("|");
   const [prevFilterSig, setPrevFilterSig] = useState(filterSig);
   if (prevFilterSig !== filterSig) {
     setPrevFilterSig(filterSig);
@@ -338,6 +385,12 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
           <option value="modern">Moderne</option>
         </select>
 
+        {/* Sort */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)} style={selectStyle}>
+          <option value="score">Sortér: Ark-score</option>
+          <option value="jev">Sortér: Jev-attraktivitet</option>
+        </select>
+
         {activeFilters > 0 && (
           <button
             onClick={() => { setFilterStatus("all"); setFilterTier("all"); setFilterBranch("all"); setFilterCity("all"); setFilterWebsite("all"); setFilterWebRating("all"); }}
@@ -359,7 +412,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Rang", "Virksomhed", "Branch", "By", "Hjemmeside", "Status"].map((h) => (
+                {["Rang", "Virksomhed", "Branch", "By", "Hjemmeside", "Jev", "Status"].map((h) => (
                   <th key={h} style={{
                     padding: "10px 16px",
                     textAlign: "left",
@@ -401,6 +454,9 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
                         background: ws.bg, color: ws.color,
                         borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600,
                       }}>{ws.label}</span>
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <JevCell info={jev[lead.id]} />
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <span style={{
@@ -502,6 +558,32 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
               ); })()}
               <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Score {selected.score}/100</span>
             </div>
+
+            {/* Jev shadow score (observe-only) */}
+            {(() => {
+              const ji = jev[selected.id];
+              if (!ji) return null;
+              if (ji.error === "thin-page") {
+                return (
+                  <p style={{ fontSize: 12, color: "var(--text-dim)", margin: 0 }}>
+                    Siden kunne ikke læses (JavaScript-side) — vurder manuelt
+                  </p>
+                );
+              }
+              if (ji.attractiveness == null) return null;
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Jev {ji.attractiveness}/100</span>
+                  {ji.reasons.length > 0 && (
+                    <ul style={{ margin: 0, padding: "0 0 0 14px", display: "flex", flexDirection: "column", gap: 2 }}>
+                      {ji.reasons.slice(0, 6).map((r, i) => (
+                        <li key={i} style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
 
             <div style={{ height: 1, background: "var(--border)" }} />
 
