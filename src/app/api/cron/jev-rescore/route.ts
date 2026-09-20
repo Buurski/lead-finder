@@ -13,6 +13,7 @@ import { loadDraftShadow, saveDraftShadow, judgeDraft } from "@/lib/leads/draft-
 import { loadReplyShadow, saveReplyShadow, judgeReply, type ReplyInfo } from "@/lib/leads/reply-judgments";
 import { classifyReply } from "@/lib/reply";
 import { loadDigest } from "@/lib/inbox-digest";
+import { liveScanDigest } from "@/lib/inbox-live";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -127,10 +128,22 @@ export async function GET(req: Request): Promise<NextResponse> {
       const repliedLeads = leads.filter((l) => l.emailStatus === "replied" && !REPLY_INELIGIBLE_STATUS.has(l.status));
       const replyShadow = await loadReplyShadow();
       const replyJudgedAt = new Map(replyShadow.map((r) => [r.leadId, r.judgedAt]));
+      const noTextYet = new Set(replyShadow.filter((r) => r.error === "no-reply-text").map((r) => r.leadId));
+      // The stored digest is a single snapshot; replied leads outside it have no
+      // text. Scan IMAP once (read-only, same code path as /api/replies) when at
+      // least one candidate lacks a snippet, so Jev judges the actual reply.
+      const needsLive = repliedLeads.some((l) => !digestByLead.get(l.id)?.snippet && (!replyJudgedAt.has(l.id) || noTextYet.has(l.id)));
+      if (needsLive && Date.now() < deadline - 30_000) {
+        const live = await liveScanDigest().catch(() => null);
+        for (const it of live?.digest?.items ?? []) {
+          if (it.leadId && it.snippet && !digestByLead.get(it.leadId)?.snippet) digestByLead.set(it.leadId, it);
+        }
+      }
       const unjudgedReplies = repliedLeads.filter((l) => {
         const j = replyJudgedAt.get(l.id);
         if (!j) return true; // never judged
         const item = digestByLead.get(l.id);
+        if (noTextYet.has(l.id) && item?.snippet) return true; // text arrived since the no-text record
         return !!item?.date && item.date > j; // a newer reply came in since the last judgment
       });
       const replyBatch = unjudgedReplies.slice(0, MAX_REPLY_BATCH);

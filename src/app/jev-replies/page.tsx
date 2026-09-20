@@ -72,7 +72,7 @@ export default async function JevRepliesPage() {
                     <td style={td}>{r.name}</td>
                     <td style={td}>{lead?.city ?? "—"}</td>
                     <td style={td}>{lead?.branch ?? "—"}</td>
-                    <td style={td}>{r.error ? `fejl: ${r.error}` : r.action ? ACTION_LABEL[r.action] : "—"}</td>
+                    <td style={td}>{r.error === "no-reply-text" ? "svartekst mangler — kør \"Sync svar fra Gmail\" eller åbn /replies" : r.error ? `fejl: ${r.error}` : r.action ? ACTION_LABEL[r.action] : "—"}</td>
                     <td style={td}>{scale3(r.haster)}</td>
                     <td style={td}>{scale3(r.varme)}</td>
                     <td style={td}>{daysAgo(r.repliedAt)}</td>

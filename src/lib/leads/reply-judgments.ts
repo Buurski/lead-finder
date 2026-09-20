@@ -165,6 +165,16 @@ export async function judgeReply(lead: Lead, info: ReplyInfo): Promise<ReplyShad
     repliedAt: info.repliedAt ?? null,
     judgedAt: new Date().toISOString(),
   };
+  // Garbage-in gate (first live run: 26 of 30 replied leads got "luk høfligt"
+  // because no reply text existed and Jev judged notes instead). No text, no
+  // judgment — the page says "svartekst mangler" instead of guessing.
+  if (!info.bodyText || info.bodyText.trim().length < 20) {
+    return {
+      ...base,
+      action: null, actionConfidence: null, haster: null, varme: null, spoergsmaal: null,
+      model: null, error: "no-reply-text",
+    };
+  }
   const result = await jevAsk(replyState(lead, info), REPLY_QUESTIONS, { timeoutMs: 15_000 });
   const judgment = toReplyJudgment(result?.answers);
   if (!judgment) {
