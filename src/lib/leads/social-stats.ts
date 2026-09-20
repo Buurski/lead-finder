@@ -58,10 +58,12 @@ export async function fetchFacebookStats(
   if (!token || urls.length === 0) return out;
   try {
     const res = await fetch(
-      `https://api.apify.com/v2/acts/apify~facebook-pages-scraper/run-sync-get-dataset-items?token=${token}`,
+      // Token i Authorization-headeren, ikke i query-strengen: URL'er havner i
+      // proxy- og platformlogs, headers gør ikke.
+      "https://api.apify.com/v2/acts/apify~facebook-pages-scraper/run-sync-get-dataset-items",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ startUrls: urls.map((u) => ({ url: u })) }),
         signal: AbortSignal.timeout(90_000),
       },
