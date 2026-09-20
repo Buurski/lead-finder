@@ -9,7 +9,7 @@ import { store } from "../store.ts";
 import type { Lead } from "../sheets.ts";
 import { fetchPageText } from "../fetch-page.ts";
 import { jevAsk, type JevAnswers } from "../jev.ts";
-import { SITE_QUESTIONS, MIN_WORDS_FOR_JUDGMENT, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
+import { SITE_QUESTIONS, MIN_WORDS_FOR_JUDGMENT, THIN_WORDS, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
 import { isChain } from "../chains.ts";
 
 export interface JevShadowRecord {
@@ -122,12 +122,13 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
     return { ...base, judgment: null, attractiveness: null, reasons: [], model: result?.model ?? null, inputFingerprint: fingerprint, error: "no-judgment" };
   }
   const attr = attractiveness(judgment, { isChain: base.isChain, reviewsCount: lead.reviewsCount });
+  const reasons = page.wordCount < THIN_WORDS ? [...attr.reasons, `tynd side (${page.wordCount} ord) — lav sikkerhed`] : attr.reasons;
   return {
     ...base,
     answers: result?.answers ?? null, // full distributions + confidence, for calibration later
     judgment,
     attractiveness: attr.score,
-    reasons: attr.reasons,
+    reasons,
     model: result?.model ?? null,
     inputFingerprint: fingerprint,
   };

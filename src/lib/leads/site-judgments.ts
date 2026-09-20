@@ -87,8 +87,13 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
   },
 };
 
-/** Below this the page was probably JavaScript-rendered and Jev would judge an empty shell. */
-export const MIN_WORDS_FOR_JUDGMENT = 120;
+/**
+ * Below this the page was probably JavaScript-rendered and Jev would judge an
+ * empty shell (Alchemist: 26 words). Real small sites sit at 80-150 words, so
+ * the gate is 60; between 60 and 120 the judgment still runs but is marked thin.
+ */
+export const MIN_WORDS_FOR_JUDGMENT = 60;
+export const THIN_WORDS = 120;
 
 /** State sent to Jev. Text is already redacted + capped by fetch-page.ts. */
 export function siteState(page: PageText, lead: { name: string; branch: string }) {
