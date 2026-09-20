@@ -1113,7 +1113,11 @@ function DraftLetter({
       onMouseEnter={onFocusRequest}
       style={{
         background: "var(--surface)",
-        border: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
+        // Ingen `border`-shorthand sammen med borderLeft: React advarer om
+        // styling-bugs når de blandes under rerender.
+        borderTop: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
+        borderRight: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
+        borderBottom: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
         borderLeft: sendIkke ? "4px solid var(--red)" : focused ? "1px solid var(--accent)" : "1px solid var(--border)",
         boxShadow: focused ? "0 0 0 3px var(--accent-soft)" : "none",
         borderRadius: 14,
@@ -1229,7 +1233,7 @@ function DraftLetter({
           )}
           {sendIkke && (
             <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "var(--red)" }}>
-              Send ikke — {jevFlags.join(", ")}
+              Send ikke — {jevFlags.filter((f) => f !== "send ikke").join(", ") || "lav kvalitet"}
             </div>
           )}
         </div>
