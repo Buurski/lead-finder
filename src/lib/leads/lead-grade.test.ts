@@ -10,14 +10,21 @@ test("grade boundaries", () => {
   assert.equal(grade(null), "?");
 });
 
+test("grade: en ufuldstændig vurdering kan aldrig blive A", () => {
+  // Kun kladden vurderet (Lucas 2026-09-20: "alting er bare rated 100").
+  assert.equal(grade(100, false), "B");
+  assert.equal(grade(70, false), "B");
+  // Dårlig er stadig dårlig, uanset om begge halvdele er vurderet.
+  assert.equal(grade(30, false), "C");
+  assert.equal(grade(null, false), "?");
+});
+
 test("priority: both null", () => {
   assert.equal(priority(null, null), null);
 });
 
-test("priority: one null falls back to the other for both slots", () => {
-  // draftQuality null → uses leadAttr (80) for both slots: 80*0.6 + 80*0.4 = 80
+test("priority: en manglende halvdel udelades, den kendte fordobles ikke", () => {
   assert.equal(priority(80, null), 80);
-  // leadAttr null → uses draftQuality (40) for both slots: 40*0.6 + 40*0.4 = 40
   assert.equal(priority(null, 40), 40);
 });
 

@@ -79,7 +79,49 @@ export function isChain(name: string, extra?: string[]): boolean {
     if (new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(norm)) return true;
   }
   const containsList = extra ? [...CHAIN_CONTAINS, ...extra] : CHAIN_CONTAINS;
-  return containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())));
+  if (containsList.some((chain) => norm.includes(stripApos(chain.toLowerCase())))) return true;
+  // Space-insensitive pass: the sheet writes "Profil Optik", the list has
+  // "profiloptik" — 7 stores slipped through (2026-09-20). Only entries of 10+
+  // characters, so short ones ("h&m", "silvan") cannot glue onto a neighbour
+  // word and match something unrelated.
+  const squashed = norm.replace(/[\s-]/g, "");
+  return containsList.some((chain) => {
+    const c = stripApos(chain.toLowerCase()).replace(/[\s-]/g, "");
+    return c.length >= 10 && squashed.includes(c);
+  });
+}
+
+/** Lowercased, company-suffix- and punctuation-free key for name comparison. */
+export function chainNameKey(name: string): string {
+  return (name || "")
+    .toLowerCase()
+    .replace(/[’'`´™®©]/g, "")
+    .replace(/\s*\b(aps|a\/s|i\/s|p\/s|ivs)\b\.?\s*$/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Chains the hardcoded list will never cover, found in the data instead
+ * (Lucas 2026-09-20: "Ars Beauty er der også mange gange"). Same business name
+ * in THREE OR MORE different towns is a chain or franchise: head office picks
+ * the website, the shop does not.
+ *
+ * Three, not two, on purpose: two rows often mean one business listed under two
+ * spellings of the same town ("Svostrup Kro" in both Silkeborg and Svostrup).
+ */
+export function repeatedChainNames(items: { name: string; city: string }[], minCities = 3): Set<string> {
+  const cities = new Map<string, Set<string>>();
+  for (const it of items) {
+    const key = chainNameKey(it.name);
+    if (key.length < 4) continue; // too short to be a meaningful name match
+    const set = cities.get(key) ?? new Set<string>();
+    set.add((it.city || "").trim().toLowerCase());
+    cities.set(key, set);
+  }
+  const out = new Set<string>();
+  for (const [key, set] of cities) if (set.size >= minCities) out.add(key);
+  return out;
 }
 
 // High-confidence public-sector name tokens. Deliberately narrow — only tokens

@@ -1,7 +1,7 @@
 "use client";
 
-// "Vurdér 60 leads nu" (2026-09-20): samme on-demand Jev-batch som
-// /approve's knap, bare med limit=60 (siden viser lead-attraktivitet, ikke
+// "Vurdér 250 leads nu" (2026-09-20): samme on-demand Jev-batch som
+// /approve's knap, bare med limit=250 (siden viser lead-attraktivitet, ikke
 // kladder). Kører bag samme basic auth som resten af siden (proxy.ts) — ikke
 // nat-cronnen, som Lucas ikke selv kan trigge.
 
@@ -18,7 +18,7 @@ export default function RunButton() {
     setBusy(true);
     setMsg("Vurderer…");
     try {
-      const res = await fetch("/api/jev-run?limit=60", { method: "POST" });
+      const res = await fetch("/api/jev-run?limit=250", { method: "POST" });
       const d = await res.json().catch(() => ({}));
       setMsg(
         res.ok && d.ok
@@ -52,7 +52,7 @@ export default function RunButton() {
           opacity: busy ? 0.6 : 1,
         }}
       >
-        {busy ? "Vurderer…" : "Vurdér 60 leads nu"}
+        {busy ? "Vurderer…" : "Vurdér 250 leads nu"}
       </button>
       {msg && <span className="cc-dim" style={{ fontSize: 11.5 }}>{msg}</span>}
     </div>

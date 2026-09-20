@@ -68,7 +68,10 @@ interface QueueDraft {
 // vurdering endnu (null) → neutral 50 så ikke-vurderede kladder ikke synker
 // til bunds eller springer foran gode.
 function jevPriority(d: QueueDraft): number {
-  return (d.jev?.draft ?? 50) * 0.6 + (d.jev?.lead ?? 50) * 0.4;
+  // Serverens tal (lead-grade.ts) er kilden — den blander ikke længere en
+  // manglende halvdel ind i sig selv. Uvurderede (-1) ligger sidst, ikke
+  // midt i feltet: vi VED ikke at de er gennemsnitlige.
+  return d.jev?.priority ?? -1;
 }
 
 // Varme-badge (2026-07-18): farve + label pr. varme-trin. "død" = svarede nej —
@@ -604,6 +607,36 @@ export default function ApprovePage() {
     }
   }, [selectedPending, load]);
 
+  // Ryd bunden (Lucas 2026-09-20: "slet dem der ikke er væsentlige for os").
+  // Kun afventende med karakter C — altså hvor BÅDE forretning og kladde er
+  // vurderet og resultatet er dårligt. "?" røres aldrig: en uvurderet kladde
+  // er ukendt, ikke dårlig. Afvist, ikke slettet — reversibelt.
+  const gradeCPending = useMemo(
+    () => drafts.filter((d) => d.status === "pending" && d.jev?.grade === "C"),
+    [drafts],
+  );
+  const rejectGradeC = useCallback(async () => {
+    const targets = gradeCPending;
+    if (targets.length === 0) return;
+    if (!window.confirm(`Afvis ${targets.length} udkast med karakter C? Kun dem hvor Jev har vurderet BÅDE forretningen og kladden. Lead'en blokeres 14 dage — intet slettes.`)) return;
+    setRejBusy(true);
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject-many", ids: targets.map((d) => d.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) window.alert(`Kunne ikke afvise: ${data.error ?? "ukendt fejl"}. Alt står stadig som afventende.`);
+      await load();
+    } catch {
+      window.alert("Netværksfejl — intet blev ændret.");
+    } finally {
+      setRejBusy(false);
+      setSelected(new Set());
+    }
+  }, [gradeCPending, load]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
@@ -713,6 +746,17 @@ export default function ApprovePage() {
               );
             })}
           </div>
+          {gradeCPending.length > 0 && (
+            <button
+              type="button"
+              onClick={rejectGradeC}
+              disabled={rejBusy}
+              className="cc-btn"
+              style={{ fontSize: 12.5, color: "var(--red)", borderColor: "var(--red)" }}
+            >
+              {rejBusy ? "Afviser…" : `Afvis alle C (${gradeCPending.length})`}
+            </button>
+          )}
         </div>
       </div>
 

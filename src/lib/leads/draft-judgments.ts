@@ -119,26 +119,31 @@ export interface DraftQuality {
 }
 
 /**
- * How good is this draft to send, given what Jev saw? Deterministic policy
- * (council 2026-09-20):
- *   base            50
- *   demo match      +20 if ≥0.6 else −20
- *   konkret         +15 if ≥0.6 else −10
- *   tone            lyderSomLucas (0..3) × 10 → 0..30
+ * How good is this draft to send, given what Jev saw? Deterministic policy.
+ *
+ * Rescaled 2026-09-20 (Lucas: "alting er bare rated 100"). The first version
+ * summed to a RAW maximum of 130 and then clamped to 100, so everything from
+ * "tone 1.5 / emne 1.5" upwards hit the ceiling — roughly two thirds of all
+ * drafts scored exactly 100 and the scale carried no information. The positive
+ * terms now add to exactly 100, so the ceiling is only reachable by a draft
+ * that is perfect on all four axes:
+ *   demo match      15 if ≥0.6 else 0
+ *   konkret         15 if ≥0.6 else 0
+ *   tone            lyderSomLucas (0..3) / 3 × 40
+ *   emne-appel      emneAppel (0..3) / 3 × 30
  *   pris nævnt      −40, flag "nævner pris" if ≥0.5
  *   faktafejl       −50, flag "faktafejl" if ≥0.5
- *   emne-appel      + emneAppel (0..3) × 5
  *   clamp 0..100; flag "send ikke" if score < 40
  */
 export function draftQuality(j: DraftJudgment): DraftQuality {
   const flags: string[] = [];
-  let s = 50;
-  s += j.demoMatcherBranche >= 0.6 ? 20 : -20;
-  s += j.konkretObservation >= 0.6 ? 15 : -10;
-  s += j.lyderSomLucas * 10;
+  let s = 0;
+  if (j.demoMatcherBranche >= 0.6) s += 15;
+  if (j.konkretObservation >= 0.6) s += 15;
+  s += (Math.max(0, Math.min(3, j.lyderSomLucas)) / 3) * 40;
+  s += (Math.max(0, Math.min(3, j.emneAppel)) / 3) * 30;
   if (j.naevnerPris >= 0.5) { s -= 40; flags.push("nævner pris"); }
   if (j.fejlIFakta >= 0.5) { s -= 50; flags.push("faktafejl"); }
-  s += j.emneAppel * 5;
   s = Math.max(0, Math.min(100, Math.round(s)));
   if (s < 40) flags.push("send ikke");
   return { score: s, flags };

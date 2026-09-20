@@ -82,13 +82,15 @@ export async function GET() {
     const sh = leadShadow.get(d.leadId);
     const shSocials = sh?.socials;
     const p = priority(leadAttr, draftQuality);
+    // Kun en komplet vurdering (både forretning og kladde) kan give A —
+    // ellers ville en ikke-vurderet forretning arve kladdens karakter.
     const withJev = {
       ...d,
       jev: {
         lead: leadAttr,
         draft: draftQuality,
         flags: dj?.flags ?? [],
-        grade: grade(p),
+        grade: grade(p, leadAttr != null && draftQuality != null),
         priority: p,
         links: businessLinks(sh?.name ?? d.name, sh?.city ?? d.city, sh?.url ?? "", d.recipientEmail, shSocials),
         facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, sheetTier: sh?.sheetTier, judgment: sh?.judgment }),

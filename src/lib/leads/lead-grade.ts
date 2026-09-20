@@ -8,16 +8,29 @@
 export type Grade = "A" | "B" | "C" | "?";
 
 /** Same weighting as page.tsx's jevPriority: draft quality weighs heaviest
- * (it's what actually gets sent), lead attractiveness is secondary. */
+ * (it's what actually gets sent), lead attractiveness is secondary.
+ *
+ * Lucas 2026-09-20 ("alting er bare rated 100"): the old version filled a
+ * missing side with the OTHER side (`draftQuality ?? leadAttr ?? 50`), so a
+ * draft scored 100 with NO lead judgment became 100*0.6 + 100*0.4 = 100 = A.
+ * Nearly every lead in production KV is still unjudged, so nearly every draft
+ * showed a fabricated A/100. A missing side is now simply left out of the
+ * average — the score is the known half, never the unknown one doubled. */
 export function priority(leadAttr: number | null, draftQuality: number | null): number | null {
   if (leadAttr == null && draftQuality == null) return null;
-  const p = (draftQuality ?? leadAttr ?? 50) * 0.6 + (leadAttr ?? draftQuality ?? 50) * 0.4;
-  return Math.round(p);
+  if (leadAttr == null) return Math.round(draftQuality as number);
+  if (draftQuality == null) return Math.round(leadAttr);
+  return Math.round(draftQuality * 0.6 + leadAttr * 0.4);
 }
 
-export function grade(p: number | null): Grade {
+/**
+ * `complete` = both halves judged. An A means "good draft AND attractive
+ * business"; with only the draft scored we have not looked at the business at
+ * all, so the grade is capped at B. Prevents the old "everything is an A".
+ */
+export function grade(p: number | null, complete = true): Grade {
   if (p == null) return "?";
-  if (p >= 70) return "A";
+  if (p >= 70) return complete ? "A" : "B";
   if (p >= 50) return "B";
   return "C";
 }

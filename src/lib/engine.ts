@@ -176,6 +176,14 @@ function toResearchLead(l: Record<string, unknown>): ResearchLead {
   };
 }
 
+/**
+ * Under denne Jev-attraktivitet drafter motoren slet ikke (Lucas 2026-09-20).
+ * 30 rammer kæder (−40), stor/landskendt (−50), offentlig (−40) og sider der
+ * allerede er moderne (−30) — på de 1.288 vurderede leads ligger 514 under,
+ * og de er netop dem han ikke vil sende til. Uvurderede leads rammes ikke.
+ */
+export const MIN_JEV_ATTRACTIVENESS = 30;
+
 // Map a Cowork email-quality tier to the 0–1 term compositeScore expects.
 const EMAIL_TIER_QUALITY: Record<string, number> = {
   personal: 1, kontakt: 0.6, info: 0.4, generic: 0.2, noreply: 0,
@@ -259,6 +267,24 @@ async function pickLeads(
       // forskellig stavning/by men samme email — isContactable pr. række fanger
       // det ikke. Blokér kandidater hvis email/firma-domæne matcher en kontaktet.
       const emailBlock = contactedEmailBlock(all as Lead[]);
+      // Jev-attraktivitet som rangordning når den findes (Lucas 2026-09-20:
+      // "det er kun frisører... der er ingen VVS"). Composite-scoren ganger
+      // skønhed op ×1,2 og professionel ned ×0,7 ud fra hans juni-præference,
+      // og den har aldrig SET hjemmesiden. Jev har: blandt de 62 bedst
+      // vurderede leads er 29 håndværkere (el, VVS, maler, tømrer, murer) og
+      // kun 3 frisører. Hvor Jev har en vurdering, vinder den; ellers composite.
+      // Under MIN_JEV_ATTRACTIVENESS springes lead'et helt over — det er kæder,
+      // landskendte brands og sider der allerede er moderne.
+      const jevAttr = new Map<string, number>();
+      try {
+        const { loadShadow } = await import("./leads/jev-shadow.ts");
+        for (const r of await loadShadow()) {
+          if (typeof r.attractiveness === "number") jevAttr.set(r.leadId, r.attractiveness);
+        }
+      } catch {
+        // node-CLI'en kan ikke importere store.ts ("server-only"), og et tomt
+        // KV giver ingen poster. Begge dele = fald tilbage på composite alene.
+      }
       candidates = all
         .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
         // Un-worked = blank or "new" status (Sheets returns "" for a blank cell
@@ -272,7 +298,8 @@ async function pickLeads(
         .filter(({ lead }) => lead.name && isUnworkedStatus(lead.status) && isContactable(lead) && leadChannel(lead) === "email"
           && !emailBlock.blocks(lead.email)
           && (!allow || allow.has(lead.name.trim().toLowerCase())))
-        .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: enrichedComposite(lead) }))
+        .map(({ lead, id }) => ({ rl: { ...toResearchLead(lead as unknown as Record<string, unknown>), id }, comp: jevAttr.get(id) ?? enrichedComposite(lead), jev: jevAttr.get(id) }))
+        .filter((x) => x.jev === undefined || x.jev >= MIN_JEV_ATTRACTIVENESS)
         .sort((a, b) => b.comp - a.comp)
         .map((x) => x.rl);
       // Spread the batch across branch families so it's a MIX, not all one

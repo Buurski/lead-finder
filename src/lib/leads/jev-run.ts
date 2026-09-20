@@ -3,7 +3,7 @@
 // on-demand route (src/app/api/jev-run/route.ts) so Lucas can run a batch
 // himself instead of waiting for 03:30. OBSERVES ONLY, same as both callers.
 
-import { getLeads } from "../sheets.ts";
+import { getLeads, getClients } from "../sheets.ts";
 import { jevEnabled } from "../jev.ts";
 import { loadShadow, saveShadow, pickBatch, judgeLead, countUnjudged } from "./jev-shadow.ts";
 import { readQueue } from "../queue.ts";
@@ -14,15 +14,24 @@ import { loadDigest } from "../inbox-digest.ts";
 import { liveScanDigest } from "../inbox-live.ts";
 
 const DEFAULT_BATCH = 40;
-const MAX_DRAFT_BATCH = 30;
+const MAX_DRAFT_BATCH = 150;
 const MAX_REPLY_BATCH = 30;
+// Fase 1 (leads) må højst bruge denne andel af vinduet. Uden den kunne et stort
+// lead-hold æde hele deadline og efterlade kladderne uvurderede — præcis det
+// der gav "?" og falske karakterer i /godkendelse.
+const LEAD_PHASE_SHARE = 0.6;
 // Hard ceiling regardless of ?limit / env (Codex JEV-005). One lead worst case is
 // fetch 9 s + Jev 15 s = 24 s; with CONCURRENCY 5 and a 95 s wall-clock deadline
 // the route always returns inside maxDuration (Codex JEV-003) — leftover leads
 // are simply "remaining" and picked up next night (oldest-judged-first order).
-const MAX_BATCH = 60;
-const CONCURRENCY = 5;
-const DEADLINE_MS = 95_000;
+// 1.288 leads i 60'er-hold = 22 klik, så produktionen stod reelt uvurderet
+// (Lucas 2026-09-20). Ruterne kører nu på maxDuration 300, så loftet er hævet
+// og deadline sat til 270 s: worst case pr. lead er fetch 9 s + Jev 15 s = 24 s,
+// og med CONCURRENCY 8 når et hold altid at returnere inden for maxDuration.
+// Resten bliver "remaining" og tages i næste kørsel (ældst-vurderet først).
+const MAX_BATCH = 250;
+const CONCURRENCY = 8;
+const DEADLINE_MS = 270_000;
 const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export function clampBatch(raw: string | number | null | undefined): number {
@@ -50,21 +59,27 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
     return { leads: EMPTY_PHASE, drafts: EMPTY_PHASE, replies: EMPTY_PHASE };
   }
   const max = clampBatch(opts.limit);
-  const deadline = Date.now() + (opts.deadlineMs ?? DEADLINE_MS);
+  const window = opts.deadlineMs ?? DEADLINE_MS;
+  const deadline = Date.now() + window;
+  const leadDeadline = Date.now() + Math.round(window * LEAD_PHASE_SHARE);
   const includeReplies = opts.includeReplies ?? true;
 
   // Phase 1: leads (site attractiveness).
   const leads = await getLeads();
   const existing = await loadShadow();
   const batch = pickBatch(leads, existing, max);
+  // Kinlys faktiske kunder som ICP-anker i `ligner_kinlys_kunder`. Best-effort:
+  // kan Clients-arket ikke læses, falder spørgsmålet tilbage på sin egen
+  // brancheopremsning i stedet for at vælte hele kørslen.
+  const clients = await getClients().catch(() => []);
 
   let judged = 0;
   let errors = 0;
   let i = 0;
   async function worker() {
-    while (i < batch.length && Date.now() < deadline) {
+    while (i < batch.length && Date.now() < leadDeadline) {
       const lead = batch[i++];
-      const rec = await judgeLead(lead);
+      const rec = await judgeLead(lead, clients);
       await saveShadow(rec);
       judged++;
       if (rec.error) errors++;

@@ -79,7 +79,7 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
   ligner_kinlys_kunder: {
     type: "noul",
     instructions:
-      "Ligner `firma` Kinlys typiske kunde? Kinly sælger kodede hjemmesider til 4-15.000 kr til små lokale ejerledede virksomheder i Danmark: frisører, klinikker, håndværkere, restauranter/caféer, små servicefirmaer. Ikke til kæder, koncerner, landskendte brands, offentlige eller virksomheder med egen marketingafdeling.",
+      "Ligner `firma` Kinlys typiske kunde? `kinly_kunder` er de virksomheder Kinly FAKTISK har solgt til — vurdér ligheden med dem, ikke med en generisk beskrivelse. Kinly sælger kodede hjemmesider til 4-15.000 kr til små lokale ejerledede virksomheder i Danmark: frisører, klinikker, håndværkere, restauranter/caféer, små servicefirmaer. Ikke til kæder, koncerner, landskendte brands, offentlige eller virksomheder med egen marketingafdeling.",
     criteria: {
       true: "Lille lokal ejerledet forretning der selv beslutter og betaler for en hjemmeside",
       false: "For stor, for kendt, offentlig, eller har tydeligt bureau/marketingafdeling bag sig",
@@ -95,11 +95,30 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
 export const MIN_WORDS_FOR_JUDGMENT = 60;
 export const THIN_WORDS = 120;
 
+/**
+ * Kinlys faktiske kunder, som de sendes til Jev. Lucas 2026-09-20: "kig nu på
+ * de kunder vi har nu" — en konkret liste er et skarpere ICP-anker end en
+ * generisk brancheopremsning. Kun navn + branche (offentligt kendt), aldrig
+ * pris, telefon eller andet fra Clients-arket.
+ */
+export const MAX_ICP_EXAMPLES = 25;
+export function icpExamples(clients: { name: string; branch: string }[]): string[] {
+  return clients
+    .filter((c) => c.name?.trim())
+    .slice(0, MAX_ICP_EXAMPLES)
+    .map((c) => (c.branch?.trim() ? `${c.name.trim()} (${c.branch.trim()})` : c.name.trim()));
+}
+
 /** State sent to Jev. Text is already redacted + capped by fetch-page.ts. */
-export function siteState(page: PageText, lead: { name: string; branch: string }) {
+export function siteState(
+  page: PageText,
+  lead: { name: string; branch: string },
+  clients: { name: string; branch: string }[] = [],
+) {
   return {
     firma: lead.name,
     branche: lead.branch || "(ukendt)",
+    kinly_kunder: icpExamples(clients),
     teknisk: {
       title: page.title,
       has_viewport_meta: page.hasViewportMeta,

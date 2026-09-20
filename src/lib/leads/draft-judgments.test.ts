@@ -13,21 +13,21 @@ const perfect: DraftJudgment = {
 
 test("perfect draft scores high, no flags", () => {
   const r = draftQuality(perfect);
-  // 50 + 20 + 15 + 30 + 15 = 130 → clamp 100
+  // 15 + 15 + 40 + 30 = 100 — loftet nås kun af en kladde der er perfekt på alle fire akser
   assert.equal(r.score, 100);
   assert.deepEqual(r.flags, []);
 });
 
 test("price mention tanks the score and flags it", () => {
   const r = draftQuality({ ...perfect, naevnerPris: 0.7 });
-  // 130 − 40 = 90
-  assert.equal(r.score, 90);
+  // 100 − 40 = 60
+  assert.equal(r.score, 60);
   assert.ok(r.flags.includes("nævner pris"));
 });
 
 test("fact error tanks the score, flags it, and triggers send ikke", () => {
   const r = draftQuality({ ...perfect, fejlIFakta: 0.9, lyderSomLucas: 0, demoMatcherBranche: 0.1, konkretObservation: 0.1, emneAppel: 0 });
-  // 50 − 20 − 10 + 0 − 50 + 0 = −30 → clamp 0
+  // 0 + 0 + 0 + 0 − 50 = −50 → clamp 0
   assert.equal(r.score, 0);
   assert.ok(r.flags.includes("faktafejl"));
   assert.ok(r.flags.includes("send ikke"));
@@ -42,9 +42,20 @@ test("generic draft (weak demo match + no concrete observation) scores low", () 
     fejlIFakta: 0.02,
     emneAppel: 1,
   });
-  // 50 − 20 − 10 + 10 + 5 = 35 → send ikke
-  assert.equal(r.score, 35);
+  // 0 + 0 + 40/3 + 30/3 = 23 → send ikke
+  assert.equal(r.score, 23);
   assert.ok(r.flags.includes("send ikke"));
+});
+
+// Skalaen skal DISKRIMINERE (Lucas 2026-09-20: "alting er bare rated 100").
+// Den gamle version toppede rå ved 130 og klippede til 100, så alt fra
+// middelgod og opefter lagde sig på loftet.
+test("en middelgod kladde rammer IKKE loftet", () => {
+  const mid = draftQuality({ ...perfect, lyderSomLucas: 2, emneAppel: 2 });
+  assert.equal(mid.score, 77);
+  const good = draftQuality({ ...perfect, lyderSomLucas: 2.5, emneAppel: 2.5 });
+  assert.equal(good.score, 88);
+  assert.ok(mid.score < good.score && good.score < draftQuality(perfect).score);
 });
 
 test("toDraftJudgment returns null when an answer is missing", () => {
