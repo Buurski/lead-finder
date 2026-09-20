@@ -76,3 +76,17 @@ test("pickBatch respects max", () => {
   const picked = pickBatch(leads, [], 2);
   assert.equal(picked.length, 2);
 });
+
+test("rescore recomputes chain flag from name only and re-derives attractiveness", async () => {
+  const { rescore } = await import("./jev-shadow.ts");
+  const rec = {
+    leadId: "x", name: "Meineche Frisør", city: "Ikast", branch: "Frisør", url: "https://x.dk", sheetScore: 63,
+    sheetTier: "mediocre", sheetStatus: "skip", isChain: true, attractiveness: 0, reasons: ["kæde/franchise −40"],
+    judgment: { redesign: 1.6, cta: 2, lokal: 0.9, dateretSprog: 0.3, onlineBooking: 0.9, eeat: "kontakt", eeatConfidence: 0.8, budget: "middel" as const, budgetConfidence: 0.7 },
+    model: "jev", judgedAt: "2026-09-20T00:00:00Z", inputFingerprint: null,
+  };
+  const r = rescore(rec);
+  assert.equal(r.isChain, false);
+  assert.equal(r.attractiveness, 32);
+  assert.ok(!r.reasons.some((x) => x.includes("kæde")));
+});

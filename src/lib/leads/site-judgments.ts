@@ -94,7 +94,17 @@ export interface SiteJudgment {
   budgetConfidence: number;
 }
 
-/** Null when any required answer is missing (treat as "no judgment"). */
+const EEAT_KEYS = new Set(Object.keys(SITE_QUESTIONS.eeat.criteria as Record<string, unknown>));
+const BUDGET_KEYS = new Set(Object.keys(SITE_QUESTIONS.budget_signal.criteria as Record<string, unknown>));
+const inRange = (v: number | undefined, max: number): v is number =>
+  typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= max;
+
+/**
+ * Null when any required answer is missing or out of range (Codex JEV-006):
+ * Scores must sit on the declared 0..3 level scale, Nouls in 0..1, and Choice
+ * values must be one of the declared option keys. Typed output guarantees the
+ * shape, not that a proxy or a model change kept the ranges.
+ */
 export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
   const redesign = score(a, "redesign");
   const cta = score(a, "cta");
@@ -103,7 +113,8 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
   const booking = noul(a, "online_booking");
   const eeat = choice(a, "eeat");
   const budget = choice(a, "budget_signal");
-  if ([redesign, cta, lokal, dateret, booking].some((v) => typeof v !== "number") || !eeat || !budget) return null;
+  if (!inRange(redesign, 3) || !inRange(cta, 3) || !inRange(lokal, 1) || !inRange(dateret, 1) || !inRange(booking, 1)) return null;
+  if (!eeat || !budget || !EEAT_KEYS.has(eeat.choice) || !BUDGET_KEYS.has(budget.choice)) return null;
   const b = budget.choice;
   return {
     redesign: redesign as number,

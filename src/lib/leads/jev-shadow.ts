@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import { store } from "../store.ts";
 import type { Lead } from "../sheets.ts";
 import { fetchPageText } from "../fetch-page.ts";
-import { jevAsk } from "../jev.ts";
+import { jevAsk, type JevAnswers } from "../jev.ts";
 import { SITE_QUESTIONS, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
 import { isChain } from "../chains.ts";
 
@@ -21,6 +21,8 @@ export interface JevShadowRecord {
   sheetScore: number;
   sheetTier: string;
   sheetStatus: string;
+  /** Raw Jev answers (distributions + confidence) for later calibration. */
+  answers?: JevAnswers | null;
   judgment: SiteJudgment | null;
   attractiveness: number | null;
   reasons: string[];
@@ -37,7 +39,17 @@ const LOG_KEY = "jev-shadow-log";
 export async function loadShadow(): Promise<JevShadowRecord[]> {
   const keys = await store.list(SHADOW_PREFIX);
   const recs = await Promise.all(keys.map((k) => store.get<JevShadowRecord>(k)));
-  return recs.filter((r): r is JevShadowRecord => !!r);
+  // Policy is code, judgments are data: recompute chain flag + attractiveness
+  // at read time so a weight or heuristic fix applies to stored records
+  // without re-running Jev (council 2026-09-20).
+  return recs.filter((r): r is JevShadowRecord => !!r).map(rescore);
+}
+
+export function rescore(rec: JevShadowRecord): JevShadowRecord {
+  const chain = isChain(rec.name);
+  if (!rec.judgment) return { ...rec, isChain: chain };
+  const attr = attractiveness(rec.judgment, chain);
+  return { ...rec, isChain: chain, attractiveness: attr.score, reasons: attr.reasons };
 }
 
 export async function saveShadow(rec: JevShadowRecord): Promise<void> {
@@ -64,6 +76,12 @@ export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: numbe
   return sorted.slice(0, max);
 }
 
+/** Eligible leads that have never been judged (what the nightly cron still has to cover). */
+export function countUnjudged(leads: Lead[], existing: JevShadowRecord[]): number {
+  const seen = new Set(existing.map((r) => r.leadId));
+  return pickBatch(leads, [], Number.MAX_SAFE_INTEGER).filter((l) => !seen.has(l.id)).length;
+}
+
 export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
   const base: Omit<JevShadowRecord, "judgment" | "attractiveness" | "reasons" | "model" | "inputFingerprint" | "error"> = {
     leadId: lead.id,
@@ -74,7 +92,9 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
     sheetScore: lead.score,
     sheetTier: lead.websiteQualityTier,
     sheetStatus: lead.status,
-    isChain: isChain(lead.name, [lead.branch]),
+    // Name only. `extra` extends the CHAIN_CONTAINS list, so passing the branch
+    // ("Frisør") flagged every salon as a chain (seen in the first shadow run).
+    isChain: isChain(lead.name),
     judgedAt: new Date().toISOString(),
   };
 
@@ -92,6 +112,7 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
   const attr = attractiveness(judgment, base.isChain);
   return {
     ...base,
+    answers: result?.answers ?? null, // full distributions + confidence, for calibration later
     judgment,
     attractiveness: attr.score,
     reasons: attr.reasons,
