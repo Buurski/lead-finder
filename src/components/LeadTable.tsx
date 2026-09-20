@@ -428,7 +428,9 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
             </thead>
             <tbody>
               {paginated.map((lead) => {
-                const s = STATUS[lead.status];
+                // Sheet rows can carry a status outside LeadStatus (seen when the Jev
+                // sort surfaced rows the score sort never showed). Never crash the table.
+                const s = STATUS[lead.status] ?? { color: "#64748b", bg: "#f1f5f9", label: String(lead.status || "?") };
                 const ws = webBadge(lead);
                 const active = selected?.id === lead.id;
                 const rank = sorted.findIndex(l => l.id === lead.id) + 1;
@@ -934,7 +936,7 @@ export default function LeadTable({ leads: initial, emailFilter = "all", sheetsO
                     opacity: updating === selected.id ? 0.6 : 1,
                   }}
                 >
-                  {updating === selected.id ? "Opdaterer..." : `→ Marker som ${STATUS[NEXT[selected.status]!].label}`}
+                  {updating === selected.id ? "Opdaterer..." : `→ Marker som ${STATUS[NEXT[selected.status]!]?.label ?? "næste"}`}
                 </button>
               )}
               {selected.status !== "skip" && selected.status !== "client" && (
