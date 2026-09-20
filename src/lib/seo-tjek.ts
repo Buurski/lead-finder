@@ -11,6 +11,7 @@
 // Strip-safe: no Next imports; store only via lazy dynamic import.
 
 import { runSeoChecks, type SeoResult, type LighthouseScores } from "./seo.ts";
+import { prioritizeFixes } from "./seo-fix-priority.ts";
 import { formatSignature, type SenderId } from "./senders.ts";
 
 // ---- types ----------------------------------------------------------------
@@ -194,7 +195,7 @@ export function matchRank(
 // ---- plain-Danish top-3 fixes (pure) -----------------------------------------
 // One rule: no jargon. A café owner must understand every line.
 
-export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: LocalRankResult | null): PlainFix[] {
+export function plainFixCandidates(seo: SeoResult, booking: BookingAudit, localRank: LocalRankResult | null): Array<PlainFix & { w: number }> {
   const out: Array<PlainFix & { w: number }> = [];
   const perf = seo.lighthouse?.scores?.performance;
 
@@ -300,7 +301,12 @@ export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: Loc
     });
   }
 
-  return out
+  return out;
+}
+
+/** Static top-3 by weight (fallback when Jev is unavailable). */
+export function plainFixes(seo: SeoResult, booking: BookingAudit, localRank: LocalRankResult | null): PlainFix[] {
+  return plainFixCandidates(seo, booking, localRank)
     .sort((a, b) => b.w - a.w)
     .slice(0, 3)
     .map(({ title, why, how }) => ({ title, why, how }));
@@ -666,7 +672,11 @@ export async function runFreeCheck(sub: SeoTjekSubmission): Promise<SeoTjekRepor
     runLocalRank(host, name, sub.branch, sub.city),
   ]);
 
-  const fixes = plainFixes(seo, booking, localRank.available ? localRank : null);
+  // Jev orders the hand-written fixes by effect for THIS business; static
+  // weights remain the fallback (seo-fix-priority.ts).
+  const candidates = plainFixCandidates(seo, booking, localRank.available ? localRank : null);
+  const fixes = (await prioritizeFixes(candidates, { name, branch: branchGuess, city: sub.city, html }))
+    .map(({ title, why, how }) => ({ title, why, how }));
 
   return {
     submissionId: sub.id,
