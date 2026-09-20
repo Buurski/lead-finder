@@ -70,11 +70,7 @@ export async function GET() {
     const leadAttr = leadJev.get(d.leadId) ?? null;
     const draftQuality = dj?.quality ?? null;
     const sh = leadShadow.get(d.leadId);
-    // jev-shadow.ts (off-limits in this task) doesn't declare `socials` on
-    // JevShadowRecord yet — cast so older/current records (no socials key,
-    // reads as undefined, falls back to the search chip) and any future
-    // record that does carry it both work without throwing.
-    const shSocials = (sh as (JevShadowRecord & { socials?: { facebook?: string; instagram?: string } }) | undefined)?.socials;
+    const shSocials = sh?.socials;
     const p = priority(leadAttr, draftQuality);
     const withJev = {
       ...d,

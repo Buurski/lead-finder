@@ -23,6 +23,8 @@ export interface JevShadowRecord {
   sheetStatus: string;
   /** Google review count at scrape time (sheet column T); size signal for the policy. */
   reviewsCount?: number;
+  /** Facebook/Instagram profil-URL'er fundet på forsiden (gratis, samme fetch). */
+  socials?: { facebook?: string; instagram?: string };
   /** Raw Jev answers (distributions + confidence) for later calibration. */
   answers?: JevAnswers | null;
   judgment: SiteJudgment | null;
@@ -122,9 +124,11 @@ export async function judgeLead(lead: Lead): Promise<JevShadowRecord> {
     return { ...base, judgment: null, attractiveness: null, reasons: [], model: result?.model ?? null, inputFingerprint: fingerprint, error: "no-judgment" };
   }
   const attr = attractiveness(judgment, { isChain: base.isChain, reviewsCount: lead.reviewsCount });
+  const socials = page.socials && (page.socials.facebook || page.socials.instagram) ? page.socials : undefined;
   const reasons = page.wordCount < THIN_WORDS ? [...attr.reasons, `tynd side (${page.wordCount} ord) — lav sikkerhed`] : attr.reasons;
   return {
     ...base,
+    socials,
     answers: result?.answers ?? null, // full distributions + confidence, for calibration later
     judgment,
     attractiveness: attr.score,
