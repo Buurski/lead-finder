@@ -46,6 +46,10 @@ interface QueueDraft {
     priority?: number | null;
     links?: { kind: "web" | "maps" | "facebook" | "instagram" | "mail"; label: string; href: string }[];
     facts?: string[];
+    // Facebook-følgertal (2026-09-20), kun sat efter "Hent følgertal"-klik —
+    // se hvor stor forretningen er FØR man sender. Bucket-streng, aldrig et
+    // eksakt tal (falsk præcision på et skrabet estimat).
+    followers?: string | null;
   };
   // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
   // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
@@ -351,6 +355,34 @@ export default function ApprovePage() {
     }
   }, [jevRunBusy, load]);
 
+  // "Hent følgertal" (2026-09-20): Facebook-følgertal via Apify, bag pris-gate
+  // (ENABLE_SOCIAL_STATS=1 + APIFY_TOKEN, ellers svarer ruten bare med en
+  // forklaring — intet forbrug uden Lucas' eget klik). $0.012/side ≈ 0,084 kr
+  // (kurs ~7); prisestimatet er på antal AFVENTENDE kladder vist lige nu.
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [socialMsg, setSocialMsg] = useState("");
+  const fetchFollowers = useCallback(async () => {
+    if (socialBusy) return;
+    setSocialBusy(true);
+    setSocialMsg("Henter…");
+    try {
+      const res = await fetch("/api/jev-social?limit=30", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      setSocialMsg(
+        res.ok && d.ok
+          ? d.requested === 0
+            ? "Ingen afventende kladder med Facebook-link klar."
+            : `${d.fetched}/${d.requested} hentet · ca. $${d.costUsd}.`
+          : (d.error ?? "Kunne ikke hente følgertal.")
+      );
+      await load();
+    } catch {
+      setSocialMsg("Netværksfejl.");
+    } finally {
+      setSocialBusy(false);
+    }
+  }, [socialBusy, load]);
+
   // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
   const [q, setQ] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
@@ -394,6 +426,9 @@ export default function ApprovePage() {
     if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
     return base;
   }, [drafts, filter, branchFilter, gradeFilter, q, pendingSort]);
+
+  // Delt med Header (visiblePending) og "Hent følgertal"-prisestimatet.
+  const pendingShownCount = useMemo(() => visible.filter((d) => d.status === "pending").length, [visible]);
 
   // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
   // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
@@ -586,7 +621,7 @@ export default function ApprovePage() {
         onClearSelection={clearSelection}
         onRejectSelected={rejectSelected}
         rejBusy={rejBusy}
-        visiblePending={visible.filter((d) => d.status === "pending").length}
+        visiblePending={pendingShownCount}
       />
 
       {/* Prioritering af Afventer (2026-09-20): Jev-rangering er standard, toggle falder tilbage til nyeste først. */}
@@ -602,6 +637,19 @@ export default function ApprovePage() {
             {jevRunBusy ? "Vurderer…" : "Vurdér kladder nu"}
           </button>
           {jevRunMsg && !jevRunBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{jevRunMsg}</span>}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={fetchFollowers}
+            disabled={socialBusy}
+            title="Facebook-følgertal for afventende kladder med et Facebook-link (Apify, $0,012/side — kræver ENABLE_SOCIAL_STATS)"
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: socialBusy ? 0.6 : 1 }}
+          >
+            {socialBusy ? "Henter…" : `Hent følgertal (ca. ${Math.ceil(pendingShownCount * 0.012 * 7)} kr)`}
+          </button>
+          {socialMsg && !socialBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{socialMsg}</span>}
         </div>
 
         {filter === "pending" && (
@@ -1155,6 +1203,10 @@ function DraftLetter({
     }
   }, [draft.id, subject, body, demos, dirty, demosDirty, onAct]);
 
+  // Nøglefakta-linje + følgertal (2026-09-20): følgertal er ét fakta mere i
+  // samme linje, kun sat efter et "Hent følgertal"-klik — aldrig fabrikeret.
+  const facts = [...(draft.jev?.facts ?? []), ...(draft.jev?.followers ? [draft.jev.followers] : [])];
+
   return (
     <article
       onMouseEnter={onFocusRequest}
@@ -1326,11 +1378,11 @@ function DraftLetter({
 
       {/* Nøglefakta + forretningslinks (2026-09-20): hvor stor/seriøs er virksomheden,
           og direkte links til at tjekke den — uden at trigge kortets egen klik-handler. */}
-      {((draft.jev?.facts?.length ?? 0) > 0 || (draft.jev?.links?.length ?? 0) > 0) && (
+      {(facts.length > 0 || (draft.jev?.links?.length ?? 0) > 0) && (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-          {(draft.jev?.facts?.length ?? 0) > 0 && (
+          {facts.length > 0 && (
             <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)" }}>
-              {draft.jev!.facts!.join(" · ")}
+              {facts.join(" · ")}
             </p>
           )}
           {(draft.jev?.links?.length ?? 0) > 0 && (

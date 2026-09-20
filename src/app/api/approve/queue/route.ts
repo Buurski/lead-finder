@@ -8,6 +8,7 @@ import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel
 import { buildContactIndex } from "@/lib/leads/contact-history";
 import { loadShadow, type JevShadowRecord } from "@/lib/leads/jev-shadow";
 import { loadDraftShadow } from "@/lib/leads/draft-judgments";
+import { loadSocialStats, followerBucket } from "@/lib/leads/social-stats";
 import { priority, grade, businessLinks, factLine } from "@/lib/leads/lead-grade";
 
 // Reads/writes the engine's approval queue at request time — never cache.
@@ -64,6 +65,15 @@ export async function GET() {
     // shadow store nede — kladde-badge udelades
   }
 
+  // Følgertal (2026-09-20, bag pris-gate): kun sat når Lucas selv har trukket
+  // dem via "Hent følgertal" (/api/jev-social) — best-effort, tom = udeladt.
+  let socialByLead = new Map<string, number | null>();
+  try {
+    socialByLead = new Map((await loadSocialStats()).map((r) => [r.leadId, r.followers]));
+  } catch {
+    // social-store nede — følgertal udelades
+  }
+
   const enriched = drafts.map((d) => {
     const rec = index?.lookup(d.name, d.city, d.recipientEmail);
     const dj = draftJev.get(d.id);
@@ -82,6 +92,7 @@ export async function GET() {
         priority: p,
         links: businessLinks(sh?.name ?? d.name, sh?.city ?? d.city, sh?.url ?? "", d.recipientEmail, shSocials),
         facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, sheetTier: sh?.sheetTier, judgment: sh?.judgment }),
+        followers: followerBucket(socialByLead.get(d.leadId)),
       },
     };
     return rec ? { ...withJev, history: { seenBefore: true, ...rec } } : withJev;
