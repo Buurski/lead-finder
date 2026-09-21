@@ -10,6 +10,28 @@
 
 import { branchFamily } from "./composite-score.ts";
 
+/**
+ * Højst `max` kandidater fra samme by, rækkefølgen ellers uændret. Lucas
+ * 2026-09-21: "det er også fint at der er nogen på Fyn og også nogen på
+ * Sjælland. Men når alle sammen ligger i København, det går bare ikke."
+ *
+ * Koncentration er et andet problem end attraktivitet, og skal derfor løses
+ * med et loft — ikke med en større straf til byen. En Københavner-salon er
+ * stadig et lead; tredive af dem i træk er ikke en dagsbatch.
+ */
+export function capPerCity<T>(sorted: T[], cityOf: (t: T) => string, max: number): T[] {
+  const seen = new Map<string, number>();
+  const out: T[] = [];
+  for (const item of sorted) {
+    const key = (cityOf(item) || "").trim().toLowerCase() || "(ukendt)";
+    const n = seen.get(key) ?? 0;
+    if (n >= max) continue;
+    seen.set(key, n + 1);
+    out.push(item);
+  }
+  return out;
+}
+
 export function diversifyByFamily<T>(sorted: T[], branchOf: (t: T) => string): T[] {
   const groups = new Map<string, T[]>(); // insertion order = order of each family's best item
   for (const item of sorted) {

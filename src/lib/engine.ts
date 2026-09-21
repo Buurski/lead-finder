@@ -33,7 +33,7 @@ import { pickHybridSender } from "./senders.ts";
 import type { SenderId } from "./senders.ts";
 import { compositeScore } from "./leads/composite-score.ts";
 import type { CompositeSignals } from "./leads/composite-score.ts";
-import { diversifyByFamily } from "./leads/diversify.ts";
+import { diversifyByFamily, capPerCity } from "./leads/diversify.ts";
 import { isUnworkedStatus } from "./leads/pick-filter.ts";
 import { isContactable, contactedEmailBlock } from "./leads/contactable.ts";
 import { leadChannel } from "./leads/channel.ts";
@@ -184,6 +184,12 @@ function toResearchLead(l: Record<string, unknown>): ResearchLead {
  */
 export const MIN_JEV_ATTRACTIVENESS = 30;
 
+/**
+ * Højst så mange kandidater fra samme by i ét træk. En dagsbatch er ~12 udkast,
+ * så tre pr. by betyder at ingen by kan fylde mere end en fjerdedel.
+ */
+export const MAX_PER_CITY = 3;
+
 // Map a Cowork email-quality tier to the 0–1 term compositeScore expects.
 const EMAIL_TIER_QUALITY: Record<string, number> = {
   personal: 1, kontakt: 0.6, info: 0.4, generic: 0.2, noreply: 0,
@@ -305,7 +311,12 @@ async function pickLeads(
       // Spread the batch across branch families so it's a MIX, not all one
       // branch — the single best lead still leads, then picks rotate branches.
       // Skip the family spread for an explicit allowlist: Lucas already chose the rows.
-      if (!allow) candidates = diversifyByFamily(candidates, (c) => c.branch);
+      // By-loftet kommer FØR brancherotationen, så rotationen fordeler et felt
+      // der allerede er spredt geografisk (Lucas 2026-09-21).
+      if (!allow) {
+        candidates = capPerCity(candidates, (c) => c.city ?? "", MAX_PER_CITY);
+        candidates = diversifyByFamily(candidates, (c) => c.branch);
+      }
     }
     return { leads: candidates, source: "sheets" };
   } catch {

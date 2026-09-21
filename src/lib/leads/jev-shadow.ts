@@ -79,7 +79,10 @@ export async function saveShadow(rec: JevShadowRecord): Promise<void> {
   await store.put(SHADOW_PREFIX + rec.leadId, rec);
 }
 
-const INELIGIBLE_STATUS = new Set(["client", "dead"]);
+// Fravalgte rækker skal ikke æde et vurderings-hold. "skip" kom til 2026-09-21
+// da 165 leads blev ryddet ud; allerede gemte vurderinger bliver stående, så
+// badges i /godkendelse ikke forsvinder.
+const INELIGIBLE_STATUS = new Set(["client", "dead", "skip", "skip-bounced", "not-interested"]);
 
 /**
  * Leads eligible for (re)scoring: has a live-ish website, not a client/dead lead.

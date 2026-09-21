@@ -84,6 +84,16 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
     instructions:
       "Virker forretningen aktiv og i drift lige nu, ud fra `forside_tekst` og `teknisk.copyright_years`? Tegn PÅ aktivitet: aktuelle åbningstider, priser, nyheder, kampagner, seneste copyright-år er i år eller sidste år. Tegn IMOD: seneste copyright-år er to eller flere år gammelt, 'siden er under opbygning', tom eller forladt side, ingen måde at kontakte dem på.",
   },
+  // MÅLT 2026-09-21 mod Lucas' egne labels (61 "interested" mod 32
+  // "skip/bad_fit", 81 med brugbar forside): AUC 0,765 — det klart stærkeste
+  // enkeltsignal af ti afprøvede kandidater. De næstbedste lå på 0,61-0,66,
+  // altså inden for to standardfejl af ren tilfældighed ved n=81, og overlapper
+  // i forvejen `ligner_kinlys_kunder`. Derfor er kun denne ene taget med.
+  investerer_i_udseende: {
+    type: "noul",
+    instructions:
+      "Viser forretningen at den går op i sit ydre: egne fotos af lokalet eller arbejdet, gennemført grafik, tydeligt logo — frem for stockbilleder og standardopsætning?",
+  },
   ligner_kinlys_kunder: {
     type: "noul",
     instructions:
@@ -155,6 +165,8 @@ export interface SiteJudgment {
   lignerKunde: number; // P(yes)
   /** P(forretningen er aktiv). Optional: poster gemt før 2026-09-21 har den ikke. */
   aktivForretning?: number;
+  /** P(forretningen investerer i sit ydre). Optional, samme grund. */
+  investererIUdseende?: number;
 }
 
 const EEAT_KEYS = new Set(Object.keys(SITE_QUESTIONS.eeat.criteria as Record<string, unknown>));
@@ -181,6 +193,7 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
   const ligner = noul(a, "ligner_kinlys_kunder");
   // Valgfri: et gammelt svarsæt uden spørgsmålet skal stadig kunne mappes.
   const aktiv = noul(a, "aktiv_forretning");
+  const udseende = noul(a, "investerer_i_udseende");
   if (!inRange(redesign, 3) || !inRange(cta, 3) || !inRange(lokal, 1) || !inRange(dateret, 1) || !inRange(booking, 1) || !inRange(ligner, 1)) return null;
   if (!eeat || !budget || !vtype || !EEAT_KEYS.has(eeat.choice) || !BUDGET_KEYS.has(budget.choice) || !TYPE_KEYS.has(vtype.choice)) return null;
   const b = budget.choice;
@@ -190,6 +203,7 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
     virksomhedstypeConfidence: vtype.confidence,
     lignerKunde: ligner as number,
     ...(inRange(aktiv, 1) ? { aktivForretning: aktiv as number } : {}),
+    ...(inRange(udseende, 1) ? { investererIUdseende: udseende as number } : {}),
     redesign: redesign as number,
     cta: cta as number,
     lokal: lokal as number,
@@ -232,6 +246,7 @@ export interface LeadFacts {
  *   review volume   −20 if reviewsCount ≥ 400 (a national-scale business)
  *   uden for område −35 hovedstaden/Sjælland (Lucas 2026-09-21: "vi er ikke i København")
  *   ikke i drift    −25 if P(aktiv forretning) < 0.25 — BEVIDST konservativ, se nedenfor
+ *   ydre-investering ±8 (målt AUC 0,765 mod Lucas' egne labels, se nedenfor)
  *   clamp 0..100
  */
 export function attractiveness(j: SiteJudgment, facts: LeadFacts | boolean): Attractiveness {
@@ -259,6 +274,15 @@ export function attractiveness(j: SiteJudgment, facts: LeadFacts | boolean): Att
   if (typeof j.aktivForretning === "number" && j.aktivForretning < 0.25) {
     s -= 25;
     reasons.push(`virker ikke i drift (${Math.round(j.aktivForretning * 100)} % aktiv) −25`);
+  }
+  // Målt på 81 labellede leads: snit 0,30 blandt "interested" mod 0,23 blandt
+  // "skip/bad_fit". Tallene ligger tæt sammen, så absolutte niveauer betyder
+  // lidt — det er RÆKKEFØLGEN der bærer (AUC 0,765). Derfor to tærskler om
+  // midten og en beskeden vægt, ikke en lineær skala der lader som om
+  // forskellen mellem 0,29 og 0,31 er reel.
+  if (typeof j.investererIUdseende === "number") {
+    if (j.investererIUdseende >= 0.28) { s += 8; reasons.push("går op i sit ydre +8"); }
+    else if (j.investererIUdseende < 0.2) { s -= 8; reasons.push("ligeglad med sit ydre −8"); }
   }
   s = Math.max(0, Math.min(100, s));
   return { score: s, reasons };

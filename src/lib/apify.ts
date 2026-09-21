@@ -11,6 +11,8 @@ export interface ApifyPlace {
   reviewsCount: number | null;
   categoryName: string | null;
   city: string | null;
+  /** Googles drift-status: OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY. */
+  businessStatus?: string | null;
 }
 
 export const BRANCHES = [
@@ -49,6 +51,24 @@ export const CITIES = [
   "Vejle", "Fredericia", "Billund",
   // Fyn
   "Odense", "Middelfart", "Svendborg", "Nyborg", "Kerteminde",
+  // Udvidelse 2026-09-21 (Lucas: "vi kan jo godt finde markant flere leads").
+  // Brønden var tom: 0 ubearbejdede håndværkere tilbage i de gamle 60 byer.
+  // Mid/vest-Jylland
+  "Ikast", "Bjerringbro", "Grindsted", "Tarm", "Skjern", "Vejen",
+  "Rønde", "Auning", "Hornslet", "Bramming", "Ribe", "Rødding",
+  "Vamdrup", "Nykøbing Mors", "Hurup", "Løgstør",
+  // Nord-Jylland
+  "Sæby", "Støvring", "Aars", "Hadsund", "Dronninglund", "Pandrup", "Aabybro",
+  "Skørping", "Terndrup",
+  // Syd-Jylland
+  "Nordborg", "Augustenborg", "Gråsten",
+  // Fyn og øerne
+  "Bogense", "Ringe", "Assens", "Faaborg", "Otterup", "Rudkøbing",
+  // Sjælland UDEN hovedstaden (Lucas 2026-09-21: "det er også fint at der er
+  // nogen på Sjælland. Men når alle sammen ligger i København, det går bare
+  // ikke"). København, Frederiksberg og forstæderne står bevidst IKKE her.
+  "Roskilde", "Næstved", "Slagelse", "Holbæk", "Køge", "Helsingør", "Hillerød",
+  "Ringsted", "Kalundborg", "Nykøbing Falster", "Vordingborg", "Sorø", "Nakskov",
 ];
 
 // Region presets for /api/scrape?region=... — keeps scrape function under 5 min
@@ -58,6 +78,12 @@ export const REGION_PRESETS: Record<string, string[]> = {
   esbjerg: ["Esbjerg", "Kolding", "Aabenraa", "Haderslev", "Tønder", "Vejle", "Fredericia", "Billund"],
   aalborg: ["Aalborg", "Nørresundby", "Hjørring", "Frederikshavn", "Skagen", "Brønderslev", "Hobro", "Thisted"],
   midt: ["Herning", "Silkeborg", "Viborg", "Holstebro", "Ringkøbing", "Struer", "Skive", "Lemvig", "Horsens", "Varde", "Videbæk", "Brande", "Give", "Vinderup", "Ulfborg"],
+  // Nye områder 2026-09-21. Egne presets, så et scrape kan køres i bidder —
+  // en fuld gennemkørsel af hele branche×by-nettet er dyr (Places-kald).
+  "midt-nye": ["Ikast", "Bjerringbro", "Grindsted", "Tarm", "Skjern", "Vejen", "Rønde", "Auning", "Hornslet", "Bramming", "Ribe", "Rødding", "Vamdrup", "Nykøbing Mors", "Hurup", "Løgstør"],
+  "nord-nye": ["Sæby", "Støvring", "Aars", "Hadsund", "Dronninglund", "Pandrup", "Aabybro", "Skørping", "Terndrup"],
+  "fyn-nye": ["Bogense", "Ringe", "Assens", "Faaborg", "Otterup", "Rudkøbing", "Nordborg", "Augustenborg", "Gråsten"],
+  sjaelland: ["Roskilde", "Næstved", "Slagelse", "Holbæk", "Køge", "Helsingør", "Hillerød", "Ringsted", "Kalundborg", "Nykøbing Falster", "Vordingborg", "Sorø", "Nakskov"],
 };
 
 export const BRANCH_PRESETS: Record<string, string[]> = {
@@ -100,6 +126,12 @@ async function searchPlaces(query: string, apiKey: string): Promise<ApifyPlace[]
         "places.primaryTypeDisplayName",
         "places.rating",
         "places.userRatingCount",
+        // Googles egen drift-status: OPERATIONAL | CLOSED_TEMPORARILY |
+        // CLOSED_PERMANENTLY. Det eneste AUTORITATIVE dødt-forretning-signal vi
+        // kan få (Lucas 2026-09-21, Dangi Frisør). Ligger i samme SKU-niveau som
+        // rating/userRatingCount, som vi allerede betaler for — koster intet
+        // ekstra. Gælder kun leads scrapet fra og med nu.
+        "places.businessStatus",
       ].join(","),
     },
     body: JSON.stringify({
@@ -124,6 +156,7 @@ async function searchPlaces(query: string, apiKey: string): Promise<ApifyPlace[]
       phone: (p.nationalPhoneNumber as string | null) ?? null,
       website: (p.websiteUri as string | null) ?? null,
       email: null,
+      businessStatus: (p.businessStatus as string | null) ?? null,
       totalScore: (p.rating as number | null) ?? null,
       reviewsCount: (p.userRatingCount as number | null) ?? null,
       categoryName: primaryType?.text ?? null,
@@ -144,6 +177,10 @@ export async function runScraper(queries = buildQueries()): Promise<ApifyPlace[]
       const places = await searchPlaces(query, apiKey);
       for (const p of places) {
         if (!p.title) continue;
+        // Google siger selv at forretningen er lukket. Den skal aldrig ind i
+        // basen (Lucas 2026-09-21, Dangi Frisør-sagen). CLOSED_TEMPORARILY
+        // lukkes IKKE ude — ferielukket eller ombygning er stadig en kunde.
+        if (p.businessStatus === "CLOSED_PERMANENTLY") continue;
         const key = p.title.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);

@@ -526,6 +526,35 @@ export async function batchUpdateLeadVerifications(
   });
 }
 
+/**
+ * Sæt status + skipReason på mange rækker i ét kald. Bruges til oprydning i
+ * lead-basen (Lucas 2026-09-21: "fjern dem der ikke skal være derinde").
+ *
+ * Rører KUN kolonne I (status), K (sidst opdateret) og V (skipReason) — notat-
+ * kolonnen J bliver stående, i modsætning til `updateLeadStatus`, der nulstiller
+ * den når man ikke sender notes med. Reversibelt: kalderen gemmer de gamle
+ * værdier, og en ny kørsel med dem skriver dem tilbage.
+ */
+export async function batchSetLeadStatus(
+  updates: Array<{ rowIndex: number; status: LeadStatus; skipReason?: string }>,
+): Promise<void> {
+  if (updates.length === 0) return;
+  const sheets = getSheetsClient();
+  const now = new Date().toISOString();
+  const data = updates.flatMap(({ rowIndex, status, skipReason }) => {
+    const row = rowIndex + 2;
+    return [
+      { range: `Leads!I${row}`, values: [[status]] },
+      { range: `Leads!K${row}`, values: [[now]] },
+      { range: `Leads!V${row}`, values: [[skipReason ?? ""]] },
+    ];
+  });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "RAW", data },
+  });
+}
+
 export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
   const sheets = getSheetsClient();
   const values = leads.map((l) => [

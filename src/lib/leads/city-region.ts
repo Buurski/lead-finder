@@ -21,14 +21,24 @@ import { store } from "../store.ts";
 import { jevAsk, noul, type JevQuestion } from "../jev.ts";
 
 const CACHE_KEY = "jev-city-region";
-/** P(øst for Storebælt) over dette = uden for området. */
+/** P(hovedstaden) over dette = for langt væk / for koncentreret. */
 export const OUT_OF_TERRITORY_AT = 0.7;
 /** Mellem disse er svaret for usikkert til at straffe på — ingen straf. */
 export const UNCERTAIN_BELOW = 0.3;
 /** Loft pr. kørsel, så en frisk bylistning ikke æder hele batch-deadline. */
 export const MAX_NEW_CITIES_PER_RUN = 250;
 
+// Begge spørgsmål stilles i ÉT kald — output er gratis hos TypeSafe, så det
+// andet koster reelt ingenting. Kun `hovedstaden` bruges til straf (Lucas
+// 2026-09-21: "det er også fint at der er nogen på Fyn og også nogen på
+// Sjælland. Men når alle sammen ligger i København, det går bare ikke").
+// `oest` gemmes som en knap, hvis afstand senere skal vægtes.
 const REGION_QUESTION: Record<string, JevQuestion> = {
+  hovedstaden: {
+    type: "noul",
+    instructions:
+      "Ligger den danske by `by` i hovedstadsområdet — altså København, Frederiksberg eller en forstad inden for ca. 30 km (fx Glostrup, Ballerup, Herlev, Gentofte, Hvidovre, Taastrup, Greve)? Svar nej for resten af landet, inklusive resten af Sjælland (fx Roskilde, Slagelse, Næstved, Holbæk) og hele Jylland og Fyn.",
+  },
   oest_for_storebaelt: {
     type: "noul",
     instructions:
@@ -36,8 +46,9 @@ const REGION_QUESTION: Record<string, JevQuestion> = {
   },
 };
 
-/** By → P(øst for Storebælt). */
-export type CityRegionMap = Record<string, number>;
+/** By → {hovedstaden, øst for Storebælt} som sandsynligheder. */
+export interface CityRegion { hovedstaden: number; oest?: number }
+export type CityRegionMap = Record<string, CityRegion>;
 
 /**
  * Byer Jev ér øst for Storebælt, men kun gav 0,30–0,69 på (målt over alle 174
@@ -47,19 +58,27 @@ export type CityRegionMap = Record<string, number>;
  * Tærsklen bliver derfor på 0,7 (nul falske positive i målingen), og de
  * konkrete undtagelser står her — hver enkelt slået efter i hånden.
  */
-const MANUAL_EAST = new Set([
-  "frederikssund", "nakskov", "vordingborg", "maribo", "hundested",
-  "faxe", "korsør", "stege", "greve", "haslev", "vipperød",
+const MANUAL_HOVEDSTADEN = new Set([
+  "københavn", "frederiksberg", "valby", "vanløse", "brønshøj", "hellerup",
+  "gentofte", "charlottenlund", "lyngby", "kongens lyngby", "herlev", "ballerup",
+  "glostrup", "rødovre", "hvidovre", "brøndby", "albertslund", "taastrup",
+  "tåstrup", "ishøj", "greve", "vallensbæk", "søborg", "kastrup", "dragør",
+  "amager", "nørrebro", "østerbro", "vesterbro",
 ]);
 
 export function cityKey(city: string): string {
   return (city || "").trim().toLowerCase();
 }
 
-/** Sjælland og øerne øst for Storebælt ligger uden for Kinlys område. */
-export function isOutOfTerritory(p: number | undefined, city?: string): boolean {
-  if (city && MANUAL_EAST.has(cityKey(city))) return true;
-  return typeof p === "number" && p >= OUT_OF_TERRITORY_AT;
+/**
+ * Hovedstadsområdet. IKKE hele Sjælland: Lucas 2026-09-21 sagde udtrykkeligt at
+ * Fyn og Sjælland er fine, og at problemet er at ALLE ligger i København.
+ * Straffen her håndterer afstanden til Herning; koncentrationen håndteres af
+ * by-loftet i engine.ts, ikke af en større straf.
+ */
+export function isOutOfTerritory(r: CityRegion | undefined, city?: string): boolean {
+  if (city && MANUAL_HOVEDSTADEN.has(cityKey(city))) return true;
+  return typeof r?.hovedstaden === "number" && r.hovedstaden >= OUT_OF_TERRITORY_AT;
 }
 
 export async function loadCityRegions(): Promise<CityRegionMap> {
@@ -69,7 +88,11 @@ export async function loadCityRegions(): Promise<CityRegionMap> {
   // i stedet for at lade dem forurene en talsammenligning.
   const out: CityRegionMap = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1) out[k] = v;
+    // Ældre versioner gemte et bart tal (P(øst)). Det siger intet om
+    // hovedstaden, så det kasseres og byen spørges igen.
+    if (v && typeof v === "object" && typeof (v as CityRegion).hovedstaden === "number") {
+      out[k] = v as CityRegion;
+    }
   }
   return out;
 }
@@ -101,9 +124,10 @@ export async function classifyCities(cities: string[], deadline?: number): Promi
     while (i < batch.length && !(deadline && Date.now() > deadline)) {
       const key = batch[i++];
       const res = await jevAsk({ by: key }, REGION_QUESTION, { timeoutMs: 10_000 });
-      const p = noul(res?.answers, "oest_for_storebaelt");
-      if (typeof p !== "number" || !Number.isFinite(p) || p < 0 || p > 1) continue;
-      known[key] = p;
+      const h = noul(res?.answers, "hovedstaden");
+      if (typeof h !== "number" || !Number.isFinite(h) || h < 0 || h > 1) continue;
+      const o = noul(res?.answers, "oest_for_storebaelt");
+      known[key] = { hovedstaden: h, ...(typeof o === "number" ? { oest: o } : {}) };
       added++;
     }
   };
