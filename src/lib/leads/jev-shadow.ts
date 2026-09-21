@@ -11,6 +11,7 @@ import { fetchPageText } from "../fetch-page.ts";
 import { jevAsk, type JevAnswers } from "../jev.ts";
 import { SITE_QUESTIONS, MIN_WORDS_FOR_JUDGMENT, THIN_WORDS, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
 import { isChain, chainNameKey, repeatedChainNames } from "../chains.ts";
+import { loadCityRegions, isOutOfTerritory, cityKey, type CityRegionMap } from "./city-region.ts";
 
 export interface JevShadowRecord {
   leadId: string;
@@ -49,13 +50,24 @@ export async function loadShadow(): Promise<JevShadowRecord[]> {
   // without re-running Jev (council 2026-09-20). The repeat-based chain set is
   // derived from the whole population, so it too only exists at read time.
   const repeats = repeatedChainNames(all);
-  return all.map((r) => rescore(r, repeats));
+  // Landsdel er også politik, ikke dom: cachen læses her, så en by der bliver
+  // klassificeret i nat slår igennem på alle gamle poster uden ny inferens.
+  const regions = await loadCityRegions().catch(() => ({}));
+  return all.map((r) => rescore(r, repeats, regions));
 }
 
-export function rescore(rec: JevShadowRecord, repeats?: Set<string>): JevShadowRecord {
+export function rescore(
+  rec: JevShadowRecord,
+  repeats?: Set<string>,
+  regions?: CityRegionMap,
+): JevShadowRecord {
   const chain = isChain(rec.name) || !!repeats?.has(chainNameKey(rec.name));
   if (!rec.judgment) return { ...rec, isChain: chain };
-  const attr = attractiveness(rec.judgment, { isChain: chain, reviewsCount: rec.reviewsCount });
+  const attr = attractiveness(rec.judgment, {
+    isChain: chain,
+    reviewsCount: rec.reviewsCount,
+    outOfTerritory: isOutOfTerritory(regions?.[cityKey(rec.city)], rec.city),
+  });
   return { ...rec, isChain: chain, attractiveness: attr.score, reasons: attr.reasons };
 }
 
@@ -69,13 +81,25 @@ export async function saveShadow(rec: JevShadowRecord): Promise<void> {
 
 const INELIGIBLE_STATUS = new Set(["client", "dead"]);
 
-/** Leads eligible for (re)scoring: has a live-ish website, not a client/dead lead. */
-export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: number): Lead[] {
+/**
+ * Leads eligible for (re)scoring: has a live-ish website, not a client/dead lead.
+ *
+ * `firstIds` jumps the queue (Lucas 2026-09-21: "alle der er ranket nu er B").
+ * A draft can only reach karakter A when the BUSINESS behind it is judged too,
+ * and the plain oldest-first order judged 250 arbitrary leads that mostly had
+ * no draft waiting — so /godkendelse stayed capped at B. The leads with a
+ * pending draft are now judged first, every run, until they are all covered.
+ */
+export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: number, firstIds?: Set<string>): Lead[] {
   const judgedAt = new Map(existing.map((r) => [r.leadId, r.judgedAt]));
   const eligible = leads.filter(
     (l) => l.websiteStatus === "ok" && l.website.trim() !== "" && !INELIGIBLE_STATUS.has(l.status),
   );
+  const rank = (l: Lead) => (firstIds?.has(l.id) ? 0 : 1);
   const sorted = [...eligible].sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
     const ja = judgedAt.get(a.id);
     const jb = judgedAt.get(b.id);
     if (!ja && !jb) return 0;
@@ -129,7 +153,14 @@ export async function judgeLead(
   if (!judgment) {
     return { ...base, judgment: null, attractiveness: null, reasons: [], model: result?.model ?? null, inputFingerprint: fingerprint, error: "no-judgment" };
   }
-  const attr = attractiveness(judgment, { isChain: base.isChain, reviewsCount: lead.reviewsCount });
+  // Landsdel: kun fra cachen her (ingen ekstra Jev-kald pr. lead). Mangler byen,
+  // er der ingen straf, og read-time rescore i loadShadow retter det bagefter.
+  const regions = await loadCityRegions().catch(() => ({} as CityRegionMap));
+  const attr = attractiveness(judgment, {
+    isChain: base.isChain,
+    reviewsCount: lead.reviewsCount,
+    outOfTerritory: isOutOfTerritory(regions[cityKey(lead.city)], lead.city),
+  });
   const socials = page.socials && (page.socials.facebook || page.socials.instagram) ? page.socials : undefined;
   const reasons = page.wordCount < THIN_WORDS ? [...attr.reasons, `tynd side (${page.wordCount} ord) — lav sikkerhed`] : attr.reasons;
   return {

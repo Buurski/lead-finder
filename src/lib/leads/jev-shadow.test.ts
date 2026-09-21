@@ -90,3 +90,24 @@ test("rescore recomputes chain flag from name only and re-derives attractiveness
   assert.equal(r.attractiveness, 32);
   assert.ok(!r.reasons.some((x) => x.includes("kæde")));
 });
+
+test("pickBatch: leads med en ventende kladde kommer først", () => {
+  const mk = (id: string): Lead => ({
+    id, name: `Firma ${id}`, branch: "Frisør", phone: "", city: "Herning", score: 50,
+    source: "", website: `https://f${id}.dk`, websiteStatus: "ok", status: "new", notes: "",
+    lastUpdated: "", websiteQualityTier: "old", enrichedInfo: "", email: "", emailSentAt: "",
+    emailOpenedAt: "", emailClickedAt: "", emailStatus: "", followupSentAt: "", reviewsCount: 0,
+    callbackDate: "",
+  } as Lead);
+  const leads = ["1", "2", "3", "4"].map(mk);
+  // 1 og 2 er allerede vurderet; 4 har en ventende kladde.
+  const existing = [
+    { leadId: "1", judgedAt: "2026-09-01T00:00:00Z" },
+    { leadId: "2", judgedAt: "2026-09-02T00:00:00Z" },
+    { leadId: "4", judgedAt: "2026-09-03T00:00:00Z" },
+  ] as JevShadowRecord[];
+  const plain = pickBatch(leads, existing, 2).map((l) => l.id);
+  assert.deepEqual(plain, ["3", "1"], "uden prioritering: aldrig-vurderet først, så ældst");
+  const withDraft = pickBatch(leads, existing, 2, new Set(["4"])).map((l) => l.id);
+  assert.equal(withDraft[0], "4", "kladde-lead springer køen over selvom det er nyest vurderet");
+});

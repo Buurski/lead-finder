@@ -76,6 +76,14 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
       offentlig_eller_forening: "Kommune, region, forening, uddannelse, NGO",
     },
   },
+  // Lucas 2026-09-21, Dangi Frisør-sagen: "sidste opslag på Facebook var i
+  // 2022... virkelig ikke en attraktiv kunde". En forretning der er gået i stå
+  // køber ikke en ny hjemmeside, uanset hvor meget siden trænger til én.
+  aktiv_forretning: {
+    type: "noul",
+    instructions:
+      "Virker forretningen aktiv og i drift lige nu, ud fra `forside_tekst` og `teknisk.copyright_years`? Tegn PÅ aktivitet: aktuelle åbningstider, priser, nyheder, kampagner, seneste copyright-år er i år eller sidste år. Tegn IMOD: seneste copyright-år er to eller flere år gammelt, 'siden er under opbygning', tom eller forladt side, ingen måde at kontakte dem på.",
+  },
   ligner_kinlys_kunder: {
     type: "noul",
     instructions:
@@ -145,6 +153,8 @@ export interface SiteJudgment {
   virksomhedstype: "lokal_ejerledet" | "regional_flere_afdelinger" | "stor_eller_landskendt" | "offentlig_eller_forening" | "ukendt";
   virksomhedstypeConfidence: number;
   lignerKunde: number; // P(yes)
+  /** P(forretningen er aktiv). Optional: poster gemt før 2026-09-21 har den ikke. */
+  aktivForretning?: number;
 }
 
 const EEAT_KEYS = new Set(Object.keys(SITE_QUESTIONS.eeat.criteria as Record<string, unknown>));
@@ -169,6 +179,8 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
   const budget = choice(a, "budget_signal");
   const vtype = choice(a, "virksomhedstype");
   const ligner = noul(a, "ligner_kinlys_kunder");
+  // Valgfri: et gammelt svarsæt uden spørgsmålet skal stadig kunne mappes.
+  const aktiv = noul(a, "aktiv_forretning");
   if (!inRange(redesign, 3) || !inRange(cta, 3) || !inRange(lokal, 1) || !inRange(dateret, 1) || !inRange(booking, 1) || !inRange(ligner, 1)) return null;
   if (!eeat || !budget || !vtype || !EEAT_KEYS.has(eeat.choice) || !BUDGET_KEYS.has(budget.choice) || !TYPE_KEYS.has(vtype.choice)) return null;
   const b = budget.choice;
@@ -177,6 +189,7 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
     virksomhedstype: t,
     virksomhedstypeConfidence: vtype.confidence,
     lignerKunde: ligner as number,
+    ...(inRange(aktiv, 1) ? { aktivForretning: aktiv as number } : {}),
     redesign: redesign as number,
     cta: cta as number,
     lokal: lokal as number,
@@ -198,6 +211,8 @@ export interface LeadFacts {
   isChain: boolean;
   /** Google review count from the sheet (column T). Volume is a size signal. */
   reviewsCount?: number;
+  /** Hovedstaden eller Sjælland/øerne — uden for Kinlys område (city-region.ts). */
+  outOfTerritory?: boolean;
 }
 
 /**
@@ -215,6 +230,8 @@ export interface LeadFacts {
  *   too big         −50 stor_eller_landskendt · −40 offentlig · −15 regional
  *   not our kind    −25 if P(ligner Kinlys kunde) < 0.4
  *   review volume   −20 if reviewsCount ≥ 400 (a national-scale business)
+ *   uden for område −35 hovedstaden/Sjælland (Lucas 2026-09-21: "vi er ikke i København")
+ *   ikke i drift    −25 if P(aktiv forretning) < 0.25 — BEVIDST konservativ, se nedenfor
  *   clamp 0..100
  */
 export function attractiveness(j: SiteJudgment, facts: LeadFacts | boolean): Attractiveness {
@@ -233,6 +250,16 @@ export function attractiveness(j: SiteJudgment, facts: LeadFacts | boolean): Att
   else if (j.virksomhedstype === "regional_flere_afdelinger") { s -= 15; reasons.push("regional, flere afdelinger −15"); }
   if (j.lignerKunde < 0.4) { s -= 25; reasons.push(`ligner ikke Kinlys kunder (${Math.round(j.lignerKunde * 100)} %) −25`); }
   if ((f.reviewsCount ?? 0) >= 400) { s -= 20; reasons.push(`${f.reviewsCount} anmeldelser = stor volumen −20`); }
+  if (f.outOfTerritory) { s -= 35; reasons.push("uden for Kinlys område (hovedstaden/Sjælland) −35"); }
+  // Målt på 12 rigtige sider 2026-09-21: svarene ligger 0,29-0,78 med tyngde
+  // omkring 0,5 — Jev er IKKE sikker på det her, fordi en forside sjældent
+  // siger noget om driften. En -35 ved 0,4 ville ramme hver tredje lead på et
+  // møntkast. Straffen fyrer derfor kun ved stærkt bevis ("siden er under
+  // opbygning", forladt side), og svaret gemmes uanset så det kan kalibreres.
+  if (typeof j.aktivForretning === "number" && j.aktivForretning < 0.25) {
+    s -= 25;
+    reasons.push(`virker ikke i drift (${Math.round(j.aktivForretning * 100)} % aktiv) −25`);
+  }
   s = Math.max(0, Math.min(100, s));
   return { score: s, reasons };
 }

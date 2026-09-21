@@ -84,3 +84,30 @@ test("national brand / not-our-customer / review volume are penalised (the Alche
   const local = attractiveness(base, { isChain: false, reviewsCount: 40 });
   assert.equal(local.score, 70);
 });
+
+test("uden for Kinlys område straffes, og straffen er uafhængig af de andre", () => {
+  const j: SiteJudgment = {
+    redesign: 3, cta: 1, lokal: 0.9, dateretSprog: 0.2, onlineBooking: 0.1,
+    eeat: "kontakt", eeatConfidence: 0.8, budget: "middel", budgetConfidence: 0.8,
+    virksomhedstype: "lokal_ejerledet", virksomhedstypeConfidence: 0.9, lignerKunde: 0.9,
+  };
+  const hjemme = attractiveness(j, { isChain: false });
+  const sjaelland = attractiveness(j, { isChain: false, outOfTerritory: true });
+  assert.equal(hjemme.score - sjaelland.score, 35);
+  assert.ok(sjaelland.reasons.some((r) => r.includes("uden for Kinlys område")));
+});
+
+test("aktiv_forretning straffer kun ved stærkt bevis — 0,4 er ikke nok", () => {
+  const base: SiteJudgment = {
+    redesign: 3, cta: 1, lokal: 0.9, dateretSprog: 0.2, onlineBooking: 0.1,
+    eeat: "kontakt", eeatConfidence: 0.8, budget: "middel", budgetConfidence: 0.8,
+    virksomhedstype: "lokal_ejerledet", virksomhedstypeConfidence: 0.9, lignerKunde: 0.9,
+  };
+  // Målt spredning på rigtige sider er 0,29-0,78 — midterfeltet må ikke straffes.
+  assert.equal(attractiveness({ ...base, aktivForretning: 0.45 }, { isChain: false }).score, attractiveness(base, { isChain: false }).score);
+  assert.equal(attractiveness({ ...base, aktivForretning: 0.3 }, { isChain: false }).score, attractiveness(base, { isChain: false }).score);
+  const doed = attractiveness({ ...base, aktivForretning: 0.1 }, { isChain: false });
+  assert.equal(attractiveness(base, { isChain: false }).score - doed.score, 25);
+  // Et gammelt svarsæt uden feltet må aldrig straffes.
+  assert.equal(base.aktivForretning, undefined);
+});

@@ -7,6 +7,7 @@ import { getLeads, getClients } from "../sheets.ts";
 import { jevEnabled } from "../jev.ts";
 import { loadShadow, saveShadow, pickBatch, judgeLead, countUnjudged } from "./jev-shadow.ts";
 import { readQueue } from "../queue.ts";
+import { classifyCities } from "./city-region.ts";
 import { loadDraftShadow, saveDraftShadow, judgeDraft } from "./draft-judgments.ts";
 import { loadReplyShadow, saveReplyShadow, judgeReply, type ReplyInfo } from "./reply-judgments.ts";
 import { classifyReply } from "../reply.ts";
@@ -64,10 +65,20 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   const leadDeadline = Date.now() + Math.round(window * LEAD_PHASE_SHARE);
   const includeReplies = opts.includeReplies ?? true;
 
-  // Phase 1: leads (site attractiveness).
+  // Phase 0: landsdel for de byer vi ikke har klassificeret endnu (Lucas
+  // 2026-09-21: København er uden for området). Ét billigt Choice pr. NY by,
+  // cachet for evigt — byer flytter sig ikke. Skal ligge før fase 1, så
+  // straffen er med i den attraktivitet der gemmes i nat.
   const leads = await getLeads();
+  await classifyCities(leads.map((l) => l.city), Date.now() + 45_000).catch(() => ({}));
+
+  // Phase 1: leads (site attractiveness). Leads med en ventende kladde kommer
+  // først: uden en vurdering af FORRETNINGEN kan /godkendelse aldrig vise andet
+  // end B, uanset hvor god kladden er.
+  const queue = await readQueue();
+  const draftLeadIds = new Set(queue.filter((d) => d.status === "pending").map((d) => d.leadId));
   const existing = await loadShadow();
-  const batch = pickBatch(leads, existing, max);
+  const batch = pickBatch(leads, existing, max, draftLeadIds);
   // Kinlys faktiske kunder som ICP-anker i `ligner_kinlys_kunder`. Best-effort:
   // kan Clients-arket ikke læses, falder spørgsmålet tilbage på sin egen
   // brancheopremsning i stedet for at vælte hele kørslen.
@@ -93,7 +104,6 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // Phase 2: pending outreach drafts (approve UI ranking). Same deadline
   // as phase 1 — a slow phase 1 simply leaves fewer drafts judged tonight,
   // never blows past maxDuration. OBSERVES ONLY, same as phase 1.
-  const queue = await readQueue();
   const draftShadow = await loadDraftShadow();
   const draftJudgedAt = new Map(draftShadow.map((r) => [r.draftId, r.judgedAt]));
   const pendingDrafts = queue.filter((d) => d.status === "pending");

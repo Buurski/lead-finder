@@ -392,7 +392,10 @@ export default function ApprovePage() {
   // A/B/C-filter (2026-09-20): gælder i alle faner, ikke kun Afventer — Lucas
   // vil kunne se "kun A" i Godkendt/Alle også. "best" (2026-09-20): kun A-kladder
   // uden "send ikke"-flag — Lucas' egen genvej til "hvad kan jeg sende lige nu".
-  const [gradeFilter, setGradeFilter] = useState<"all" | "best" | "A" | "B" | "C">("all");
+  // "ok" er standard (Lucas 2026-09-21: "fjern dem fra godkendelse, så jeg ikke
+  // kan se dem der er 30 og dårlige"). Den skjuler karakter C og alt med
+  // "send ikke"-flag, men beholder "?" — en uvurderet kladde er ukendt, ikke dårlig.
+  const [gradeFilter, setGradeFilter] = useState<"ok" | "all" | "best" | "A" | "B" | "C">("ok");
   const branches = useMemo(
     () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
     [drafts]
@@ -422,6 +425,8 @@ export default function ApprovePage() {
       base = base
         .filter((d) => (d.jev?.grade ?? "?") === "A" && !(d.jev?.flags ?? []).includes("send ikke"))
         .sort((a, b) => jevPriority(b) - jevPriority(a));
+    } else if (gradeFilter === "ok") {
+      base = base.filter((d) => (d.jev?.grade ?? "?") !== "C" && !(d.jev?.flags ?? []).includes("send ikke"));
     } else if (gradeFilter !== "all") {
       base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
     }
@@ -721,7 +726,7 @@ export default function ApprovePage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Karakter</span>
           <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-            {(["best", "all", "A", "B", "C"] as const).map((key) => {
+            {(["best", "ok", "all", "A", "B", "C"] as const).map((key) => {
               const active = gradeFilter === key;
               return (
                 <button
@@ -741,7 +746,7 @@ export default function ApprovePage() {
                     boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
                   }}
                 >
-                  {key === "best" ? "Bedste" : key === "all" ? "Alle" : key}
+                  {key === "best" ? "Bedste" : key === "ok" ? "Skjul dårlige" : key === "all" ? "Alle" : key}
                 </button>
               );
             })}
@@ -1385,9 +1390,14 @@ function DraftLetter({
             const g = draft.jev?.grade ?? "?";
             const gm = GRADE_META[g] ?? GRADE_META["?"];
             const p = draft.jev?.priority;
+            // Tallet vises KUN når begge halvdele er vurderet. Ellers så en
+            // kladde-only-score ud som en samlet rating ("B 100" gav ingen mening).
+            const complete = draft.jev?.lead != null && draft.jev?.draft != null;
             return (
               <span
-                title={`Prioritet: ${p ?? "ikke vurderet"}/100 (kladde-kvalitet vejer tungest, lead-attraktivitet sekundært)`}
+                title={complete
+                  ? `Prioritet: ${p}/100 (kladde-kvalitet vejer tungest, lead-attraktivitet sekundært)`
+                  : "Forretningen er ikke vurderet endnu — karakteren kan derfor ikke blive A, og der vises intet samlet tal"}
                 style={{
                   fontSize: 13,
                   fontWeight: 800,
@@ -1400,7 +1410,9 @@ function DraftLetter({
                 }}
               >
                 {g}
-                {p != null && <span style={{ fontWeight: 600, fontSize: 11, marginLeft: 5, opacity: 0.85 }}>{p}</span>}
+                {complete && p != null
+                  ? <span style={{ fontWeight: 600, fontSize: 11, marginLeft: 5, opacity: 0.85 }}>{p}</span>
+                  : <span style={{ fontWeight: 600, fontSize: 10, marginLeft: 5, opacity: 0.7 }}>kun kladde</span>}
               </span>
             );
           })()}
