@@ -121,6 +121,10 @@ export default function ApprovePage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("pending");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Lucas' egne domme (2026-09-21). Optimistisk i UI, gemt serverside.
+  // Ændrer INTET ved kladden — ren træningsdata til næste kalibrering.
+  const [labels, setLabels] = useState<Record<string, "god" | "daarlig">>({});
+  const [labelStat, setLabelStat] = useState<{ god: number; daarlig: number; nok: boolean } | null>(null);
 
   const fetchQueue = useCallback(async (): Promise<QueueDraft[]> => {
     const res = await fetch("/api/approve/queue", { cache: "no-store" });
@@ -163,6 +167,45 @@ export default function ApprovePage() {
       cancelled = true;
     };
   }, [fetchQueue]);
+
+  // Hent eksisterende labels én gang, så knapperne står rigtigt efter reload.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/approve/label", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const m: Record<string, "god" | "daarlig"> = {};
+        for (const l of data.labels ?? []) m[l.draftId] = l.label;
+        setLabels(m);
+        setLabelStat(data.stats ?? null);
+      } catch {
+        /* labels er en ekstra — køen virker uden dem */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const setLabel = useCallback(async (id: string, value: "god" | "daarlig" | null) => {
+    const draft = drafts.find((d) => d.id === id);
+    setLabels((prev) => {
+      const next = { ...prev };
+      if (value) next[id] = value; else delete next[id];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/approve/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, label: value, jevLead: draft?.jev?.lead ?? null, jevDraft: draft?.jev?.draft ?? null }),
+      });
+      if (res.ok) setLabelStat((await res.json()).stats ?? null);
+    } catch {
+      /* mistet label er ikke værd at afbryde arbejdet for */
+    }
+  }, [drafts]);
 
   const patchLocal = useCallback((d: QueueDraft) => {
     setDrafts((prev) => prev.map((x) => (x.id === d.id ? d : x)));
@@ -357,6 +400,53 @@ export default function ApprovePage() {
       setJevRunBusy(false);
     }
   }, [jevRunBusy, load]);
+
+  // "Hent forretningsdata" (2026-09-21): Google Places-opslag på de kladder der
+  // aldrig har haft en Sheets-række, så forretningen bag dem kan vurderes.
+  // KOSTER PENGE (ét kald pr. kladde), derfor bekræftelse med pris FØRST —
+  // GET'en svarer med hvor mange der mangler og hvad det løber op i.
+  const [enrichBusy, setEnrichBusy] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState("");
+  const enrichQueue = useCallback(async () => {
+    if (enrichBusy) return;
+    let mangler = 0;
+    let pris = "?";
+    try {
+      const pre = await fetch("/api/queue-enrich", { cache: "no-store" });
+      const d = await pre.json();
+      mangler = d.mangler ?? 0;
+      pris = d.anslaaetPris ?? "?";
+    } catch {
+      setEnrichMsg("Kunne ikke hente status.");
+      return;
+    }
+    if (mangler === 0) { setEnrichMsg("Alle kladder har allerede forretningsdata."); return; }
+    if (!window.confirm(
+      `Slå ${mangler} forretninger op hos Google?
+
+Koster ca. ${pris}. ` +
+      `De får website, anmeldelsestal og drift-status, og bliver derefter Jev-vurderet.
+
+` +
+      `Permanent lukkede forretninger afvises automatisk. Intet sendes.`
+    )) return;
+    setEnrichBusy(true);
+    setEnrichMsg("Slår op…");
+    try {
+      const res = await fetch("/api/queue-enrich?limit=250", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      setEnrichMsg(
+        res.ok && d.ok
+          ? `${d.beriget} beriget · ${d.vurderet} vurderet · ${d.lukkede} permanent lukkede afvist${d.mangler ? ` · ${d.mangler} mangler endnu` : ""}`
+          : (d.error ?? "Kunne ikke berige.")
+      );
+      await load();
+    } catch {
+      setEnrichMsg("Netværksfejl.");
+    } finally {
+      setEnrichBusy(false);
+    }
+  }, [enrichBusy, load]);
 
   // "Hent følgertal" (2026-09-20): Facebook-følgertal via Apify, bag pris-gate
   // (ENABLE_SOCIAL_STATS=1 + APIFY_TOKEN, ellers svarer ruten bare med en
@@ -675,6 +765,16 @@ export default function ApprovePage() {
             {jevRunBusy ? "Vurderer…" : "Vurdér kladder nu"}
           </button>
           {jevRunMsg && !jevRunBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{jevRunMsg}</span>}
+          <button
+            type="button"
+            onClick={enrichQueue}
+            disabled={enrichBusy}
+            title="Slå forretningerne op hos Google (website, anmeldelser, drift-status) så de kan vurderes. Koster Places-kald — du får prisen før der køres."
+            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: enrichBusy ? 0.6 : 1 }}
+          >
+            {enrichBusy ? "Slår op…" : "Hent forretningsdata"}
+          </button>
+          {enrichMsg && !enrichBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{enrichMsg}</span>}
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -751,6 +851,17 @@ export default function ApprovePage() {
               );
             })}
           </div>
+          {labelStat && (labelStat.god + labelStat.daarlig) > 0 && (
+            <span
+              title="Dine God/Dårlig-domme bruges til at kalibrere attraktivitets-formlen. Under 25 i hver gruppe er målingen for støjende til at ændre vægte på."
+              style={{ fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}
+            >
+              {labelStat.god} god · {labelStat.daarlig} dårlig
+              {labelStat.nok
+                ? " · nok til at måle"
+                : ` · mangler ${Math.max(0, 25 - labelStat.god)} god / ${Math.max(0, 25 - labelStat.daarlig)} dårlig`}
+            </span>
+          )}
           {gradeCPending.length > 0 && (
             <button
               type="button"
@@ -877,6 +988,8 @@ export default function ApprovePage() {
               key={d.id}
               draft={d}
               onAct={actOn}
+              label={labels[d.id] ?? null}
+              onLabel={setLabel}
               focused={i === focusIdx}
               onFocusRequest={() => setFocusIdx(i)}
               selected={selected.has(d.id)}
@@ -1122,8 +1235,12 @@ function DraftLetter({
   onFocusRequest,
   selected,
   onToggleSelect,
+  label,
+  onLabel,
 }: {
   draft: QueueDraft;
+  label: "god" | "daarlig" | null;
+  onLabel: (id: string, value: "god" | "daarlig" | null) => void;
   onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }) => Promise<{ ok: boolean; violations?: string[] }>;
   focused: boolean;
   onFocusRequest: () => void;
@@ -1429,6 +1546,37 @@ function DraftLetter({
           >
             {meta.label}
           </span>
+          {/* Lucas' egen dom (2026-09-21). Ændrer INTET ved kladden — den er
+              træningsdata til næste kalibrering af attraktivitets-formlen.
+              Tre runder med at gætte spørgsmål gav ét brugbart signal; én
+              runde med at måle mod hans markeringer fordoblede træfsikkerheden. */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {([["god", "God kunde", "var(--green)"], ["daarlig", "Dårlig", "var(--red)"]] as const).map(([v, t, farve]) => {
+              const aktiv = label === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  title={`${t} — kun til kalibrering, ændrer ikke kladden`}
+                  onClick={(e) => { e.stopPropagation(); onLabel(draft.id, aktiv ? null : v); }}
+                  style={{
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
+                    lineHeight: 1.6,
+                    padding: "2px 8px",
+                    borderRadius: 7,
+                    color: aktiv ? "var(--surface)" : farve,
+                    background: aktiv ? farve : "transparent",
+                    border: `1px solid ${farve}`,
+                  }}
+                >
+                  {v === "god" ? "God" : "Dårlig"}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

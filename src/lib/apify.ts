@@ -165,6 +165,34 @@ async function searchPlaces(query: string, apiKey: string): Promise<ApifyPlace[]
   });
 }
 
+/**
+ * Slå ÉN konkret forretning op på navn + by. Bruges til at berige kladder i
+ * godkendelses-køen der aldrig har haft en Sheets-række og derfor mangler
+ * website, anmeldelsestal og drift-status (2026-09-21).
+ *
+ * Ét Places-kald pr. opslag — kalderen står for at holde antallet nede.
+ * Returnerer null hvis der ikke er et rimeligt navne-match, så vi hellere
+ * mangler data end tilskriver en forretning en fremmed hjemmeside.
+ */
+export async function lookupPlace(name: string, city: string): Promise<ApifyPlace | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY not set");
+  const q = `${name} ${city}`.trim();
+  if (!q) return null;
+  const places = await searchPlaces(q, apiKey);
+  if (places.length === 0) return null;
+  const norm = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const wanted = norm(name);
+  // Krav om et rigtigt navne-overlap: Places svarer gerne med "nærmeste
+  // frisør" på et navn den ikke kender, og så ville vi hæfte en tilfældig
+  // forretnings hjemmeside på kladden.
+  const hit = places.find((p) => {
+    const got = norm(p.title);
+    return got === wanted || got.includes(wanted) || wanted.includes(got);
+  });
+  return hit ?? null;
+}
+
 export async function runScraper(queries = buildQueries()): Promise<ApifyPlace[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY not set");

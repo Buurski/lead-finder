@@ -32,6 +32,15 @@ export interface QueueDraft {
   // prefers this over a Sheets lookup, so an ingest lead can actually be mailed
   // instead of being skipped with "lead ikke fundet"/"no email".
   recipientEmail?: string;
+  // Forretningens egne data (2026-09-21). Motoren har dem fra Sheets-rækken,
+  // men ingest-kladder (Cowork/leadgen) havde ingen — og uden website kunne
+  // forretningen bag dem ALDRIG hentes og Jev-vurderes. Det var hullet hvor
+  // de dårlige barbershop-kladder gemte sig. Udfyldes af motoren ved oprettelse
+  // og bagudrettet af /api/queue-enrich.
+  website?: string;
+  reviewsCount?: number;
+  /** Googles drift-status: OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY. */
+  businessStatus?: string;
   status: DraftStatus;
   source: string; // "daily-engine" | "write-to-x"
   createdAt: string;
@@ -123,7 +132,7 @@ export async function appendDrafts(
 // "approve" only marks the draft approved; real sending is a later layer.
 export async function updateDraft(
   id: string,
-  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId }
+  patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId; website?: string; reviewsCount?: number; businessStatus?: string }
 ): Promise<QueueDraft | null> {
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);

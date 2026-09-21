@@ -449,6 +449,10 @@ export async function runEngine(opts: EngineOptions = {}): Promise<EngineSummary
       hooks: research.hooks,
       demoPair: research.demoPair,
       professionalism: research.professionalismVerdict.reason,
+      // Forretningens egne data følger med kladden (2026-09-21), så
+      // /godkendelse kan vurdere virksomheden uden et Places-opslag bagefter.
+      website: lead.website ?? "",
+      reviewsCount: lead.reviewsCount ?? 0,
       subject: draft.subject,
       body: draft.body,
       status: "pending",
