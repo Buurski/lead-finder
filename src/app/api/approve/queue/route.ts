@@ -10,6 +10,7 @@ import { loadShadow, type JevShadowRecord } from "@/lib/leads/jev-shadow";
 import { loadDraftShadow } from "@/lib/leads/draft-judgments";
 import { loadSocialStats, followerBucket } from "@/lib/leads/social-stats";
 import { priority, grade, businessLinks, factLine } from "@/lib/leads/lead-grade";
+import { isAgency } from "@/lib/chains";
 
 // Reads/writes the engine's approval queue at request time — never cache.
 export const dynamic = "force-dynamic";
@@ -81,7 +82,12 @@ export async function GET() {
     const draftQuality = dj?.quality ?? null;
     const sh = leadShadow.get(d.leadId);
     const shSocials = sh?.socials;
-    const p = priority(leadAttr, draftQuality);
+    // Bureauer sælger selv det vi sælger (Lucas 2026-09-21: "Social Boost skal
+    // også fjernes"). Navnet afgør det her, uafhængigt af om forretningen
+    // nogensinde er blevet Jev-vurderet — mange kladder i køen har ingen
+    // Sheets-række og kan derfor aldrig få en lead-score.
+    const bureau = isAgency(d.name, d.branch);
+    const p = bureau ? 0 : priority(leadAttr, draftQuality);
     // Kun en komplet vurdering (både forretning og kladde) kan give A —
     // ellers ville en ikke-vurderet forretning arve kladdens karakter.
     const withJev = {
@@ -89,8 +95,8 @@ export async function GET() {
       jev: {
         lead: leadAttr,
         draft: draftQuality,
-        flags: dj?.flags ?? [],
-        grade: grade(p, leadAttr != null && draftQuality != null),
+        flags: bureau ? ["bureau/konkurrent", "send ikke", ...(dj?.flags ?? [])] : (dj?.flags ?? []),
+        grade: bureau ? ("C" as const) : grade(p, leadAttr != null && draftQuality != null),
         priority: p,
         links: businessLinks(sh?.name ?? d.name, sh?.city ?? d.city, sh?.url ?? "", d.recipientEmail, shSocials),
         facts: factLine({ reviewsCount: sh?.reviewsCount, isChain: sh?.isChain, sheetTier: sh?.sheetTier, judgment: sh?.judgment }),

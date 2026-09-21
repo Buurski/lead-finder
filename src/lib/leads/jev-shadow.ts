@@ -10,7 +10,7 @@ import type { Lead } from "../sheets.ts";
 import { fetchPageText } from "../fetch-page.ts";
 import { jevAsk, type JevAnswers } from "../jev.ts";
 import { SITE_QUESTIONS, MIN_WORDS_FOR_JUDGMENT, THIN_WORDS, siteState, toJudgment, attractiveness, type SiteJudgment } from "./site-judgments.ts";
-import { isChain, chainNameKey, repeatedChainNames } from "../chains.ts";
+import { isChain, isAgency, chainNameKey, repeatedChainNames } from "../chains.ts";
 import { loadCityRegions, isOutOfTerritory, cityKey, type CityRegionMap } from "./city-region.ts";
 
 export interface JevShadowRecord {
@@ -67,6 +67,7 @@ export function rescore(
     isChain: chain,
     reviewsCount: rec.reviewsCount,
     outOfTerritory: isOutOfTerritory(regions?.[cityKey(rec.city)], rec.city),
+    isAgency: isAgency(rec.name, rec.branch) || (rec.judgment.saelgerSelvMarketing ?? 0) >= 0.5,
   });
   return { ...rec, isChain: chain, attractiveness: attr.score, reasons: attr.reasons };
 }
@@ -163,6 +164,7 @@ export async function judgeLead(
     isChain: base.isChain,
     reviewsCount: lead.reviewsCount,
     outOfTerritory: isOutOfTerritory(regions[cityKey(lead.city)], lead.city),
+    isAgency: isAgency(lead.name, lead.branch) || (judgment.saelgerSelvMarketing ?? 0) >= 0.5,
   });
   const socials = page.socials && (page.socials.facebook || page.socials.instagram) ? page.socials : undefined;
   const reasons = page.wordCount < THIN_WORDS ? [...attr.reasons, `tynd side (${page.wordCount} ord) — lav sikkerhed`] : attr.reasons;

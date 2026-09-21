@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isChain, chainNameKey, repeatedChainNames } from "./chains.ts";
+import { isChain, isAgency, chainNameKey, repeatedChainNames } from "./chains.ts";
 
 test("kæder med mellemrum i navnet fanges (Profil Optik-hullet)", () => {
   assert.equal(isChain("Profil Optik Herning"), true);
@@ -44,4 +44,26 @@ test("samme navn 3 gange i SAMME by tæller ikke (dubletrækker)", () => {
     { name: "Restaurant Hos", city: "Odense" },
   ]);
   assert.equal(repeats.size, 0);
+});
+
+test("isAgency fanger bureauer og konkurrenter", () => {
+  for (const n of ["Social Boost", "Nord Marketing ApS", "Buur Webdesign", "Mediebureauet Vest",
+                   "Klar Kommunikationsbureau", "SEO Danmark", "Vi laver hjemmesider"]) {
+    assert.equal(isAgency(n), true, n);
+  }
+});
+
+test("isAgency rammer ikke rigtige forretninger", () => {
+  // Løse ord som media/digital/studio/boost står bevidst IKKE i listen —
+  // en falsk positiv koster et ægte lead.
+  for (const n of ["Frisør Nasim", "Headquarter Barbershop", "Dangi Frisør", "Café Boost",
+                   "Mediehuset Nord", "Studio Hud", "Salon Marketingvej 4", "Fotostudio Sea",
+                   "Digital Print Randers"]) {
+    assert.equal(isAgency(n), false, n);
+  }
+});
+
+test("isAgency læser også branchen", () => {
+  assert.equal(isAgency("Nord Consult", "Marketing"), true);
+  assert.equal(isAgency("Nord Consult", "Revisor"), false);
 });

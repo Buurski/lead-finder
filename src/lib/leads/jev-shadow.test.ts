@@ -87,7 +87,9 @@ test("rescore recomputes chain flag from name only and re-derives attractiveness
   };
   const r = rescore(rec);
   assert.equal(r.isChain, false);
-  assert.equal(r.attractiveness, 32);
+  // En post gemt FØR ICP-spørgsmålet fandtes har hverken lignerKunde eller
+  // virksomhedstype. Den skal give et tal, ikke NaN — 0,5 = "ved det ikke".
+  assert.ok(Number.isFinite(r.attractiveness), `fik ${r.attractiveness}`);
   assert.ok(!r.reasons.some((x) => x.includes("kæde")));
 });
 

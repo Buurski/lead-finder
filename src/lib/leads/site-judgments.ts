@@ -94,6 +94,13 @@ export const SITE_QUESTIONS: Record<string, JevQuestion> = {
     instructions:
       "Viser forretningen at den går op i sit ydre: egne fotos af lokalet eller arbejdet, gennemført grafik, tydeligt logo — frem for stockbilleder og standardopsætning?",
   },
+  // Bureauer sælger selv det vi sælger. Navnet afslører dem ikke altid
+  // ("Social Boost" gør, "Nord Consult" gør ikke), så Jev læser forsiden.
+  saelger_selv_marketing: {
+    type: "noul",
+    instructions:
+      "Sælger `firma` SELV markedsføring, webdesign, SEO, sociale medier, reklame eller kommunikation som ydelse — altså er de et bureau og dermed en konkurrent frem for en mulig kunde?",
+  },
   ligner_kinlys_kunder: {
     type: "noul",
     instructions:
@@ -167,6 +174,8 @@ export interface SiteJudgment {
   aktivForretning?: number;
   /** P(forretningen investerer i sit ydre). Optional, samme grund. */
   investererIUdseende?: number;
+  /** P(firmaet selv sælger markedsføring/web) — konkurrent, ikke kunde. */
+  saelgerSelvMarketing?: number;
 }
 
 const EEAT_KEYS = new Set(Object.keys(SITE_QUESTIONS.eeat.criteria as Record<string, unknown>));
@@ -194,6 +203,7 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
   // Valgfri: et gammelt svarsæt uden spørgsmålet skal stadig kunne mappes.
   const aktiv = noul(a, "aktiv_forretning");
   const udseende = noul(a, "investerer_i_udseende");
+  const bureau = noul(a, "saelger_selv_marketing");
   if (!inRange(redesign, 3) || !inRange(cta, 3) || !inRange(lokal, 1) || !inRange(dateret, 1) || !inRange(booking, 1) || !inRange(ligner, 1)) return null;
   if (!eeat || !budget || !vtype || !EEAT_KEYS.has(eeat.choice) || !BUDGET_KEYS.has(budget.choice) || !TYPE_KEYS.has(vtype.choice)) return null;
   const b = budget.choice;
@@ -204,6 +214,7 @@ export function toJudgment(a: JevAnswers | undefined): SiteJudgment | null {
     lignerKunde: ligner as number,
     ...(inRange(aktiv, 1) ? { aktivForretning: aktiv as number } : {}),
     ...(inRange(udseende, 1) ? { investererIUdseende: udseende as number } : {}),
+    ...(inRange(bureau, 1) ? { saelgerSelvMarketing: bureau as number } : {}),
     redesign: redesign as number,
     cta: cta as number,
     lokal: lokal as number,
@@ -225,65 +236,78 @@ export interface LeadFacts {
   isChain: boolean;
   /** Google review count from the sheet (column T). Volume is a size signal. */
   reviewsCount?: number;
-  /** Hovedstaden eller Sjælland/øerne — uden for Kinlys område (city-region.ts). */
+  /** Hovedstadsområdet — langt fra Herning (city-region.ts). */
   outOfTerritory?: boolean;
+  /** Sælger selv markedsføring/web/SEO — konkurrent, ikke kunde. */
+  isAgency?: boolean;
 }
 
 /**
- * How attractive is this lead for a 5-15k website sale, given what Jev saw
- * on the homepage? Deterministic policy (Lucas 2026-09-20: big chains,
- * national brands and already-good sites are NOT attractive even if the
- * sheet scores them high).
+ * Hvor attraktiv er dette lead for et hjemmesidesalg til 5-15.000 kr?
  *
- *   base            redesign 0..3 → 0..60   (the opportunity)
- *   budget          lavt −25 · middel 0 · hoejt +10 · ukendt 0
- *   no booking      +10 if P(booking) < 0.3 (a concrete thing to sell)
- *   dated language  +10 if P(dateret) ≥ 0.6
- *   chain           −40 (isChain from src/lib/chains.ts) — HQ decides, not the shop
- *   already modern  −30 if redesign < 1.0 — nothing to sell
- *   too big         −50 stor_eller_landskendt · −40 offentlig · −15 regional
- *   not our kind    −25 if P(ligner Kinlys kunde) < 0.4
- *   review volume   −20 if reviewsCount ≥ 400 (a national-scale business)
- *   uden for område −35 hovedstaden/Sjælland (Lucas 2026-09-21: "vi er ikke i København")
- *   ikke i drift    −25 if P(aktiv forretning) < 0.25 — BEVIDST konservativ, se nedenfor
- *   ydre-investering ±8 (målt AUC 0,765 mod Lucas' egne labels, se nedenfor)
- *   clamp 0..100
+ * OMSKREVET 2026-09-21 efter måling mod Lucas' egne labels (61 "interested"
+ * mod 32 "skip/bad_fit", 82 med brugbar forside). Den gamle formel gav
+ * `redesign` 0-60 point og dermed hovedvægten. Målingen viste at det var
+ * forkert vej rundt:
+ *
+ *   redesign alene ............ AUC 0,260   (OMVENDT — dårlige sider er IKKE dem han vil have)
+ *   gammel samlet formel ...... AUC 0,445   (ringere end et møntkast)
+ *   reviewsCount alene ........ AUC 0,852
+ *   lignerKunde alene ......... AUC 0,686
+ *   NY formel (aktivitet x egnethed x gates) .. AUC 0,841
+ *
+ * Anmeldelsestallet er ikke bare selektionsbias: inden for det smalle
+ * ark-score-bånd hvor begge labels findes (n=57, 28 mod 29) giver det stadig
+ * AUC 0,778. Median: "interested" 61 anmeldelser, "bad_fit" 0. Det er også
+ * den ærlige udgave af "rigtige saloner frem for enmands-barbere" — en rigtig
+ * salon har et fodaftryk, en walk-in-stol har ingen.
+ *
+ *   score = 100 x aktivitet x egnethed x gates
+ *     aktivitet = log10(anmeldelser+1)/2, loft 1 (0 anm. → 0, ~100 → 1)
+ *     egnethed  = 0,55 + 0,45 x P(ligner Kinlys kunder)
+ *     gates     = kæde 0,1 · bureau 0,05 · stor/landskendt 0,1 · offentlig 0,2
+ *                 regional 0,85 · lavt budget 0,7 · højt budget 1,1
+ *                 siden allerede god 0,35 · hovedstaden 0,6 · ikke i drift 0,5
+ *
+ * `redesign` er nu KUN en gate ("allerede god → næsten intet at sælge"), ikke
+ * en drivende plusfaktor. Hver variant der gav den vægt igen målte lavere:
+ * 0,7+0,3xredesign gav 0,579 og 0,55+0,45xredesign gav 0,559, mod 0,841 uden.
  */
 export function attractiveness(j: SiteJudgment, facts: LeadFacts | boolean): Attractiveness {
   const f: LeadFacts = typeof facts === "boolean" ? { isChain: facts } : facts;
   const reasons: string[] = [];
-  let s = Math.round((Math.max(0, Math.min(3, j.redesign)) / 3) * 60);
-  reasons.push(`redesign-behov ${j.redesign.toFixed(1)}/3 → ${s}`);
-  if (j.budget === "lavt") { s -= 25; reasons.push("lavt budget-signal −25"); }
-  else if (j.budget === "hoejt") { s += 10; reasons.push("højt budget-signal +10"); }
-  if (j.onlineBooking < 0.3) { s += 10; reasons.push("ingen online booking +10"); }
-  if (j.dateretSprog >= 0.6) { s += 10; reasons.push("dateret sprog +10"); }
-  if (f.isChain) { s -= 40; reasons.push("kæde/franchise −40"); }
-  if (j.redesign < 1.0) { s -= 30; reasons.push("allerede moderne −30"); }
-  if (j.virksomhedstype === "stor_eller_landskendt") { s -= 50; reasons.push("stor/landskendt −50"); }
-  else if (j.virksomhedstype === "offentlig_eller_forening") { s -= 40; reasons.push("offentlig/forening −40"); }
-  else if (j.virksomhedstype === "regional_flere_afdelinger") { s -= 15; reasons.push("regional, flere afdelinger −15"); }
-  if (j.lignerKunde < 0.4) { s -= 25; reasons.push(`ligner ikke Kinlys kunder (${Math.round(j.lignerKunde * 100)} %) −25`); }
-  if ((f.reviewsCount ?? 0) >= 400) { s -= 20; reasons.push(`${f.reviewsCount} anmeldelser = stor volumen −20`); }
-  if (f.outOfTerritory) { s -= 35; reasons.push("uden for Kinlys område (hovedstaden/Sjælland) −35"); }
-  // Målt på 12 rigtige sider 2026-09-21: svarene ligger 0,29-0,78 med tyngde
-  // omkring 0,5 — Jev er IKKE sikker på det her, fordi en forside sjældent
-  // siger noget om driften. En -35 ved 0,4 ville ramme hver tredje lead på et
-  // møntkast. Straffen fyrer derfor kun ved stærkt bevis ("siden er under
-  // opbygning", forladt side), og svaret gemmes uanset så det kan kalibreres.
+
+  // 1) AKTIVITET — hvor stort et fodaftryk har forretningen? Klart stærkeste
+  // enkeltsignal (AUC 0,852). Log-skala: 0 anmeldelser → 0, ~100 → 1.
+  const anmeldelser = Number.isFinite(f.reviewsCount) ? Math.max(0, f.reviewsCount as number) : 0;
+  const aktivitet = Math.min(1, Math.log10(anmeldelser + 1) / 2);
+  reasons.push(`${anmeldelser} Google-anmeldelser → aktivitet ${aktivitet.toFixed(2)}`);
+
+  // 2) EGNETHED — ligner de Kinlys kunder? (AUC 0,686)
+  // Poster gemt før 2026-09-20 har ikke feltet; 0,5 = "ved det ikke", hverken
+  // belønning eller straf. Uden dette guard gav en gammel post NaN.
+  const ligner = Number.isFinite(j.lignerKunde) ? Math.max(0, Math.min(1, j.lignerKunde)) : 0.5;
+  const egnethed = 0.55 + 0.45 * ligner;
+  if (ligner < 0.4) reasons.push(`ligner ikke Kinlys kunder (${Math.round(ligner * 100)} %)`);
+
+  // 3) GATES — Lucas' hårde regler. De er forretningspolitik, ikke statistik,
+  // og ganges på til sidst så de ikke kan opvejes af et højt anmeldelsestal.
+  let gate = 1;
+  if (f.isChain) { gate *= 0.1; reasons.push("kæde/franchise"); }
+  if (f.isAgency) { gate *= 0.05; reasons.push("bureau/konkurrent — sælger selv markedsføring"); }
+  if (j.virksomhedstype === "stor_eller_landskendt") { gate *= 0.1; reasons.push("stor/landskendt"); }
+  else if (j.virksomhedstype === "offentlig_eller_forening") { gate *= 0.2; reasons.push("offentlig/forening"); }
+  else if (j.virksomhedstype === "regional_flere_afdelinger") { gate *= 0.85; reasons.push("regional, flere afdelinger"); }
+  if (j.budget === "lavt") { gate *= 0.7; reasons.push("lavt budget-signal"); }
+  else if (j.budget === "hoejt") { gate *= 1.1; }
+  if (Number.isFinite(j.redesign) && j.redesign < 0.8) { gate *= 0.35; reasons.push("siden er allerede god — intet at sælge"); }
+  if (f.outOfTerritory) { gate *= 0.6; reasons.push("hovedstadsområdet — langt fra Herning"); }
   if (typeof j.aktivForretning === "number" && j.aktivForretning < 0.25) {
-    s -= 25;
-    reasons.push(`virker ikke i drift (${Math.round(j.aktivForretning * 100)} % aktiv) −25`);
+    gate *= 0.5;
+    reasons.push(`virker ikke i drift (${Math.round(j.aktivForretning * 100)} % aktiv)`);
   }
-  // Målt på 81 labellede leads: snit 0,30 blandt "interested" mod 0,23 blandt
-  // "skip/bad_fit". Tallene ligger tæt sammen, så absolutte niveauer betyder
-  // lidt — det er RÆKKEFØLGEN der bærer (AUC 0,765). Derfor to tærskler om
-  // midten og en beskeden vægt, ikke en lineær skala der lader som om
-  // forskellen mellem 0,29 og 0,31 er reel.
-  if (typeof j.investererIUdseende === "number") {
-    if (j.investererIUdseende >= 0.28) { s += 8; reasons.push("går op i sit ydre +8"); }
-    else if (j.investererIUdseende < 0.2) { s -= 8; reasons.push("ligeglad med sit ydre −8"); }
-  }
-  s = Math.max(0, Math.min(100, s));
+
+  const s = Math.max(0, Math.min(100, Math.round(100 * Math.min(1, gate) * aktivitet * egnethed)));
   return { score: s, reasons };
 }
+

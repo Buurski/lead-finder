@@ -134,3 +134,20 @@ const PUBLIC_SECTOR_NAME = /\bkommunen?\b|borgerservice|jobcenter|\br\u00e5dhuse
 export function isPublicSector(name: string): boolean {
   return PUBLIC_SECTOR_NAME.test(name || "");
 }
+
+/**
+ * Bureauer og konkurrenter — de sælger selv det vi sælger, og bliver aldrig
+ * kunder (Lucas 2026-09-21: "Social Boost skal også fjernes").
+ *
+ * Bevidst snævert: kun sammensætninger der reelt kun bruges af marketing- og
+ * webfirmaer. Løse ord som "media", "digital" og "studio" står IKKE her — de
+ * optræder i massevis af rigtige forretningsnavne (fotostudio, negle-studio),
+ * og en falsk positiv koster et ægte lead.
+ */
+const AGENCY_RE =
+  /\b(marketing|markedsf\u00f8ring|(reklame|medie|web|kommunikations|ads|annonce|digitalt )bureau(et)?|webdesign|web design|hjemmesider|seo|sociale medier|social media|social boost|google ads|online markedsf\u00f8ring)\b/i;
+
+/** Sælger firmaet selv markedsføring/web? Navn ELLER branche må afsløre det. */
+export function isAgency(name: string, branch?: string): boolean {
+  return AGENCY_RE.test(`${name || ""} ${branch || ""}`);
+}
