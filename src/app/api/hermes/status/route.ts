@@ -31,6 +31,11 @@ export async function GET() {
   const secret = cleanEnv(process.env.HERMES_API_SECRET);
   return NextResponse.json({
     ok: true,
+    // Kort commit-SHA for den udrulning der svarer. Ruten er offentlig (undtaget
+    // basic auth i proxy.ts), så en serverside-ændring ellers ikke kan
+    // verificeres udefra — og "pushet" er ikke det samme som "udrullet".
+    // Syv tegn af en commit-hash afslører intet fra et privat repo.
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     ...health,
     omverdenAt,
     omverdenStaleHours,
