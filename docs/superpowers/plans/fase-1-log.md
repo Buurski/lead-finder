@@ -7,3 +7,8 @@
 ## Task 6 (fakturaer)
 - Sol-review: CHANGES → (1) advisory lock i saveSubscriptions RETTET; (2) nummer forbruges før gem (samme som KV-udgaven) = ACCEPTERET RISIKO, løses i fase 4: kladder får først nummer ved afsendelse.
 - TODO fase-slut: login_token-tabel ubrugt (magic-link bruger KV-store) — slet eller tag i brug.
+
+## Task 9 (auth)
+- Sol CHANGES (4) + Opus CHANGES (6): alle rettet undtagen ikke-atomisk token-indløsning (accepteret, low).
+- CUTOVER-KRAV: sæt APP_URL (https://lead-finder-three-beta.vercel.app), CC_USERS (lucas:<mail>,charlie:<mail>) og CC_MAGIC=1 i Vercel prod — ellers sendes ingen login-mails.
+- Neon provisioneret 22/9 (kinly-hq, fra1), migration 0000 kørt, 12 tabeller.
