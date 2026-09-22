@@ -11,7 +11,9 @@
     "test:seo-tjek": "node --conditions=react-server scripts/test_seo_tjek.mjs",
     "seo:tjek": "node --conditions=react-server scripts/_seo_tjek_run.mjs",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node scripts/db-migrate.mjs"
   },
   "dependencies": {
     "@googleapis/sheets": "^13.0.1",
@@ -19,22 +21,26 @@
     "@vercel/blob": "^2.4.0",
     "@vercel/kv": "^3.0.0",
     "ai": "^6.0.195",
+    "drizzle-orm": "^0.45.3",
     "googleapis": "^171.4.0",
     "imapflow": "^1.4.2",
     "lucide-react": "^1.12.0",
     "next": "16.2.4",
     "nodemailer": "^8.0.7",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "chrome-launcher": "^1.2.1",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "lighthouse": "^13.3.0",
