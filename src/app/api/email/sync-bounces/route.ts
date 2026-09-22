@@ -1,3 +1,4 @@
+import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
@@ -8,7 +9,7 @@ export async function POST() {
   const leads = await getLeads();
 
   const sentLeads = leads
-    .map((lead, i) => ({ lead, rowIndex: i }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
     .filter(({ lead }) => lead.emailSentAt && lead.email && lead.emailStatus !== "bounced");
 
   if (sentLeads.length === 0) {

@@ -257,7 +257,7 @@ async function pickLeads(
     const { getLeads } = await import("./sheets.ts");
     const all = await getLeads();
     let candidates = all
-      .map((l, i) => ({ ...toResearchLead(l as unknown as Record<string, unknown>), id: String(i + 2) }))
+      .map((l) => ({ ...toResearchLead(l as unknown as Record<string, unknown>), id: (l as Lead).id }))
       .filter((l) => l.name);
 
     if (leadName) {
@@ -292,7 +292,7 @@ async function pickLeads(
         // KV giver ingen poster. Begge dele = fald tilbage på composite alene.
       }
       candidates = all
-        .map((l, i) => ({ lead: l as Lead, id: String(i + 2) }))
+        .map((l) => ({ lead: l as Lead, id: (l as Lead).id }))
         // Un-worked = blank or "new" status (Sheets returns "" for a blank cell
         // when a later column is filled, so a strict === "new" wrongly dropped
         // real un-worked leads). Normalized in isUnworkedStatus. PLUS isContactable —

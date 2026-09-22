@@ -1,3 +1,4 @@
+import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { getLeads, updateLeadStatus } from "@/lib/sheets";
 
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
 
   const leads = await getLeads();
   const targets = leads
-    .map((lead, i) => ({ lead, rowIndex: i }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
     .filter(({ lead }) => leadIds.includes(lead.id));
 
   let skipped = 0;

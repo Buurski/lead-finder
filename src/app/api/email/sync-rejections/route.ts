@@ -1,3 +1,4 @@
+import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadStatus, updateLeadEmailStatus } from "@/lib/sheets";
@@ -61,7 +62,7 @@ function isRejection(body: string): boolean {
 export async function POST() {
   const leads = await getLeads();
   const sentLeads = leads
-    .map((lead, i) => ({ lead, rowIndex: i }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
     .filter(({ lead }) => lead.emailSentAt && lead.email && lead.status !== "skip" && lead.status !== "client");
 
   if (sentLeads.length === 0) {
