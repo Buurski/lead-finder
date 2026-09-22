@@ -100,6 +100,8 @@ export async function saveSubscriptions(subs: Subscription[]): Promise<void> {
   const db = getDb();
   const ids = await Promise.all(subs.map((s) => companyIdFor(db, s.clientName)));
   await db.transaction(async (tx) => {
+    // Serialisér hele erstatningen: to samtidige gem må aldrig ende som én blandet liste.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('subscription_plan'))`);
     await tx.delete(subscriptionPlan);
     if (subs.length) {
       await tx.insert(subscriptionPlan).values(
