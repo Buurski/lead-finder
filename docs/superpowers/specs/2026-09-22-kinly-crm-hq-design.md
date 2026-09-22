@@ -113,3 +113,14 @@ Markedsføringslovens §10 skelner ikke B2B/B2C. Derfor: nyhedsbrev kun til (a) 
 **Kritisk (ikke med):** ingen anden LLM-assistent "for hastighedens skyld" (to hukommelser = to sandheder); ingen automatisk KB-skrivning.
 
 **Kendt fra migreringen:** KT VVS er dublet (kunde −1 ↔ lead 18 "KT VVS ApS"), fordi `ApS` ikke blev normaliseret. Det løses med værktøjet "Flet virksomheder" i fase 2, som også dækker de 85 email-dubletgrupper.
+
+## 11. Tillæg 22/9 — Opfølgnings-sekvenser (Lucas' krav, bygges i fase 3)
+
+**Mål:** Man kan se, hvem der er skrevet til, hvor mange gange og hvornår næste opfølgning er. Hver opfølgning er en NY personlig kladde med sin egen vinkel, og systemet stopper selv, når nogen svarer.
+
+- **Sekvens pr. virksomhed:** `outreach.step` (1 = første mail, 2…N = opfølgninger). Standard er 3 trin (dag 0, +5, +12). Kan hæves til max 5 pr. lead ("Flere forsøg"). Kritisk: 4-5 kolde mails til danske småvirksomheder ligner spam og øger §10-risikoen, så 3 er default og 5 er loftet.
+- **Vinkel pr. trin** (roterer, aldrig samme to gange): gratis SEO-tjek (eksisterende `/seo-tjek`-tragt), gratis udkast/demo af ny forside (studio), konkret fund fra deres site (Jev/research), kort "sidste mail herfra". Kladden genereres af den eksisterende draft-motor med `step` + vinkel som input. Jev dømmer kladden som i dag.
+- **Oversigt:** Pipeline og virksomhedsprofil viser "Kontaktet 2/3 · sidst 18/9 · næste opfølgning 27/9 (SEO-tjek)". En liste "Opfølgninger klar" i Indbakke viser dem, der er modne i dag.
+- **Auto-stop:** Et hvilket som helst svar stopper alle åbne trin for virksomheden (`outreach.status = stoppet`).
+- **"Nej tak"-håndtering:** Jev klassificerer svaret (`reply-judgments`, live efter DPA-gate). Ved "ikke interesseret"/"afmeld" sætter systemet selv lifecycle `tabt`, fjerner virksomheden fra alle aktive lister og kladder, og skriver en **spærre-post** (mail + domæne + navn/by-nøgle) i `suppression`. **Ingen hard delete:** uden spærren ville leadgen kunne scrape og maile dem igen, og det er netop dét §10-klager kommer af. Personfelter (kontaktnavn, telefon) kan tømmes på spærrede poster, så kun spærre-nøglen er tilbage.
+- **To gange til samme adresse er OK inden for en sekvens.** Den globale "aldrig samme adresse to gange"-regel gælder kun på tværs af sekvenser (ingen ny kold sekvens til en adresse der allerede har fået en). Delte platform-adresser (3+ virksomheder) spærres altid (send-gate, 22/9).
