@@ -56,3 +56,62 @@ export function pageTitleFor(pathname: string): string {
   }
   return best?.label ?? "Kinly HQ";
 }
+
+// ---- Sektioner: undersider som faner øverst (Lucas 22/9) ----
+// Hver hovedside i railen kan have faner. Står man på en fane-side, er
+// hovedpunktet i railen aktivt, og fanebjælken vises under topbar-titlen.
+
+export interface Section {
+  root: string; // rail-href der ejer sektionen
+  tabs: Array<{ href: string; label: string }>;
+}
+
+export const SECTIONS: Section[] = [
+  {
+    root: "/approve",
+    tabs: [
+      { href: "/approve", label: "Godkend" },
+      { href: "/replies", label: "Svar" },
+      { href: "/previews", label: "Henvendelser" },
+      { href: "/messenger", label: "Messenger" },
+    ],
+  },
+  {
+    root: "/okonomi",
+    tabs: [
+      { href: "/okonomi", label: "Overblik" },
+      { href: "/fakturaer", label: "Fakturaer" },
+      { href: "/udgifter", label: "Udgifter" },
+      { href: "/indsigter", label: "Indsigter" },
+    ],
+  },
+  {
+    root: "/hermes",
+    tabs: [
+      { href: "/hermes", label: "Hermes" },
+      { href: "/drift", label: "Drift" },
+    ],
+  },
+  {
+    root: "/leadgen",
+    tabs: [
+      { href: "/leadgen", label: "Find leads" },
+      { href: "/studio", label: "Demoer" },
+      { href: "/seo", label: "SEO" },
+    ],
+  },
+];
+
+function matches(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export function sectionFor(pathname: string): Section | undefined {
+  return SECTIONS.find((s) => s.tabs.some((t) => matches(pathname, t.href)));
+}
+
+/** Rail-punktet er aktivt på egen side OG på alle sektionens fane-sider. */
+export function isRailActive(pathname: string, href: string): boolean {
+  if (isNavActive(pathname, href)) return true;
+  return sectionFor(pathname)?.root === href;
+}

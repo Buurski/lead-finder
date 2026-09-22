@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_PRIMARY, NAV_MORE, isNavActive } from "@/lib/nav-config";
+import { NAV_PRIMARY, NAV_MORE, isRailActive } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 interface Counts {
@@ -70,7 +70,7 @@ export default function Sidebar({ counts }: { counts: Counts }) {
             <RailItem
               key={item.href}
               item={item}
-              active={isNavActive(pathname, item.href)}
+              active={isRailActive(pathname, item.href)}
               badge={item.badge === "queue" ? queue : undefined}
             />
           ))}
@@ -82,7 +82,7 @@ export default function Sidebar({ counts }: { counts: Counts }) {
       {/* --- mobile bottom bar --------------------------------------------- */}
       <nav className="cc-bottombar" aria-label="Hovednavigation, mobil">
         {NAV_PRIMARY.filter((i) => BOTTOMBAR_HREFS.includes(i.href)).map((item) => (
-          <Link key={item.href} href={item.href} data-active={isNavActive(pathname, item.href)} aria-current={isNavActive(pathname, item.href) ? "page" : undefined}>
+          <Link key={item.href} href={item.href} data-active={isRailActive(pathname, item.href)} aria-current={isRailActive(pathname, item.href) ? "page" : undefined}>
             <Icon name={item.icon} />
             {item.href === "/" ? "HQ" : item.label}
           </Link>
@@ -110,7 +110,7 @@ export default function Sidebar({ counts }: { counts: Counts }) {
                 <SheetItem
                   key={item.href}
                   item={item}
-                  active={isNavActive(pathname, item.href)}
+                  active={isRailActive(pathname, item.href)}
                   badge={item.badge === "queue" ? queue : undefined}
                   onNavigate={() => setMoreOpen(false)}
                 />
@@ -119,7 +119,7 @@ export default function Sidebar({ counts }: { counts: Counts }) {
             <div className="cc-mobile-sheet-divider" />
             <div className="cc-mobile-sheet-group">
               {NAV_MORE.map((item) => (
-                <SheetItem key={item.href} item={item} active={isNavActive(pathname, item.href)} onNavigate={() => setMoreOpen(false)} />
+                <SheetItem key={item.href} item={item} active={isRailActive(pathname, item.href)} onNavigate={() => setMoreOpen(false)} />
               ))}
             </div>
           </div>

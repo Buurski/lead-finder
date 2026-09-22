@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { pageTitleFor } from "@/lib/nav-config";
+import { pageTitleFor, sectionFor } from "@/lib/nav-config";
+import SectionTabs from "./SectionTabs";
 import Sidebar from "./Sidebar";
 import Bell from "./Bell";
 import Icon from "./Icon";
@@ -66,7 +67,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Login-siden er offentlig: ingen skal, dock eller tællere.
   if (pathname === "/login") return <>{children}</>;
 
-  const title = pageTitleFor(pathname);
+  const section = sectionFor(pathname);
+  const title = pageTitleFor(section ? section.root : pathname);
 
   return (
     <div className="cc-shell">
@@ -88,6 +90,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
+        <SectionTabs />
 
         {pause?.paused && (
           <div
