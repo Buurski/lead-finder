@@ -3,7 +3,7 @@ import { readQueue, updateDraft } from "@/lib/queue";
 import { store } from "@/lib/store";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
-import { followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
+import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
     if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
   }
 
-  const priorSentLeadIds = new Set(sentIds);
+  const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
   let wouldSend = 0;
   let capped = 0;
@@ -145,7 +145,7 @@ export async function GET(req: Request) {
     }
     const targetKey = target.toLowerCase();
     // Opfølgning i en startet sekvens må gentage kontakten — kun til samme adresse.
-    const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { priorSentLeadIds, sentThisRun: followUpsThisRun }) : null;
+    const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { ledger: sentLedger, sentThisRun: followUpsThisRun }) : null;
     if (fuGate && !fuGate.ok) {
       skipped.push({ name: d.name, reason: fuGate.reason });
       continue;
@@ -294,7 +294,7 @@ export async function POST(req: Request) {
     if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
   }
 
-  const priorSentLeadIds = new Set(sentIds);
+  const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
 
   // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
@@ -341,7 +341,7 @@ export async function POST(req: Request) {
 
           // 1b. Opfølgning i en startet sekvens (spec §11) må gentage kontakten —
           // kun hvis der er sendt før, til præcis samme adresse, maks én pr. kørsel.
-          const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { priorSentLeadIds, sentThisRun: followUpsThisRun }) : null;
+          const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { ledger: sentLedger, sentThisRun: followUpsThisRun }) : null;
           if (fuGate && !fuGate.ok) {
             skipped.push({ name: d.name, reason: fuGate.reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason: fuGate.reason });
@@ -432,6 +432,24 @@ export async function POST(req: Request) {
             continue;
           }
 
+          // 7. Opfølgning: læs leadet igen lige før afsendelse — et svar eller
+          // "nej tak" kan være kommet ind siden run-start (Opus-review 22/9).
+          if (isFollowUp) {
+            const freshLead = (await getLeads().catch(() => [])).find((l) => l.id === lead?.id);
+            const again = freshLead
+              ? followUpAllowed(fresh, freshLead, targetKey, { ledger: sentLedger, sentThisRun: followUpsThisRun })
+              : { ok: false as const, reason: "lead ikke fundet ved genlæsning" };
+            const gate2 = freshLead
+              ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
+              : { ok: false, reason: "lead ikke fundet" };
+            if (!again.ok || !gate2.ok) {
+              const reason = !again.ok ? again.reason : gate2.reason ?? "blokeret";
+              skipped.push({ name: d.name, reason });
+              send({ type: "skipped", index: processed, total, name: d.name, reason });
+              continue;
+            }
+          }
+
           const { id: senderId, transport, from } = transportFor(fresh.sender);
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
@@ -442,7 +460,8 @@ export async function POST(req: Request) {
               text: finalText,
               html: applySignatureHtml(fresh.body, senderId),
             });
-            await updateDraft(d.id, { status: "sent", sentBy: senderId });
+            // Adressen gemmes, så en senere opfølgning kun kan gå til en adresse der faktisk er skrevet til.
+            await updateDraft(d.id, { status: "sent", sentBy: senderId, recipientEmail: target });
             // Add to the in-run ledgers so a same-business / same-address sibling
             // later in this run skips — across BOTH senders.
             if (d.leadId) sentIds.add(d.leadId);
@@ -454,7 +473,12 @@ export async function POST(req: Request) {
             if (lead) {
               const rowIndex = parseInt(lead.id, 10) - 2;
               if (Number.isFinite(rowIndex) && rowIndex >= 0) {
-                await updateLeadEmailStatus(rowIndex, { emailSentAt: new Date().toISOString(), emailStatus: "sent" }).catch(() => {});
+                // Opfølgning: stempl kun followupSentAt — første-kontakt-datoen bevares,
+                // og et "replied" der lander undervejs overskrives aldrig.
+                await updateLeadEmailStatus(
+                  rowIndex,
+                  isFollowUp ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString(), emailStatus: "sent" },
+                ).catch(() => {});
               }
             }
             sent++;

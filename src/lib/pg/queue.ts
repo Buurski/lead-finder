@@ -2,7 +2,7 @@
 // draft jsonb er hele QueueDraft-objektet (loss-fri); de typede kolonner findes
 // kun for at kunne filtrere/joine (spec §3).
 import "server-only";
-import { asc, notInArray, sql } from "drizzle-orm";
+import { and, asc, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
@@ -18,6 +18,21 @@ export async function readQueue(): Promise<QueueDraft[]> {
 // onConflictDoUpdate's `set` needs it to copy the incoming value over.
 function excluded(column: string) {
   return sql.raw(`excluded.${column}`);
+}
+
+/** Målrettet stop (ingen hel-kø-omskrivning): åbne kladder for rækkerne → afvist med grund. */
+export async function stopOpenForRows(rowNos: number[], reason: string, now: string): Promise<number> {
+  if (!rowNos.length) return 0;
+  const rows = await getDb()
+    .update(outreach)
+    .set({
+      status: "rejected",
+      updatedAt: now,
+      draft: sql`${outreach.draft} || jsonb_build_object('status', 'rejected', 'stoppedReason', ${reason}::text, 'updatedAt', ${now}::text)`,
+    })
+    .where(and(inArray(outreach.companyRowNo, rowNos), inArray(outreach.status, ["pending", "edited", "approved"])))
+    .returning({ id: outreach.id });
+  return rows.length;
 }
 
 export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
@@ -57,10 +72,15 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
             createdAt: excluded("created_at"),
             updatedAt: excluded("updated_at"),
           },
+          // En sendt eller system-stoppet kladde er endelig: et forældet snapshot
+          // (fx queue-enrich der holder køen i minutter) må aldrig gøre den
+          // "godkendt" igen — så kunne den blive sendt en gang til (Opus 22/9).
+          setWhere: sql`not (${outreach.status} = 'sent' or (${outreach.status} = 'rejected' and ${outreach.draft} ? 'stoppedReason'))`,
         });
-      await tx.delete(outreach).where(notInArray(outreach.id, ids));
+      // Sendte kladder slettes aldrig (historik + dobbelt-mail-værn).
+      await tx.delete(outreach).where(and(notInArray(outreach.id, ids), ne(outreach.status, "sent")));
     } else {
-      await tx.delete(outreach);
+      await tx.delete(outreach).where(ne(outreach.status, "sent"));
     }
   });
 }

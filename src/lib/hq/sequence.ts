@@ -202,6 +202,11 @@ export async function logFollowUpCreated(db: Db, c: FollowUpCandidate): Promise<
 /** Stop åbne kladder for leads der har svaret (kaldes af sync-replies). */
 export async function stopDraftsForReplies(rowIndexes: number[], reason = "svar modtaget"): Promise<number> {
   if (!rowIndexes.length) return 0;
+  const { pgEnabled } = await import("../db/client.ts");
+  if (pgEnabled()) {
+    const { stopOpenForRows } = await import("../pg/queue.ts");
+    return stopOpenForRows(rowIndexes.map((r) => r + 2), reason, new Date().toISOString());
+  }
   const { readQueue, writeQueue } = await import("../queue.ts");
   const queue = await readQueue();
   const now = new Date().toISOString();
@@ -211,22 +216,36 @@ export async function stopDraftsForReplies(rowIndexes: number[], reason = "svar 
   return n;
 }
 
+function itemKey(i: { leadId?: string; date?: string; snippet?: string }): string {
+  return `${i.leadId}|${i.date ?? ""}|${(i.snippet ?? "").slice(0, 40)}`;
+}
+
 /** Et "nej tak"/afmelding i et svar: markér leadet, stop alt og log det. Rækken beholdes som spærre. */
 export async function applyNoThanks(
-  items: Array<{ leadId?: string; category?: string; snippet?: string; date?: string }>,
+  items: Array<{ id?: string; leadId?: string; category?: string; snippet?: string; date?: string }>,
 ): Promise<number> {
   const { classifyReply } = await import("../reply.ts");
-  const { updateLeadStatus } = await import("../sheets.ts");
+  const { getLeads, updateLeadStatus } = await import("../sheets.ts");
+  const { store } = await import("../store.ts");
+  // Hvert svar behandles én gang: digesten ligger i dagevis og køres dagligt, og en
+  // manuel rettelse (fx tilbage til "interesseret") må ikke blive overskrevet igen.
+  const DONE_KEY = "no-thanks/processed";
+  const done = new Set((await store.get<string[]>(DONE_KEY)) ?? []);
+  const fresh = items.filter((i) => i.leadId && /^\d+$/.test(i.leadId) && Number(i.leadId) >= 2 && !done.has(itemKey(i)));
+  if (!fresh.length) return 0;
+  const leads = new Map((await getLeads()).map((l) => [l.id, l]));
   const rows: number[] = [];
-  for (const i of items) {
-    if (!i.leadId || !/^\d+$/.test(i.leadId) || Number(i.leadId) < 2) continue;
+  for (const i of fresh) {
+    done.add(itemKey(i));
     const regex = i.snippet ? classifyReply(i.snippet).category : "other";
-    if (i.category === "not-interested" || regex === "not-interested" || regex === "unsubscribe") {
-      const rowIndex = Number(i.leadId) - 2;
-      await updateLeadStatus(rowIndex, "not-interested", `Svarede nej tak ${(i.date ?? new Date().toISOString()).slice(0, 10)}`);
-      rows.push(rowIndex);
-    }
+    if (i.category !== "not-interested" && regex !== "not-interested" && regex !== "unsubscribe") continue;
+    const lead = leads.get(i.leadId!);
+    if (!lead || ["not-interested", "client", "interested"].includes(lead.status)) continue;
+    const line = `Svarede nej tak ${(i.date ?? new Date().toISOString()).slice(0, 10)}`;
+    await updateLeadStatus(Number(i.leadId) - 2, "not-interested", lead.notes ? `${lead.notes}\n${line}` : line);
+    rows.push(Number(i.leadId) - 2);
   }
+  await store.put(DONE_KEY, [...done].slice(-2000));
   await stopDraftsForReplies(rows, "svarede nej tak");
   return rows.length;
 }
