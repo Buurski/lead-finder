@@ -3,6 +3,7 @@ import { readQueue, updateDraft } from "@/lib/queue";
 import { store } from "@/lib/store";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
+import { followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
@@ -130,6 +131,8 @@ export async function GET(req: Request) {
     if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
   }
 
+  const priorSentLeadIds = new Set(sentIds);
+  const followUpsThisRun = new Set<string>();
   let wouldSend = 0;
   let capped = 0;
   const skipped: { name: string; reason: string }[] = [];
@@ -141,7 +144,14 @@ export async function GET(req: Request) {
       continue;
     }
     const targetKey = target.toLowerCase();
-    if (lead && !force && alreadyEmailed(lead)) {
+    // Opfølgning i en startet sekvens må gentage kontakten — kun til samme adresse.
+    const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { priorSentLeadIds, sentThisRun: followUpsThisRun }) : null;
+    if (fuGate && !fuGate.ok) {
+      skipped.push({ name: d.name, reason: fuGate.reason });
+      continue;
+    }
+    const isFollowUp = fuGate?.ok === true;
+    if (lead && !force && !isFollowUp && alreadyEmailed(lead)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet" });
       continue;
     }
@@ -149,11 +159,11 @@ export async function GET(req: Request) {
       skipped.push({ name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
       continue;
     }
-    if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+    if (!force && !isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
       skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
       continue;
     }
-    if (!force && sentEmails.has(targetKey)) {
+    if (!force && !isFollowUp && sentEmails.has(targetKey)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
       continue;
     }
@@ -173,6 +183,7 @@ export async function GET(req: Request) {
       continue;
     }
     wouldSend++;
+    if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
     // Spejl send-løkkens in-run ledger så en sibling-draft for samme
     // virksomhed/adresse tælles som skip, præcis som i et rigtigt run.
     if (d.leadId) sentIds.add(d.leadId);
@@ -283,6 +294,9 @@ export async function POST(req: Request) {
     if (l.email && alreadyEmailed(l)) sentEmails.add(l.email.trim().toLowerCase());
   }
 
+  const priorSentLeadIds = new Set(sentIds);
+  const followUpsThisRun = new Set<string>();
+
   // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
   // draft.sender (sat af engine via pickHybridSender ELLER manuelt via
   // /godkendelse-knappen). Manglende sender (legacy drafts) falder tilbage på
@@ -325,8 +339,18 @@ export async function POST(req: Request) {
           }
           const targetKey = target.toLowerCase();
 
+          // 1b. Opfølgning i en startet sekvens (spec §11) må gentage kontakten —
+          // kun hvis der er sendt før, til præcis samme adresse, maks én pr. kørsel.
+          const fuGate = isFollowUpDraft(d) ? followUpAllowed(d, lead, targetKey, { priorSentLeadIds, sentThisRun: followUpsThisRun }) : null;
+          if (fuGate && !fuGate.ok) {
+            skipped.push({ name: d.name, reason: fuGate.reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: fuGate.reason });
+            continue;
+          }
+          const isFollowUp = fuGate?.ok === true;
+
           // 2. NEVER re-contact (only meaningful when we have a Sheets row to check).
-          if (lead && !force && alreadyEmailed(lead)) {
+          if (lead && !force && !isFollowUp && alreadyEmailed(lead)) {
             skipped.push({ name: d.name, reason: "allerede kontaktet" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet" });
             continue;
@@ -340,7 +364,7 @@ export async function POST(req: Request) {
           }
           // 2b. Already-sent ledger — a sibling draft for this business already went
           // out (catches ingest leads with no Sheets row + place_id mismatch).
-          if (!force && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+          if (!force && !isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
             skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede sendt (kø-historik)" });
             continue;
@@ -348,7 +372,7 @@ export async function POST(req: Request) {
           // 2c. Global by-address ledger — NEVER mail the same address twice,
           // across BOTH Lucas and Charlie (Lucas's krav: jeg må ikke sende til en
           // mail Charlie allerede har skrevet til, og omvendt). Cold-only route.
-          if (!force && sentEmails.has(targetKey)) {
+          if (!force && !isFollowUp && sentEmails.has(targetKey)) {
             skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet (samme mail)" });
             continue;
@@ -422,6 +446,7 @@ export async function POST(req: Request) {
             // Add to the in-run ledgers so a same-business / same-address sibling
             // later in this run skips — across BOTH senders.
             if (d.leadId) sentIds.add(d.leadId);
+            if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
             const sk = bizKey(d.name, d.city);
             if (sk) sentKeys.add(sk);
             sentEmails.add(targetKey);

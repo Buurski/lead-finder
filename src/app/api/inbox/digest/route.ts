@@ -50,7 +50,13 @@ export async function POST(req: NextRequest) {
 
   const digest: InboxDigest = normalizeDigest(body as Partial<InboxDigest>, "cowork-opus");
   await saveDigest(digest);
-  return NextResponse.json({ ok: true, summary: summarizeDigest(digest) });
+  // "Nej tak"/afmelding stopper sekvensen med det samme (ikke først ved næste cron).
+  const { applyNoThanks } = await import("@/lib/hq/sequence");
+  const noThanks = await applyNoThanks(digest.items).catch((err) => {
+    console.error(JSON.stringify({ evt: "digest.no_thanks_failed", error: String(err).slice(0, 200) }));
+    return 0;
+  });
+  return NextResponse.json({ ok: true, summary: summarizeDigest(digest), noThanks });
 }
 
 export async function GET() {

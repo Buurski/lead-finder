@@ -30,6 +30,8 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
       const values = drafts.map((d, position) => ({
         id: d.id,
         position,
+        step: d.step ?? 1,
+        angle: d.angle ?? null,
         companyRowNo: /^\d+$/.test(d.leadId) ? Number(d.leadId) : null,
         status: d.status,
         sender: d.sender ?? null,
@@ -46,6 +48,8 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
           set: {
             companyRowNo: excluded("company_row_no"),
             position: excluded("position"),
+            step: excluded("step"),
+            angle: excluded("angle"),
             status: excluded("status"),
             sender: excluded("sender"),
             sentBy: excluded("sent_by"),

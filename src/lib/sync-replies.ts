@@ -262,6 +262,13 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
   for (const rowIndex of repliedRows) {
     await updateLeadEmailStatus(rowIndex, { emailStatus: "replied" });
   }
+  // Et svar stopper alle åbne kladder/opfølgninger til dem (spec §11).
+  if (repliedRows.size) {
+    const { stopDraftsForReplies } = await import("./hq/sequence.ts");
+    await stopDraftsForReplies([...repliedRows]).catch((err) =>
+      console.error(JSON.stringify({ evt: "sync-replies.stop_failed", error: String(err).slice(0, 200) })),
+    );
+  }
   return {
     synced: repliedRows.size,
     checked: candidates.length,

@@ -43,7 +43,12 @@ export interface QueueDraft {
   /** Googles drift-status: OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY. */
   businessStatus?: string;
   status: DraftStatus;
-  source: string; // "daily-engine" | "write-to-x"
+  source: string; // "daily-engine" | "write-to-x" | "opfoelgning"
+  // Opfølgnings-sekvens (spec §11): 1 = første mail, 2.. = opfølgninger.
+  step?: number;
+  angle?: string;
+  /** Sat når systemet selv stoppede kladden (fx "svar modtaget"). */
+  stoppedReason?: string;
   createdAt: string;
   updatedAt: string;
   comboId?: string;      // tone-mixer combination id (Del 3) — for follow-up variation

@@ -40,6 +40,10 @@
     {
       "path": "/api/cron/kv-crm-bridge",
       "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/followups",
+      "schedule": "10 5 * * *"
     }
   ]
 }

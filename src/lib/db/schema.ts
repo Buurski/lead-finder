@@ -64,6 +64,7 @@ export const company = pgTable(
     jevGrade: text("jev_grade"),
     jevScore: integer("jev_score"),
     briefFilled: boolean("brief_filled").notNull().default(false),
+    maxTouches: integer("max_touches"), // loft for antal mails i sekvensen (null = standard 3)
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -159,6 +160,8 @@ export const outreach = pgTable("outreach", {
   id: text("id").primaryKey(),
   companyRowNo: integer("company_row_no"),
   position: integer("position").notNull().default(0), // rækkefølgen i den skrevne kø
+  step: integer("step").notNull().default(1), // 1 = første mail, 2.. = opfølgninger
+  angle: text("angle"), // opfølgningens vinkel (gratis_udkast, seo_tjek, eksempel, sidste)
   kind: text("kind").notNull().default("kold"),
   status: text("status").notNull(),
   sender: text("sender"),
