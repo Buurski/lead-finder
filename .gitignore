@@ -62,3 +62,4 @@ demos/
 .leadgen-work/
 .claude/launch.json
 .env.pg
+.pglite-dev/
