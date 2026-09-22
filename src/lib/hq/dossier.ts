@@ -29,7 +29,7 @@ export interface Dossier {
 const STOP = new Set(["aps", "a/s", "as", "ivs", "salon", "frisør", "frisor", "cafe", "café", "restaurant", "klinik", "og", "the", "hos", "by", "v"]);
 
 function fold(s: string): string {
-  return s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "aa");
+  return s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "aa");
 }
 
 /** Navnets kendetegnende ord (til match mod vault-filnavne). */
@@ -57,7 +57,7 @@ export function pickNotes(companyId: string, companyName: string, all: DossierNo
 export async function getDossier(
   db: Db,
   companyId: string,
-  opts: { today: string; notes?: DossierNote[] } ,
+  opts: { today: string; notes?: DossierNote[]; loadNotes?: (companyName: string) => Promise<DossierNote[]> },
 ): Promise<Dossier | null> {
   const [c] = await db.select().from(company).where(eq(company.id, companyId));
   if (!c) return null;
@@ -83,7 +83,7 @@ export async function getDossier(
       overdue: open.filter((i) => isOverdue(i, opts.today)).reduce((sum, i) => sum + invoiceTotal(i).total, 0),
     },
     site: s ?? null,
-    notes: pickNotes(companyId, c.name, opts.notes ?? []),
+    notes: pickNotes(companyId, c.name, opts.notes ?? (opts.loadNotes ? await opts.loadNotes(c.name).catch(() => []) : [])),
   };
 }
 
