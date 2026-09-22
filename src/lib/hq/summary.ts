@@ -6,6 +6,7 @@ import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, invoice, outreach, subscriptionPlan, task } from "../db/schema.ts";
 import { invoiceTotal, isOverdue, type Invoice, type Subscription } from "../invoices.ts";
+import { normalizeStage } from "./deals.ts";
 
 export const FUNNEL = ["ny", "kontaktet", "svaret", "interesseret", "kunde"] as const;
 export type FunnelStage = (typeof FUNNEL)[number];
@@ -13,7 +14,7 @@ export type FunnelStage = (typeof FUNNEL)[number];
 // Kladder der venter på et menneske (samme statusser som /approve viser som åbne).
 const OPEN_DRAFT = ["pending", "edited"];
 // Deal-faser der er afsluttede — de har ikke brug for et næste skridt.
-const CLOSED_DEAL = ["betalt", "tabt", "lost", "live"];
+const CLOSED_DEAL = new Set(["leveret", "betalt", "tabt"]);
 const UNPAID = ["sendt", "forfalden", "rykket"];
 
 export type StepState = "forfalden" | "snart" | "ok" | "mangler";
@@ -59,8 +60,7 @@ export async function getHqSummary(db: Db, today: string): Promise<HqSummary> {
     db
       .select({ companyId: deal.companyId, company: company.name, title: deal.title, step: deal.nextStep, due: deal.nextStepDue, owner: deal.owner, stage: deal.stage })
       .from(deal)
-      .innerJoin(company, eq(company.id, deal.companyId))
-      .where(sql`${deal.stage} not in (${sql.join(CLOSED_DEAL.map((s) => sql`${s}`), sql`, `)})`),
+      .innerJoin(company, and(eq(company.id, deal.companyId), eq(company.archived, false))),
     db
       .select({ companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, owner: task.owner })
       .from(task)
@@ -73,7 +73,7 @@ export async function getHqSummary(db: Db, today: string): Promise<HqSummary> {
   const counts = new Map(funnelRows.map((r) => [r.stage, r.n]));
 
   const steps: NextStep[] = [
-    ...dealRows.map((d) => ({
+    ...dealRows.filter((d) => !CLOSED_DEAL.has(normalizeStage(d.stage))).map((d) => ({
       companyId: d.companyId,
       company: d.company,
       what: d.title || "Aftale",
