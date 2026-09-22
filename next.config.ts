@@ -17,6 +17,19 @@ const nextConfig: NextConfig = {
       tailwindcss: path.resolve(__dirname, "node_modules/tailwindcss"),
     },
   },
+  // Fase 2 IA-skifte (docs/superpowers/plans/2026-09-22-crm-hq-fase-2-skal-hq.md,
+  // Task 1). Ikke-permanente indtil fase 3 låser den nye IA fast.
+  async redirects() {
+    return [
+      { source: "/send", destination: "/approve", permanent: false },
+      { source: "/radar", destination: "/leadgen", permanent: false },
+      { source: "/claude", destination: "/hermes", permanent: false },
+      { source: "/salg", destination: "/pipeline", permanent: false },
+      { source: "/leads", destination: "/pipeline", permanent: false },
+      { source: "/clients", destination: "/virksomheder", permanent: false },
+      { source: "/clients/:id", destination: "/virksomheder/c/:id", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -18,7 +18,6 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
     if (!term) return NAV_FLAT;
     return NAV_FLAT.filter(
       (i) =>
-        (i.paletteLabel ?? i.label).toLowerCase().includes(term) ||
         i.label.toLowerCase().includes(term) ||
         (i.hint ?? "").toLowerCase().includes(term)
     );
@@ -78,7 +77,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
           {results.length === 0 && <div className="cc-palette-empty">Ingen match for “{q}”.</div>}
           {results.map((item, i) => (
             <div
-              key={`${item.href}|${item.paletteLabel ?? item.label}`}
+              key={`${item.href}|${item.label}`}
               className="cc-palette-item"
               data-active={i === idx}
               role="option"
@@ -90,7 +89,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
               }}
             >
               <Icon name={item.icon} />
-              <span>{item.paletteLabel ?? item.label}</span>
+              <span>{item.label}</span>
               {item.hint && <span className="cc-palette-hint">{item.hint}</span>}
             </div>
           ))}

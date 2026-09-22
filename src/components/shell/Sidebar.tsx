@@ -1,181 +1,130 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { NAV_TREE, ownerGroupFor, type NavItem } from "@/lib/nav-config";
+import { NAV_PRIMARY, NAV_MORE, isNavActive } from "@/lib/nav-config";
 import Icon from "./Icon";
 
 interface Counts {
   queue?: number;
-  needs?: number;
 }
 
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
+// Bundbar-genveje (mobil, <768px): kun de 3 vigtigste + "Mere", som åbner et
+// ark med hele IA'en. Rækkefølgen matcher spec §4/§5.
+const BOTTOMBAR_HREFS = ["/", "/approve", "/pipeline"];
 
-// (groupIsActive/ownerGroupFor bor i nav-config.ts — delt med breadcrumbs.)
-
-function countFor(item: NavItem, counts: Counts): number | undefined {
-  return item.badge === "queue" ? counts.queue : item.badge === "needs" ? counts.needs : undefined;
-}
-
-function NavLeaf({
-  item,
-  counts,
-  pathname,
-  onNavigate,
-  child,
-}: {
-  item: NavItem;
-  counts: Counts;
-  pathname: string;
-  onNavigate?: () => void;
-  child?: boolean;
-}) {
-  const active = isActive(pathname, item.href);
-  const count = countFor(item, counts);
+function RailItem({ item, active, badge }: { item: (typeof NAV_PRIMARY)[number]; active: boolean; badge?: number }) {
   return (
     <Link
       href={item.href}
-      className={`cc-navlink cc-focus${child ? " cc-navchild" : ""}`}
+      className="cc-rail-item cc-focus"
       data-active={active}
       aria-current={active ? "page" : undefined}
-      onClick={onNavigate}
+      aria-label={item.label}
+      title={item.label}
     >
       <Icon name={item.icon} />
-      <span>{item.label}</span>
-      {item.soon && <span className="cc-soon">snart</span>}
-      {!item.soon && count ? <span className="cc-count">{count}</span> : null}
+      {!!badge && <span className="cc-rail-badge">{badge > 99 ? "99+" : badge}</span>}
     </Link>
   );
 }
 
-export default function Sidebar({
-  open,
-  counts,
-  onNavigate,
-  collapsed = false,
-  onToggleSize,
-}: {
-  open: boolean;
-  counts: Counts;
-  onNavigate?: () => void;
-  collapsed?: boolean;
-  onToggleSize?: () => void;
-}) {
+function SheetItem({ item, active, badge, onNavigate }: { item: { href: string; label: string; icon: string }; active: boolean; badge?: number; onNavigate: () => void }) {
+  return (
+    <Link href={item.href} className="cc-mobile-sheet-item cc-focus" data-active={active} aria-current={active ? "page" : undefined} onClick={onNavigate}>
+      <Icon name={item.icon} />
+      <span>{item.label}</span>
+      {!!badge && <span className="cc-count">{badge}</span>}
+    </Link>
+  );
+}
+
+// Dark icon-rail (desktop, fuld højde, sticky) — bliver til en bundbar +
+// "Mere"-ark på mobil (spec §4/§5, mockup-rettelse 1).
+export default function Sidebar({ counts }: { counts: Counts }) {
   const pathname = usePathname();
-  // Accordion-model (Bundle G, council-hærdet): expanded er AFLEDT, ikke
-  // navigations-styret state. En gruppe er åben hvis brugeren eksplicit har
-  // åbnet den (userChoice=true), eller hvis den EJER den aktive rute og
-  // brugeren ikke eksplicit har lukket den. Delte hrefs (Compare under både
-  // SEO og Studio) folder derfor kun ejer-gruppen ud (B1), og der er ingen
-  // setState-i-effect ved rute-skift. userChoice gemmes i localStorage fra
-  // toggle-handleren (overlever reload); gendannes efter mount for at undgå
-  // hydration-mismatch.
-  const [userChoice, setUserChoice] = useState<Record<string, boolean>>({});
-  const owner = ownerGroupFor(pathname);
-  const isExpanded = (label: string): boolean => userChoice[label] ?? owner?.label === label;
+  const [moreOpen, setMoreOpen] = useState(false);
 
+  // Esc lukker "Mere"-arket.
   useEffect(() => {
-    let saved: unknown;
-    try {
-      saved = JSON.parse(window.localStorage.getItem("cc-nav-choice") ?? "{}");
-    } catch {
-      return; // korrupt storage — behold defaults
+    if (!moreOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMoreOpen(false);
     }
-    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return;
-    const clean: Record<string, boolean> = {};
-    for (const [k, v] of Object.entries(saved as Record<string, unknown>)) {
-      if (typeof v === "boolean") clean[k] = v;
-    }
-    if (Object.keys(clean).length === 0) return;
-    // rAF: undgå synkron setState i effekten (react-hooks/set-state-in-effect)
-    const raf = requestAnimationFrame(() => setUserChoice((prev) => ({ ...clean, ...prev })));
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moreOpen]);
 
-  function toggle(label: string) {
-    const next = { ...userChoice, [label]: !isExpanded(label) };
-    setUserChoice(next);
-    try {
-      window.localStorage.setItem("cc-nav-choice", JSON.stringify(next));
-    } catch {
-      /* private mode etc. — persistens er nice-to-have */
-    }
-  }
+  const queue = counts.queue;
 
   return (
-    <aside className="cc-sidebar" data-open={open} data-collapsed={collapsed} aria-label="Hovednavigation">
-      <div className="cc-brand">
-        {/* Canonical Kinly wordmark, neutralized for the internal app palette. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="cc-brand-logo" src="/brand/kinly-wordmark-sage.svg" alt="Kinly" draggable={false} />
-        <span className="cc-brand-sub">Lead System</span>
-      </div>
+    <>
+      {/* --- desktop rail ------------------------------------------------ */}
+      <aside className="cc-rail" aria-label="Hovednavigation">
+        <div className="cc-rail-mark">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/kinly-mark-rail.svg" alt="Kinly" draggable={false} />
+        </div>
+        <nav className="cc-rail-nav" aria-label="Primær navigation">
+          {NAV_PRIMARY.map((item) => (
+            <RailItem
+              key={item.href}
+              item={item}
+              active={isNavActive(pathname, item.href)}
+              badge={item.badge === "queue" ? queue : undefined}
+            />
+          ))}
+        </nav>
+        <div className="cc-rail-spacer" />
+        <div className="cc-rail-avatar" aria-hidden="true">LB</div>
+      </aside>
 
-      <nav className="cc-navgroup" aria-label="Navigation">
-        {NAV_TREE.map((node) => {
-          if (!node.children) {
-            return <NavLeaf key={node.href} item={node} counts={counts} pathname={pathname} onNavigate={onNavigate} />;
-          }
-          const expanded = isExpanded(node.label);
-          // Parent markeres kun aktiv for EJER-gruppen (delte hrefs, B1).
-          const active = owner?.label === node.label;
-          const count = countFor(node, counts);
-          return (
-            <div key={node.label}>
-              <button
-                type="button"
-                className="cc-navlink cc-focus cc-navparent"
-                data-active={active && !expanded}
-                aria-expanded={expanded}
-                onClick={() => toggle(node.label)}
-              >
-                <Icon name={node.icon} />
-                <span>{node.label}</span>
-                {!expanded && count ? <span className="cc-count">{count}</span> : null}
-                <Icon name="ChevronDown" className="cc-chevron" data-open={expanded} />
-              </button>
-              {expanded && (
-                <div className="cc-navchildren">
-                  {node.children.filter((item) => !item.hidden).map((item, i) => (
-                    <NavLeaf
-                      key={`${item.href}-${i}`}
-                      item={item}
-                      counts={counts}
-                      pathname={pathname}
-                      onNavigate={onNavigate}
-                      child
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* --- mobile bottom bar --------------------------------------------- */}
+      <nav className="cc-bottombar" aria-label="Hovednavigation, mobil">
+        {NAV_PRIMARY.filter((i) => BOTTOMBAR_HREFS.includes(i.href)).map((item) => (
+          <Link key={item.href} href={item.href} data-active={isNavActive(pathname, item.href)} aria-current={isNavActive(pathname, item.href) ? "page" : undefined}>
+            <Icon name={item.icon} />
+            {item.href === "/" ? "HQ" : item.label}
+          </Link>
+        ))}
+        <button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen} aria-label="Vis hele menuen">
+          <Icon name="MoreHorizontal" />
+          Mere
+        </button>
       </nav>
 
-      <div className="cc-rail-status">
-        <div className="cc-navgroup-label">Status</div>
-        <div className="cc-rail-status-line">
-          <span className="cc-status-dot" />
-          <span>read-only · ingen auto-send</span>
-        </div>
-        {onToggleSize && (
-          <button
-            type="button"
-            className="cc-rail-size cc-focus"
-            onClick={onToggleSize}
-            aria-label={collapsed ? "Gør navigation større" : "Gør navigation mindre"}
-            title={collapsed ? "Gør navigation større" : "Gør navigation mindre"}
-          >
-            <Icon name={collapsed ? "Columns3" : "Columns2"} />
-            <span>{collapsed ? "Udvid" : "Skjul labels"}</span>
-          </button>
-        )}
-      </div>
-    </aside>
+      {/* --- mobile "Mere"-ark: hele IA'en ---------------------------------- */}
+      {moreOpen && (
+        <>
+          <div className="cc-mobile-sheet-backdrop" role="presentation" onClick={() => setMoreOpen(false)} />
+          <div className="cc-mobile-sheet" role="dialog" aria-modal="true" aria-label="Hele menuen">
+            <div className="cc-mobile-sheet-handle" aria-hidden="true" />
+            <div className="cc-mobile-sheet-head">
+              <h2>Menu</h2>
+              <button type="button" className="cc-mobile-sheet-close cc-focus" onClick={() => setMoreOpen(false)} aria-label="Luk menu">
+                <Icon name="X" style={{ width: 15, height: 15 }} />
+              </button>
+            </div>
+            <div className="cc-mobile-sheet-group">
+              {NAV_PRIMARY.map((item) => (
+                <SheetItem
+                  key={item.href}
+                  item={item}
+                  active={isNavActive(pathname, item.href)}
+                  badge={item.badge === "queue" ? queue : undefined}
+                  onNavigate={() => setMoreOpen(false)}
+                />
+              ))}
+            </div>
+            <div className="cc-mobile-sheet-divider" />
+            <div className="cc-mobile-sheet-group">
+              {NAV_MORE.map((item) => (
+                <SheetItem key={item.href} item={item} active={isNavActive(pathname, item.href)} onNavigate={() => setMoreOpen(false)} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }

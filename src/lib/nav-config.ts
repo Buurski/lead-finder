@@ -1,129 +1,58 @@
-// nav-config.ts — single source of truth for the command-center IA.
-// Consumed by the sidebar AND the ⌘K command palette so they never drift.
+// nav-config.ts — single source of truth for the Kinly HQ information
+// architecture (fase 2, 2026-09-22). Consumed by the rail, the mobile bottom
+// bar + "Mere"-sheet, the topbar page title, and the ⌘K command palette so
+// they never drift.
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: string; // lucide-react icon name (resolved in the component)
+  icon: string; // lucide-react icon name (resolved in Icon.tsx)
   hint?: string; // shown in the command palette
-  /** Label used in the ⌘K palette when the sidebar label alone is ambiguous
-   *  (e.g. "Email" under both Godkendelse and Svar). Falls back to label. */
-  paletteLabel?: string;
-  badge?: "queue" | "needs"; // dynamic count slot, filled by the shell
-  soon?: boolean; // placeholder surface, not built yet
-  hidden?: boolean; // reachable in ⌘K, but intentionally not in the primary rail
+  badge?: "queue"; // dynamic count slot, filled by the shell (queue → Indbakke)
 }
 
-export interface NavNode extends NavItem {
-  /** Sub-items — renders as an accordion dropdown in the sidebar. The parent
-   *  row toggles open/closed; only children navigate. Parent `href` is the
-   *  primary child (used for active-detection fallback), never a link. */
-  children?: NavItem[];
-}
-
-// Kinly Lead System IA: the rail answers what Lucas and Charlie use daily.
-// Legacy/experimental routes remain reachable directly and through ⌘K, but do
-// not compete with the daily work surfaces.
-export const NAV_TREE: NavNode[] = [
-  { href: "/", label: "I dag", icon: "LayoutDashboard", hint: "Dagens overblik" },
-  {
-    href: "/approve",
-    label: "Arbejde",
-    icon: "Inbox",
-    badge: "queue",
-    children: [
-      { href: "/approve", label: "Godkendelse", paletteLabel: "Arbejde · Godkendelse", icon: "CheckCheck", hint: "Drafts i kø", badge: "queue" },
-      { href: "/leads", label: "Pipeline", paletteLabel: "Arbejde · Pipeline", icon: "Users", hint: "Lead-pipeline" },
-      { href: "/previews", label: "Gratis udkast", paletteLabel: "Arbejde · Gratis udkast", icon: "LayoutGrid", hint: "Spørgeskemaer, demoer og mailkladder" },
-      { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig", badge: "needs" },
-    ],
-  },
-  {
-    href: "/crm",
-    label: "Kunder",
-    icon: "Users",
-    children: [
-      { href: "/crm", label: "CRM", paletteLabel: "Kunder · CRM", icon: "Users", hint: "Opgaver, aktivitet og næste handling" },
-      { href: "/clients", label: "Kunder & sites", paletteLabel: "Kunder · Kunder & sites", icon: "Briefcase", hint: "Kundeprofiler, sites og leverancer" },
-      { href: "/fakturaer", label: "Fakturaer", paletteLabel: "Kunder · Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
-    ],
-  },
-  {
-    href: "/seo",
-    label: "Synlighed",
-    icon: "Search",
-    children: [
-      { href: "/seo", label: "SEO-overblik", paletteLabel: "Synlighed · SEO-overblik", icon: "Search", hint: "Søgning pr. kunde" },
-      { href: "/seo-tjek", label: "Gratis SEO-tjek", icon: "Gauge", hint: "Offentlig SEO-tjek-tragt", hidden: true },
-      { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
-    ],
-  },
-  {
-    href: "/okonomi",
-    label: "Forretning",
-    icon: "CircleDollarSign",
-    children: [
-      { href: "/okonomi", label: "Økonomi", paletteLabel: "Forretning · Økonomi", icon: "Target", hint: "Forecast & mål" },
-      { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse & status" },
-      { href: "/salg", label: "Salg", icon: "Workflow", hint: "Vægtet deal-pipeline" },
-      { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer, split & overførsler" },
-      { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening & trends" },
-    ],
-  },
-  {
-    href: "/hermes",
-    label: "Hjernen",
-    icon: "Sparkles",
-    children: [
-      { href: "/hermes", label: "Hermes", icon: "Sparkles", hint: "24/7-agent og ideer" },
-      { href: "/drift", label: "Drift & OS", icon: "Activity", hint: "Kanban, cron og agenter — samme tal som boardet" },
-      { href: "/goals", label: "Mål", icon: "Target", hint: "Aktive 90-dages mål", hidden: true },
-      { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed", hidden: true },
-    ],
-  },
+// The 7 rail icons (desktop) — same list opens as the top group of the
+// mobile "Mere"-sheet. "Agenter" points at /hermes midlertidigt (fase 3
+// samler /hermes + /drift under /agenter).
+export const NAV_PRIMARY: NavItem[] = [
+  { href: "/", label: "HQ", icon: "Home", hint: "Dagens overblik" },
+  { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
+  { href: "/virksomheder", label: "Virksomheder", icon: "Building2", hint: "Kundeprofiler og sites" },
+  { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
+  { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
+  { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
+  { href: "/hermes", label: "Agenter", icon: "Sparkles", hint: "Hermes og sessioner" },
 ];
 
-// Flat list for the command palette + keyboard nav: leaves only (a parent's
-// own href always duplicates its primary child). Dedup pr. href+label — IKKE
-// kun href: samme destination under to forældre ("Godkendelse · Messenger" og
-// "Svar · Messenger-indbakke") skal begge kunne findes i paletten, ellers
-// rammer en søgning på "svar messenger" ingenting (council-fund, Bundle G).
-export const NAV_FLAT: NavItem[] = (() => {
-  const seen = new Set<string>();
-  const out: NavItem[] = [];
-  for (const node of NAV_TREE) {
-    const leaves = node.children ?? [node];
-    for (const leaf of leaves) {
-      const key = `${leaf.href}|${leaf.paletteLabel ?? leaf.label}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(leaf);
-    }
-  }
-  return out;
-})();
+// Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
+export const NAV_MORE: NavItem[] = [
+  { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
+  { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. kunde" },
+  { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
+  { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse og status" },
+  { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer og split" },
+  { href: "/drift", label: "Drift", icon: "Server", hint: "Kanban, cron og agenter" },
+  { href: "/previews", label: "Gratis udkast", icon: "LayoutGrid", hint: "Spørgeskemaer og demoer" },
+  { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig" },
+  { href: "/messenger", label: "Messenger", icon: "MessagesSquare", hint: "Messenger-tråde" },
+  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed" },
+];
 
-// Back-compat: a couple of tests/components import NAV (grouped). Keep a thin
-// alias so nothing breaks while the tree is the real source of truth.
-export const NAV = NAV_TREE;
-
-// ---- Delte hjælpere (sidebar + breadcrumbs) --------------------------------
+// Flad liste til ⌘K: hele IA'en, rail-item først.
+export const NAV_FLAT: NavItem[] = [...NAV_PRIMARY, ...NAV_MORE];
 
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** Ejer-gruppe for en rute: først gruppen hvis EGEN href er prefix af stien
- *  (Studio ejer /studio/compare selvom SEO også linker dertil), ellers første
- *  gruppe med et aktivt barn. Delte hrefs må hverken folde to sektioner ud
- *  eller give tvetydige breadcrumbs (council-fund B1/B2, Bundle G). */
-export function ownerGroupFor(pathname: string): NavNode | null {
-  for (const node of NAV_TREE) {
-    if (node.children && isNavActive(pathname, node.href)) return node;
+// Topbar-titlen for den aktive side: bedste (længste) href-match i hele IA'en.
+export function pageTitleFor(pathname: string): string {
+  let best: NavItem | undefined;
+  for (const item of NAV_FLAT) {
+    if (isNavActive(pathname, item.href) && (!best || item.href.length > best.href.length)) {
+      best = item;
+    }
   }
-  for (const node of NAV_TREE) {
-    if (node.children && node.children.some((c) => isNavActive(pathname, c.href))) return node;
-  }
-  return null;
+  return best?.label ?? "Kinly HQ";
 }

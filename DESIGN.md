@@ -1,103 +1,113 @@
-# DESIGN.md — Command Center design system
+# DESIGN.md — Kinly HQ design system
 
-The implemented system behind Command Center v3. Tokens live in
-`src/app/globals.css`; the shell lives in `src/components/shell/`. Warm, light,
-calm, room-like. Not dark, not corporate.
+Fase 2 redesign (2026-09-22). Replaces the "Command Center v3" system below it
+— same repo, new visual world. Tokens live in `src/app/globals.css`; the
+shell lives in `src/components/shell/{AppShell,Sidebar}.tsx`. Spec:
+`docs/superpowers/specs/2026-09-22-kinly-crm-hq-design.md` §4–§5. Reference:
+`docs/superpowers/plans/fase-2-mockup-hq.html`.
+
+Mode: **Operate**. This is a daily work tool for Lucas + Charlie — scanability
+and native affordances outrank expression. Brand shows up in precise details
+(the lime accent, the dark rail, the K-mark), not in decoration.
 
 ## Color
 
-Strategy: **Restrained** — tinted warm-creme neutrals + one quiet accent. OKLCH
-throughout; every neutral is tinted toward the warm hue (~70–85), never `#000`
-or `#fff`.
+Strategy: **Restrained** — warm off-white paper + a dark rail + ONE loud
+accent (lime), used sparingly (active nav, primary/AI actions, focus rings).
 
-- Paper / surfaces: `--bg` `oklch(97.2% 0.012 85)` → `--surface`
-  `oklch(99.2% 0.006 85)`. Warm creme, not cool grey.
-- Ink: `--text` `oklch(24% 0.020 70)`, `--text-muted`, `--text-dim`.
-- Borders: hairline, warm (`--border` `oklch(90% 0.014 85)`).
-- The single accent — sage/calm green: `--accent` `oklch(58% 0.085 150)`,
-  `--accent-ink` for text on light. Used ≤10% of surface (active nav, primary
-  buttons, progress fills, focus rings).
-- Status hues kept muted and used sparingly: `--amber` (callbacks / warnings),
-  `--blue` (warm leads), `--red` (errors). Never decorative.
+- Paper: `--bg` `#EDEDEA` → `--surface` `#FFFFFF`, `--surface-2` `#F5F5F2`.
+- Ink: `--text` `#191713`, `--text-muted` `#55504A`, `--text-dim` `#8A847B`.
+- Borders: hairline, `--border` `#E4E4DF`.
+- Accent — lime: `--accent` `#C8F04B` with `--accent-ink` `#191713` for text
+  *on* lime (lime is bright — always pair it with dark ink, never white).
+- Status: `--green` (success), `--amber` + `--amber-dim` (snart/warn), `--red`
+  (forfalden/risk). Never decorative.
+- Dark surface: `--kinly-rail` `#16130F` — the rail, and any "agent" card
+  (Hermes/AI cards in Task 3+).
+- Ember `#D4500F` is banned everywhere in this app (kinly.dk keeps it; this
+  system does not).
 
 ## Typography
 
-- Display: **Fraunces** (`--font-display`), weight 600, letter-spacing −0.02 to
-  −0.03em. Page titles, card headings, stat numbers.
-- Body: **Plus Jakarta Sans** (`--font-body`), 400–600. Body letter-spacing
-  −0.011em.
-- Scale jumps with clear contrast (stat 30px / h1 27px / card-head 15–16px /
-  body 13.5–14px / dim 12px). Body measure capped ~72ch (MarkdownLite).
+- Body + display: **Plus Jakarta Sans** everywhere (`--font-jakarta`,
+  loaded in `layout.tsx`). No serif, no second display face.
+- Meta only — dates, timestamps, "6 min siden", counters — **JetBrains Mono**
+  (`--font-jbmono` / `--font-mono`, `.cc-mono` utility), 13px, tabular-nums.
+  Never body text.
+- All numbers: `font-variant-numeric: tabular-nums`.
 
 ## Shape & elevation
 
-- Radius: `--radius` 14px, `--radius-sm` 10px, `--radius-lg` 20px, pills 999px.
-- Shadows soft and barely there: `--shadow-card` (1px inset highlight + 3px
-  ambient), `--shadow-soft` for floating elements. No heavy drop shadows.
-- Borders do the structural work, not shadows.
+- Radius: `--radius` 24px (cards), `--radius-sm` 16px (inner elements), pills
+  hardcoded 999px.
+- **No shadows.** `--shadow-soft` / `--shadow-card` are `none`. Surfaces are
+  separated by hairline borders and flat color contrast against `--bg`, not
+  drop shadows. (A few pre-existing low-alpha card shadows outside the shell
+  were left as-is in fase 2 Task 1 — see plan note; not part of the new shell.)
 
-## Layout
+## Layout — shell
 
-- Shell: sticky left sidebar (`--sidebar-w` 248px) + main column with a sticky,
-  lightly blurred topbar. Content max-width 1180px, generous padding.
-- Mission Control uses an **asymmetric** two-column grid (needs-you wide,
-  queue + pipeline stacked beside it), not a uniform card wall.
-- Spacing varies for rhythm (18–22px between sections, tighter inside cards).
-- Cards are used where a card is the right affordance (one decision / one
-  action per card). No nested cards. Numbers use hairline grid dividers that
-  collapse cleanly on wrap.
+- **Rail** (desktop, ≥768px): dark (`--kinly-rail`), icon-only, 88px
+  (`--rail-w`), full height, `position: sticky`. K-mark top
+  (`public/brand/kinly-mark-rail.svg`), 7 icon links, avatar bottom. Active
+  item: lime background + dark ink icon (never white-on-lime).
+- **Topbar**: page title (from `pageTitleFor()` in `nav-config.ts`) + search
+  pill (⌘K, opens `CommandPalette`) + bell (`Bell.tsx`) + black "+ Ny" pill.
+- **Mobile** (<768px): rail hides; a fixed dark bottom bar takes over — HQ,
+  Indbakke, Pipeline, Mere. "Mere" opens a bottom sheet with the full IA
+  (`NAV_PRIMARY` + `NAV_MORE`). No horizontal scroll at 390px.
+- Content: `max-width: 1400px`, centered; most pages additionally wrap in
+  `.cc-fade` (max-width 1180px) for reading measure.
+
+## Information architecture
+
+Single source of truth: `src/lib/nav-config.ts` — `NAV_PRIMARY` (rail, 7
+items), `NAV_MORE` (⌘K + mobile sheet only), `NAV_FLAT` (both, for search).
+`isNavActive()` / `pageTitleFor()` are shared by the rail, bottom bar, sheet
+and topbar so the active state and page title never drift apart.
 
 ## Motion
 
-- `cc-fade` entrance (220ms ease, 4px rise). Progress/width transitions use
-  ease-out cubic `cubic-bezier(0.22, 1, 0.36, 1)`. No bounce, no elastic.
-- `prefers-reduced-motion`: all transitions/animations zeroed.
+- `cc-fade` entrance (220ms ease, 4px rise). `prefers-reduced-motion` zeroes
+  all transitions/animations.
 
 ## Components (reusable primitives)
 
-- `cc-card` / `cc-card-pad` — surface + hairline border + soft shadow.
-- `cc-btn`, `cc-btn-accent` — 36px controls; accent = sage on white text.
-- `cc-chip` — pill tag. `cc-kicker` — uppercase micro-label.
-- `cc-tabs` / `cc-tab` — pill tab group (Mission Control, Studio filter).
-- `cc-stat-n` / `cc-stat-l` — Fraunces number + dim label.
-- `cc-empty` — centered calm empty state (icon + line + hint).
-- `cc-skel` — shimmer skeleton for loading.
-- Shell: `Sidebar`, `Topbar` (in `AppShell`), `Clock`, `CommandPalette`,
-  `ChatDock`, `Icon` (lucide map), `PageHeader`, `FaseNote`, `MarkdownLite`.
+- `cc-card` / `cc-card-pad` — surface + hairline border, no shadow.
+- `cc-btn`, `cc-btn-accent` (ink pill, white text) — the accent is `--text`,
+  not lime (lime never carries white text).
+- `cc-chip`, `cc-kicker`, `cc-tabs` / `cc-tab`, `cc-stat-n` / `cc-stat-l`.
+- `cc-empty`, `cc-skel` — calm empty/loading states.
+- Shell: `AppShell` (topbar + palette + pause-banner host), `Sidebar` (rail +
+  bottom bar + "Mere"-sheet, self-contained), `Bell`, `CommandPalette`, `Icon`
+  (lucide map, data-driven by name). `ChatDock` is gone — Hermes is the only
+  assistant; its dock mounts in `AppShell` in fase 2 Task 7.
 
 ## States (every surface)
 
-Hover, active, focus-visible (2px accent ring), empty, loading, error, and an
-honest "wired in Fase C" state (`FaseNote`) instead of fake data. Sheets-offline
-shows a calm amber banner and a queue-only view, never a crash.
+Hover, active, focus-visible (2px lime ring via `.cc-focus`), empty, loading,
+error, and an honest "wired senere" state instead of fake data. Sheets/DB
+offline shows a calm amber banner, never a crash.
 
 ## Accessibility
 
-- WCAG AA contrast on text. `aria-current` on active nav, `role=dialog/listbox/
-  tablist` on palette and tabs, `aria-label`s on icon-only controls.
-- Keyboard-first: ⌘K / Ctrl+K palette, ↑/↓/Enter/Esc within it.
-- Responsive: sidebar collapses to a drawer < 860px; grids reflow; numbers go
-  2-up on mobile.
+- WCAG AA contrast on text — this is why lime never carries white text or
+  sits under white icons; pair it with `--accent-ink` instead.
+- `aria-current` on active nav, `aria-label` on every icon-only control,
+  `role="dialog"` on the mobile sheet and command palette.
+- Keyboard-first: ⌘K/Ctrl+K palette from anywhere in the shell, Esc closes
+  palette and mobile sheet.
 
 ## Icons
 
-lucide-react, used sparingly, 14–20px, resolved through `Icon` so names stay
-data-driven (shared by sidebar + palette).
+lucide-react, 16–20px, resolved through `Icon.tsx` so names stay data-driven
+(shared by rail, sheet, bell and palette).
 
-## Del 2 patterns (2026-06-04)
+---
 
-- **CSS bar charts** (`/spend`): hairline track (`--bg-3`) + sage fill, no chart
-  library. Decision-relevant only, never decorative.
-- **Two-pane vault browser** (`VaultBrowser`): searchable grouped list + on-
-  demand markdown render via `MarkdownLite` (now with table support). Skeleton
-  while a note loads; auto-opens the first note.
-- **Toggle switch** (`/settings`): 46×27 pill, sage when on, ease-out knob slide;
-  `role="switch"` + `aria-checked`.
-- **Preview → confirm action** pattern reused (engine runner, demo factory, SEO,
-  find-emails): a read-only/no-write preview, then an explicit confirm; result
-  toast. Destructive/sending paths are never one click.
-- **Generated demo HTML** (`demo-factory`): self-contained one-page site using
-  the branch template's OKLCH palette + Google Fonts, `color-mix()` for tints,
-  rendered in an iframe `srcDoc` preview.
-- **Honest status surfaces** (`/claude`, `/hermes`): dot + label reflecting real
-  env/connection state, plus a calm "not wired yet" path instead of fake data.
+## Superseded — Command Center v3 (pre-2026-09-22)
+
+Kept for history only; no longer the active system. Sidebar was a light,
+248px, accordion-style sidebar with grouped nav; topbar showed breadcrumbs;
+accent was a muted sage green; display font was Fraunces. See git history for
+the full text if needed — none of it applies to fase 2 onward.
