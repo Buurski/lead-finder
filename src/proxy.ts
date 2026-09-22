@@ -1,5 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { CC_AUTH_HEADER, ccAuthMarker, hmacHex } from "@/lib/cc-auth";
+import {
+  CC_AUTH_HEADER,
+  CC_USER_HEADER,
+  SESSION_COOKIE,
+  SESSION_TTL_S,
+  ccAuthMarker,
+  issueSession,
+  verifySession,
+} from "@/lib/cc-auth";
+import { RL_BLOCK_S, clientIp, rateLimitCheck } from "@/lib/auth/rate-limit";
 
 // Proxy (Next 16's renamed middleware) — shared-password access for Lucas +
 // Charlie (one code, same access).
@@ -22,14 +31,9 @@ export const config = {
   // seo-tjek er den offentlige lead-magnet-tragt: formular + rapport + afmeld
   // skal kunne nås af fremmede uden kodeord. Stats-endpointet (api/seo-tjek/stats)
   // matcher IKKE undtagelserne og forbliver bag basic auth.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
-const SESSION_COOKIE = "cc_sess";
-const SESSION_TTL_S = 60 * 60 * 12; // 12h sliding session
-const RL_WINDOW_S = 60;
-const RL_MAX = 5;
-const RL_BLOCK_S = 60 * 60;
 
 // Constant-time UTF-8 string compare. Edge-safe (no Node crypto.timingSafeEqual).
 function ctEqual(a: string, b: string): boolean {
@@ -65,71 +69,6 @@ function parseBasic(header: string): { user: string; pass: string } | null {
 
 // HMAC + session-helpers kommer fra src/lib/cc-auth.ts (delt med API-ruterne).
 
-async function issueSession(user: string, secret: string): Promise<string> {
-  const exp = Math.floor(Date.now() / 1000) + SESSION_TTL_S;
-  const payload = `${user}.${exp}`;
-  const sig = await hmacHex(secret, payload);
-  return `${payload}.${sig}`;
-}
-
-async function verifySession(token: string, secret: string): Promise<boolean> {
-  const parts = token.split(".");
-  if (parts.length !== 3) return false;
-  const [user, expStr, sig] = parts;
-  const exp = parseInt(expStr, 10);
-  if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return false;
-  const expected = await hmacHex(secret, `${user}.${expStr}`);
-  return ctEqual(sig, expected);
-}
-
-// Rate-limit via Vercel KV REST API. Fail-open if KV is not configured
-// (so local dev never gets locked out).
-async function rateLimitCheck(ip: string): Promise<{ allowed: boolean; remaining: number; blocked: boolean }> {
-  const url = process.env.KV_REST_API_URL;
-  const tok = process.env.KV_REST_API_TOKEN;
-  if (!url || !tok) return { allowed: true, remaining: RL_MAX, blocked: false };
-
-  const key = `auth:rl:${ip}`;
-  const blockKey = `auth:block:${ip}`;
-  const auth = { Authorization: `Bearer ${tok}` };
-
-  try {
-    // Check long block first.
-    const blockedRes = await fetch(`${url}/get/${blockKey}`, { headers: auth, signal: AbortSignal.timeout(2500) });
-    const blockedJson = blockedRes.ok ? (await blockedRes.json() as { result?: unknown }) : { result: null };
-    if (blockedJson.result) return { allowed: false, remaining: 0, blocked: true };
-
-    // Atomic INCR + EXPIRE.
-    const pipeRes = await fetch(`${url}/pipeline`, {
-      method: "POST",
-      headers: { ...auth, "Content-Type": "application/json" },
-      body: JSON.stringify([
-        ["INCR", key],
-        ["EXPIRE", key, String(RL_WINDOW_S), "NX"],
-      ]),
-      signal: AbortSignal.timeout(2500),
-    });
-    const pipeJson = pipeRes.ok ? (await pipeRes.json() as Array<{ result?: number }>) : null;
-    const count = pipeJson?.[0]?.result ?? 0;
-    if (count > RL_MAX) {
-      await fetch(`${url}/setex/${blockKey}/${RL_BLOCK_S}/1`, { headers: auth, signal: AbortSignal.timeout(2500) }).catch(() => {});
-      return { allowed: false, remaining: 0, blocked: true };
-    }
-    return { allowed: true, remaining: Math.max(0, RL_MAX - count), blocked: false };
-  } catch {
-    // KV unreachable → fail open. The auth check itself still gates access.
-    return { allowed: true, remaining: RL_MAX, blocked: false };
-  }
-}
-
-function clientIp(req: NextRequest): string {
-  return (
-    req.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown"
-  );
-}
-
 function logAuthFailure(ip: string, reason: string): void {
   // NEVER include credential bytes. Reason is a short tag.
   console.warn(JSON.stringify({ evt: "auth.fail", ip, reason, ts: new Date().toISOString() }));
@@ -159,6 +98,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
   // efter godkendt basic-auth. Strip enhver udefrakommende kopi på alle stier.
   const sanitized = new Headers(req.headers);
   sanitized.delete("x-command-center-auth");
+  sanitized.delete(CC_USER_HEADER);
 
   // The public Kinly questionnaire creates queue records server-to-server. Keep
   // this narrow: only POST /api/previews with the queue secret bypasses the
@@ -171,11 +111,16 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
   if (USER && PASS && SECRET) {
     let authed = false;
+    // Hvem sessionen tilhører: "lucas"/"charlie" (magic link) eller "delt"
+    // (fælles Basic-login — aldrig Basic-brugernavnet, det kunne hedde "lucas").
+    let sessionUser = "delt";
 
     // 1. Fast path: valid session cookie.
     const sessTok = req.cookies.get(SESSION_COOKIE)?.value;
-    if (sessTok && (await verifySession(sessTok, SECRET))) {
+    const cookieUser = sessTok ? await verifySession(sessTok, SECRET) : null;
+    if (cookieUser) {
       authed = true;
+      sessionUser = cookieUser === "lucas" || cookieUser === "charlie" ? cookieUser : "delt";
     } else {
       // 2. Verify Basic auth.
       const header = req.headers.get("authorization") || "";
@@ -201,15 +146,24 @@ export async function proxy(req: NextRequest): Promise<Response> {
       }
     }
 
-    if (!authed) return unauthorized();
+    if (!authed) {
+      // Magic-link-login slået til (CC_MAGIC=1): send browser-navigation til
+      // /login i stedet for Basic-dialogen. API-kald får stadig 401.
+      const wantsPage = req.method === "GET" && !req.nextUrl.pathname.startsWith("/api/");
+      if (process.env.CC_MAGIC === "1" && wantsPage) {
+        return NextResponse.redirect(new URL("/login", req.url));
+      }
+      return unauthorized();
+    }
 
     // Pass a marker to internal API routes as well. This keeps the browser's
     // Basic Auth session and route-level auth in the same chain.
     const requestHeaders = new Headers(sanitized);
     requestHeaders.set(CC_AUTH_HEADER, await ccAuthMarker(SECRET));
+    requestHeaders.set(CC_USER_HEADER, sessionUser);
 
     // Mint/refresh session cookie on success.
-    const fresh = await issueSession(USER, SECRET);
+    const fresh = await issueSession(sessionUser, SECRET);
     const res = NextResponse.next({ request: { headers: requestHeaders } });
     res.cookies.set(SESSION_COOKIE, fresh, {
       httpOnly: true,

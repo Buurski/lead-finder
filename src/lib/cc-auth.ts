@@ -61,3 +61,29 @@ export async function assertWriteRequest(req: Request): Promise<void> {
   if (origin.toLowerCase() !== `${proto}://${host}`.toLowerCase()) throw new Error("cross-origin kald afvist");
   if (req.headers.get("sec-fetch-site") === "cross-site") throw new Error("cross-site kald afvist");
 }
+
+// --- Session-cookie (delt af proxyen og login-ruterne) ---
+// Format "<bruger>.<exp>.<hmac>". Brugeren er "lucas"/"charlie" efter
+// magic-link-login, eller Basic-brugernavnet ved det gamle delte login.
+
+export const SESSION_COOKIE = "cc_sess";
+export const SESSION_TTL_S = 60 * 60 * 12; // 12t glidende
+/** Sættes KUN af proxyen (indgående kopier strippes). */
+export const CC_USER_HEADER = "x-cc-user";
+
+export async function issueSession(user: string, secret: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + SESSION_TTL_S;
+  const payload = `${user}.${exp}`;
+  return `${payload}.${await hmacHex(secret, payload)}`;
+}
+
+/** Returnerer brugeren for en gyldig session, ellers null. */
+export async function verifySession(token: string, secret: string): Promise<string | null> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [user, expStr, sig] = parts;
+  const exp = parseInt(expStr, 10);
+  if (!user || !Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return null;
+  const expected = await hmacHex(secret, `${user}.${expStr}`);
+  return ctEqual(sig, expected) ? user : null;
+}

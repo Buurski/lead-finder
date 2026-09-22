@@ -79,6 +79,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Hydrate badge + dock counts from the read-only deck summary. Best-effort.
   useEffect(() => {
+    if (pathname === "/login") return;
     let alive = true;
     fetch("/api/deck/summary")
       .then((r) => r.json())
@@ -94,6 +95,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   const crumbs = crumbsFor(pathname);
+
+  // Login-siden er offentlig: ingen nav, dock eller tællere.
+  if (pathname === "/login") return <>{children}</>;
 
   return (
     <div className="cc-shell" data-rail-collapsed={railCollapsed}>
