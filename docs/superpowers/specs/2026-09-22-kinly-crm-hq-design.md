@@ -64,7 +64,7 @@ Tokens (erstatter creme/salvie/Fraunces):
 - dark card `#16130F` (Agenter/AI-kort)
 - Font: Plus Jakarta Sans (allerede loadet) til alt; tal `font-variant-numeric: tabular-nums`, store KPI 40–56 px/600; meta-tekst i JetBrains Mono 13 px (datoer, "6 min siden").
 - Radius: kort 24, indre 16, pille 999. Ingen skygger — kun flader mod bg.
-- Kinly-identitet: K-bomærke øverst i rail, wordmark i login. Ember `#D4500F` kun i logo, aldrig UI-farve.
+- Kinly-identitet: K-bomærke øverst i rail, wordmark i login. **I CRM'et er prikken under k'et lime `#C8F04B` i stedet for ember-orange** (Lucas 22/9) — filer `public/brand/kinly-mark-rail.svg` (mørk rail), `kinly-mark-light.svg`, `kinly-wordmark-{rail,light}.svg`. Ember `#D4500F` bruges ingen steder i lead-systemet; kinly.dk beholder orange.
 - Mobil: rail → bundbar (HQ, Indbakke, Pipeline, Mere). Indbakke skal kunne bruges på telefon (erstatter /send).
 
 ## 6. Automatik (ud af boksen)
