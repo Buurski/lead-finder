@@ -97,3 +97,21 @@ test("writeQueue med tom liste tømmer køen", async () => {
   await writeQueue([]);
   assert.equal((await readQueue()).length, 0);
 });
+
+test("sendte og system-stoppede kladder kan ikke genoplives af et forældet snapshot", async () => {
+  const { freshTestDb } = await import("../db/test-db.ts");
+  await freshTestDb();
+  const { readQueue, writeQueue, stopOpenForRows } = await import("./queue.ts");
+  const base = { leadId: "7", name: "X", branch: "", city: "", hooks: [], demoPair: [], professionalism: "", subject: "s", body: "b", source: "t", createdAt: "", updatedAt: "" };
+  await writeQueue([{ ...base, id: "sent1", status: "sent" }, { ...base, id: "open1", status: "approved" }] as never);
+  const stale = await readQueue();
+  assert.equal(await stopOpenForRows([7], "svar modtaget", "2026-09-22T00:00:00Z"), 1);
+  // Forældet snapshot skriver begge tilbage som "approved" og udelader resten.
+  await writeQueue(stale.map((d) => ({ ...d, status: "approved" })) as never);
+  const after = new Map((await readQueue()).map((d) => [d.id, d]));
+  assert.equal(after.get("sent1")?.status, "sent");
+  assert.equal(after.get("open1")?.status, "rejected");
+  assert.equal(after.get("open1")?.stoppedReason, "svar modtaget");
+  await writeQueue([]);
+  assert.ok((await readQueue()).some((d) => d.id === "sent1"), "sendte slettes aldrig");
+});
