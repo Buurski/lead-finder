@@ -3,7 +3,7 @@
 // kodebasen — og Lead.id = String(row_no). En "sletning" sætter archived=true
 // (+ lifecycle='ikke_egnet') i stedet for at fjerne rækken, så row_no aldrig
 // genbruges af appendLeads.
-import { asc, eq, inArray, max, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, max, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { company } from "../db/schema.ts";
 import type { Lead, LeadStatus, SkipReason, WebsiteQualityTier } from "../sheets.ts";
@@ -41,11 +41,14 @@ function toLead(r: CompanyRow): Lead {
   };
 }
 
+// row_no > 0 = en rigtig lead-række (Sheets-rækkenummer). Kunder uden lead-række
+// har NEGATIVT row_no: de kan aldrig kollidere med nye Sheets-rækker før cutover,
+// og de vises ikke som leads (det gjorde de heller ikke i Sheets).
 export async function getLeads(): Promise<Lead[]> {
   const rows = await getDb()
     .select()
     .from(company)
-    .where(eq(company.archived, false))
+    .where(and(eq(company.archived, false), gt(company.rowNo, 0)))
     .orderBy(asc(company.rowNo));
   return rows.map(toLead);
 }
@@ -100,7 +103,7 @@ export async function getLeadNames(): Promise<string[]> {
   const rows = await getDb()
     .select({ name: company.name })
     .from(company)
-    .where(eq(company.archived, false))
+    .where(and(eq(company.archived, false), gt(company.rowNo, 0)))
     .orderBy(asc(company.rowNo));
   return rows.map((r) => r.name);
 }
@@ -109,7 +112,7 @@ export async function getLeadPhones(): Promise<string[]> {
   const rows = await getDb()
     .select({ phone: company.phone })
     .from(company)
-    .where(eq(company.archived, false))
+    .where(and(eq(company.archived, false), gt(company.rowNo, 0)))
     .orderBy(asc(company.rowNo));
   return rows.map((r) => r.phone).filter(Boolean);
 }

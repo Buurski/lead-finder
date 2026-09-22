@@ -89,7 +89,8 @@ test("removeClient matcher via canonicalClientName og unlinker uden at slette r�
   assert.deepEqual(await removeClient("Vida"), { removed: true }); // "Vida" -> alias -> "VIDA Skønhedsklinik"
   assert.deepEqual(await removeClient("ukendt navn"), { removed: false });
   const [row] = await db.select().from(company);
-  assert.equal(row.clientNo, null);
+  assert.equal(row.clientNo, 2); // beholdes — Client.id må aldrig genbruges
+  assert.equal(row.clientRemoved, true);
   assert.equal(row.lifecycle, "tabt");
   assert.deepEqual(await getClients(), []); // ikke længere kunde
 });
@@ -112,4 +113,36 @@ test("addClient genbruger lead-virksomheden (row_no) og sætter clientNo = max+1
   assert.equal(companyRow.rowNo, 2); // samme row_no som leadet — ikke en ny virksomhed
   assert.equal(companyRow.clientNo, 2);
   assert.equal(companyRow.lifecycle, "kunde");
+});
+
+test("kunde uden lead-række får negativt row_no og vises ikke som lead", async () => {
+  await addClientManual({ name: "Uden Lead" });
+  await addClientManual({ name: "Også Uden" });
+  const rows = await db.select().from(company);
+  assert.deepEqual(rows.map((r) => r.rowNo).sort((a, b) => a - b), [-2, -1]);
+  assert.deepEqual(await getLeads(), []);
+});
+
+test("addClient to gange giver ingen ekstra deal eller nyt kundenummer", async () => {
+  await appendLeads([{ name: "Salon Artec", branch: "frisør", phone: "", city: "Herning", score: 0, source: "", website: "", websiteStatus: "none", status: "new", notes: "", lastUpdated: "", websiteQualityTier: "", enrichedInfo: "", email: "", emailSentAt: "", emailOpenedAt: "", emailClickedAt: "", emailStatus: "", followupSentAt: "", reviewsCount: 0, callbackDate: "" }]);
+  const [lead] = await getLeads();
+  await addClient(lead);
+  await addClient(lead);
+  const clients = await getClients();
+  assert.equal(clients.length, 1);
+  assert.equal((await db.select().from(deal)).length, 1);
+});
+
+test("et fjernet kundenummer genbruges aldrig", async () => {
+  await addClientManual({ name: "A" });
+  await addClientManual({ name: "B" });
+  await removeClient("B");
+  await addClientManual({ name: "C" });
+  const nos = (await getClients()).map((c) => c.id);
+  assert.deepEqual(nos, ["2", "4"]);
+});
+
+test("ugyldigt kunde-id som '2abc' afvises", async () => {
+  await addClientManual({ name: "A" });
+  await assert.rejects(updateClientFees("2abc", "1", "2"), /bad client id/);
 });

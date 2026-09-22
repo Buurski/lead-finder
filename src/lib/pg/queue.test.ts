@@ -65,7 +65,7 @@ test("writeQueue sletter rækker hvis id ikke længere er i drafts", async () =>
   assert.equal(remaining[0].id, "d_b");
 });
 
-test("readQueue er ordnet efter createdAt ASC (derefter id)", async () => {
+test("readQueue returnerer køen i den rækkefølge den blev skrevet (som KV-arrayet)", async () => {
   await freshTestDb();
   const late = draft({ id: "d_late", createdAt: "2026-09-20T12:00:00.000Z" });
   const early = draft({ id: "d_early", createdAt: "2026-09-20T06:00:00.000Z" });
@@ -74,7 +74,7 @@ test("readQueue er ordnet efter createdAt ASC (derefter id)", async () => {
   await writeQueue([late, early, sameTimeB, sameTimeA]);
 
   const order = (await readQueue()).map((d) => d.id);
-  assert.deepEqual(order, ["d_early", "d_same_a", "d_same_b", "d_late"]);
+  assert.deepEqual(order, ["d_late", "d_early", "d_same_b", "d_same_a"]);
 });
 
 test("writeQueue tildeler companyRowNo kun for numeriske leadId", async () => {

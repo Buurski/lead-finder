@@ -3,7 +3,7 @@
 // (lifecycle='kunde'), koblet til dens primære deal (isPrimary=true) og dens
 // site. Client.id = String(clientNo), samme tal som Clients-fanens rækkenummer
 // var i sheets.ts.
-import { and, asc, eq, isNotNull, max } from "drizzle-orm";
+import { and, asc, eq, isNotNull, max, min, sql } from "drizzle-orm";
 import { getDb, type Db } from "../db/client.ts";
 import { company, deal, site } from "../db/schema.ts";
 import { canonicalClientName } from "../client-alias.ts";
@@ -15,7 +15,7 @@ type SiteRow = typeof site.$inferSelect;
 
 // select/insert/update er strukturelt ens på Db og på tx inde i en
 // db.transaction(...) — så helperne herunder kan bruges begge steder.
-type Queryable = Pick<Db, "select" | "insert" | "update">;
+type Queryable = Pick<Db, "select" | "insert" | "update" | "execute">;
 
 function toClient(c: CompanyRow, d: DealRow | undefined, s: SiteRow | undefined): Client {
   return {
@@ -43,7 +43,7 @@ export async function getClients(): Promise<Client[]> {
   const companies = await db
     .select()
     .from(company)
-    .where(isNotNull(company.clientNo))
+    .where(and(isNotNull(company.clientNo), eq(company.clientRemoved, false)))
     .orderBy(asc(company.clientNo));
   const out: Client[] = [];
   for (const c of companies) {
@@ -59,9 +59,18 @@ async function nextClientNo(db: Queryable): Promise<number> {
   return (value ?? 1) + 1;
 }
 
+// Kunder uden lead-række får negativt row_no (−1, −2, …): de kan aldrig støde
+// sammen med Sheets-rækkenumre og vises ikke i getLeads().
+async function nextNonLeadRowNo(db: Queryable): Promise<number> {
+  await db.execute(sql`select pg_advisory_xact_lock(hashtext('company_row_no'))`);
+  const [{ value }] = await db.select({ value: min(company.rowNo) }).from(company);
+  return Math.min(value ?? 0, 0) - 1;
+}
+
 async function companyByClientNo(db: Queryable, clientId: string): Promise<{ id: string } | undefined> {
-  const row = parseInt(clientId, 10);
-  if (!Number.isFinite(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
+  if (!/^\d+$/.test(clientId)) throw new Error(`bad client id: ${clientId}`);
+  const row = Number(clientId);
+  if (!Number.isSafeInteger(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
   return (await db.select({ id: company.id }).from(company).where(eq(company.clientNo, row)))[0];
 }
 
@@ -84,11 +93,10 @@ export async function addClient(lead: Lead): Promise<void> {
   await db.transaction(async (tx) => {
     let [c] = await tx.select().from(company).where(eq(company.rowNo, Number(lead.id)));
     if (!c) {
-      const [{ value }] = await tx.select({ value: max(company.rowNo) }).from(company);
       [c] = await tx
         .insert(company)
         .values({
-          rowNo: (value ?? 1) + 1,
+          rowNo: await nextNonLeadRowNo(tx),
           name: lead.name,
           branch: lead.branch,
           phone: lead.phone,
@@ -109,13 +117,19 @@ export async function addClient(lead: Lead): Promise<void> {
         })
         .returning();
     }
+    // Allerede kunde → gen-aktivér, men opret aldrig ekstra deal/site eller nyt kundenummer.
+    if (c.clientNo !== null) {
+      await tx.update(company).set({ clientRemoved: false, lifecycle: "kunde", updatedAt: new Date() }).where(eq(company.id, c.id));
+      return;
+    }
     const clientNo = await nextClientNo(tx);
     await tx
       .update(company)
       .set({ clientNo, lifecycle: "kunde", name: lead.name, branch: lead.branch, phone: lead.phone, updatedAt: new Date() })
       .where(eq(company.id, c.id));
-    await tx.insert(deal).values({ companyId: c.id, isPrimary: true, stage: "", setupFeeRaw: "", monthlyFeeRaw: "" });
-    await tx.insert(site).values({ companyId: c.id, status: "demo", projectFolder: "" });
+    await tx.insert(deal).values({ companyId: c.id, isPrimary: true, stage: "", setupFeeRaw: "", monthlyFeeRaw: "" }).onConflictDoNothing();
+    const [s] = await tx.select({ id: site.id }).from(site).where(eq(site.companyId, c.id));
+    if (!s) await tx.insert(site).values({ companyId: c.id, status: "demo", projectFolder: "" });
   });
 }
 
@@ -124,12 +138,11 @@ export async function addClientManual(f: {
 }): Promise<void> {
   const db = getDb();
   await db.transaction(async (tx) => {
-    const [{ value: rowNoMax }] = await tx.select({ value: max(company.rowNo) }).from(company);
     const clientNo = await nextClientNo(tx);
     const [c] = await tx
       .insert(company)
       .values({
-        rowNo: (rowNoMax ?? 1) + 1,
+        rowNo: await nextNonLeadRowNo(tx),
         clientNo,
         lifecycle: "kunde",
         name: f.name,
@@ -150,10 +163,14 @@ export async function removeClient(name: string): Promise<{ removed: boolean }> 
   const target = canonicalClientName(name);
   if (!target) return { removed: false };
   const db = getDb();
-  const clients = await db.select().from(company).where(isNotNull(company.clientNo));
+  const clients = await db
+    .select()
+    .from(company)
+    .where(and(isNotNull(company.clientNo), eq(company.clientRemoved, false)));
   const c = clients.find((r) => canonicalClientName(r.name) === target);
   if (!c) return { removed: false };
-  await db.update(company).set({ clientNo: null, lifecycle: "tabt", updatedAt: new Date() }).where(eq(company.id, c.id));
+  // clientNo beholdes (aldrig genbrug af Client.id) — markeres i stedet som fjernet.
+  await db.update(company).set({ clientRemoved: true, lifecycle: "tabt", updatedAt: new Date() }).where(eq(company.id, c.id));
   return { removed: true };
 }
 

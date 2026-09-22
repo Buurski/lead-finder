@@ -32,6 +32,8 @@ export const company = pgTable(
     // rowIndex = rowNo - 2 i alle gamle kald. Skifter aldrig (arkivering sletter ikke).
     rowNo: integer("row_no").notNull().unique(),
     clientNo: integer("client_no").unique(), // Clients-fanens rækkenummer; null = ikke kunde
+    // Fjernet som kunde. clientNo beholdes, så et Client.id aldrig genbruges af en anden virksomhed.
+    clientRemoved: boolean("client_removed").notNull().default(false),
     lifecycle: text("lifecycle").notNull().default("ny"),
     archived: boolean("archived").notNull().default(false),
     name: text("name").notNull().default(""),
@@ -82,7 +84,9 @@ export const contact = pgTable("contact", {
   createdAt: createdAt(),
 });
 
-export const deal = pgTable("deal", {
+export const deal = pgTable(
+  "deal",
+  {
   id: id(),
   companyId: uuid("company_id").notNull().references(() => company.id),
   isPrimary: boolean("is_primary").notNull().default(false),
@@ -103,7 +107,10 @@ export const deal = pgTable("deal", {
   lostAt: text("lost_at").notNull().default(""),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+  },
+  // Højst én primær deal pr. virksomhed (Client-rækkens deal-felter).
+  (t) => [uniqueIndex("deal_one_primary_uq").on(t.companyId).where(sql`${t.isPrimary}`)],
+);
 
 export const site = pgTable("site", {
   id: id(),
@@ -151,6 +158,7 @@ export const task = pgTable("task", {
 export const outreach = pgTable("outreach", {
   id: text("id").primaryKey(),
   companyRowNo: integer("company_row_no"),
+  position: integer("position").notNull().default(0), // rækkefølgen i den skrevne kø
   kind: text("kind").notNull().default("kold"),
   status: text("status").notNull(),
   sender: text("sender"),

@@ -98,8 +98,9 @@ export function planMigration(src: MigrationSource): MigrationReport {
   };
 }
 
-// Klient → lead-række via alias-normaliseret navn. En lead med status "client"
-// vinder over andre navnebrødre; ellers første match. Ingen match = ny virksomhed.
+// Klient → lead-række via alias-normaliseret navn — KUN når matchet er entydigt:
+// præcis én kandidat, eller præcis én kandidat med status "client". Alt andet
+// (flere navnebrødre) kobles IKKE: klienten bliver sin egen virksomhed og rapporteres.
 function matchClients(src: MigrationSource): { matches: Map<string, number>; orphans: Client[] } {
   const matches = new Map<string, number>(); // client.id → lead rowNo
   const taken = new Set<number>();
@@ -107,7 +108,8 @@ function matchClients(src: MigrationSource): { matches: Map<string, number>; orp
   for (const c of src.clients) {
     const want = canonicalClientName(c.name);
     const candidates = src.leads.filter((l) => canonicalClientName(l.name) === want && !taken.has(Number(l.id)));
-    const pick = candidates.find((l) => l.status === "client") ?? candidates[0];
+    const asClient = candidates.filter((l) => l.status === "client");
+    const pick = asClient.length === 1 ? asClient[0] : candidates.length === 1 ? candidates[0] : undefined;
     if (pick) {
       matches.set(c.id, Number(pick.id));
       taken.add(Number(pick.id));
@@ -181,8 +183,9 @@ export async function applyMigration(db: Db, src: MigrationSource): Promise<Migr
       if (companyId) {
         await tx.update(company).set(clientCols).where(eq(company.id, companyId));
       } else {
-        const [{ max }] = await tx.select({ max: sql<number>`coalesce(max(${company.rowNo}), 1)` }).from(company);
-        const [created] = await tx.insert(company).values({ rowNo: Number(max) + 1, ...clientCols }).returning({ id: company.id });
+        // Negativt row_no: kan aldrig ramme en fremtidig Sheets-række (leadgen kører dagligt før cutover).
+        const [{ min }] = await tx.select({ min: sql<number>`coalesce(min(${company.rowNo}), 0)` }).from(company);
+        const [created] = await tx.insert(company).values({ rowNo: Math.min(Number(min), 0) - 1, ...clientCols }).returning({ id: company.id });
         companyId = created.id;
       }
       clientCompanyId.set(c.id, companyId);
@@ -211,10 +214,12 @@ export async function applyMigration(db: Db, src: MigrationSource): Promise<Migr
     }
     void orphans;
 
+    // Tvetydigt navn (flere kunder med samme kanoniske navn) → ingen kobling
+    // (null) frem for at gætte forkert; navnet ligger stadig i client_name.
     const companyForName = (name: string): string | null => {
       const want = canonicalClientName(name);
-      const c = src.clients.find((x) => canonicalClientName(x.name) === want);
-      return c ? clientCompanyId.get(c.id) ?? null : null;
+      const hits = src.clients.filter((x) => canonicalClientName(x.name) === want);
+      return hits.length === 1 ? clientCompanyId.get(hits[0].id) ?? null : null;
     };
 
     // 3. Kladde-kø (fuld erstatning = samme semantik som writeQueue).
@@ -222,8 +227,9 @@ export async function applyMigration(db: Db, src: MigrationSource): Promise<Migr
     if (ids.length) await tx.delete(outreach).where(sql`${outreach.id} not in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
     else await tx.delete(outreach);
     for (let i = 0; i < src.queue.length; i += BATCH) {
-      const rows = src.queue.slice(i, i + BATCH).map((d) => ({
+      const rows = src.queue.slice(i, i + BATCH).map((d, j) => ({
         id: d.id,
+        position: i + j,
         companyRowNo: /^\d+$/.test(d.leadId) ? Number(d.leadId) : null,
         status: d.status,
         sender: d.sender ?? null,
@@ -236,6 +242,7 @@ export async function applyMigration(db: Db, src: MigrationSource): Promise<Migr
         target: outreach.id,
         set: {
           companyRowNo: sql.raw("excluded.company_row_no"),
+          position: sql.raw("excluded.position"),
           status: sql.raw("excluded.status"),
           sender: sql.raw("excluded.sender"),
           sentBy: sql.raw("excluded.sent_by"),
@@ -300,8 +307,8 @@ export async function countTarget(db: Db): Promise<Record<string, number>> {
   const one = async (q: Promise<Array<{ n: number }>>) => Number((await q)[0]?.n ?? 0);
   const n = sql<number>`count(*)`;
   return {
-    leads: await one(db.select({ n }).from(company).where(sql`${company.rowNo} is not null and not ${company.archived}`)),
-    clients: await one(db.select({ n }).from(company).where(sql`${company.clientNo} is not null`)),
+    leads: await one(db.select({ n }).from(company).where(sql`${company.rowNo} > 0 and not ${company.archived}`)),
+    clients: await one(db.select({ n }).from(company).where(sql`${company.clientNo} is not null and not ${company.clientRemoved}`)),
     queue: await one(db.select({ n }).from(outreach)),
     invoices: await one(db.select({ n }).from(invoice)),
     subscriptions: await one(db.select({ n }).from(subscriptionPlan)),
@@ -311,14 +318,14 @@ export async function countTarget(db: Db): Promise<Record<string, number>> {
   };
 }
 
-// Kilde ↔ mål. Leads kan være FLERE i målet (klienter uden lead-række bliver
-// nye virksomheder); aktiviteter kan være flere (skrevet i PG efter første kørsel).
+// Kilde ↔ mål. Leads tælles kun for row_no > 0 (kunder uden lead-række har negativt
+// row_no); aktiviteter kan være flere (skrevet i PG efter første kørsel).
 function compareCounts(r: MigrationReport): string[] {
   const t = r.target ?? {};
   const out: string[] = [];
   const exact: Array<keyof MigrationReport["source"]> = ["clients", "queue", "invoices", "subscriptions", "contacts", "tasks"];
   for (const k of exact) if ((t[k] ?? -1) !== r.source[k]) out.push(`${k}: kilde ${r.source[k]} ≠ PG ${t[k]}`);
-  if ((t.leads ?? 0) < r.source.leads) out.push(`leads: kilde ${r.source.leads} > PG ${t.leads}`);
+  if ((t.leads ?? -1) !== r.source.leads) out.push(`leads: kilde ${r.source.leads} ≠ PG ${t.leads}`);
   if ((t.activities ?? 0) < r.source.activities) out.push(`activities: kilde ${r.source.activities} > PG ${t.activities}`);
   return out;
 }

@@ -63,7 +63,9 @@ test("apply er idempotent og kobler klient til sin lead-række", async () => {
   const second = await applyMigration(db, source());
   assert.deepEqual(second.mismatches, []);
   assert.deepEqual(second.target, first.target);
-  assert.equal(first.target?.leads, 4); // 3 leads + Jernbanecafeen uden lead-række
+  assert.equal(first.target?.leads, 3); // Jernbanecafeen (ingen lead-række) er ikke et lead
+  const [jb] = await db.select().from(company).where(eq(company.clientNo, 3));
+  assert.equal(jb.rowNo, -1);
 
   const [vida] = await db.select().from(company).where(eq(company.clientNo, 2));
   assert.equal(vida.rowNo, 2);
@@ -85,4 +87,13 @@ test("fakturatæller sættes til max(tæller, højeste nummer) og sænkes aldrig
   await applyMigration(db, { ...source(), invoiceCounter: 2 });
   [c] = await db.select().from(counter).where(eq(counter.name, "invoice"));
   assert.equal(c.value, 9);
+});
+
+test("tvetydigt navne-match kobles ikke — klienten bliver sin egen virksomhed", async () => {
+  const src = source();
+  src.leads.push(lead(9, "VIDA Skønhedsklinik", { status: "client" })); // to leads med status client
+  const r = await applyMigration(db, src);
+  assert.deepEqual(r.mismatches, []);
+  const [vida] = await db.select().from(company).where(eq(company.clientNo, 2));
+  assert.ok(vida.rowNo < 0);
 });
