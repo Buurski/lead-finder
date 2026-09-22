@@ -97,3 +97,19 @@ Markedsføringslovens §10 skelner ikke B2B/B2C. Derfor: nyhedsbrev kun til (a) 
 - Migrering er idempotent (upsert på legacy-nøgler), tørkørsel skriver rapport før rigtig kørsel, fuld JSON-backup af Sheets + KV i scratchpad + Blob.
 - Penge-invarianter testet (ingen NaN, paidAt kun ved betalt — eksisterende `validInvoiceLines`/`applyStatusChange` genbruges).
 - Auth fail-closed på alle API-ruter bevares; maskin-auth (CRON_SECRET, Hermes-HMAC) urørt.
+
+## 10. Tillæg 22/9 — Hermes på siden + kundeviden (Lucas' krav, efter fase 1)
+
+**Målt:** Hermes-shimmen svarer "OK" på 6,0 s, og hele svaret kommer på én gang (`/api/chat/stream` streamer ikke reelt).
+
+1. **Én assistent.** Claude-docken (`ChatDock` → `/api/chat`) fjernes. Hermes-docken er tilgængelig på alle sider (⌘J), og samtalen overlever navigation. Et svar der kommer efter et sideskift, venter i docken med en badge.
+2. **Kontekst-pakke.** På en virksomhedsside sender CRM'et `{spørgsmål, dossier}`. Dossieret indeholder company, deals, kontakter, de sidste 20 activities, fakturasaldo, site og kanonisk vault-note (≤ 12k tegn). På andre sider sendes sidens kontekst (fx Indbakke → den åbne kladde). Hermes skal ikke slå op for at svare på "hvad skylder VIDA?".
+3. **Forslag pr. side** (3 klikbare spørgsmål) i stedet for et tomt felt.
+4. **Ægte streaming** i shimmen (`vps/hermes_api*.py`) er et selvstændigt trin med måling af første byte før og efter. Hermes' cron og `.env` røres ikke (CLAUDE.md).
+5. **Facit-deling.** Postgres er facit for tal (pris, MRR, domæne, status, fakturaer). Vault-noten `wiki/kunder/<slug>.md` er facit for viden (præferencer, historik, adgang, planer). Frontmatter får `crm_id`, og pris-felter i noten ignoreres, når CRM'et har tallet.
+6. **"Opdater vidensbase"** (virksomhedsside): Hermes samler kundens spredte noter plus nye CRM-hændelser til ét udkast af den kanoniske note → diff-visning → Lucas/Charlie godkender → commit via eksisterende `vault.ts` (GitHub). Aldrig auto-skrivning.
+7. **Jev** (billig, typed) bruges hvor svaret er et valg eller et tal: hvilken kunde et check-in/spørgsmål handler om, dublet-dom, churn-risiko, svar-intent, SEO-prioritet. Hermes bruges hvor svaret er tekst.
+
+**Kritisk (ikke med):** ingen anden LLM-assistent "for hastighedens skyld" (to hukommelser = to sandheder); ingen automatisk KB-skrivning.
+
+**Kendt fra migreringen:** KT VVS er dublet (kunde −1 ↔ lead 18 "KT VVS ApS"), fordi `ApS` ikke blev normaliseret. Det løses med værktøjet "Flet virksomheder" i fase 2, som også dækker de 85 email-dubletgrupper.
