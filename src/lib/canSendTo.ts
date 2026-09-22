@@ -17,6 +17,7 @@ export type BlockReason =
   | "replied"
   | "unsubscribed"
   | "duplicate"
+  | "shared-email"
   | "skip";
 
 export interface SendCandidate {
@@ -34,7 +35,31 @@ export interface SendDecision {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function canSendTo(lead: SendCandidate, opts: { seenEmails?: Set<string> } = {}): SendDecision {
+// En adresse der står på 3+ forskellige virksomheder er næsten altid en platform,
+// et bureau eller en tilfældig person — ikke forretningen (22/9: 25 kold-mails var
+// gået til info@grouponline.dk, 12 til én privat gmail). Aldrig mail dem.
+export const SHARED_EMAIL_MIN = 3;
+
+/** Adresser der optræder på mindst SHARED_EMAIL_MIN leads med forskellige navne. */
+export function sharedEmailSet(leads: Array<{ name: string; email?: string }>): Set<string> {
+  const names = new Map<string, Set<string>>();
+  for (const l of leads) {
+    const e = (l.email || "").trim().toLowerCase();
+    if (!e.includes("@")) continue;
+    const set = names.get(e) ?? new Set<string>();
+    set.add(l.name.trim().toLowerCase());
+    names.set(e, set);
+  }
+  return new Set([...names].filter(([, n]) => n.size >= SHARED_EMAIL_MIN).map(([e]) => e));
+}
+
+// Pladsholder-adresser fra scrapet (demo-skabeloner, "user@domain.com" osv.).
+const PLACEHOLDER_EMAIL = /@(domain\.com|example\.(com|org|dk)|demolink\.org|email\.com)$/;
+
+export function canSendTo(
+  lead: SendCandidate,
+  opts: { seenEmails?: Set<string>; sharedEmails?: Set<string> } = {},
+): SendDecision {
   if (isBlacklisted(lead.name)) return { ok: false, reason: "hostile" };
   // Normalize lead status: Sheets values arrive with stray whitespace/casing
   // ("Skip", "skip "), so trim+lowercase before the equality gate — otherwise a
@@ -49,6 +74,8 @@ export function canSendTo(lead: SendCandidate, opts: { seenEmails?: Set<string> 
   const email = (lead.email || "").trim().toLowerCase();
   if (!email) return { ok: false, reason: "no-email" };
   if (!EMAIL_RE.test(email)) return { ok: false, reason: "bad-email" };
+  if (PLACEHOLDER_EMAIL.test(email)) return { ok: false, reason: "bad-email" };
+  if (opts.sharedEmails?.has(email)) return { ok: false, reason: "shared-email" };
 
   // Same normalization for emailStatus — a "bounced "/"Replied"/"unsubscribed "
   // value from the sheet must still block. Untrimmed it would re-mail a replier

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { store } from "@/lib/store";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
-import { canSendTo } from "@/lib/canSendTo";
+import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
@@ -117,9 +117,11 @@ export async function GET(req: Request) {
   }
 
   let leads: Awaited<ReturnType<typeof getLeads>> = [];
+  let sharedEmails = new Set<string>();
   let sheetsOk = true;
   try {
     leads = await getLeads();
+    sharedEmails = sharedEmailSet(leads);
   } catch {
     sheetsOk = false;
     leads = [];
@@ -161,7 +163,7 @@ export async function GET(req: Request) {
       email: target,
       emailStatus: lead?.emailStatus,
       status: lead?.status,
-    });
+    }, { sharedEmails });
     if (!decision.ok) {
       skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" });
       continue;
@@ -263,8 +265,10 @@ export async function POST(req: Request) {
   }
 
   let leads: Awaited<ReturnType<typeof getLeads>> = [];
+  let sharedEmails = new Set<string>();
   try {
     leads = await getLeads();
+    sharedEmails = sharedEmailSet(leads);
   } catch (err) {
     // No Sheets ≠ fatal: ingest drafts carry recipientEmail and don't need a row.
     // Only fatal if a draft has neither a row nor a recipientEmail (handled per-draft).
@@ -355,7 +359,7 @@ export async function POST(req: Request) {
             email: target,
             emailStatus: lead?.emailStatus,
             status: lead?.status,
-          });
+          }, { sharedEmails });
           if (!decision.ok) {
             skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: decision.reason ?? "blokeret" });
