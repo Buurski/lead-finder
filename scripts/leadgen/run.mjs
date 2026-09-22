@@ -462,4 +462,6 @@ const phases = { plan: phasePlan, source: phaseSource, rate: phaseRate, finalize
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!phases[PHASE]) { console.error("unknown phase", PHASE); process.exit(1); }
   await phases[PHASE]();
+  // Postgres-poolen (DATA_BACKEND=pg) holder ellers processen i live, og vps-run.sh hænger.
+  process.exit(0);
 }
