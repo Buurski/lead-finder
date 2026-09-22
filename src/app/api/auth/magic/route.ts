@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { issueLoginToken, userForEmail } from "@/lib/auth/magic";
+import { allowLoginMail, issueLoginToken, magicEnabled, userForEmail } from "@/lib/auth/magic";
 import { clientIp, rateLimitCheck } from "@/lib/auth/rate-limit";
 import { formatFrom, getTransporter } from "@/lib/senders";
 
@@ -9,6 +9,10 @@ export const runtime = "nodejs";
 // Svarer ALTID det samme, så man ikke kan teste hvilke mails der er brugere.
 export async function POST(req: Request) {
   const back = (q: string) => NextResponse.redirect(new URL(`/login?${q}`, req.url), 303);
+
+  if (!magicEnabled()) return back("fejl=1");
+  // Kun fra vores egen login-side — ikke formular-POST'er fra fremmede sites.
+  if (req.headers.get("sec-fetch-site") === "cross-site") return back("fejl=1");
 
   const rl = await rateLimitCheck(clientIp(req), "magic");
   if (!rl.allowed) return back("fejl=for-mange");
@@ -25,6 +29,7 @@ export async function POST(req: Request) {
   }
   // Token + mail efter svaret, så svartiden ikke afslører om mailen er kendt.
   if (user) after(async () => {
+    if (!(await allowLoginMail(user))) return;
     const token = await issueLoginToken(user);
     const link = `${base}/login?t=${encodeURIComponent(token)}`;
     try {

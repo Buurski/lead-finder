@@ -1,6 +1,6 @@
 import "server-only";
 import { store } from "../store.ts";
-import { getSenderCreds, type SenderId } from "../senders.ts";
+import type { SenderId } from "../senders.ts";
 
 // Magic-link-login for Lucas og Charlie. Kun SHA-256 af tokenet gemmes;
 // tokenet selv findes kun i mailen. 15 min levetid, engangs.
@@ -14,19 +14,30 @@ export interface AppUser {
   email: string;
 }
 
-/** Brugere fra CC_USERS="lucas:a@x.dk,charlie:b@y.dk", ellers afsender-kontoernes adresser. */
+/** Brugere fra CC_USERS="lucas:a@x.dk,charlie:b@y.dk". Intet fallback — uden env ingen login-links. */
 export function appUsers(): AppUser[] {
-  const raw = process.env.CC_USERS?.trim();
-  if (raw) {
-    return raw
-      .split(",")
-      .map((p) => p.trim().split(":"))
-      .filter(([id, email]) => (id === "lucas" || id === "charlie") && email?.includes("@"))
-      .map(([id, email]) => ({ id: id as SenderId, email: email.trim().toLowerCase() }));
-  }
-  return (["lucas", "charlie"] as const)
-    .map((id) => ({ id, email: getSenderCreds(id)?.email?.toLowerCase() ?? "" }))
-    .filter((u) => u.email.includes("@"));
+  const raw = process.env.CC_USERS?.trim() ?? "";
+  return raw
+    .split(",")
+    .map((p) => p.trim().split(":"))
+    .filter(([id, email]) => (id === "lucas" || id === "charlie") && email?.includes("@"))
+    .map(([id, email]) => ({ id: id as SenderId, email: email.trim().toLowerCase() }));
+}
+
+/** Magic-link er kun slået til med CC_MAGIC=1 (ruterne svarer ellers som ved fejl). */
+export const magicEnabled = () => process.env.CC_MAGIC === "1";
+
+// Max 3 login-mails pr. bruger pr. 15 min — ellers kan fremmede spamme
+// outreach-kontoen (samme SMTP-konto) med login-mails fra skiftende IP'er.
+const MAX_PER_WINDOW = 3;
+export async function allowLoginMail(user: AppUser, now = Date.now()): Promise<boolean> {
+  const key = `login-rate/${user.id}`;
+  const rec = await store.get<{ start: number; count: number }>(key);
+  const fresh = !rec || now - rec.start > TOKEN_TTL_MS;
+  const next = fresh ? { start: now, count: 1 } : { start: rec.start, count: rec.count + 1 };
+  if (next.count > MAX_PER_WINDOW) return false;
+  await store.put(key, next);
+  return true;
 }
 
 export function userForEmail(email: string): AppUser | null {
@@ -44,9 +55,16 @@ function randomToken(): string {
   return Buffer.from(bytes).toString("base64url");
 }
 
+// Kun det nyeste token pr. bruger er gyldigt: det forrige slettes ved udstedelse,
+// så lageret aldrig vokser ud over ét token pr. bruger.
 export async function issueLoginToken(user: AppUser, now = Date.now()): Promise<string> {
   const token = randomToken();
-  await store.put(KEY(await sha256Hex(token)), { userId: user.id, exp: now + TOKEN_TTL_MS });
+  const hash = await sha256Hex(token);
+  const latestKey = `login-latest/${user.id}`;
+  const prev = await store.get<string>(latestKey);
+  if (prev) await store.delete(KEY(prev));
+  await store.put(KEY(hash), { userId: user.id, exp: now + TOKEN_TTL_MS });
+  await store.put(latestKey, hash);
   return token;
 }
 
