@@ -211,19 +211,38 @@ class KVStore implements Store {
     // SCAN cursor loop — never KEYS (KEYS blocks the Redis event loop in
     // production; flagged by the QA council). Pages through with a cursor.
     const kv = await this.kv();
-    const out: string[] = [];
-    let cursor = 0;
-    do {
-      const [next, batch] = (await kv.scan(cursor, { match: `doc:${prefix}*`, count: 200 })) as [number, string[]];
-      for (const k of batch) out.push(k.replace(/^doc:/, ""));
-      cursor = Number(next);
-    } while (cursor !== 0);
-    return out;
+    const keys = await scanAll((cursor, opts) => kv.scan(cursor, opts), `doc:${prefix}*`);
+    return keys.map((k) => k.replace(/^doc:/, ""));
   }
   async putAsset(): Promise<PutAssetResult> { throw new Error("KVStore does not serve assets — use ComposedStore"); }
   async getAssetUrl() { return null; }
   async deleteAsset() { /* n/a */ }
   async listAssets(): Promise<string[]> { throw new Error("KVStore does not serve assets — use ComposedStore"); }
+}
+
+// Følg ALLE SCAN-sider til ende. Upstash' cursor er en u64-STRENG: blev den
+// sendt gennem Number() runder værdier over 2^53 (fx 18017315560044062113 →
+// 18017315560044062000), den runde værdi er en ugyldig cursor, og næste kald
+// svarede 0/ingen nøgler — så løkken stoppede efter FØRSTE side (max 200
+// nøgler læst). Alt efter nr. 200 blev dermed lydløst usynligt for
+// loadShadow/loadDraftShadow m.fl., og de samme 18 kladder blev dømt igen ved
+// hver Jev-kørsel (2026-09-22). Cursoren SKAL videreføres urørt; kun
+// nul-tjekket må konvertere.
+export type ScanPage = [number | string, string[]];
+
+export async function scanAll(
+  scan: (cursor: number | string, opts: { match: string; count: number }) => Promise<unknown>,
+  match: string,
+  count = 200,
+): Promise<string[]> {
+  const out: string[] = [];
+  let cursor: number | string = 0;
+  for (;;) {
+    const [next, batch] = (await scan(cursor, { match, count })) as ScanPage;
+    for (const k of batch ?? []) out.push(k);
+    if (Number(next) === 0) return out;
+    cursor = next;
+  }
 }
 
 // Vercel Blob driver (assets only). Lazy import.

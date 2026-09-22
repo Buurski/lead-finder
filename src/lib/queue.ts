@@ -62,7 +62,7 @@ export interface QueueDraft {
     reason: string;
     lastContactAt?: string | null;
     daysSince?: number | null;
-    replied?: "ja" | "nej" | "aldrig";
+    replied?: "ja" | "nej" | "aldrig" | "ukendt";
     warmth?: "varm" | "lun" | "kold" | "død";
   };
 }

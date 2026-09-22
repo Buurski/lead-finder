@@ -41,7 +41,7 @@ export async function GET() {
   let historyOk = false;
   let index: ReturnType<typeof buildContactIndex> | null = null;
   try {
-    index = buildContactIndex(await getLeadsCached());
+    index = buildContactIndex(await getLeadsCached(), new Date(), drafts);
     historyOk = true;
   } catch {
     // Sheets nede — badge degraderet, køen leveres alligevel.
@@ -207,8 +207,8 @@ export async function POST(req: Request) {
   // 14-dages engine-blok så motoren ikke re-drafter dem i morgen.
   // Fresh Sheets-read (ikke 60s-cachen): oprydning må aldrig køre på stale data.
   if (action === "reject-seen") {
-    const index = buildContactIndex(await getLeads());
     const drafts = await readQueue();
+    const index = buildContactIndex(await getLeads(), new Date(), drafts);
     const now = new Date().toISOString();
     const rejected: string[] = [];
     for (const d of drafts) {

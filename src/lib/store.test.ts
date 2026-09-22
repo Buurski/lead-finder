@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { store } from "./store.ts";
+import { store, scanAll } from "./store.ts";
 
 test("FSStore.list finds nested and flat keys", async () => {
   const nestedKey = "invoice/test-0001";
@@ -34,4 +34,24 @@ test("FSStore.list finds nested and flat keys", async () => {
       /* not empty or missing — fine */
     }
   }
+});
+
+test("scanAll følger hele SCAN-pagineringen, også med u64-cursor som streng", async () => {
+  // Regression (2026-09-22): `cursor = Number(next)` rundede cursoren
+  // ("18017315560044062113" → 18017315560044062000 ≈ ugyldig), så næste kald
+  // gav 0 nøgler og ALT efter første side (200) blev droppet lydløst. Fake-
+  // scan'en her fejler, hvis cursoren ikke sendes videre UÆNDRET.
+  const BIG = "18017315560044062113";
+  const page1 = Array.from({ length: 200 }, (_, i) => `doc:jev-draft/a${i}`);
+  const page2 = Array.from({ length: 18 }, (_, i) => `doc:jev-draft/b${i}`);
+  const calls: (number | string)[] = [];
+  const fakeScan = async (cursor: number | string) => {
+    calls.push(cursor);
+    if (calls.length === 1) return [BIG, page1];
+    assert.equal(cursor, BIG, `cursor skal videresendes urørt, fik ${JSON.stringify(cursor)}`);
+    return ["0", page2];
+  };
+  const keys = await scanAll(fakeScan, "doc:jev-draft/*");
+  assert.equal(keys.length, 218, "alle nøgler fra begge sider skal med");
+  assert.deepEqual(calls, [0, BIG]);
 });

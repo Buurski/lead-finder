@@ -390,7 +390,8 @@ export default function ApprovePage() {
       const d = await res.json().catch(() => ({}));
       setJevRunMsg(
         res.ok && d.ok
-          ? `${d.leads?.judged ?? 0} leads · ${d.drafts?.judged ?? 0} kladder vurderet.`
+          ? `${d.leads?.judged ?? 0} leads · ${d.drafts?.judged ?? 0} kladder vurderet` +
+            (d.drafts?.remaining ? ` · ${d.drafts.remaining} mangler` : " · alle kladder i køen er vurderet")
           : (d.error ?? "Kunne ikke vurdere.")
       );
       await load();
@@ -732,6 +733,35 @@ Koster ca. ${pris}. ` +
     }
   }, [gradeCPending, load]);
 
+  // Afvis ALLE "Set før"-kladder i ét klik (Lucas 2026-09-22: "så jeg kan slette
+  // alle fra set før ... og sørger for de ikke kommer tilbage"). Bruger den
+  // eksisterende reject-seen-action: afviser alle afventende kladder hvor
+  // forretningen allerede er kontaktet før (Sheets ELLER køens egne sendte).
+  // Rejected = reversibelt: kladden blokkeres 14 dage i motoren, og forretningen
+  // er spærret for re-ingest så længe den står som kontaktet. Intet sendes.
+  const [seenBusy, setSeenBusy] = useState(false);
+  const [seenMsg, setSeenMsg] = useState("");
+  const rejectSeenAll = useCallback(async () => {
+    if (seenBusy || counts.seen === 0) return;
+    if (!window.confirm(`Afvis alle ${counts.seen} kladder under "Set før"?\n\nDet er kladder hvor forretningen allerede er kontaktet før (i arket eller fra køen). De ryger ud af køen og kommer ikke tilbage. Intet sendes.`)) return;
+    setSeenBusy(true);
+    setSeenMsg("Afviser…");
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject-seen" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setSeenMsg(res.ok ? `${d.rejected ?? 0} kladder afvist — de er ude af køen.` : (d.error ?? "Kunne ikke afvise."));
+      await load();
+    } catch {
+      setSeenMsg("Netværksfejl — intet blev ændret.");
+    } finally {
+      setSeenBusy(false);
+    }
+  }, [seenBusy, counts.seen, load]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Header
@@ -789,6 +819,21 @@ Koster ca. ${pris}. ` +
           </button>
           {socialMsg && !socialBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{socialMsg}</span>}
         </div>
+
+        {filter === "seen" && counts.seen > 0 && (
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={rejectSeenAll}
+              disabled={seenBusy}
+              title="Afvis alle kladder hvor forretningen allerede er kontaktet før — de er ude af køen og kommer ikke tilbage"
+              style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: seenBusy ? 0.6 : 1 }}
+            >
+              {seenBusy ? "Afviser…" : `Afvis alle ${counts.seen} fra "Set før"`}
+            </button>
+            {seenMsg && !seenBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{seenMsg}</span>}
+          </div>
+        )}
 
         {filter === "pending" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
