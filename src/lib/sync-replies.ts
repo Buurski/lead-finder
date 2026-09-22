@@ -1,3 +1,4 @@
+import { leadRowIndex } from "./lead-row.ts";
 // sync-replies.ts — shared inbound-reply sync (Del 4.x).
 //
 // Scans the Gmail INBOX over IMAP and marks any lead who has written to us as
@@ -164,7 +165,7 @@ async function scanSentOneAccount(
 export async function syncSentFolders(lookbackDays = FALLBACK_DAYS): Promise<SyncSentResult> {
   const leads = await getLeads();
   const candidates = leads
-    .map((lead, rowIndex) => ({ lead, rowIndex, name: lead.name }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead), name: lead.name }))
     .filter(({ lead }) => lead.email && lead.email.includes("@"));
   if (candidates.length === 0) return { stamped: 0, checked: 0, names: [] };
 
@@ -219,7 +220,7 @@ export async function syncSentFolders(lookbackDays = FALLBACK_DAYS): Promise<Syn
 export async function syncReplies(): Promise<SyncRepliesResult> {
   const leads = await getLeads();
   const candidates = leads
-    .map((lead, rowIndex) => ({ lead, rowIndex, name: lead.name }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead), name: lead.name }))
     .filter(({ lead }) => lead.email && lead.emailStatus !== "replied");
   if (candidates.length === 0) return { synced: 0, checked: 0, names: [] };
 

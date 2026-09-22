@@ -1,3 +1,4 @@
+import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { getLeads, updateLeadWebsiteStatus } from "@/lib/sheets";
 import { verifyWebsite } from "@/lib/website-verify";
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
     const { checked, recovered, stillDead } = await withCronLog("pre-cleanup", async () => {
       const leads = await getLeads();
       const candidates = leads
-        .map((lead, rowIndex) => ({ lead, rowIndex }))
+        .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
         .filter(({ lead }) => lead.website && (lead.websiteStatus === "dead" || lead.websiteQualityTier === "dead"));
 
       const recoveredOut: RecoveredLead[] = [];

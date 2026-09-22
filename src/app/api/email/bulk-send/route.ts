@@ -1,3 +1,4 @@
+import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { getLeads, getPauseStatus, updateLeadSkipReason, logSkipReason, enqueueSend, updateLeadEmailStatus } from "@/lib/sheets";
 import { buildLeadEmail, NoMatchingTemplateError } from "@/lib/email";
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   const leads = await getLeads();
   const eligible = leads
-    .map((lead, i) => ({ lead, rowIndex: i }))
+    .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
     .filter(({ lead }) => isEligibleForCold(lead))
     .sort((a, b) => b.lead.score - a.lead.score);
   const targets = limit > 0 ? eligible.slice(0, limit) : eligible;
