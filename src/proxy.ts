@@ -22,8 +22,10 @@ import { personFromSessionUser } from "@/lib/auth/magic-session";
 //  - Per-IP rate limit via Vercel KV REST API (5 attempts / 60s → 1h block).
 //  - Structured logging of failed attempts (no credential bytes).
 //
-// Auth is OPT-IN: if VERCEL_BASIC_AUTH_USER/PASS/AUTH_SESSION_SECRET are not all
-// set, everything passes through (local dev, preview, this build).
+// Auth er OPT-IN LOKALT: mangler VERCEL_BASIC_AUTH_USER/PASS/AUTH_SESSION_SECRET,
+// går alt igennem (lokal dev, tests). På Vercel (preview + production) fejler den
+// i stedet LUKKET — 22/9 viste preview-deploys at stå åbne for alle med URL'en,
+// fordi USER kun var sat i Production-env, mens KV/Sheets-nøglerne også lå i Preview.
 
 export const config = {
   // Run on everything except Next internals, the health check, and static files.
@@ -174,6 +176,11 @@ export async function proxy(req: NextRequest): Promise<Response> {
       path: "/",
     });
     return res;
+  }
+
+  if (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview") {
+    console.error(JSON.stringify({ evt: "auth.not_configured", env: process.env.VERCEL_ENV }));
+    return new NextResponse("Adgang er ikke konfigureret på dette deploy.", { status: 503 });
   }
 
   // /welcome-first-run-redirectet blev fjernet i Bundle G (2026-07-03) sammen
