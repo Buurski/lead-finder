@@ -60,3 +60,5 @@ demos/
 
 # leadgen fase-filer (scripts/leadgen/run.mjs)
 .leadgen-work/
+.claude/launch.json
+.env.pg

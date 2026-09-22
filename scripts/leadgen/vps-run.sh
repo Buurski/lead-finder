@@ -11,6 +11,9 @@ CREDS=/root/.hermes/credentials.env
 [ -f "$CREDS" ] || { echo "FEJL: $CREDS findes ikke — ingen credentials." >&2; exit 1; }
 # shellcheck disable=SC1090
 set -a; source "$CREDS"; set +a
+# Postgres-backend (CRM HQ fase 1): egen fil, så Hermes' credentials.env aldrig røres.
+PGENV=/root/lead-system/.env.pg
+if [ -f "$PGENV" ]; then set -a; source "$PGENV"; set +a; fi
 # store.ts importerer "server-only" — uden react-server-condition kaster pakken ved
 # plain node (apply fejlede 2026-09-02 på VPS). Samme condition som npm test bruger.
 export NODE_OPTIONS="--conditions=react-server"
