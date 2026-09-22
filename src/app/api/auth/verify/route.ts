@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { redeemLoginToken } from "@/lib/auth/magic";
+import { sessionUserFor } from "@/lib/auth/magic-session";
 import { issueSession, SESSION_COOKIE, SESSION_TTL_S } from "@/lib/cc-auth";
 
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   if (!secret || !user) return NextResponse.redirect(new URL("/login?fejl=1", req.url), 303);
 
   const res = NextResponse.redirect(new URL("/", req.url), 303);
-  res.cookies.set(SESSION_COOKIE, await issueSession(user, secret), {
+  res.cookies.set(SESSION_COOKIE, await issueSession(sessionUserFor(user), secret), {
     httpOnly: true,
     secure: true,
     sameSite: "lax",

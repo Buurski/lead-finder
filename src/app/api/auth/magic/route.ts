@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { issueLoginToken, userForEmail } from "@/lib/auth/magic";
 import { clientIp, rateLimitCheck } from "@/lib/auth/rate-limit";
 import { formatFrom, getTransporter } from "@/lib/senders";
@@ -16,9 +16,16 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const email = String(form?.get("email") ?? "").slice(0, 200);
   const user = userForEmail(email);
-  if (user) {
+  // Linket bygges KUN af den konfigurerede APP_URL — aldrig af request-host
+  // (en forfalsket Host kunne ellers sende tokenet til en fremmed side).
+  const base = process.env.APP_URL?.replace(/\/+$/, "") ?? "";
+  if (!/^https:\/\/[^/]+$/.test(base)) {
+    console.error(JSON.stringify({ evt: "auth.magic.no_app_url" }));
+    return back("sendt=1");
+  }
+  // Token + mail efter svaret, så svartiden ikke afslører om mailen er kendt.
+  if (user) after(async () => {
     const token = await issueLoginToken(user);
-    const base = process.env.APP_URL || new URL(req.url).origin;
     const link = `${base}/login?t=${encodeURIComponent(token)}`;
     try {
       await getTransporter("lucas").sendMail({
@@ -30,6 +37,6 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error(JSON.stringify({ evt: "auth.magic.mail_failed", error: String(err).slice(0, 200) }));
     }
-  }
+  });
   return back("sendt=1");
 }

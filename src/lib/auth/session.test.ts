@@ -23,3 +23,11 @@ test("udløbet session afvises", async () => {
   const tok = `lucas.${exp}.${await hmacHex(SECRET, `lucas.${exp}`)}`;
   assert.equal(await verifySession(tok, SECRET), null);
 });
+
+test("gammel delt cookie kan aldrig blive en person", async () => {
+  const { personFromSessionUser, sessionUserFor } = await import("./magic-session.ts");
+  assert.equal(personFromSessionUser(sessionUserFor("charlie")), "charlie");
+  assert.equal(personFromSessionUser("lucas"), null); // Basic-brugernavn "lucas"
+  assert.equal(personFromSessionUser("delt"), null);
+  assert.equal(personFromSessionUser(null), null);
+});

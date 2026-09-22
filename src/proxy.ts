@@ -9,6 +9,7 @@ import {
   verifySession,
 } from "@/lib/cc-auth";
 import { RL_BLOCK_S, clientIp, rateLimitCheck } from "@/lib/auth/rate-limit";
+import { personFromSessionUser } from "@/lib/auth/magic-session";
 
 // Proxy (Next 16's renamed middleware) — shared-password access for Lucas +
 // Charlie (one code, same access).
@@ -111,8 +112,8 @@ export async function proxy(req: NextRequest): Promise<Response> {
 
   if (USER && PASS && SECRET) {
     let authed = false;
-    // Hvem sessionen tilhører: "lucas"/"charlie" (magic link) eller "delt"
-    // (fælles Basic-login — aldrig Basic-brugernavnet, det kunne hedde "lucas").
+    // Sessionens bruger som den står i cookien: "m:lucas"/"m:charlie" (magic link)
+    // eller "delt" (fælles Basic-login). Headeren får kun personen, se personFromSessionUser.
     let sessionUser = "delt";
 
     // 1. Fast path: valid session cookie.
@@ -120,7 +121,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     const cookieUser = sessTok ? await verifySession(sessTok, SECRET) : null;
     if (cookieUser) {
       authed = true;
-      sessionUser = cookieUser === "lucas" || cookieUser === "charlie" ? cookieUser : "delt";
+      sessionUser = personFromSessionUser(cookieUser) ? cookieUser : "delt";
     } else {
       // 2. Verify Basic auth.
       const header = req.headers.get("authorization") || "";
@@ -160,7 +161,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     // Basic Auth session and route-level auth in the same chain.
     const requestHeaders = new Headers(sanitized);
     requestHeaders.set(CC_AUTH_HEADER, await ccAuthMarker(SECRET));
-    requestHeaders.set(CC_USER_HEADER, sessionUser);
+    requestHeaders.set(CC_USER_HEADER, personFromSessionUser(sessionUser) ?? "delt");
 
     // Mint/refresh session cookie on success.
     const fresh = await issueSession(sessionUser, SECRET);

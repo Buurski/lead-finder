@@ -6,6 +6,7 @@ import { getSenderCreds, type SenderId } from "../senders.ts";
 // tokenet selv findes kun i mailen. 15 min levetid, engangs.
 
 export const TOKEN_TTL_MS = 15 * 60 * 1000;
+
 const KEY = (hash: string) => `login-token/${hash}`;
 
 export interface AppUser {
