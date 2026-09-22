@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinly HQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDEDEA;
+    --surface:#FFFFFF;
+    --surface-2:#F5F5F2;
+    --line:#E4E4DF;
+    --ink:#191713;
+    --mid:#55504A;
+    --faded:#8A847B;
+    --lime:#C8F04B;
+    --success:#4C9A6F;
+    --risk:#E0533D;
+    --warn:#F2A93B;
+    --warn-soft:#FBEFD9;
+    --dark:#16130F;
+    --r-card:24px;
+    --r-inner:16px;
+    --r-pill:999px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    font-feature-settings:'tnum' 1;
+  }
+  .mono{
+    font-family:'JetBrains Mono', monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .tnum{ font-variant-numeric:tabular-nums; }
+
+  svg.icon{ width:20px; height:20px; stroke:currentColor; stroke-width:1.75; fill:none; stroke-linecap:round; stroke-linejoin:round; display:block; }
+
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:pointer; }
+
+  /* ---------- Layout shell ---------- */
+  .app{ display:flex; min-height:100vh; align-items:stretch; }
+
+  /* ---------- Left rail ---------- */
+  .rail{
+    width:88px;
+    flex:0 0 88px;
+    background:var(--dark);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 0 20px;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .rail .mark{ width:30px; height:30px; margin-bottom:28px; flex-shrink:0; }
+  .rail .mark img{ width:100%; height:100%; display:block; }
+  .rail nav{ display:flex; flex-direction:column; gap:6px; flex:1; }
+  .rail .nav-item{
+    position:relative;
+    width:48px; height:48px;
+    border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    color:#8B8578;
+    transition:background .15s ease, color .15s ease;
+  }
+  .rail .nav-item.active{ background:var(--lime); color:var(--ink); }
+  .rail .nav-item .badge{
+    position:absolute; top:2px; right:2px;
+    min-width:16px; height:16px; padding:0 4px;
+    border-radius:999px;
+    background:var(--risk); color:#fff;
+    font-size:10px; font-weight:700; line-height:16px; text-align:center;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .rail .spacer{ flex:1; }
+  .rail .avatar{
+    width:40px; height:40px; border-radius:999px;
+    background:#2A251E; color:var(--lime);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:13px;
+    border:1px solid #33291F;
+  }
+
+  /* ---------- Bottom bar (mobile only) ---------- */
+  .bottom-bar{ display:none; }
+
+  /* ---------- Main ---------- */
+  main{
+    flex:1;
+    min-width:0;
+    padding:40px 48px 64px;
+    max-width:1360px;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    margin-bottom:32px;
+    flex-wrap:wrap;
+  }
+  .topbar .greet h1{
+    font-size:28px; font-weight:700; margin:0 0 6px;
+    letter-spacing:-0.02em;
+  }
+  .topbar .greet .date{
+    color:var(--faded);
+    font-size:12px;
+    letter-spacing:0.06em;
+  }
+  .topbar .right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+  .pill-tabs{
+    display:flex; align-items:center; gap:2px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--r-pill);
+    padding:3px;
+  }
+  .pill-tabs button{
+    border:none; background:transparent;
+    padding:9px 16px;
+    border-radius:var(--r-pill);
+    font-size:13px; font-weight:600;
+    color:var(--mid);
+  }
+  .pill-tabs button.active{ background:var(--ink); color:#fff; }
+
+  .search-pill{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r-pill);
+    padding:9px 10px 9px 16px;
+    min-width:220px;
+    color:var(--faded);
+  }
+  .search-pill span.txt{ font-size:13px; flex:1; }
+  .search-pill .kbd{
+    background:var(--lime); color:var(--ink);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; font-weight:700;
+    padding:3px 7px; border-radius:999px;
+  }
+
+  .icon-btn{
+    position:relative;
+    width:40px; height:40px;
+    border-radius:999px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--mid);
+  }
+  .icon-btn .dot{
+    position:absolute; top:9px; right:10px;
+    width:6px; height:6px; border-radius:999px; background:var(--risk);
+  }
+
+  .btn-new{
+    display:flex; align-items:center; gap:6px;
+    background:var(--ink); color:#fff;
+    border:none; border-radius:999px;
+    padding:11px 20px 11px 16px;
+    font-size:13px; font-weight:700;
+  }
+  .btn-new svg{ width:16px; height:16px; }
+
+  /* ---------- Section titles ---------- */
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--faded); margin:0 0 12px 4px;
+  }
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .kpi-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r-card);
+    padding:22px 24px;
+    display:flex; flex-direction:column; gap:14px;
+    min-height:128px;
+  }
+  .kpi-card.hero{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+  .kpi-card .label{ font-size:13px; font-weight:600; color:var(--mid); }
+  .kpi-card.hero .label{ color:#B9B4AA; }
+  .kpi-card .num{ font-size:44px; font-weight:700; line-height:1; letter-spacing:-0.02em; }
+  .kpi-card .sub{ font-size:12px; color:var(--faded); display:flex; align-items:center; gap:6px; }
+  .kpi-card.hero .sub{ color:#8F8A7E; }
+  .kpi-card .sub .chip{
+    width:6px; height:6px; border-radius:999px; background:var(--lime); flex-shrink:0;
+  }
+
+  /* ---------- Pipeline strip ---------- */
+  .pipeline-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r-card);
+    padding:24px;
+    margin-bottom:16px;
+  }
+  .pipeline-head{
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .pipeline-head h2{ font-size:16px; font-weight:700; margin:0; }
+  .pipeline-head .meta{ display:flex; align-items:center; gap:20px; }
+  .pipeline-head .avg{ font-size:13px; color:var(--mid); }
+  .pipeline-head .avg b{ color:var(--ink); font-weight:700; }
+  .pipeline-head .open-link{
+    display:flex; align-items:center; gap:2px;
+    font-size:13px; font-weight:700; color:var(--ink);
+  }
+  .pipeline-head .open-link svg{ width:16px; height:16px; }
+
+  .seg-bar{ display:flex; gap:4px; height:40px; margin-bottom:14px; }
+  .seg-bar .seg{ border-radius:10px; background:var(--surface-2); }
+  .seg-bar .seg.on{ background:var(--lime); }
+
+  .seg-labels{ display:flex; gap:4px; }
+  .seg-labels .seg-label{ display:flex; flex-direction:column; gap:2px; }
+  .seg-labels .seg-label .n{ font-size:20px; font-weight:700; letter-spacing:-0.01em; }
+  .seg-labels .seg-label .t{ font-size:12px; color:var(--faded); font-weight:600; }
+
+  /* widths matched between bar + labels */
+  .w-ny{ flex:30; } .w-kontaktet{ flex:23; } .w-svaret{ flex:17; } .w-interesseret{ flex:12; } .w-kunde{ flex:18; }
+
+  /* ---------- Columns ---------- */
+  .columns{
+    display:grid;
+    grid-template-columns:1.62fr 1fr;
+    gap:16px;
+    align-items:start;
+    margin-bottom:16px;
+  }
+
+  /* Next steps table */
+  .table-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r-card);
+    overflow:hidden;
+  }
+  .table-card .table-head{
+    display:grid;
+    grid-template-columns: 1.5fr 1.7fr 0.45fr 0.85fr;
+    gap:12px;
+    padding:16px 24px;
+    font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--faded);
+    border-bottom:1px solid var(--line);
+  }
+  .table-card .row{
+    display:grid;
+    grid-template-columns: 1.5fr 1.7fr 0.45fr 0.85fr;
+    gap:12px;
+    align-items:center;
+    padding:16px 24px;
+    border-top:1px solid var(--line);
+  }
+  .table-card .row:first-of-type{ border-top:none; }
+  .row .company{ font-size:14px; font-weight:700; }
+  .row .deal{ font-size:12.5px; color:var(--faded); margin-top:2px; }
+  .row .next-step{ font-size:13.5px; color:var(--mid); }
+  .row .owner{
+    width:28px; height:28px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700;
+  }
+  .row .owner.owner-l{ background:var(--lime); color:var(--ink); }
+  .row .owner.owner-c{ background:var(--ink); color:var(--lime); }
+  .row .due-wrap{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .row .due-date{ font-size:12px; color:var(--faded); }
+  .status-pill{
+    font-size:11px; font-weight:700; letter-spacing:0.02em;
+    padding:4px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .status-pill.risk{ background:var(--risk); color:#fff; }
+  .status-pill.warn{ background:var(--warn-soft); color:#9A6417; }
+  .status-pill.faded{ background:var(--surface-2); color:var(--faded); }
+
+  /* Right stack */
+  .right-stack{ display:flex; flex-direction:column; gap:16px; }
+
+  .agent-card{
+    background:var(--dark); color:#EDEDEA;
+    border-radius:var(--r-card);
+    padding:24px;
+  }
+  .agent-card .agent-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
+  }
+  .agent-card .agent-head .who{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#C9C4B8; }
+  .agent-card .agent-head .who .dotmark{ width:16px; height:16px; color:var(--lime); }
+  .agent-card .agent-head .ago{ font-size:11px; color:#7C7669; }
+  .agent-card h3{ font-size:17px; font-weight:700; margin:6px 0 16px; line-height:1.35; }
+  .agent-card .job-list{ display:flex; flex-direction:column; gap:9px; margin-bottom:18px; }
+  .agent-card .job{ display:flex; align-items:center; gap:10px; font-size:13px; color:#D9D5CB; }
+  .agent-card .job .dot{ width:7px; height:7px; border-radius:999px; flex-shrink:0; }
+  .agent-card .job .dot.ok{ background:var(--lime); }
+  .agent-card .job .dot.bad{ background:var(--risk); }
+  .agent-card .btn-lime{
+    background:var(--lime); color:var(--ink);
+    border:none; border-radius:999px;
+    padding:10px 18px; font-size:13px; font-weight:700;
+    display:inline-block;
+  }
+  .agent-card .claude-line{
+    margin-top:16px; padding-top:14px; border-top:1px solid #2B2620;
+    font-size:12.5px; color:#A19C8F; display:flex; align-items:center; gap:8px;
+  }
+  .agent-card .claude-line b{ color:#D9D5CB; font-weight:700; }
+  .agent-card .claude-line .dot{ width:7px; height:7px; border-radius:999px; background:var(--lime); flex-shrink:0; }
+
+  .team-card{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--r-card); padding:24px;
+  }
+  .team-card h3{ font-size:14px; font-weight:700; margin:0 0 16px; }
+  .team-row{ display:flex; align-items:center; gap:12px; padding:10px 0; }
+  .team-row + .team-row{ border-top:1px solid var(--line); }
+  .team-row .avatar-sm{
+    width:34px; height:34px; border-radius:999px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700;
+  }
+  .team-row .avatar-sm.l{ background:var(--ink); color:var(--lime); }
+  .team-row .avatar-sm.c{ background:var(--surface-2); color:var(--ink); border:1px solid var(--line); }
+  .team-row .who{ font-size:13px; font-weight:700; }
+  .team-row .what{ font-size:12.5px; color:var(--mid); margin-top:1px; }
+  .team-row .meta{ margin-left:auto; text-align:right; }
+  .team-row .meta .state{ font-size:11px; font-weight:700; color:var(--success); }
+  .team-row .meta .time{ font-size:11px; color:var(--faded); margin-top:2px; }
+
+  .money-card{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--r-card); padding:24px;
+  }
+  .money-card .head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .money-card h3{ font-size:14px; font-weight:700; margin:0; }
+  .money-card .head a{
+    width:28px; height:28px; border-radius:999px; background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; color:var(--mid);
+  }
+  .money-card .head a svg{ width:14px; height:14px; }
+  .money-block{
+    background:var(--lime); border-radius:var(--r-inner);
+    padding:20px; margin-bottom:14px;
+  }
+  .money-block .mrr-label{ font-size:12px; font-weight:700; color:#3B4A16; opacity:0.75; }
+  .money-block .mrr-num{ font-size:32px; font-weight:800; color:var(--ink); letter-spacing:-0.02em; margin:4px 0 12px; }
+  .money-block .bar-track{ height:6px; background:rgba(25,23,19,0.18); border-radius:999px; overflow:hidden; }
+  .money-block .bar-fill{ height:100%; width:78%; background:var(--ink); border-radius:999px; }
+  .money-stats{ display:flex; flex-direction:column; gap:10px; }
+  .money-stat{ display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+  .money-stat .k{ color:var(--mid); }
+  .money-stat .v{ font-weight:700; }
+  .money-stat .v.risk{ color:var(--risk); }
+
+  /* ---------- Omverden ---------- */
+  .omverden{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+  .om-card{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--r-inner);
+    padding:18px 20px;
+    display:flex; align-items:flex-start; gap:12px;
+  }
+  .om-card .tag{
+    width:8px; height:8px; border-radius:999px; background:var(--faded);
+    margin-top:6px; flex-shrink:0;
+  }
+  .om-card p{ margin:0; font-size:13px; color:var(--mid); line-height:1.5; }
+  .om-card p b{ color:var(--ink); font-weight:700; }
+
+  /* =========================================================
+     Mobile — rail becomes bottom bar, single column layout
+     ========================================================= */
+  @media (max-width: 640px){
+    .app{ flex-direction:column; }
+    .rail{ display:none; }
+
+    main{ padding:20px 16px 92px; max-width:100%; }
+
+    .topbar{ flex-direction:column; align-items:stretch; gap:14px; margin-bottom:24px; }
+    .topbar .greet h1{ font-size:22px; }
+    .topbar .right{ flex-wrap:wrap; row-gap:10px; }
+    .search-pill{ order:1; flex-basis:100%; min-width:0; }
+    .pill-tabs{ order:2; flex:1; min-width:0; overflow-x:auto; }
+    .icon-btn{ order:3; flex-shrink:0; }
+    .btn-new{ order:4; flex-shrink:0; padding:11px; }
+    .btn-new span{ display:none; }
+
+    .kpi-row{ grid-template-columns:repeat(2, 1fr); gap:12px; }
+    .kpi-card{ padding:18px; min-height:112px; }
+    .kpi-card .num{ font-size:32px; }
+
+    .pipeline-card{ padding:18px; }
+    .seg-bar{ height:32px; }
+    .seg-labels .seg-label .n{ font-size:15px; }
+    .seg-labels .seg-label .t{ font-size:10px; }
+    .pipeline-head{ flex-direction:column; align-items:flex-start; gap:10px; }
+
+    .columns{ grid-template-columns:1fr; }
+
+    .table-card .table-head{ display:none; }
+    .table-card .row{
+      grid-template-columns:1fr;
+      gap:8px;
+      padding:16px;
+    }
+    .row .due-wrap{ align-items:flex-start; flex-direction:row; gap:10px; margin-top:4px; }
+    .row .owner{ margin-top:2px; }
+    .row-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+
+    .omverden{ grid-template-columns:1fr; }
+
+    .bottom-bar{
+      display:flex;
+      position:fixed; bottom:0; left:0; right:0;
+      background:var(--dark);
+      padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+      justify-content:space-around;
+      z-index:20;
+      border-top:1px solid #29241D;
+    }
+    .bottom-bar a{
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      color:#8B8578; font-size:10px; font-weight:600;
+      padding:4px 10px;
+    }
+    .bottom-bar a.active{ color:var(--lime); }
+    .bottom-bar a svg{ width:20px; height:20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ LEFT RAIL (desktop) ============ -->
+  <aside class="rail">
+    <div class="mark"><img src="kinly-mark.svg" alt="Kinly"></div>
+    <nav>
+      <a class="nav-item active" title="HQ">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5.5 10v8.5a1 1 0 0 0 1 1H9v-5.5h6V19.5h2.5a1 1 0 0 0 1-1V10"/></svg>
+      </a>
+      <a class="nav-item" title="Pipeline">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16l-6.2 7.2v5.3l-3.6 1.8v-7.1z"/></svg>
+      </a>
+      <a class="nav-item" title="Virksomheder">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.2"/><path d="M9 7.5h.01M14.9 7.5h.01M9 11.5h.01M14.9 11.5h.01M9 15.5h.01M14.9 15.5h.01" stroke-width="2.4"/></svg>
+      </a>
+      <a class="nav-item" title="Indbakke">
+        <span class="badge">12</span>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13l1.4-6.7A2 2 0 0 1 7.36 4.7h9.28a2 2 0 0 1 1.96 1.6L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5z"/></svg>
+      </a>
+      <a class="nav-item" title="Leadgen">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3.8"/><circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+      </a>
+      <a class="nav-item" title="Økonomi">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 6.8v10.4M9.3 9.3c0-1.1 1.1-1.7 2.7-1.7s2.7.6 2.7 1.7c0 2.2-5.4 1-5.4 3.2 0 1.1 1.1 1.7 2.7 1.7s2.7-.6 2.7-1.7"/></svg>
+      </a>
+      <a class="nav-item" title="Agenter">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 3.2l1.8 4.7L18.5 9.7l-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z"/><circle cx="18.5" cy="18" r="1.8"/></svg>
+      </a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="avatar">LB</div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="greet">
+        <h1>God morgen, Lucas</h1>
+        <div class="date mono">TIRSDAG 22. SEPTEMBER</div>
+      </div>
+      <div class="right">
+        <div class="pill-tabs">
+          <button class="active">I dag</button>
+          <button>Team</button>
+          <button>Penge</button>
+        </div>
+        <div class="search-pill">
+          <svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/></svg>
+          <span class="txt">Søg virksomheder, aftaler…</span>
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="icon-btn"><span class="dot"></span>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 4.2 1.4 5.6 1.4 5.6H5.1S6.5 13.2 6.5 9z"/><path d="M10.2 18.4a1.9 1.9 0 0 0 3.6 0"/></svg>
+        </button>
+        <button class="btn-new">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Ny</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- I dag: KPI row -->
+    <div class="section-label">I dag</div>
+    <div class="kpi-row">
+      <div class="kpi-card hero">
+        <div class="label">Godkend kladder</div>
+        <div class="num tnum">12</div>
+        <div class="sub"><span class="chip"></span>Venter i Indbakke</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Nye svar</div>
+        <div class="num tnum">3</div>
+        <div class="sub">1 interesseret</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Henvendelser fra kinly.dk</div>
+        <div class="num tnum">2</div>
+        <div class="sub">Ubehandlede</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Forfaldne næste skridt</div>
+        <div class="num tnum">4</div>
+        <div class="sub">På tværs af Lucas + Charlie</div>
+      </div>
+    </div>
+
+    <!-- Pipeline strip -->
+    <div class="pipeline-card">
+      <div class="pipeline-head">
+        <h2>Pipeline</h2>
+        <div class="meta">
+          <div class="avg">Gns. <b>9 dage</b> fra svar til aftale</div>
+          <a class="open-link">Åbn <svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+      <div class="seg-bar">
+        <div class="seg w-ny"></div>
+        <div class="seg w-kontaktet"></div>
+        <div class="seg on w-svaret"></div>
+        <div class="seg w-interesseret"></div>
+        <div class="seg w-kunde"></div>
+      </div>
+      <div class="seg-labels">
+        <div class="seg-label w-ny"><span class="n tnum">312</span><span class="t">Ny</span></div>
+        <div class="seg-label w-kontaktet"><span class="n tnum">214</span><span class="t">Kontaktet</span></div>
+        <div class="seg-label w-svaret"><span class="n tnum">38</span><span class="t">Svaret</span></div>
+        <div class="seg-label w-interesseret"><span class="n tnum">11</span><span class="t">Interesseret</span></div>
+        <div class="seg-label w-kunde"><span class="n tnum">14</span><span class="t">Kunde</span></div>
+      </div>
+    </div>
+
+    <!-- Columns -->
+    <div class="columns">
+
+      <!-- Næste skridt table -->
+      <div class="table-card">
+        <div class="table-head">
+          <div>Virksomhed</div>
+          <div>Næste skridt</div>
+          <div>Ejer</div>
+          <div style="text-align:right;">Forfald</div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">Ikast Autoservice</div><div class="deal">Nyhedsbrev</div></div>
+          </div>
+          <div class="next-step">Send udkast til godkendelse</div>
+          <div class="owner owner-l">L</div>
+          <div class="due-wrap"><span class="status-pill risk">Forfalden</span><span class="due-date mono">I DAG</span></div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">Salon Artec</div><div class="deal">Tilbud på hjemmeside</div></div>
+          </div>
+          <div class="next-step">Ring og følg op på tilbud</div>
+          <div class="owner owner-c">C</div>
+          <div class="due-wrap"><span class="status-pill warn">Snart</span><span class="due-date mono">I MORGEN</span></div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">Jernbanecafeen</div><div class="deal">Menukort-opdatering</div></div>
+          </div>
+          <div class="next-step">Upload nyt menukort til CMS</div>
+          <div class="owner owner-l">L</div>
+          <div class="due-wrap"><span class="status-pill risk">Forfalden</span><span class="due-date mono">20. SEP</span></div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">VIDA Skønhedsklinik</div><div class="deal">Faktura 009 ubetalt</div></div>
+          </div>
+          <div class="next-step">Send betalingspåmindelse</div>
+          <div class="owner owner-c">C</div>
+          <div class="due-wrap"><span class="status-pill risk">Forfalden</span><span class="due-date mono">18. SEP</span></div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">Street Cut</div><div class="deal">Følg op på svar</div></div>
+          </div>
+          <div class="next-step">Book opkald med indehaver</div>
+          <div class="owner owner-l">L</div>
+          <div class="due-wrap"><span class="status-pill risk">Forfalden</span><span class="due-date mono">21. SEP</span></div>
+        </div>
+
+        <div class="row">
+          <div class="row-top">
+            <div><div class="company">Zaytoon</div><div class="deal">Levering af forside</div></div>
+          </div>
+          <div class="next-step">Send preview-link til godkendelse</div>
+          <div class="owner owner-c">C</div>
+          <div class="due-wrap"><span class="status-pill faded">Om 3 dage</span><span class="due-date mono">25. SEP</span></div>
+        </div>
+      </div>
+
+      <!-- Right stack -->
+      <div class="right-stack">
+
+        <div class="agent-card">
+          <div class="agent-head">
+            <div class="who">
+              <svg class="dotmark" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.2l1.8 4.7L18.5 9.7l-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z"/></svg>
+              Hermes
+            </div>
+            <div class="ago mono">6 MIN SIDEN</div>
+          </div>
+          <h3>3 jobs kørte i nat — 1 fejlede</h3>
+          <div class="job-list">
+            <div class="job"><span class="dot ok"></span>Scrape: 42 nye virksomheder tilføjet</div>
+            <div class="job"><span class="dot ok"></span>Mail-sync: 6 nye svar hentet</div>
+            <div class="job"><span class="dot bad"></span>Faktura-rykker: fejlede (SMTP-timeout)</div>
+          </div>
+          <a class="btn-lime">Se agenter</a>
+          <div class="claude-line"><span class="dot"></span><b>Claude:</b>&nbsp;færdig — Ikast nyhedsbrev skabelon</div>
+        </div>
+
+        <div class="team-card">
+          <h3>Team</h3>
+          <div class="team-row">
+            <div class="avatar-sm l">L</div>
+            <div>
+              <div class="who">Lucas</div>
+              <div class="what">Nyhedsbrev · Ikast Autoservice</div>
+            </div>
+            <div class="meta">
+              <div class="state">I gang</div>
+              <div class="time mono">2 T SIDEN</div>
+            </div>
+          </div>
+          <div class="team-row">
+            <div class="avatar-sm c">C</div>
+            <div>
+              <div class="who">Charlie</div>
+              <div class="what">Opkald til 5 interesserede</div>
+            </div>
+            <div class="meta">
+              <div class="state">I gang</div>
+              <div class="time mono">40 MIN SIDEN</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="money-card">
+          <div class="head">
+            <h3>Penge</h3>
+            <a><svg class="icon" viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+          </div>
+          <div class="money-block">
+            <div class="mrr-label">MRR</div>
+            <div class="mrr-num tnum">4.997 kr/md</div>
+            <div class="bar-track"><div class="bar-fill"></div></div>
+          </div>
+          <div class="money-stats">
+            <div class="money-stat"><span class="k">Udestående</span><span class="v tnum">750 kr</span></div>
+            <div class="money-stat"><span class="k">Forfaldne fakturaer</span><span class="v risk tnum">1</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Omverden -->
+    <div class="section-label">Omverden</div>
+    <div class="omverden">
+      <div class="om-card">
+        <span class="tag"></span>
+        <p><b>Ny model:</b> GPT-6 Sol tilgængelig i Codex</p>
+      </div>
+      <div class="om-card">
+        <span class="tag"></span>
+        <p><b>Vercel:</b> Neon Postgres nu i fra1</p>
+      </div>
+      <div class="om-card">
+        <span class="tag"></span>
+        <p><b>Konkurrent:</b> webbureau i Herning sænkede pris</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Bottom bar (mobile) -->
+<div class="bottom-bar">
+  <a class="active">
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5.5 10v8.5a1 1 0 0 0 1 1H9v-5.5h6V19.5h2.5a1 1 0 0 0 1-1V10"/></svg>
+    HQ
+  </a>
+  <a>
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13l1.4-6.7A2 2 0 0 1 7.36 4.7h9.28a2 2 0 0 1 1.96 1.6L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5z"/></svg>
+    Indbakke
+  </a>
+  <a>
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.2v5.3l-3.6 1.8v-7.1z"/></svg>
+    Pipeline
+  </a>
+  <a>
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+    Mere
+  </a>
+</div>
+
+</body>
+</html>
