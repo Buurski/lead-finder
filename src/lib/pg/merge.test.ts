@@ -69,3 +69,15 @@ test("afviser: to kunder, samme id, og allerede flettet", async () => {
   await mergeCompanies(db, a.id, c.id, "lucas");
   await assert.rejects(mergeCompanies(db, a.id, c.id, "lucas"), /allerede flettet/);
 });
+
+test("lead-rækken beholdes selv hvis kunden vælges som 'keep' — og kladder følger med", async () => {
+  const { lead, client } = await ktvvs();
+  const { outreach } = await import("../db/schema.ts");
+  await db.insert(outreach).values({ id: "d1", companyRowNo: 18, status: "sent", draft: { leadId: "18" } });
+  await mergeCompanies(db, client.id, lead.id, "lucas"); // "forkert" vej rundt
+  const [kept] = await db.select().from(company).where(eq(company.rowNo, 18));
+  assert.equal(kept.archived, false);
+  assert.equal(kept.clientNo, 3);
+  const [d] = await db.select().from(outreach);
+  assert.equal(d.companyRowNo, 18);
+});

@@ -5,7 +5,7 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, contact, deal, invoice, site, subscriptionPlan, task } from "../db/schema.ts";
+import { activity, company, contact, deal, invoice, outreach, site, subscriptionPlan, task } from "../db/schema.ts";
 
 export class MergeError extends Error {}
 
@@ -24,9 +24,15 @@ export async function mergeCompanies(db: Db, keepId: string, dropId: string, act
     // Lås begge rækker i fast rækkefølge, så to samtidige fletninger ikke dead-locker.
     const ids = [keepId, dropId].sort();
     await tx.execute(sql`select id from company where id in (${ids[0]}, ${ids[1]}) order by id for update`);
-    const [keep] = await tx.select().from(company).where(eq(company.id, keepId));
-    const [drop] = await tx.select().from(company).where(eq(company.id, dropId));
+    let [keep] = await tx.select().from(company).where(eq(company.id, keepId));
+    let [drop] = await tx.select().from(company).where(eq(company.id, dropId));
     if (!keep || !drop) throw new MergeError("virksomheden findes ikke");
+    // Den med en rigtig lead-række (row_no > 0) beholdes altid: gamle kodestier og
+    // kladder slår op på Lead.id = row_no, og mail-historikken hænger på den.
+    if (drop.rowNo > 0 && keep.rowNo <= 0) {
+      [keep, drop] = [drop, keep];
+      [keepId, dropId] = [dropId, keepId];
+    }
     if (keep.archived && keep.lifecycle === "flettet") throw new MergeError(`${keep.name} er allerede flettet ind i en anden`);
     if (drop.archived && drop.lifecycle === "flettet") throw new MergeError(`${drop.name} er allerede flettet`);
     if (keep.clientNo !== null && drop.clientNo !== null) {
@@ -41,6 +47,8 @@ export async function mergeCompanies(db: Db, keepId: string, dropId: string, act
     for (const t of [deal, contact, activity, task, invoice, site, subscriptionPlan] as const) {
       await tx.update(t).set({ companyId: keepId }).where(eq(t.companyId, dropId));
     }
+    // Kladdernes join-kolonne følger med (selve draft.leadId i jsonb er historik og røres ikke).
+    await tx.update(outreach).set({ companyRowNo: keep.rowNo }).where(eq(outreach.companyRowNo, drop.rowNo));
 
     // 3. Felter: udfyld keep's huller fra drop; livsfase = den længst fremme.
     const patch: Record<string, unknown> = {};
