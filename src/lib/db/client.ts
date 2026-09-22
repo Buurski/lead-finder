@@ -14,8 +14,7 @@ let _db: Db | null = null;
 export function pgEnabled(): boolean {
   return (process.env.DATA_BACKEND || "").toLowerCase() === "pg";
 }
-/** @deprecated midlertidigt alias — omdøbes til pgEnabled når alle workers er landet. */
-export const usePg = pgEnabled;
+
 
 export function getDb(): Db {
   if (_db) return _db;

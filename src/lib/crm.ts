@@ -2,7 +2,7 @@ import "server-only";
 
 import { getClients, type Client } from "./sheets.ts";
 import { store } from "./store.ts";
-import { usePg } from "./db/client.ts";
+import { pgEnabled } from "./db/client.ts";
 import { isCommandCenterRequest } from "./cc-auth.ts";
 import { findClientByName } from "./client-alias.ts";
 import { ACTIVITY_TYPES, type ActivityType, type CrmActivity, type CrmContact, type CrmTask } from "./crm-client.ts";
@@ -105,7 +105,7 @@ function taskKey(taskId: string): string {
 
 export async function listContacts(clientName: string): Promise<CrmContact[]> {
   const client = await assertKnownClient(clientName);
-  if (usePg()) return (await import("./pg/crm.ts")).listContacts(client.name);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).listContacts(client.name);
   const keys = await store.list(`${CONTACT_PREFIX}${encodedClientName(client.name)}/`);
   const docs = await Promise.all(keys.map((key) => store.get<CrmContact>(key)));
   return docs
@@ -127,7 +127,7 @@ export async function saveContact(input: Partial<CrmContact>): Promise<CrmContac
     note: validOptionalText(input.note, 500),
     updatedAt: new Date().toISOString(),
   };
-  if (usePg()) {
+  if (pgEnabled()) {
     await (await import("./pg/crm.ts")).saveContact(contact);
     return contact;
   }
@@ -138,7 +138,7 @@ export async function saveContact(input: Partial<CrmContact>): Promise<CrmContac
 export async function deleteContact(clientName: string, contactId: string): Promise<void> {
   const client = await assertKnownClient(clientName);
   if (!/^[a-z0-9_-]{3,80}$/i.test(contactId)) throw new CrmInputError("kontakt-id er ugyldigt");
-  if (usePg()) return (await import("./pg/crm.ts")).deleteContact(client.name, contactId);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).deleteContact(client.name, contactId);
   const key = contactKey(client.name, contactId);
   const existing = await store.get<CrmContact>(key);
   if (!existing || existing.clientName !== client.name) throw new CrmInputError("kontakt findes ikke");
@@ -156,7 +156,7 @@ function parseActivity(value: unknown): CrmActivity | null {
 export async function listActivities(clientName?: string, limit = 60): Promise<CrmActivity[]> {
   const knownName = clientName === undefined ? undefined : (await assertKnownClient(clientName)).name;
   const clampedLimit = Math.max(1, Math.min(limit, 200));
-  if (usePg()) return (await import("./pg/crm.ts")).listActivities(knownName, clampedLimit);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).listActivities(knownName, clampedLimit);
   const all = await store.readAll(ACTIVITY_KEY);
   return all
     .map(parseActivity)
@@ -176,7 +176,7 @@ export async function addActivity(input: Partial<CrmActivity>): Promise<CrmActiv
     text: validText(input.text, "tekst", 500),
     actor: validOptionalText(input.actor, 80) || "teamet",
   };
-  if (usePg()) {
+  if (pgEnabled()) {
     await (await import("./pg/crm.ts")).addActivity(activity);
     return activity;
   }
@@ -198,7 +198,7 @@ export async function appendSystemActivity(clientName: string, eventKey: string,
   } catch {
     return;
   }
-  if (usePg()) return (await import("./pg/crm.ts")).appendSystemActivity(client.name, eventKey, text);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).appendSystemActivity(client.name, eventKey, text);
   const actId = `sys_${eventKey}`;
   const all = await store.readAll(ACTIVITY_KEY);
   if (all.map(parseActivity).some((a) => a?.id === actId)) return;
@@ -227,7 +227,7 @@ export function taskSort(a: CrmTask, b: CrmTask): number {
 
 export async function listTasks(clientName?: string): Promise<CrmTask[]> {
   const knownName = clientName === undefined ? undefined : (await assertKnownClient(clientName)).name;
-  if (usePg()) return (await import("./pg/crm.ts")).listTasks(knownName);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).listTasks(knownName);
   const keys = await store.list(TASK_PREFIX);
   const docs = await Promise.all(keys.map((key) => store.get<CrmTask>(key)));
   return docs
@@ -239,7 +239,7 @@ export async function listTasks(clientName?: string): Promise<CrmTask[]> {
 export async function saveTask(input: Partial<CrmTask>): Promise<CrmTask> {
   const client = await assertKnownClient(input.clientName);
   const taskId = typeof input.id === "string" && /^[a-z0-9_-]{3,80}$/i.test(input.id) ? input.id : id("task");
-  if (usePg()) return (await import("./pg/crm.ts")).saveTask(input, client.name, taskId);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).saveTask(input, client.name, taskId);
   const existing = input.id ? parseTask(await store.get<CrmTask>(taskKey(taskId))) : null;
   if (existing && existing.clientName !== client.name) throw new CrmInputError("opgaven tilhører en anden kunde");
   const task: CrmTask = {
@@ -261,7 +261,7 @@ export async function saveTask(input: Partial<CrmTask>): Promise<CrmTask> {
 export async function updateTask(taskId: string, clientName: unknown, done: boolean): Promise<CrmTask> {
   if (!/^[a-z0-9_-]{3,80}$/i.test(taskId)) throw new CrmInputError("opgave-id er ugyldigt");
   const client = await assertKnownClient(clientName);
-  if (usePg()) return (await import("./pg/crm.ts")).updateTask(taskId, client.name, done);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).updateTask(taskId, client.name, done);
   const existing = parseTask(await store.get<CrmTask>(taskKey(taskId)));
   if (!existing || existing.deletedAt) throw new CrmInputError("opgave findes ikke");
   if (existing.clientName !== client.name) throw new CrmInputError("opgaven tilhører en anden kunde");
@@ -274,7 +274,7 @@ export async function updateTask(taskId: string, clientName: unknown, done: bool
 export async function deleteTask(taskId: string, clientName: unknown): Promise<void> {
   if (!/^[a-z0-9_-]{3,80}$/i.test(taskId)) throw new CrmInputError("opgave-id er ugyldigt");
   const client = await assertKnownClient(clientName);
-  if (usePg()) return (await import("./pg/crm.ts")).deleteTask(taskId, client.name);
+  if (pgEnabled()) return (await import("./pg/crm.ts")).deleteTask(taskId, client.name);
   const key = taskKey(taskId);
   const existing = parseTask(await store.get<CrmTask>(key));
   if (!existing) throw new CrmInputError("opgave findes ikke");

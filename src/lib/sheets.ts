@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 
 import { planRowDeletionRanges } from "./leads/row-plan.ts";
-import { usePg } from "./db/client.ts";
+import { pgEnabled } from "./db/client.ts";
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -95,7 +95,7 @@ const LEADS_RANGE = "Leads!A2:V";
 const CLIENTS_RANGE = "Clients!A2:O";
 
 export async function getLeads(): Promise<Lead[]> {
-  if (usePg()) return (await import("./pg/leads.ts")).getLeads();
+  if (pgEnabled()) return (await import("./pg/leads.ts")).getLeads();
 
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
@@ -135,7 +135,7 @@ export async function updateLeadStatus(
   status: LeadStatus,
   notes?: string
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateLeadStatus(rowIndex, status, notes);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateLeadStatus(rowIndex, status, notes);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -150,7 +150,7 @@ export async function updateLeadStatus(
 }
 
 export async function getClients(): Promise<Client[]> {
-  if (usePg()) return (await import("./pg/clients.ts")).getClients();
+  if (pgEnabled()) return (await import("./pg/clients.ts")).getClients();
 
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
@@ -180,7 +180,7 @@ export async function getClients(): Promise<Client[]> {
 }
 
 export async function addClient(lead: Lead): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).addClient(lead);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).addClient(lead);
 
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.append({
@@ -197,7 +197,7 @@ export async function addClient(lead: Lead): Promise<void> {
 export async function addClientManual(f: {
   name: string; branch?: string; phone?: string; monthlyFee?: string; setupFee?: string;
 }): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).addClientManual(f);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).addClientManual(f);
 
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.append({
@@ -213,7 +213,7 @@ export async function addClientManual(f: {
 // Remove a client by NAME (robust to row-shift between read + delete). Deletes the
 // whole Clients row via deleteDimension. Returns whether a matching row was found.
 export async function removeClient(name: string): Promise<{ removed: boolean }> {
-  if (usePg()) return (await import("./pg/clients.ts")).removeClient(name);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).removeClient(name);
 
   const target = name.trim().toLowerCase();
   if (!target) return { removed: false };
@@ -242,7 +242,7 @@ export async function updateClientFees(
   monthlyFee: string,
   setupFee: string
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).updateClientFees(clientId, monthlyFee, setupFee);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).updateClientFees(clientId, monthlyFee, setupFee);
 
   const row = parseInt(clientId, 10);
   if (!Number.isFinite(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
@@ -277,7 +277,7 @@ const DEAL_COLUMN: Record<keyof ClientDealPatch, string> = {
 };
 
 export async function updateClientDeal(clientId: string, patch: ClientDealPatch): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).updateClientDeal(clientId, patch);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).updateClientDeal(clientId, patch);
 
   const row = parseInt(clientId, 10);
   if (!Number.isFinite(row) || row < 2) throw new Error(`bad client id: ${clientId}`);
@@ -492,7 +492,7 @@ export async function updateClientFolder(
   rowIndex: number,
   folderPath: string
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).updateClientFolder(rowIndex, folderPath);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).updateClientFolder(rowIndex, folderPath);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -515,7 +515,7 @@ export function websiteQualityBonus(tier: WebsiteQualityTier, websiteStatus: str
 }
 
 export async function saveEnrichedInfo(rowIndex: number, info: string): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).saveEnrichedInfo(rowIndex, info);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).saveEnrichedInfo(rowIndex, info);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -530,7 +530,7 @@ export async function saveEnrichedInfo(rowIndex: number, info: string): Promise<
 export async function batchUpdateLeadVerifications(
   updates: Array<{ rowIndex: number; qualityTier: WebsiteQualityTier; adjustedScore: number; email?: string }>
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).batchUpdateLeadVerifications(updates);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).batchUpdateLeadVerifications(updates);
 
   if (updates.length === 0) return;
   const sheets = getSheetsClient();
@@ -561,7 +561,7 @@ export async function batchUpdateLeadVerifications(
 export async function batchSetLeadStatus(
   updates: Array<{ rowIndex: number; status: LeadStatus; skipReason?: string }>,
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).batchSetLeadStatus(updates);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).batchSetLeadStatus(updates);
 
   if (updates.length === 0) return;
   const sheets = getSheetsClient();
@@ -581,7 +581,7 @@ export async function batchSetLeadStatus(
 }
 
 export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).appendLeads(leads);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).appendLeads(leads);
 
   const sheets = getSheetsClient();
   const values = leads.map((l) => [
@@ -613,7 +613,7 @@ export async function appendLeads(leads: Omit<Lead, "id">[]): Promise<void> {
 }
 
 export async function getLeadNames(): Promise<string[]> {
-  if (usePg()) return (await import("./pg/leads.ts")).getLeadNames();
+  if (pgEnabled()) return (await import("./pg/leads.ts")).getLeadNames();
 
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
@@ -624,7 +624,7 @@ export async function getLeadNames(): Promise<string[]> {
 }
 
 export async function getLeadPhones(): Promise<string[]> {
-  if (usePg()) return (await import("./pg/leads.ts")).getLeadPhones();
+  if (pgEnabled()) return (await import("./pg/leads.ts")).getLeadPhones();
 
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
@@ -635,7 +635,7 @@ export async function getLeadPhones(): Promise<string[]> {
 }
 
 export async function saveLeadEmail(rowIndex: number, email: string): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).saveLeadEmail(rowIndex, email);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).saveLeadEmail(rowIndex, email);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -648,7 +648,7 @@ export async function saveLeadEmail(rowIndex: number, email: string): Promise<vo
 }
 
 export async function batchSaveEmails(updates: Array<{ rowIndex: number; email: string }>): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).batchSaveEmails(updates);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).batchSaveEmails(updates);
 
   if (updates.length === 0) return;
   const sheets = getSheetsClient();
@@ -672,7 +672,7 @@ export async function updateLeadEmailStatus(
     followupSentAt?: string;
   }
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateLeadEmailStatus(rowIndex, fields);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateLeadEmailStatus(rowIndex, fields);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -698,7 +698,7 @@ export async function updateLeadEmailStatusBulk(
     fields: { emailSentAt?: string; emailStatus?: string; followupSentAt?: string };
   }[]
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateLeadEmailStatusBulk(entries);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateLeadEmailStatusBulk(entries);
 
   const data: { range: string; values: string[][] }[] = [];
   for (const { rowIndex, fields } of entries) {
@@ -716,7 +716,7 @@ export async function updateLeadEmailStatusBulk(
 }
 
 export async function updateCallbackDate(rowIndex: number, date: string): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateCallbackDate(rowIndex, date);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateCallbackDate(rowIndex, date);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -736,7 +736,7 @@ export async function updateLeadSkipReason(
   rowIndex: number,
   reason: SkipReason
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateLeadSkipReason(rowIndex, reason);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateLeadSkipReason(rowIndex, reason);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -755,7 +755,7 @@ export async function updateLeadWebsiteStatus(
   websiteStatus: Lead["websiteStatus"],
   qualityTier: WebsiteQualityTier
 ): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).updateLeadWebsiteStatus(rowIndex, websiteStatus, qualityTier);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).updateLeadWebsiteStatus(rowIndex, websiteStatus, qualityTier);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;
@@ -789,7 +789,7 @@ async function getLeadsSheetId(): Promise<number> {
 const DELETE_BATCH_LIMIT = 500;
 
 export async function deleteLeadRows(sheetRowNumbers: number[]): Promise<void> {
-  if (usePg()) return (await import("./pg/leads.ts")).deleteLeadRows(sheetRowNumbers);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).deleteLeadRows(sheetRowNumbers);
 
   // Dedupe + sort descending + drop header/invalid rows, then coalesce into
   // contiguous ranges (see row-plan.ts) so a batched delete never shifts an
@@ -867,7 +867,7 @@ export async function moveLeadsToDeadLeads(
   leads: Lead[],
   reason: string
 ): Promise<{ moved: number }> {
-  if (usePg()) return (await import("./pg/leads.ts")).moveLeadsToDeadLeads(leads, reason);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).moveLeadsToDeadLeads(leads, reason);
 
   if (leads.length === 0) return { moved: 0 };
   const rows = leads.map((l) => [
@@ -892,7 +892,7 @@ export async function purgeAndArchiveLeads(
   toArchive: Lead[],
   archiveReason: string
 ): Promise<{ deleted: number; archived: number }> {
-  if (usePg()) return (await import("./pg/leads.ts")).purgeAndArchiveLeads(toDelete, toArchive, archiveReason);
+  if (pgEnabled()) return (await import("./pg/leads.ts")).purgeAndArchiveLeads(toDelete, toArchive, archiveReason);
 
   if (toArchive.length > 0) {
     const rows = toArchive.map((l) => [
@@ -911,7 +911,7 @@ export async function purgeAndArchiveLeads(
 }
 
 export async function markBriefFilled(rowIndex: number): Promise<void> {
-  if (usePg()) return (await import("./pg/clients.ts")).markBriefFilled(rowIndex);
+  if (pgEnabled()) return (await import("./pg/clients.ts")).markBriefFilled(rowIndex);
 
   const sheets = getSheetsClient();
   const row = rowIndex + 2;

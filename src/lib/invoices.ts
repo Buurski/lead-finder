@@ -4,7 +4,7 @@
 
 import { store } from "./store.ts";
 import { canonicalClientName } from "./client-alias.ts";
-import { usePg } from "./db/client.ts";
+import { pgEnabled } from "./db/client.ts";
 
 const pg = () => import("./pg/invoices.ts");
 
@@ -213,7 +213,7 @@ author: lead-system (cron)
 // Lucas' format: "001", "002", ... — global fortløbende serie (matcher faktura 001 sendt 11/6).
 // ponytail: lexicographic sortering knækker først ved nr. 1000 — fint for solo-brug.
 export async function nextInvoiceNumber(_today: string): Promise<string> {
-  if (usePg()) return (await pg()).nextInvoiceNumber(_today);
+  if (pgEnabled()) return (await pg()).nextInvoiceNumber(_today);
   const key = "invoice-counter/all";
   const current = (await store.get<number>(key)) ?? 0;
   const next = current + 1;
@@ -222,25 +222,25 @@ export async function nextInvoiceNumber(_today: string): Promise<string> {
 }
 
 export async function saveInvoice(inv: Invoice): Promise<void> {
-  if (usePg()) return (await pg()).saveInvoice(inv);
+  if (pgEnabled()) return (await pg()).saveInvoice(inv);
   await store.put(`invoice/${inv.number}`, inv);
 }
 
 // Slet kladde + evt. arkiveret PDF. Route'en garanterer status === "kladde".
 // deleteAsset er no-op på KV og kan fejle på Blob hvis PDF aldrig blev arkiveret.
 export async function deleteInvoice(number: string): Promise<void> {
-  if (usePg()) await (await pg()).deleteInvoiceRow(number);
+  if (pgEnabled()) await (await pg()).deleteInvoiceRow(number);
   else await store.delete(`invoice/${number}`);
   await store.deleteAsset(`invoices/faktura-${number}.pdf`).catch(() => {});
 }
 
 export async function getInvoice(number: string): Promise<Invoice | null> {
-  if (usePg()) return (await pg()).getInvoice(number);
+  if (pgEnabled()) return (await pg()).getInvoice(number);
   return store.get<Invoice>(`invoice/${number}`);
 }
 
 export async function listInvoices(): Promise<Invoice[]> {
-  if (usePg()) return (await pg()).listInvoices();
+  if (pgEnabled()) return (await pg()).listInvoices();
   const keys = await store.list("invoice/");
   const invoices: Invoice[] = [];
   for (const key of keys) {
@@ -252,20 +252,20 @@ export async function listInvoices(): Promise<Invoice[]> {
 }
 
 export async function listInvoicesFor(clientName: string): Promise<Invoice[]> {
-  if (usePg()) return (await pg()).listInvoicesFor(clientName);
+  if (pgEnabled()) return (await pg()).listInvoicesFor(clientName);
   const all = await listInvoices();
   // Alias-normaliseret sammenligning — 'Vida' og 'VIDA Skønhedsklinik' er samme kunde.
   return all.filter((inv) => canonicalClientName(inv.clientName) === canonicalClientName(clientName));
 }
 
 export async function getSubscriptions(): Promise<Subscription[]> {
-  if (usePg()) return (await pg()).getSubscriptions();
+  if (pgEnabled()) return (await pg()).getSubscriptions();
   const subs = await store.get<Subscription[]>("invoice-subscriptions");
   return Array.isArray(subs) ? subs : [];
 }
 
 export async function saveSubscriptions(subs: Subscription[]): Promise<void> {
-  if (usePg()) return (await pg()).saveSubscriptions(subs);
+  if (pgEnabled()) return (await pg()).saveSubscriptions(subs);
   await store.put("invoice-subscriptions", subs);
 }
 

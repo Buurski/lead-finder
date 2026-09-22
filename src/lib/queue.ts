@@ -10,7 +10,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import { store } from "./store.ts";
-import { usePg } from "./db/client.ts";
+import { pgEnabled } from "./db/client.ts";
 
 import type { Demo } from "./demos.ts";
 import type { SenderId } from "./senders.ts";
@@ -71,7 +71,7 @@ export interface QueueDraft {
 // The queue is the "queue" key in the store (FS: .send_queue/approval_queue.json;
 // Vercel: KV). Async so it survives the ephemeral filesystem in production.
 export async function readQueue(): Promise<QueueDraft[]> {
-  if (usePg()) return (await import("./pg/queue.ts")).readQueue();
+  if (pgEnabled()) return (await import("./pg/queue.ts")).readQueue();
   try {
     const parsed = await store.get<QueueDraft[]>("queue");
     return Array.isArray(parsed) ? parsed : [];
@@ -81,7 +81,7 @@ export async function readQueue(): Promise<QueueDraft[]> {
 }
 
 export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
-  if (usePg()) return (await import("./pg/queue.ts")).writeQueue(drafts);
+  if (pgEnabled()) return (await import("./pg/queue.ts")).writeQueue(drafts);
   await store.put("queue", drafts);
 }
 
