@@ -65,6 +65,7 @@ export const company = pgTable(
     jevScore: integer("jev_score"),
     briefFilled: boolean("brief_filled").notNull().default(false),
     maxTouches: integer("max_touches"), // loft for antal mails i sekvensen (null = standard 3)
+    services: text("services").array().notNull().default(sql`'{}'::text[]`), // hvad vi leverer: hjemmeside, hosting, cms, seo …
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
