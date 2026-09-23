@@ -8,7 +8,7 @@
 // Hermes CLI only exposes session previews, not full transcripts.
 
 import crypto from "node:crypto";
-import { store } from "./store";
+import { store } from "./store.ts";
 import type { HermesUsageSummary, HermesKanbanSummary, SynlighedSnapshot } from "./hermes-client";
 
 export type HermesProfile = "default" | "lucas" | "charlie";
