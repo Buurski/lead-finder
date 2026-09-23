@@ -34,7 +34,7 @@ export const config = {
   // seo-tjek er den offentlige lead-magnet-tragt: formular + rapport + afmeld
   // skal kunne nås af fremmede uden kodeord. Stats-endpointet (api/seo-tjek/stats)
   // matcher IKKE undtagelserne og forbliver bag basic auth.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|api/hermes/crm-dossier$|api/agent/log$|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|api/hermes/crm-dossier$|api/agent/log$|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|api/auth/password$|api/auth/setup$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 
@@ -112,10 +112,14 @@ export async function proxy(req: NextRequest): Promise<Response> {
     && ctEqual(req.headers.get("authorization") || "", `Bearer ${previewQueueSecret}`);
   if (isPreviewServiceRequest) return NextResponse.next({ request: { headers: sanitized } });
 
-  if (USER && PASS && SECRET) {
+  // Auth er aktiv så snart session-secreten findes: signerede personlige
+  // sessioner (cc_sess fra /api/auth/password|setup) kræver ikke Basic-env.
+  // Den fælles Basic-kode forbliver nødvej når den er konfigureret.
+  const basicConfigured = USER && PASS;
+  if (SECRET) {
     let authed = false;
-    // Sessionens bruger som den står i cookien: "m:lucas"/"m:charlie" (magic link)
-    // eller "delt" (fælles Basic-login). Headeren får kun personen, se personFromSessionUser.
+    // Sessionens bruger som den står i cookien: "m:lucas"/"m:charlie" (personligt
+    // login) eller "delt" (fælles Basic-login). Headeren får kun personen.
     let sessionUser = "delt";
 
     // 1. Fast path: valid session cookie.
@@ -124,7 +128,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     if (cookieUser) {
       authed = true;
       sessionUser = personFromSessionUser(cookieUser) ? cookieUser : "delt";
-    } else {
+    } else if (basicConfigured) {
       // 2. Verify Basic auth.
       const header = req.headers.get("authorization") || "";
       const parsed = parseBasic(header);
@@ -150,12 +154,14 @@ export async function proxy(req: NextRequest): Promise<Response> {
     }
 
     if (!authed) {
-      // Magic-link-login slået til (CC_MAGIC=1): send browser-navigation til
-      // /login i stedet for Basic-dialogen. API-kald får stadig 401.
+      // Magic-link/personligt login: send browser-navigation til /login i stedet
+      // for Basic-dialogen. API-kald får stadig 401.
       const wantsPage = req.method === "GET" && !req.nextUrl.pathname.startsWith("/api/");
       // Nødudgang: "?kode=1" giver den fælles Basic-dialog, så en fejlende
-      // login-mail (SMTP nede) aldrig låser os ude.
-      if (process.env.CC_MAGIC === "1" && wantsPage && req.nextUrl.searchParams.get("kode") !== "1") {
+      // login-mail (SMTP nede) aldrig låser os ude. Kun når Basic er sat op.
+      const kodeBypass = basicConfigured && req.nextUrl.searchParams.get("kode") === "1";
+      const toLogin = wantsPage && !kodeBypass && (process.env.CC_MAGIC === "1" || !basicConfigured);
+      if (toLogin) {
         return NextResponse.redirect(new URL("/login", req.url));
       }
       return unauthorized();
