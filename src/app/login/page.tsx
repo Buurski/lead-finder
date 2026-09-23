@@ -40,6 +40,8 @@ export default async function LoginPage({
           </form>
         )}
         {msg && <p role="status" className="login-msg">{msg}</p>}
+        {/* Fuld sideindlæsning (ikke <Link>): proxyen skal svare 401, så browserens kode-dialog vises. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         {!token && <a href="/?kode=1" className="login-alt">Log ind med fælles kode i stedet</a>}
       </div>
     </main>
