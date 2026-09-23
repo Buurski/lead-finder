@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { getDb } from "@/lib/db/client";
 import { getHqSummary } from "@/lib/hq/summary";
+import { getAttention } from "@/lib/hq/attention";
 import { copenhagenNow } from "@/lib/settings";
 import { readPreviewRequests } from "@/lib/preview-queue";
 import { currentUser } from "@/lib/current-user";
 import Greeting from "@/components/hq/Greeting";
+import AttentionSummary from "@/components/hq/AttentionSummary";
 import KpiRow, { type KpiItem } from "@/components/hq/KpiRow";
 import PipelineStrip from "@/components/hq/PipelineStrip";
 import NextStepsTable from "@/components/hq/NextStepsTable";
@@ -23,10 +25,15 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const { date, hour } = copenhagenNow();
   const user = await currentUser();
-  const [summary, previewRequests] = await Promise.all([
-    getHqSummary(getDb(), date, user),
-    readPreviewRequests().catch(() => []),
-  ]);
+  const owner = user === "lucas" || user === "charlie" ? user : null; // "delt"/null → begge ejere
+  const db = getDb();
+  // getHqSummary og getAttention rammer begge Postgres i flere forespørgsler —
+  // sekventielt, ikke Promise.all (lokal pglite tåler kun 1 samtidig
+  // forbindelse, fælles-regel #23). readPreviewRequests er KV, kan løbe ved siden af.
+  const previewRequestsPromise = readPreviewRequests().catch(() => []);
+  const summary = await getHqSummary(db, date, user);
+  const attention = await getAttention(db, { owner, today: date });
+  const previewRequests = await previewRequestsPromise;
 
   const inbound = previewRequests.filter((p) => p.status === "ny").length;
 
@@ -40,6 +47,8 @@ export default async function HomePage() {
   return (
     <div className="hq-page">
       <Greeting user={user} hour={hour} date={date} />
+
+      <AttentionSummary items={attention} />
 
       <div className="hq-section-label">I dag</div>
       <KpiRow items={kpiItems} />

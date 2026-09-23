@@ -91,7 +91,7 @@ export default function AppShell({
               <span className="txt">Søg virksomheder, aftaler…</span>
               <span className="cc-search-kbd">⌘K</span>
             </button>
-            <Bell counts={counts} />
+            <Bell />
             <QuickActions defaultOwner={defaultOwner} />
           </div>
         </header>
