@@ -1,21 +1,31 @@
 "use client";
 // "Ny aftale"-dialog: søg/vælg virksomhed, udfyld felter (fase 2 Task 5).
+// Genbrugt af "+ Ny" (globalt) og kundeprofilens header (fase 3): `stages` har
+// en default så kaldere uden for Pipeline-boardet ikke selv skal bygge listen,
+// og `initialCompany` springer søgningen over når virksomheden allerede er kendt.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Icon from "@/components/shell/Icon";
 import type { DealStage, PipelineCard } from "@/lib/hq/deals";
+// Klient-sikker kopi (hq/deals.ts har "server-only" og må ikke importeres som
+// værdi i en client component) — samme mønster som DealsSection.tsx bruger.
+import { DEAL_STAGES, STAGE_LABEL } from "@/components/virksomheder/dealStages";
 import type { Owner, StageInfo } from "./pipeline-utils";
+import "./pipeline.css";
+
+const DEFAULT_STAGES: StageInfo[] = DEAL_STAGES.map((stage) => ({ stage, label: STAGE_LABEL[stage] }));
 
 export default function NewDealDialog({
-  stages, onClose, onCreated, onError,
+  stages = DEFAULT_STAGES, initialCompany, onClose, onCreated, onError,
 }: {
-  stages: StageInfo[];
+  stages?: StageInfo[];
+  initialCompany?: { id: string; name: string };
   onClose: () => void;
   onCreated: (card: PipelineCard) => void;
   onError: (msg: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; city: string }[]>([]);
-  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(initialCompany ?? null);
   const [title, setTitle] = useState("");
   const [stage, setStage] = useState<DealStage>(stages[0]?.stage ?? "tilbud");
   const [valueDkk, setValueDkk] = useState("");
@@ -25,9 +35,12 @@ export default function NewDealDialog({
   const [nextStepDue, setNextStepDue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const companyFieldRef = useRef<HTMLInputElement>(null);
+  const titleFieldRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { firstFieldRef.current?.focus(); }, []);
+  useEffect(() => {
+    (initialCompany ? titleFieldRef.current : companyFieldRef.current)?.focus();
+  }, [initialCompany]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -111,7 +124,7 @@ export default function NewDealDialog({
             <div className="pl-search-wrap">
               <input
                 id="pl-company"
-                ref={firstFieldRef}
+                ref={companyFieldRef}
                 className="pl-input"
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); if (!e.target.value.trim()) setResults([]); }}
@@ -133,7 +146,7 @@ export default function NewDealDialog({
 
         <div className="pl-field">
           <label htmlFor="pl-title">Titel</label>
-          <input id="pl-title" className="pl-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Fx Hjemmeside" />
+          <input id="pl-title" ref={titleFieldRef} className="pl-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Fx Hjemmeside" />
         </div>
 
         <div className="pl-field-row">

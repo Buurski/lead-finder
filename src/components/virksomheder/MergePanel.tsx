@@ -3,8 +3,25 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { lifecycleChipStyle, lifecycleLabel } from "./lifecycle";
 
-interface Hit { id: string; name: string; city: string; lifecycle: string; clientNo: number | null }
-interface Self { id: string; name: string; city: string; lifecycle: string; clientNo: number | null }
+interface Hit { id: string; name: string; city: string; lifecycle: string; clientNo: number | null; rowNo: number }
+interface Self { id: string; name: string; city: string; lifecycle: string; clientNo: number | null; rowNo: number }
+
+// Spejler serverens vinder-regel i src/lib/pg/merge.ts (mergeCompanies): den
+// med en rigtig lead-række (row_no > 0) beholdes altid, og kundens navn +
+// nummer følger med uanset hvem der beholdes. Rent visnings-formål — selve
+// fletningen afgøres stadig af serveren.
+function predictMergeResult(self: Self, other: Hit): { name: string; clientNo: number | null; bothClients: boolean } {
+  let keep: Self | Hit = self;
+  let drop: Self | Hit = other;
+  if (drop.rowNo > 0 && keep.rowNo <= 0) [keep, drop] = [drop, keep];
+  let name = keep.name;
+  let clientNo = keep.clientNo;
+  if (keep.clientNo === null && drop.clientNo !== null) {
+    name = drop.name;
+    clientNo = drop.clientNo;
+  }
+  return { name, clientNo, bothClients: self.clientNo !== null && other.clientNo !== null };
+}
 
 export default function MergePanel({ self }: { self: Self }) {
   const router = useRouter();
@@ -103,27 +120,38 @@ export default function MergePanel({ self }: { self: Self }) {
         <>
           <div className="virk-merge-cols">
             <div className="virk-merge-card">
-              <div className="cc-kicker">Beholdes</div>
+              <div className="cc-kicker">Denne virksomhed</div>
               <div style={{ fontWeight: 600, marginTop: 4 }}>{self.name}</div>
               <div className="cc-dim" style={{ fontSize: 12.5 }}>{self.city || "–"}</div>
               {self.clientNo !== null && <div className="cc-dim" style={{ fontSize: 12.5 }}>Kunde #{self.clientNo}</div>}
             </div>
             <div className="virk-merge-card">
-              <div className="cc-kicker">Flettes ind i den anden</div>
+              <div className="cc-kicker">Flettes sammen med</div>
               <div style={{ fontWeight: 600, marginTop: 4 }}>{picked.name}</div>
               <div className="cc-dim" style={{ fontSize: 12.5 }}>{picked.city || "–"}</div>
               {picked.clientNo !== null && <div className="cc-dim" style={{ fontSize: 12.5 }}>Kunde #{picked.clientNo}</div>}
             </div>
           </div>
-          <p className="cc-dim" style={{ fontSize: 12 }}>
-            Aftaler, kontakter, tidslinje og fakturaer flyttes til &quot;{self.name}&quot;. {picked.name} arkiveres — intet slettes.
-            {self.clientNo !== null && picked.clientNo !== null && (
-              <> Begge har et kundenummer — det kan give fejl; ryd et af dem først hvis fletningen afvises.</>
-            )}
-          </p>
+          {(() => {
+            const result = predictMergeResult(self, picked);
+            if (result.bothClients) {
+              return (
+                <p style={{ color: "var(--red)", fontSize: 12.5 }}>
+                  Begge har et kundenummer — det kan ikke flettes automatisk. Ryd kundenummeret på en af dem først.
+                </p>
+              );
+            }
+            return (
+              <p className="cc-dim" style={{ fontSize: 12 }}>
+                Den samlede virksomhed bliver <strong style={{ color: "var(--text)" }}>{result.name}</strong>
+                {result.clientNo !== null && <> · Kunde #{result.clientNo}</>}. Aftaler, kontakter, tidslinje og fakturaer samles
+                her — den anden arkiveres, intet slettes.
+              </p>
+            );
+          })()}
           {err && <p style={{ color: "var(--red)", fontSize: 12.5 }}>{err}</p>}
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="cc-btn cc-btn-accent virk-btn-press" onClick={confirmMerge} disabled={busy}>
+            <button className="cc-btn cc-btn-accent virk-btn-press" onClick={confirmMerge} disabled={busy || predictMergeResult(self, picked).bothClients}>
               {busy ? "Fletter…" : "Bekræft fletning"}
             </button>
             <button className="cc-btn virk-btn-press" onClick={() => setPicked(null)} disabled={busy}>

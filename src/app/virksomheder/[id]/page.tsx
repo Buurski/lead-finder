@@ -24,6 +24,8 @@ import HermesAskButton from "@/components/virksomheder/HermesAskButton";
 import UnbilledWork from "@/components/virksomheder/UnbilledWork";
 import Overblik from "@/components/virksomheder/Overblik";
 import ProfileTabs from "@/components/virksomheder/ProfileTabs";
+import ProfileQuickActions from "@/components/virksomheder/ProfileQuickActions";
+import TrackRecentCompany from "@/components/virksomheder/TrackRecentCompany";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -246,6 +248,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <TrackRecentCompany id={c.id} name={c.name || "(uden navn)"} />
       <PageHeader
         icon="Building2"
         title={c.name || "(uden navn)"}
@@ -270,8 +273,9 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         }
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} />
             <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
-            <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo }} />
+            <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo, rowNo: c.rowNo }} />
           </div>
         }
       />
