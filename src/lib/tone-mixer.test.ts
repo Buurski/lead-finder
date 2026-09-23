@@ -12,4 +12,8 @@ test("Charlie får aldrig Lucas' salgselev-historie; skift frem og tilbage er ta
   assert.equal(adaptToSender(asCharlie, "lucas"), lucasBody);
   const wrapped = lucasBody.replace(". Jeg går", ".\nJeg går"); // brudt over to linjer
   assert.equal(LUCAS_ONLY.test(adaptToSender(wrapped, "charlie")), false);
+  // Linjeskift INDE i en sætning (Sol 23/9)
+  const midBreak = `Hej\n\n${DISCLOSURES.lucas[0].replace("kode og kontakt", "kode og\nkontakt")}\n\nMvh`;
+  assert.equal(LUCAS_ONLY.test(adaptToSender(midBreak, "charlie")), false);
+  assert.equal(LUCAS_ONLY.test("Jeg står selv for både kode og\nkontakt."), true);
 });

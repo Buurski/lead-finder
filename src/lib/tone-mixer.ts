@@ -258,13 +258,18 @@ export function adaptToSender(body: string, sender: "lucas" | "charlie"): string
   from.forEach((line, i) => {
     const a = sentences(line);
     const b = sentences(DISCLOSURES[sender][i]);
-    a.forEach((x, j) => { if (b[j]) out = out.split(x).join(b[j]); });
+    // Mellemrum/linjeskift inde i en sætning må ikke få den til at glippe (Sol 23/9).
+    a.forEach((x, j) => {
+      if (!b[j]) return;
+      const re = new RegExp(x.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+"), "g");
+      out = out.replace(re, b[j]);
+    });
   });
   return out;
 }
 
-/** Lucas' personlige detaljer i en mail der sendes fra Charlie. */
-export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82/i;
+/** Lucas' personlige detaljer i en mail der sendes fra Charlie (inkl. hans præsentation, uanset linjeskift). */
+export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger/i;
 
 export function mixForLead(lead: MixLead, sender: "lucas" | "charlie" = "lucas"): ToneMix {
   const seed = lead.name;

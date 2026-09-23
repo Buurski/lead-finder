@@ -16,7 +16,9 @@ async function companyIdFor(db: Db, clientName: string): Promise<string | null> 
     .select({ id: company.id, name: company.name })
     .from(company)
     .where(isNotNull(company.clientNo));
-  return clients.find((c) => canonicalClientName(c.name) === want)?.id ?? null;
+  // Tvetydigt navn (to kunder med samme navn) → ingen binding; hellere ingen forudfyldt modtager end en forkert.
+  const hits = clients.filter((c) => canonicalClientName(c.name) === want);
+  return hits.length === 1 ? hits[0].id : null;
 }
 
 // Atomisk: UPDATE ... RETURNING tager rækkelåsen, så to samtidige kald aldrig
@@ -46,7 +48,8 @@ export async function saveInvoice(inv: Invoice): Promise<void> {
   await db
     .insert(invoice)
     .values({ number: inv.number, ...cols })
-    .onConflictDoUpdate({ target: invoice.number, set: cols });
+    // En faktura der én gang er bundet til en virksomhed (fx fra arbejdsloggen), forbliver det.
+    .onConflictDoUpdate({ target: invoice.number, set: { ...cols, companyId: sql`coalesce(${invoice.companyId}, excluded.company_id)` } });
 }
 
 export async function deleteInvoiceRow(number: string): Promise<void> {

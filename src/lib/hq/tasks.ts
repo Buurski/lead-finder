@@ -76,7 +76,8 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
       bucket: dueBucket(t.due, opts.today),
     })),
     ...dealRows
-      .filter((d) => OPEN_DEAL_STAGES.has(normalizeStage(d.stage)))
+      // Kun aftaler med et næste skridt er en opgave (et klaret skridt må ikke blive en tom linje).
+      .filter((d) => OPEN_DEAL_STAGES.has(normalizeStage(d.stage)) && (d.step ?? "").trim() !== "")
       .map((d) => ({
         id: `deal:${d.id}`,
         kind: "deal" as const,
@@ -172,7 +173,7 @@ export async function patchDealNextStep(db: Db, dealId: string, p: TaskPatch, ac
   if (p.done === true) {
     const [before] = await db.select({ title: deal.title, nextStep: deal.nextStep, companyId: deal.companyId }).from(deal).where(eq(deal.id, dealId));
     if (!before) throw new DealInputError("aftalen findes ikke");
-    const after = await updateDeal(db, dealId, { nextStep: "" }, actor);
+    const after = await updateDeal(db, dealId, { nextStep: "", nextStepDue: "" }, actor);
     await db.insert(activity).values({ companyId: before.companyId, dealId, actor, type: "opgave", summary: `Næste skridt klaret: ${before.nextStep ?? ""}` });
     return after;
   }

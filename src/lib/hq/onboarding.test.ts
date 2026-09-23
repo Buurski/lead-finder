@@ -105,3 +105,14 @@ test("makeCustomer afviser ukendt virksomhed", async () => {
     OnboardingError,
   );
 });
+
+test("første kunde nogensinde får nummer 2 (opslag afviser < 2); samtidige klik giver én opstartsliste", async () => {
+  const [a, b] = await Promise.all([
+    makeCustomer(db, companyId, { actor: "lucas", today: "2026-09-23" }),
+    makeCustomer(db, companyId, { actor: "lucas", today: "2026-09-23" }),
+  ]);
+  assert.equal(a, 2);
+  assert.equal(b, 2);
+  const steps = await db.select().from(task).where(eq(task.companyId, companyId));
+  assert.equal(steps.length, 7);
+});

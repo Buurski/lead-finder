@@ -56,7 +56,8 @@ async function assignClientNo(
           return { clientNo: c.clientNo, becameCustomer: false, rowNo: c.rowNo, name: c.name };
         }
         const [{ value }] = await tx.select({ value: max(company.clientNo) }).from(company);
-        const clientNo = (value ?? 0) + 1;
+        // Kundenumre starter ved 2 (1 var aldrig i brug; opslag afviser < 2 — Sol 23/9).
+        const clientNo = Math.max(value ?? 1, 1) + 1;
         await tx.update(company).set({ clientNo, leadStatus: "client", updatedAt: new Date() }).where(eq(company.id, companyId));
         await tx.insert(activity).values({ companyId, actor, type: "fase", summary: `Blev kunde (#${clientNo})` });
         return { clientNo, becameCustomer: true, rowNo: c.rowNo, name: c.name };
@@ -71,7 +72,11 @@ async function assignClientNo(
 
 /** Sætter opstarts-tjeklisten op (kun første gang — tjekker via task.data.onboarding).
  * Punkter allerede opfyldt af eksisterende data markeres klaret med det samme. */
-async function seedOnboardingTasks(db: Db, companyId: string, companyName: string, actor: string, today: string): Promise<void> {
+async function seedOnboardingTasks(db0: Db, companyId: string, companyName: string, actor: string, today: string): Promise<void> {
+  // Lås pr. virksomhed: to samtidige klik må ikke begge oprette hele listen (Sol 23/9).
+  return db0.transaction(async (tx) => {
+  const db = tx as unknown as Db;
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${"onboarding:" + companyId}))`);
   const [existing] = await db
     .select({ id: task.id })
     .from(task)
@@ -112,15 +117,15 @@ async function seedOnboardingTasks(db: Db, companyId: string, companyName: strin
       data: { onboarding: true, step: i },
     })),
   );
+  });
 }
 
 /** "Vundet → kunde + opstart". Idempotent: kald nummer to på en eksisterende
  * kunde ændrer intet (samme kundenummer, ingen dobbelt aktivitet/opstartsliste). */
 export async function makeCustomer(db: Db, companyId: string, opts: { actor: string; today: string }): Promise<number> {
   const assigned = await assignClientNo(db, companyId, opts.actor);
-  if (assigned.becameCustomer) {
-    await stopOpenForRows([assigned.rowNo], "blev kunde", new Date().toISOString());
-  }
+  // Altid (idempotent): fejlede stoppet første gang, skal et nyt klik stadig stoppe kolde kladder.
+  await stopOpenForRows([assigned.rowNo], "blev kunde", new Date().toISOString());
   await seedOnboardingTasks(db, companyId, assigned.name, opts.actor, opts.today);
   return assigned.clientNo;
 }
