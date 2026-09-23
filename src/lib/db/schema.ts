@@ -124,6 +124,8 @@ export const site = pgTable("site", {
   cmsUrl: text("cms_url"),
   lastDeployAt: timestamp("last_deploy_at", { withTimezone: true }),
   lastDeployUrl: text("last_deploy_url"),
+  // Dagligt tjek af det live site (cron site-health): {checkedAt, ok, status, ms, sslDaysLeft, error, downSince}
+  health: jsonb("health"),
 });
 
 export const activity = pgTable("activity", {

@@ -60,3 +60,17 @@ test("kunden skrev sidst → venter på os; aftale og ufaktureret vises", () => 
   assert.ok(o.attention.some((a) => /1\.200 kr arbejde/.test(a.text)));
   assert.deepEqual(o.missing, []);
 });
+
+test("site nede → haster; SSL snart udløbet → obs", () => {
+  const now = Date.parse("2026-09-23T10:00:00Z");
+  const down = buildOverview(
+    dossier({ site: { status: "live", domain: "vida-klinik.dk", cmsUrl: null, lastDeployAt: null, health: { ok: false, downSince: "2026-09-20T05:00:00Z" } } as never }),
+    { subscription: null, unbilled: 0, now },
+  );
+  assert.ok(down.attention.some((a) => a.level === "haster" && a.text === "Sitet har ikke svaret i 3 dage"));
+  const ssl = buildOverview(
+    dossier({ site: { status: "live", domain: "vida-klinik.dk", cmsUrl: null, lastDeployAt: null, health: { ok: true, sslDaysLeft: 5 } } as never }),
+    { subscription: null, unbilled: 0, now },
+  );
+  assert.ok(ssl.attention.some((a) => a.level === "obs" && a.text.includes("SSL")));
+});

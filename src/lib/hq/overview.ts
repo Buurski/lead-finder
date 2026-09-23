@@ -38,7 +38,7 @@ export interface CustomerOverview {
     openDraftInvoices: string[];
   };
   services: string[];
-  site: { status: string; domain: string | null; cmsUrl: string | null; lastDeployAt: string | null } | null;
+  site: { status: string; domain: string | null; cmsUrl: string | null; lastDeployAt: string | null; health: Record<string, unknown> | null } | null;
   missing: string[];
 }
 
@@ -90,6 +90,13 @@ export function buildOverview(
   for (const inv of drafts) {
     if (daysSince(`${inv.issueDate}T12:00:00Z`, now) >= 3) attention.push({ level: "obs", text: `Faktura ${inv.number} ligger som kladde` });
   }
+  const health = d.site?.health as { ok?: boolean; downSince?: string | null; sslDaysLeft?: number | null } | null | undefined;
+  if (health && health.ok === false) {
+    const n = health.downSince ? daysSince(health.downSince, now) : 0;
+    attention.push({ level: "haster", text: n >= 1 ? `Sitet har ikke svaret i ${dage(n)}` : "Sitet svarer ikke" });
+  } else if (health && typeof health.sslDaysLeft === "number" && health.sslDaysLeft < 14) {
+    attention.push({ level: "obs", text: `SSL-certifikatet udløber om ${dage(Math.max(0, health.sslDaysLeft))}` });
+  }
   if (extra.unbilled > 0) attention.push({ level: "obs", text: `${kr(extra.unbilled)} arbejde er ikke faktureret` });
   for (const x of openDeals) {
     if (!x.nextStep?.trim()) attention.push({ level: "obs", text: `"${x.title || "Aftale"}" har intet næste skridt` });
@@ -117,7 +124,7 @@ export function buildOverview(
     },
     services: d.company.services ?? [],
     site: d.site
-      ? { status: d.site.status, domain: d.site.domain, cmsUrl: d.site.cmsUrl, lastDeployAt: d.site.lastDeployAt?.toISOString() ?? null }
+      ? { status: d.site.status, domain: d.site.domain, cmsUrl: d.site.cmsUrl, lastDeployAt: d.site.lastDeployAt?.toISOString() ?? null, health: (d.site.health as Record<string, unknown> | null) ?? null }
       : null,
     missing,
   };
