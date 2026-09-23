@@ -28,12 +28,14 @@ export interface ValidationResult {
 
 // Price / kr / money — never allowed.
 const PRICE_PATTERNS: Array<[RegExp, string]> = [
-  [/\b\d+\s?kr\b/i, "kr-beløb"],
-  [/\bkr\.?\b/i, "kr-reference"],
-  [/\bkroner\b/i, "ordet 'kroner'"],
-  [/\bdkk\b/i, "DKK-reference"],
+  // Unicode-grænser (?<![\p{L}\d]) i stedet for \b: JS' \b ser æ/ø/å som ikke-bogstaver,
+  // så "kræver" blev læst som "kr" (23/9). Tal efterfulgt af anmeldelser/gæster er ikke penge.
+  [/(?<![\p{L}\d])\d+\s?kr(?![\p{L}\d])/iu, "kr-beløb"],
+  [/(?<![\p{L}\d])kr\.?(?![\p{L}\d])/iu, "kr-reference"],
+  [/(?<![\p{L}\d])kroner(?![\p{L}\d])/iu, "ordet 'kroner'"],
+  [/(?<![\p{L}\d])dkk(?![\p{L}\d])/iu, "DKK-reference"],
   [/€/, "euro-tegn"],
-  [/\b\d{1,3}[.,]\d{3}\b/, "pengebeløb"], // require thousands separator so a bare year (2026) is not a false "price"
+  [/(?<![\p{L}\d])\d{1,3}[.,]\d{3}(?![\p{L}\d])(?!\s*(anmeldelser|gæster|kunder|besøgende|følgere|medlemmer|stjerner))/iu, "pengebeløb"], // tusindtalsseparator, så et årstal (2026) ikke er en "pris"
   [/\b\d+\s?k\b/i, "pris som '5k'"],
   [/\bprisvenlig\w*/i, "ordet 'prisvenlig'"],
   [/\bbillig\w*/i, "ordet 'billig'"],
