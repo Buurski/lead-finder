@@ -1,5 +1,4 @@
 import PageHeader from "@/components/shell/PageHeader";
-import { SheetsFallback } from "@/components/finance/FinanceUI";
 import { getClients, getTargets, getSnapshots, type Client, type Target, type Snapshot } from "@/lib/sheets";
 import { quarterOf } from "@/lib/finance";
 import OkonomiClient from "./OkonomiClient";
@@ -26,11 +25,11 @@ export default async function OkonomiPage() {
   let clients: Client[] = [];
   let targets: Target[] = [];
   let snapshots: Snapshot[] = [];
-  let sheetsOk = true;
+  let dataOk = true;
   try {
     [clients, targets, snapshots] = await Promise.all([getClients(), getTargets(), getSnapshots()]);
   } catch {
-    sheetsOk = false;
+    dataOk = false;
   }
 
   const target = targets.find((t) => t.quarter === quarter.key) ?? defaultTarget(quarter.key);
@@ -41,12 +40,15 @@ export default async function OkonomiPage() {
       <PageHeader
         icon="Target"
         title="Økonomi"
-        subtitle={sheetsOk
-          ? `${quarter.key} · MRR, omsætning & mål · afledt af ${clients.length} klient-rækker + ${snapshots.length} snapshots`
-          : "Kunne ikke hente tallene — prøv at genindlæse."}
+        subtitle={dataOk ? `${quarter.key} · MRR, omsætning & mål` : "Kunne ikke hente tallene lige nu."}
       />
 
-      {!sheetsOk ? <SheetsFallback /> : (
+      {!dataOk ? (
+        <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="cc-dim" style={{ fontSize: 13.5 }}>Kunne ikke hente tallene lige nu.</span>
+          <a className="cc-btn" href="" style={{ marginLeft: "auto", textDecoration: "none" }}>Prøv igen</a>
+        </div>
+      ) : (
         <OkonomiClient
           clients={clients}
           target={target}

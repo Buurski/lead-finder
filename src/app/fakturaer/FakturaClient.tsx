@@ -1,17 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Icon from "@/components/shell/Icon";
 import type { Invoice, InvoiceLine, Subscription, InvoiceStatus } from "@/lib/invoices.ts";
+import "@/components/okonomi/okonomi.css";
 
 type SubWithNext = Subscription & { nextDue: string };
 
-const STATUS_STYLE: Record<InvoiceStatus, { bg: string; fg: string; label: string }> = {
-  kladde: { bg: "var(--bg-3)", fg: "var(--text-dim)", label: "kladde" },
-  sendt: { bg: "var(--blue-soft, #1e3a5f)", fg: "var(--blue, #7cb7ff)", label: "sendt" },
-  betalt: { bg: "var(--accent-soft)", fg: "var(--accent-ink)", label: "betalt" },
-  forfalden: { bg: "var(--red-soft, #4a1f1f)", fg: "var(--red, #ff8a8a)", label: "forfalden" },
-  rykket: { bg: "var(--red-soft, #4a1f1f)", fg: "var(--red, #ff8a8a)", label: "rykket" },
+const STATUS_META: Record<InvoiceStatus, { label: string; bg: string; fg: string }> = {
+  kladde: { label: "Kladde", bg: "var(--bg-3)", fg: "var(--text-dim)" },
+  sendt: { label: "Sendt", bg: "var(--bg-3)", fg: "var(--text-muted)" },
+  forfalden: { label: "Forfalden", bg: "var(--red-dim)", fg: "var(--red)" },
+  rykket: { label: "Rykket", bg: "var(--red-dim)", fg: "var(--red)" },
+  betalt: { label: "Betalt", bg: "var(--green-dim)", fg: "var(--green)" },
 };
 
 function daysUntil(dateStr: string, today: string): number {
@@ -19,34 +21,50 @@ function daysUntil(dateStr: string, today: string): number {
   return Math.round(ms / 86400000);
 }
 
-function daysLabel(days: number): string {
-  if (days === 0) return "i dag";
-  if (days > 0) return `om ${days} ${days === 1 ? "dag" : "dage"}`;
-  return `${Math.abs(days)} ${Math.abs(days) === 1 ? "dag" : "dage"} forfalden`;
+function dueLabel(days: number): string {
+  if (days === 0) return "forfalder i dag";
+  if (days > 0) return `forfalder om ${days} ${days === 1 ? "dag" : "dage"}`;
+  const over = Math.abs(days);
+  return `${over} ${over === 1 ? "dag" : "dage"} over`;
 }
 
 function fmtDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long" });
+  return new Date(dateStr + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
 function kr(n: number): string {
-  return `${n.toLocaleString("da-DK")} kr`;
+  return `${Math.round(n).toLocaleString("da-DK")} kr`;
 }
 
+// Speilvender src/lib/invoices.ts' isOverdue() lokalt — den rigtige funktion
+// importerer store.ts/db-klienten, som ikke må havne i client-bundlet.
+function isOverdue(inv: Pick<Invoice, "status" | "dueDate">, today: string): boolean {
+  return (inv.status === "sendt" || inv.status === "forfalden" || inv.status === "rykket") && inv.dueDate < today;
+}
+
+function isoAddDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+type FilterTab = "aabne" | "betalt" | "alle";
+
 export default function FakturaClient({
-  invoices, subscriptions, clients, today, initialClientName = "",
+  invoices, subscriptions, clients, today, initialClientName = "", companyByInvoice = {},
 }: {
   invoices: Invoice[];
   subscriptions: SubWithNext[];
   clients: { id: string; name: string }[];
   today: string;
   initialClientName?: string;
+  companyByInvoice?: Record<string, string>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(Boolean(initialClientName));
   const [error, setError] = useState("");
-  const [sendTarget, setSendTarget] = useState<Invoice | null>(null);
+  const [filterTab, setFilterTab] = useState<FilterTab>("aabne");
+  const [dialog, setDialog] = useState<{ inv: Invoice; mode: "send" | "reminder" } | null>(null);
 
   async function generateFromSub(sub: SubWithNext) {
     setBusy(`sub-${sub.clientName}`);
@@ -90,26 +108,6 @@ export default function FakturaClient({
     }
   }
 
-  async function doSend(inv: Invoice, to: string, dueDate: string, extra: string) {
-    setBusy(inv.number);
-    setError("");
-    try {
-      const res = await fetch(`/api/invoices/${inv.number}/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, dueDate, extra: extra || undefined }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "afsendelse fejlede");
-      setSendTarget(null);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "ukendt fejl");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function deleteInvoice(inv: Invoice) {
     if (!window.confirm(`Slet faktura ${inv.number} (${inv.recipient.name})? Kun kladder kan slettes.`)) return;
     setBusy(inv.number);
@@ -126,11 +124,35 @@ export default function FakturaClient({
     }
   }
 
+  // ---- top-tal: udestående · forfaldent · betalt i år ----
+  const totalOf = (list: Invoice[]) => list.reduce((s, i) => s + i.lines.reduce((a, l) => a + l.amount, 0), 0);
+  const outstanding = totalOf(invoices.filter((i) => i.status !== "betalt"));
+  const overdueTotal = totalOf(invoices.filter((i) => i.status === "forfalden" || i.status === "rykket" || (i.status === "sendt" && i.dueDate < today)));
+  const thisYear = today.slice(0, 4);
+  const paidThisYear = totalOf(invoices.filter((i) => i.status === "betalt" && i.paidAt?.slice(0, 4) === thisYear));
+
+  const filtered = invoices.filter((i) => (filterTab === "alle" ? true : filterTab === "betalt" ? i.status === "betalt" : i.status !== "betalt"));
+
   return (
     <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
       {error && (
-        <div className="cc-card cc-card-pad" style={{ borderColor: "var(--red, #ff8a8a)", fontSize: 13, color: "var(--red, #ff8a8a)" }}>{error}</div>
+        <div className="cc-card cc-card-pad" style={{ borderColor: "var(--red)", fontSize: 13, color: "var(--red)" }}>{error}</div>
       )}
+
+      <div className="oko-stats">
+        <div className="oko-stats-cell">
+          <span className="oko-stats-label">Udestående</span>
+          <span className="oko-stats-value oko-num">{kr(outstanding)}</span>
+        </div>
+        <div className="oko-stats-cell">
+          <span className="oko-stats-label">Forfaldent</span>
+          <span className="oko-stats-value oko-num" data-tone={overdueTotal > 0 ? "risk" : undefined}>{kr(overdueTotal)}</span>
+        </div>
+        <div className="oko-stats-cell">
+          <span className="oko-stats-label">Betalt i år</span>
+          <span className="oko-stats-value oko-num" data-tone="success">{kr(paidThisYear)}</span>
+        </div>
+      </div>
 
       {subscriptions.length > 0 && (
         <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
@@ -145,8 +167,8 @@ export default function FakturaClient({
               return (
                 <div key={sub.clientName} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
                   <span style={{ fontWeight: 600 }}>{sub.clientName}</span>
-                  <span className="cc-dim">{kr(total)}/md</span>
-                  <span className="cc-dim">næste: {fmtDate(sub.nextDue)} ({daysLabel(days)})</span>
+                  <span className="cc-dim oko-num">{kr(total)}/md</span>
+                  <span className="cc-dim">næste: {fmtDate(sub.nextDue)} ({dueLabel(days)})</span>
                   <button
                     className="cc-btn cc-btn-accent"
                     style={{ marginLeft: "auto" }}
@@ -163,9 +185,14 @@ export default function FakturaClient({
       )}
 
       <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="Receipt" style={{ width: 16, height: 16, color: "var(--kinly-signal)" }} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>Alle fakturaer</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div className="cc-tabs" role="tablist" aria-label="Filtrér fakturaer">
+            {([["aabne", "Åbne"], ["betalt", "Betalt"], ["alle", "Alle"]] as [FilterTab, string][]).map(([k, label]) => (
+              <button key={k} role="tab" aria-selected={filterTab === k} className="cc-tab cc-focus" data-active={filterTab === k} onClick={() => setFilterTab(k)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <button className="cc-btn" style={{ marginLeft: "auto" }} onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Luk form" : "+ Ny faktura"}
           </button>
@@ -179,56 +206,50 @@ export default function FakturaClient({
           />
         )}
 
-        {invoices.length === 0 ? (
-          <p className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer endnu.</p>
+        {filtered.length === 0 ? (
+          <p className="cc-dim" style={{ fontSize: 13 }}>Ingen fakturaer i denne visning.</p>
         ) : (
-          <div style={{ display: "grid", gap: 6 }}>
-            <div
-              style={{
-                display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13,
-                padding: "6px 0", borderTop: "1px solid var(--border)",
-              }}
-            >
-              {(() => {
-                const forfaldne = invoices.filter((i) => i.status === "forfalden" || i.status === "rykket");
-                const sendt = invoices.filter((i) => i.status === "sendt");
-                const sum = (list: Invoice[]) => list.reduce((s, i) => s + i.lines.reduce((a, l) => a + l.amount, 0), 0);
-                return (
-                  <>
-                    <span><b>{forfaldne.length}</b> forfaldne · <b>{kr(sum(forfaldne))} forfaldne</b></span>
-                    <span className="cc-dim">·</span>
-                    <span><b>{kr(sum(sendt))} sendt ikke betalt</b></span>
-                  </>
-                );
-              })()}
-            </div>
-            {invoices.map((inv) => {
+          <div>
+            {filtered.map((inv) => {
               const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
               const days = daysUntil(inv.dueDate, today);
-              const style = STATUS_STYLE[inv.status];
+              const meta = STATUS_META[inv.status];
               const isBusy = busy === inv.number;
+              const companyId = companyByInvoice[inv.number];
+              const overdueNow = isOverdue(inv, today);
+              const showReminder = inv.status === "forfalden" || inv.status === "rykket" || (inv.status === "sendt" && overdueNow);
+              const showSend = inv.status === "kladde" || (inv.status === "sendt" && !overdueNow);
               return (
-                <div key={inv.number} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, padding: "8px 0", borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>{inv.number}</span>
-                  <span>{inv.recipient.name}</span>
-                  <span className="cc-dim">{kr(total)}</span>
-                  <span className="cc-chip" style={{ background: style.bg, color: style.fg, border: "none" }}>{style.label}</span>
-                  {(inv.status === "sendt" || inv.status === "forfalden" || inv.status === "rykket") && (
-                    <span className="cc-dim" style={{ fontSize: 12 }}>{daysLabel(days)}</span>
+                <div key={inv.number} className="oko-row">
+                  <span className="cc-mono" style={{ fontWeight: 600 }}>{inv.number}</span>
+                  {companyId ? (
+                    <Link href={`/virksomheder/${companyId}`} className="cc-link">{inv.recipient.name}</Link>
+                  ) : (
+                    <span>{inv.recipient.name}</span>
                   )}
-                  <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                    <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-link" style={{ fontSize: 12.5 }}>PDF</a>
+                  <span className="oko-num" style={{ fontWeight: 600 }}>{kr(total)}</span>
+                  <span className="oko-pill" style={{ background: meta.bg, color: meta.fg }}>{meta.label}</span>
+                  {inv.status !== "betalt" && inv.status !== "kladde" && (
+                    <span className="cc-dim" style={{ fontSize: 12 }}>{dueLabel(days)}</span>
+                  )}
+                  {inv.remindedAt && (
+                    <span className="cc-dim" style={{ fontSize: 12 }}>Påmindet {fmtDate(inv.remindedAt.slice(0, 10))}</span>
+                  )}
+                  <div className="oko-row-actions">
+                    <a href={`/api/invoices/${inv.number}/pdf`} target="_blank" rel="noopener noreferrer" className="cc-btn">PDF</a>
                     {inv.status === "kladde" && (
                       <button className="cc-btn" disabled={isBusy} onClick={() => deleteInvoice(inv)}>Slet</button>
                     )}
-                    {inv.status !== "betalt" && (
-                      <button className="cc-btn" disabled={isBusy} onClick={() => setSendTarget(inv)}>Send</button>
+                    {showSend && (
+                      <button className="cc-btn" disabled={isBusy} onClick={() => setDialog({ inv, mode: "send" })}>
+                        {inv.status === "kladde" ? "Send" : "Send igen"}
+                      </button>
+                    )}
+                    {showReminder && (
+                      <button className="cc-btn" disabled={isBusy} onClick={() => setDialog({ inv, mode: "reminder" })}>Send påmindelse</button>
                     )}
                     {inv.status !== "betalt" && (
-                      <button className="cc-btn" disabled={isBusy} onClick={() => setStatus(inv.number, "betalt")}>Betalt</button>
-                    )}
-                    {(inv.status === "sendt" || inv.status === "forfalden") && (
-                      <button className="cc-btn" disabled={isBusy} onClick={() => setStatus(inv.number, "rykket")}>Rykket</button>
+                      <button className="cc-btn cc-btn-accent" disabled={isBusy} onClick={() => setStatus(inv.number, "betalt")}>Betalt</button>
                     )}
                   </div>
                 </div>
@@ -238,72 +259,131 @@ export default function FakturaClient({
         )}
       </section>
 
-      {sendTarget && (
+      {dialog && (
         <SendDialog
-          inv={sendTarget}
+          inv={dialog.inv}
+          mode={dialog.mode}
           today={today}
-          busy={busy === sendTarget.number}
-          onCancel={() => setSendTarget(null)}
-          onSend={(to, dueDate, extra) => doSend(sendTarget, to, dueDate, extra)}
+          onClose={() => setDialog(null)}
+          onSent={() => { setDialog(null); router.refresh(); }}
         />
       )}
     </div>
   );
 }
 
-function isoAddDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
-}
-
 function SendDialog({
-  inv, today, busy, onCancel, onSend,
+  inv, mode, today, onClose, onSent,
 }: {
   inv: Invoice;
+  mode: "send" | "reminder";
   today: string;
-  busy: boolean;
-  onCancel: () => void;
-  onSend: (to: string, dueDate: string, extra: string) => void;
+  onClose: () => void;
+  onSent: () => void;
 }) {
   const [to, setTo] = useState("");
+  const [toTouched, setToTouched] = useState(false);
   const [dueDate, setDueDate] = useState(() => isoAddDays(today, 14));
   const [extra, setExtra] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [maybeSent, setMaybeSent] = useState(false);
   const total = inv.lines.reduce((sum, l) => sum + l.amount, 0);
 
+  // Forudfylder modtager-mail fra kontakt/virksomhed/tidligere faktura — brugeren kan altid rette den.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/invoices/${inv.number}/modtager`)
+      .then((r) => r.json())
+      .then((d: { to?: string }) => { if (!cancelled && !toTouched && d.to) setTo(d.to); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kun ved åbning, ikke ved hver tastatur-anslag
+  }, [inv.number]);
+
+  async function submit(force = false) {
+    setBusy(true);
+    setError("");
+    try {
+      const body: Record<string, unknown> = { to: to.trim(), extra: extra.trim() || undefined };
+      if (mode === "send") body.dueDate = dueDate;
+      if (mode === "reminder") body.reminder = true;
+      if (force) body.force = true;
+      const res = await fetch(`/api/invoices/${inv.number}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.maybeSent) {
+        setMaybeSent(true);
+        setError(data.error || "Den blev måske allerede sendt. Tjek Sendt-mappen i Gmail.");
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || (mode === "reminder" ? "påmindelse fejlede" : "afsendelse fejlede"));
+      onSent();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ukendt fejl");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div style={overlayStyle} onClick={busy ? undefined : onCancel}>
-      <div
-        style={{ background: "var(--surface)", borderRadius: 12, padding: 24, width: "min(520px, 95vw)", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "grid", gap: 14 }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="oko-dialog-backdrop" onClick={busy ? undefined : onClose}>
+      <div className="oko-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={mode === "reminder" ? "Send påmindelse" : "Send faktura"}>
         <div>
-          <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>Send faktura {inv.number}</h3>
+          <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
+            {mode === "reminder" ? `Send påmindelse — faktura ${inv.number}` : `Send faktura ${inv.number}`}
+          </h3>
           <p className="cc-dim" style={{ margin: "4px 0 0", fontSize: 12.5 }}>
             {inv.recipient.name} · {kr(total)}. Systemet sender ikke automatisk — dette er den eneste knap der gør det.
           </p>
         </div>
 
-        <label style={labelStyle}>
+        <label className="oko-field">
           Modtager-email
-          <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="kunde@eksempel.dk" style={inputStyle} autoFocus />
+          <input
+            type="email" className="cc-input" value={to}
+            onChange={(e) => { setTo(e.target.value); setToTouched(true); }}
+            placeholder="kunde@eksempel.dk" autoFocus
+          />
         </label>
 
-        <label style={labelStyle}>
-          Forfaldsdato
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} />
-          <span className="cc-dim" style={{ fontWeight: 400, fontSize: 11.5 }}>Standard: 14 dage fra i dag. Ret den hvis du vil.</span>
-        </label>
+        {mode === "send" && (
+          <label className="oko-field">
+            Forfaldsdato
+            <input type="date" className="cc-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <span className="oko-field-hint">Standard: 14 dage fra i dag. Ret den hvis du vil.</span>
+          </label>
+        )}
 
-        <label style={labelStyle}>
+        <label className="oko-field">
           Ekstra besked i mailen (valgfri)
-          <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={3} placeholder="Fx: Tak for et godt møde i sidste uge — sig endelig til hvis der er noget." style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
-          <span className="cc-dim" style={{ fontWeight: 400, fontSize: 11.5 }}>Lægges ind i mailen efter beløbslinjen — resten af teksten er som altid.</span>
+          <textarea
+            className="cc-input" value={extra} onChange={(e) => setExtra(e.target.value)} rows={3}
+            placeholder="Fx: Tak for et godt møde i sidste uge — sig endelig til hvis der er noget."
+            style={{ height: "auto", padding: "10px 14px", resize: "vertical", lineHeight: 1.5 }}
+          />
+          <span className="oko-field-hint">Lægges ind i mailen efter beløbslinjen — resten af teksten er som altid.</span>
         </label>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button className="cc-btn" onClick={onCancel} disabled={busy}>Annullér</button>
-          <button className="cc-btn cc-btn-accent" disabled={busy || !to.trim()} onClick={() => onSend(to.trim(), dueDate, extra)}>
-            {busy ? "sender…" : "Send faktura"}
+        {maybeSent && (
+          <div style={{ background: "var(--amber-dim)", color: "var(--amber)", borderRadius: "var(--radius-sm)", padding: "10px 12px", fontSize: 12.5 }}>
+            {error}
+          </div>
+        )}
+        {error && !maybeSent && <span style={{ fontSize: 12.5, color: "var(--red)" }}>{error}</span>}
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button className="cc-btn" onClick={onClose} disabled={busy}>Annullér</button>
+          {maybeSent && (
+            <button className="cc-btn" disabled={busy || !to.trim()} onClick={() => submit(true)}>
+              {busy ? "sender…" : "Send alligevel"}
+            </button>
+          )}
+          <button className="cc-btn cc-btn-accent" disabled={busy || !to.trim() || maybeSent} onClick={() => submit(false)}>
+            {busy ? "sender…" : mode === "reminder" ? "Send påmindelse" : "Send faktura"}
           </button>
         </div>
       </div>
@@ -365,14 +445,14 @@ function NyFakturaForm({ clients, initialClientName, onCreated }: { clients: { i
   }
 
   return (
-    <div style={{ display: "grid", gap: 10, padding: 12, border: "1px solid var(--border)", borderRadius: 10 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 13 }}>
+    <div className="oko-form-card">
+      <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 13, flexWrap: "wrap" }}>
         <label style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <input type="radio" checked={mode === "client"} onChange={() => setMode("client")} disabled={clients.length === 0} />
           Kunde
         </label>
         {mode === "client" ? (
-          <select value={clientName} onChange={(e) => setClientName(e.target.value)} style={selectStyle} disabled={clients.length === 0}>
+          <select value={clientName} onChange={(e) => setClientName(e.target.value)} className="cc-input" style={{ height: 34 }} disabled={clients.length === 0}>
             {clients.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         ) : null}
@@ -381,24 +461,24 @@ function NyFakturaForm({ clients, initialClientName, onCreated }: { clients: { i
           Fritekst
         </label>
         {mode === "free" ? (
-          <input value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Modtagernavn" style={inputStyle} />
+          <input value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Modtagernavn" className="cc-input" style={{ height: 34 }} />
         ) : null}
       </div>
 
       <div style={{ display: "grid", gap: 6 }}>
         {lines.map((l, i) => (
-          <div key={i} style={{ display: "flex", gap: 6 }}>
-            <input value={l.description} onChange={(e) => updateLine(i, { description: e.target.value })} placeholder="Beskrivelse" style={{ ...inputStyle, flex: 1 }} />
-            <input type="number" value={l.amount || ""} onChange={(e) => updateLine(i, { amount: Number(e.target.value) })} placeholder="Kr" style={{ ...inputStyle, width: 100 }} />
-            {lines.length > 1 && <button className="cc-btn" onClick={() => removeLine(i)}>✕</button>}
+          <div key={i} className="oko-line-row">
+            <input value={l.description} onChange={(e) => updateLine(i, { description: e.target.value })} placeholder="Beskrivelse" className="cc-input" style={{ height: 34, flex: 1 }} />
+            <input type="number" value={l.amount || ""} onChange={(e) => updateLine(i, { amount: Number(e.target.value) })} placeholder="Kr" className="cc-input" style={{ height: 34, width: 100 }} />
+            {lines.length > 1 && <button className="cc-btn" aria-label="Fjern linje" onClick={() => removeLine(i)}>✕</button>}
           </div>
         ))}
         <button className="cc-btn" style={{ width: "fit-content" }} onClick={addLine}>+ Linje</button>
       </div>
 
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" style={inputStyle} />
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" className="cc-input" style={{ height: 34 }} />
 
-      {err && <span style={{ fontSize: 12.5, color: "var(--red, #ff8a8a)" }}>{err}</span>}
+      {err && <span style={{ fontSize: 12.5, color: "var(--red)" }}>{err}</span>}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="cc-btn" style={{ width: "fit-content" }} onClick={() => setShowPreview((v) => !v)}>
@@ -488,13 +568,3 @@ function InvoicePreview({
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: "6px 9px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--surface)", color: "var(--text)", fontSize: 13,
-};
-const selectStyle: React.CSSProperties = { ...inputStyle };
-const overlayStyle: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-  display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-};
-const labelStyle: React.CSSProperties = { display: "grid", gap: 5, fontSize: 12.5, fontWeight: 600 };

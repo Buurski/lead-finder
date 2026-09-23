@@ -137,7 +137,7 @@ export default function OkonomiPage() {
           <PersonCard name="Charlie" who="charlie" color="var(--amber)" dim="var(--amber-dim)" own={split.charlie} half={split.selskab / 2} />
         </div>
 
-        <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", background: "linear-gradient(135deg, var(--accent-soft), var(--surface))" }}>
+        <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", background: "var(--accent-soft)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <Icon name="ArrowUpRight" style={{ width: 20, height: 20, color: "var(--kinly-signal)" }} />
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Charlies månedlige overførsel</h2>

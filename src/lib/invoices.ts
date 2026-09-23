@@ -34,6 +34,8 @@ export interface Invoice {
   kind?: "abonnement" | "arbejde" | "manuel";
   /** Sat lige før mailen sendes; spærrer en gen-afsendelse hvis gemningen bagefter fejler. */
   sendingAt?: string;
+  /** Modtager-mailen sidst brugt til at sende/rykke denne faktura — bruges til at forudfylde næste faktura til samme kunde. */
+  sentTo?: string;
 }
 
 export interface Subscription {
