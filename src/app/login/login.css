@@ -1,0 +1,30 @@
+/* Login — centreret hvidt kort på lysegrå bund (fase 2-polish, design-review #2).
+   Ingen skygger (spec §5) — kortet skiller sig ud via kant + fladefarve alene. */
+.login-shell {
+  min-height: 100dvh; display: grid; place-items: center;
+  background: var(--bg); padding: 24px 16px;
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 36px 32px;
+  display: grid; gap: 22px;
+}
+.login-wordmark { height: 28px; width: auto; }
+.login-copy { display: grid; gap: 4px; }
+.login-title { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.login-sub { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+.login-form { display: grid; gap: 12px; }
+.login-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.login-btn {
+  height: 44px; border-radius: 999px; border: none;
+  background: var(--text); color: #fff;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background 140ms ease, transform 80ms ease;
+}
+.login-btn:hover { background: #000; }
+.login-btn:active { transform: scale(0.98); }
+.login-msg { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) {
+  .login-btn { transition: none; }
+}

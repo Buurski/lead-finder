@@ -256,7 +256,10 @@ export default function RepliesClient() {
 
   function load() {
     setState("loading");
-    fetch("/api/replies")
+    // Timeout: uden den hænger skeletonen i evighed hvis /api/replies aldrig svarer.
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), 12_000);
+    fetch("/api/replies", { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => {
         if (d.ok === false) { setErr(d.error ?? "ukendt fejl"); setState("error"); setDigest(null); return; }
@@ -265,7 +268,8 @@ export default function RepliesClient() {
         setAgeMin(typeof d.summary?.ageMinutes === "number" ? d.summary.ageMinutes : null);
         setState("ok");
       })
-      .catch((e) => { setErr(String(e)); setState("error"); });
+      .catch((e) => { setErr(e?.name === "AbortError" ? "Serveren svarede ikke i tide." : String(e)); setState("error"); })
+      .finally(() => clearTimeout(timeout));
   }
   // Initial load on mount. load() sets "loading" synchronously; that's the intent
   // (the skeleton), so the set-state-in-effect rule is intentionally suppressed.

@@ -72,7 +72,7 @@ export default function GratisUdkast({ senders }: { senders: Senders }) {
     if (!loadedOnce.current) setLoading(true);
     try {
       const res = await fetch("/api/previews", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error("Serveren svarede ikke som ventet.");
       const list: PreviewRequest[] = (await res.json()).requests ?? [];
       setRequests(list);
       setError("");
@@ -112,7 +112,7 @@ export default function GratisUdkast({ senders }: { senders: Senders }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...body }),
     });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Kunne ikke gemme ændringen lige nu.");
     await load();
   }
 
@@ -267,7 +267,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
         body: JSON.stringify({ sender, subject, body }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!res.ok || !data.ok) throw new Error(data.error || "Kunne ikke sende lige nu.");
       setSendState("sent");
       setSentAt(new Date().toISOString());
       onSent();

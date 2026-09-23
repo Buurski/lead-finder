@@ -1,5 +1,8 @@
+import "./login.css";
+
 // Login: mail et engangs-link (magic link). Med ?t=… vises en bekræft-knap,
 // der POST'er tokenet — så mail-scannere ikke kan bruge linket op.
+// Login-LOGIKKEN (form action/method/felter) er urørt — kun markup/stil er nyt.
 export default async function LoginPage({
   searchParams,
 }: {
@@ -14,22 +17,29 @@ export default async function LoginPage({
     : "";
 
   return (
-    <main style={{ minHeight: "70vh", display: "grid", placeItems: "center", padding: 16 }}>
-      <div style={{ width: "100%", maxWidth: 380, display: "grid", gap: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 600, margin: 0 }}>Kinly HQ</h1>
+    <main className="login-shell">
+      <div className="login-card">
+        {/* eslint-disable-next-line @next/next/no-img-element -- statisk brand-asset, ikke optimeringsbehov */}
+        <img src="/brand/kinly-wordmark-light.svg" alt="Kinly" className="login-wordmark" />
+        <div className="login-copy">
+          <h1 className="login-title">{token ? "Bekræft login" : "Log ind på Kinly HQ"}</h1>
+          <p className="login-sub">
+            {token ? "Tryk for at bekræfte engangslinket fra mailen." : "Indtast din mail — vi sender et engangslink, der virker i 15 minutter."}
+          </p>
+        </div>
         {token ? (
-          <form method="post" action="/api/auth/verify" style={{ display: "grid", gap: 12 }}>
+          <form method="post" action="/api/auth/verify" className="login-form">
             <input type="hidden" name="t" value={token} />
-            <button type="submit" className="cc-btn">Log ind</button>
+            <button type="submit" className="login-btn">Log ind</button>
           </form>
         ) : (
-          <form method="post" action="/api/auth/magic" style={{ display: "grid", gap: 12 }}>
-            <label htmlFor="email">Din mail</label>
+          <form method="post" action="/api/auth/magic" className="login-form">
+            <label htmlFor="email" className="login-label">Din mail</label>
             <input id="email" name="email" type="email" required autoComplete="email" className="cc-input" />
-            <button type="submit" className="cc-btn">Send login-link</button>
+            <button type="submit" className="login-btn">Send login-link</button>
           </form>
         )}
-        {msg && <p role="status">{msg}</p>}
+        {msg && <p role="status" className="login-msg">{msg}</p>}
       </div>
     </main>
   );

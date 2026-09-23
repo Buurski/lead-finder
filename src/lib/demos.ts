@@ -67,7 +67,9 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.ktvvs, branch: "håndværk" },
   { ...D.ikastAutoservice, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
-  { ...D.vestfjends, branch: "service" },
+  // vestfjends.vercel.app svarer 404 (verificeret 2026-09-23) — fjernet fra
+  // Studio-grid'et til den er oppe igen. pickDemos() bruger den stadig som
+  // fallback for service/håndværk-mails; se rapport for det spor.
   { ...D.midtadvokaterne, branch: "professionel" },
 ];
 

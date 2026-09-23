@@ -125,6 +125,21 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   color: var(--text-dim);
 }
 
+.cc-input {
+  height: 44px; padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px; font-family: var(--font-body);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.cc-input::placeholder { color: var(--text-dim); }
+.cc-input:focus-visible {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 .cc-btn {
   display: inline-flex; align-items: center; gap: 8px;
   height: 36px; padding: 0 14px;

@@ -77,7 +77,10 @@ export default function MessengerPanel() {
 
   function load() {
     setState("loading");
-    fetch("/api/messenger")
+    // Timeout: uden den hænger skeletonen i evighed hvis /api/messenger aldrig svarer.
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), 12_000);
+    fetch("/api/messenger", { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => {
         if (d.ok === false) { setErr(d.error ?? "ukendt fejl"); setState("error"); return; }
@@ -85,7 +88,8 @@ export default function MessengerPanel() {
         setPool(d.pool ?? null);
         setState("ok");
       })
-      .catch((e) => { setErr(String(e)); setState("error"); });
+      .catch((e) => { setErr(e?.name === "AbortError" ? "Serveren svarede ikke i tide." : String(e)); setState("error"); })
+      .finally(() => clearTimeout(timeout));
   }
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -136,7 +140,7 @@ export default function MessengerPanel() {
       )}
 
       {pool?.depleted && (
-        <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "center", borderColor: "var(--amber)" }}>
+        <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <Icon name="Activity" style={{ width: 17, height: 17, color: "var(--amber)" }} />
           <span style={{ fontSize: 13 }}>Puljen er tom — kør en rescrape på <a className="cc-link" href="/leads">Leads</a> for at finde nye FB-leads.</span>
         </div>

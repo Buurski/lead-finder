@@ -111,7 +111,7 @@ export default async function DriftPage() {
       />
 
       {!kanban?.ok && (
-        <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "center", borderColor: "var(--amber)" }}>
+        <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <Icon name="Activity" style={{ width: 17, height: 17, color: "var(--amber)" }} />
           <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
             Kanban kunne ikke nås lige nu ({kanban?.note ?? "VPS svarede ikke"}). Tallene nedenfor er fra cachen hvor den findes.
