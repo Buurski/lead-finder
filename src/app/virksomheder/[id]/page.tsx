@@ -262,9 +262,9 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             </span>
             <span className="virk-header-links">
               {c.website && <a href={websiteHref(c.website)} target="_blank" rel="noreferrer">{c.website}</a>}
-              {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
+              {real(c.email) && <a href={`mailto:${real(c.email)}`}>{real(c.email)}</a>}
               {real(c.phone) && <a href={`tel:${real(c.phone)}`}>{real(c.phone)}</a>}
-              {!c.website && !c.email && !real(c.phone) && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
+              {!c.website && !real(c.email) && !real(c.phone) && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
             </span>
           </span>
         }

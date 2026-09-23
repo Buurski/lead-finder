@@ -2,7 +2,7 @@
 // ingen skrivning her. Kæde: primær kontakt med mail → company.email → seneste
 // modtager-mail brugt på en tidligere faktura til samme kunde.
 import "server-only";
-import { and, asc, desc, eq, isNotNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, like } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { company, contact, invoice } from "../db/schema.ts";
 import type { Invoice } from "../invoices.ts";
@@ -38,13 +38,14 @@ export async function resolveInvoiceRecipient(invoiceNumber: string): Promise<Re
   const [primaryContact] = await db
     .select({ email: contact.email })
     .from(contact)
-    .where(and(eq(contact.companyId, companyId), ne(contact.email, "")))
+    .where(and(eq(contact.companyId, companyId), like(contact.email, "%@%")))
     .orderBy(asc(contact.createdAt))
     .limit(1);
   if (primaryContact?.email) return { to: primaryContact.email, source: "kontakt" };
 
   const [co] = await db.select({ email: company.email }).from(company).where(eq(company.id, companyId));
-  if (co?.email) return { to: co.email, source: "virksomhed" };
+  // "none" er mail-finderens markør for "søgt, intet fundet" — aldrig en modtager.
+  if (co?.email?.includes("@")) return { to: co.email, source: "virksomhed" };
 
   const prior = await db
     .select({ data: invoice.data })
