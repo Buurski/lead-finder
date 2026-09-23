@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import TaskRow, { type TaskRowItem } from "./TaskRow";
 import QuickAdd from "./QuickAdd";
+import type { EditableTask } from "./TaskEditDialog";
 import "./opgaver.css";
 
 interface Item extends TaskRowItem {
@@ -88,6 +89,11 @@ export default function OpgaverBoard({
     patchItem(id, { due }).then(reload).catch((e) => notify(e instanceof Error ? e.message : "kunne ikke flytte opgaven"));
   }
 
+  function changed(id: string, change: Omit<EditableTask, "id" | "companyId"> | null) {
+    setItems((prev) => change ? prev.map((i) => i.id === id ? { ...i, ...change } : i) : prev.filter((i) => i.id !== id));
+    void reload();
+  }
+
   const owners: { value: typeof owner; label: string }[] = [
     { value: "", label: "Begge" },
     { value: "lucas", label: "Lucas" },
@@ -145,11 +151,11 @@ export default function OpgaverBoard({
           {tab === "dag" ? "Intet forfalder i dag." : "Ingen åbne opgaver eller næste skridt."}
         </p>
       ) : (
-        BUCKET_ORDER.filter((b) => visible.some((i) => i.bucket === b)).map((b) => (
+        (["vigtig", ...BUCKET_ORDER] as const).filter((b) => visible.some((i) => b === "vigtig" ? i.important : !i.important && i.bucket === b)).map((b) => (
           <div key={b} className="op-group">
-            <div className="op-group-label">{BUCKET_LABEL[b]}</div>
-            {visible.filter((i) => i.bucket === b).map((i) => (
-              <TaskRow key={i.id} item={i} today={today} onComplete={complete} onReschedule={reschedule} />
+            <div className="op-group-label">{b === "vigtig" ? "Vigtig" : BUCKET_LABEL[b]}</div>
+            {visible.filter((i) => b === "vigtig" ? i.important : !i.important && i.bucket === b).map((i) => (
+              <TaskRow key={i.id} item={i} today={today} onComplete={complete} onReschedule={reschedule} onChanged={changed} />
             ))}
           </div>
         ))

@@ -29,6 +29,8 @@ export interface MyDayItem {
   company: string;
   owner: string;
   due: string; // YYYY-MM-DD eller ""
+  note: string;
+  important: boolean;
   bucket: DueBucket;
 }
 
@@ -45,7 +47,7 @@ export function dueBucket(due: string, today: string): DueBucket {
 }
 
 function sortItems(items: MyDayItem[]): MyDayItem[] {
-  return items.sort((a, b) => BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] || (a.due || "9999").localeCompare(b.due || "9999"));
+  return items.sort((a, b) => Number(b.important) - Number(a.important) || BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] || (a.due || "9999").localeCompare(b.due || "9999"));
 }
 
 /** Samlet arbejdsløkke: åbne opgaver + aftalers næste skridt, nyeste/mest presserende først. */
@@ -54,7 +56,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
   // (fælles-regel #23); getHqSummary() kalder denne funktion fra sin egen
   // Promise.all, så to samtidige forespørgsler herinde ovenpå det er for meget.
   const taskRows = await db
-    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, owner: task.owner })
+    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, owner: task.owner, note: task.note, important: task.important })
     .from(task)
     .where(opts.owner ? and(isNull(task.doneAt), eq(task.owner, opts.owner)) : isNull(task.doneAt));
   const dealRows = await db
@@ -73,6 +75,8 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
       company: t.clientName,
       owner: t.owner,
       due: t.due,
+      note: t.note,
+      important: t.important,
       bucket: dueBucket(t.due, opts.today),
     })),
     ...dealRows
@@ -87,6 +91,8 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
         company: d.company,
         owner: d.owner,
         due: d.due ?? "",
+        note: "",
+        important: false,
         bucket: dueBucket(d.due ?? "", opts.today),
       })),
   ];
@@ -116,7 +122,7 @@ function validTitle(v: unknown): string {
 }
 function validDue(v: unknown): string {
   if (v === undefined || v === null || v === "") return "";
-  if (typeof v !== "string" || !DATE.test(v)) throw new DealInputError("dato skal være ÅÅÅÅ-MM-DD");
+  if (typeof v !== "string" || !DATE.test(v) || Number.isNaN(Date.parse(`${v}T00:00:00Z`)) || new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) !== v) throw new DealInputError("dato skal være ÅÅÅÅ-MM-DD");
   return v;
 }
 function validOwner(v: unknown): Owner {
@@ -143,26 +149,49 @@ export async function createTask(db: Db, p: CreateTaskInput) {
   return t;
 }
 
-export interface TaskPatch { done?: unknown; due?: unknown; title?: unknown; owner?: unknown }
+export interface TaskPatch { done?: unknown; due?: unknown; title?: unknown; owner?: unknown; note?: unknown; important?: unknown }
+
+function validNote(v: unknown): string {
+  if (typeof v !== "string" || v.length > 4000) throw new DealInputError("note skal være højst 4000 tegn");
+  return v.trim();
+}
+
+export function validateTaskPatch(p: TaskPatch): Partial<typeof task.$inferInsert> {
+  if (p.done !== undefined && p.done !== true) throw new DealInputError("done skal være true");
+  const fields: Partial<typeof task.$inferInsert> = {};
+  if (p.due !== undefined) fields.due = validDue(p.due);
+  if (p.title !== undefined) fields.title = validTitle(p.title);
+  if (p.owner !== undefined) fields.owner = validOwner(p.owner);
+  if (p.note !== undefined) fields.note = validNote(p.note);
+  if (p.important !== undefined) {
+    if (typeof p.important !== "boolean") throw new DealInputError("vigtig skal være true eller false");
+    fields.important = p.important;
+  }
+  if (p.done !== true && Object.keys(fields).length === 0) throw new DealInputError("intet at opdatere");
+  return fields;
+}
 
 /** Afslutter en opgave: sæt `doneAt` + log en aktivitet (type "opgave"). */
 export async function completeTask(db: Db, id: string, actor: string) {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(task).where(eq(task.id, id));
     if (!before) throw new DealInputError("opgaven findes ikke");
-    const [after] = await tx.update(task).set({ doneAt: new Date() }).where(eq(task.id, id)).returning();
+    const doneAt = new Date();
+    const legacy = before.data && typeof before.data === "object" && !Array.isArray(before.data) ? before.data as Record<string, unknown> : null;
+    const [after] = await tx.update(task).set({ doneAt, ...(legacy ? { data: { ...legacy, done: true, doneAt: doneAt.toISOString() } } : {}) }).where(eq(task.id, id)).returning();
     await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Opgave klaret: ${before.title}` });
     return after;
   });
 }
 
 export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string) {
+  const fields = validateTaskPatch(p);
   if (p.done === true) return completeTask(db, id, actor);
-  const fields: Partial<typeof task.$inferInsert> = {};
-  if (p.due !== undefined) fields.due = validDue(p.due);
-  if (p.title !== undefined) fields.title = validTitle(p.title);
-  if (p.owner !== undefined) fields.owner = validOwner(p.owner);
-  if (Object.keys(fields).length === 0) throw new DealInputError("intet at opdatere");
+  const [before] = await db.select({ data: task.data }).from(task).where(eq(task.id, id));
+  if (!before) throw new DealInputError("opgaven findes ikke");
+  if (before.data && typeof before.data === "object" && !Array.isArray(before.data)) {
+    fields.data = { ...(before.data as Record<string, unknown>), ...(fields.title !== undefined ? { title: fields.title } : {}), ...(fields.due !== undefined ? { due: fields.due } : {}) };
+  }
   const [after] = await db.update(task).set(fields).where(eq(task.id, id)).returning();
   if (!after) throw new DealInputError("opgaven findes ikke");
   return after;
@@ -170,6 +199,8 @@ export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string)
 
 /** Samme fire felter på en aftales næste skridt — genbruger updateDeal i stedet for at duplikere dens validering/aktivitetslog. */
 export async function patchDealNextStep(db: Db, dealId: string, p: TaskPatch, actor: string) {
+  if (p.note !== undefined || p.important !== undefined) throw new DealInputError("aftalens næste skridt har ikke note eller vigtig");
+  validateTaskPatch(p);
   if (p.done === true) {
     const [before] = await db.select({ title: deal.title, nextStep: deal.nextStep, companyId: deal.companyId }).from(deal).where(eq(deal.id, dealId));
     if (!before) throw new DealInputError("aftalen findes ikke");
@@ -182,4 +213,13 @@ export async function patchDealNextStep(db: Db, dealId: string, p: TaskPatch, ac
   if (p.title !== undefined) patch.nextStep = p.title;
   if (p.owner !== undefined) patch.owner = p.owner;
   return updateDeal(db, dealId, patch, actor);
+}
+
+export async function deleteHqTask(db: Db, id: string, actor: string) {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(task).where(eq(task.id, id));
+    if (!before) throw new DealInputError("opgaven findes ikke");
+    await tx.delete(task).where(eq(task.id, id));
+    await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Opgave slettet: ${before.title}` });
+  });
 }

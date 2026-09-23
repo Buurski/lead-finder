@@ -5,7 +5,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 import { DealInputError } from "./deals.ts";
-import { completeTask, createTask, dueBucket, listDone, listMyDay, patchDealNextStep, patchTask } from "./tasks.ts";
+import { completeTask, createTask, deleteHqTask, dueBucket, listDone, listMyDay, patchDealNextStep, patchTask, validateTaskPatch } from "./tasks.ts";
 
 let db: Db;
 let companyId: string;
@@ -78,4 +78,27 @@ test("validering afviser rod", async () => {
   await assert.rejects(createTask(db, { owner: "lucas", title: "Ring", due: "25/9" }), /ÅÅÅÅ-MM-DD/);
   const t = await createTask(db, { owner: "lucas", title: "Ring" });
   await assert.rejects(patchTask(db, t.id, {}, "lucas"), /intet at opdatere/);
+});
+
+test("PATCH validerer note, vigtig og dato", () => {
+  assert.deepEqual(validateTaskPatch({ title: " Bestil kort ", due: "2026-09-24", owner: "charlie", note: " Allan ", important: true }), {
+    title: "Bestil kort", due: "2026-09-24", owner: "charlie", note: "Allan", important: true,
+  });
+  assert.throws(() => validateTaskPatch({ important: "true" }), DealInputError);
+  assert.throws(() => validateTaskPatch({ note: 42 }), DealInputError);
+  assert.throws(() => validateTaskPatch({ due: "2026-02-30" }), DealInputError);
+  assert.throws(() => validateTaskPatch({ owner: "allan" }), DealInputError);
+  assert.throws(() => validateTaskPatch({ done: false }), DealInputError);
+});
+
+test("vigtige opgaver sorteres først og kan rettes og slettes", async () => {
+  const first = await createTask(db, { owner: "lucas", title: "Almindelig", due: TODAY });
+  const marked = await createTask(db, { owner: "lucas", title: "Bestil kort", due: "2026-10-01" });
+  await patchTask(db, marked.id, { note: "Afventer verificering fra Allan", important: true, owner: "charlie" }, "lucas");
+  const all = await listMyDay(db, { today: TODAY });
+  assert.deepEqual(all.map((x) => x.id), [marked.id, first.id]);
+  assert.equal(all[0].note, "Afventer verificering fra Allan");
+  assert.deepEqual((await listMyDay(db, { today: TODAY, owner: "charlie" })).map((x) => x.id), [marked.id]);
+  await deleteHqTask(db, marked.id, "lucas");
+  assert.deepEqual((await listMyDay(db, { today: TODAY })).map((x) => x.id), [first.id]);
 });

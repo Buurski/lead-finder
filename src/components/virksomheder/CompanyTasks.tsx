@@ -4,20 +4,21 @@
 // bare tilføj/afkryds/flyt.
 import { useState } from "react";
 import TaskRow, { type TaskRowItem } from "@/components/opgaver/TaskRow";
+import type { EditableTask } from "@/components/opgaver/TaskEditDialog";
 import "@/components/opgaver/opgaver.css";
 
-interface InitialTask { id: string; title: string; due: string; owner: string }
+interface InitialTask { id: string; title: string; due: string; owner: string; note: string; important: boolean }
 
 async function patchTask(id: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/opgaver/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
 }
 
-export default function CompanyTasks({ companyId, company, initialTasks, today }: { companyId: string; company: string; initialTasks: InitialTask[]; today: string }) {
+export default function CompanyTasks({ companyId, company, initialTasks, today, defaultOwner }: { companyId: string; company: string; initialTasks: InitialTask[]; today: string; defaultOwner: "lucas" | "charlie" }) {
   const [tasks, setTasks] = useState<InitialTask[]>(initialTasks);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
-  const [owner, setOwner] = useState("lucas");
+  const [owner, setOwner] = useState<string>(defaultOwner);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -33,7 +34,7 @@ export default function CompanyTasks({ companyId, company, initialTasks, today }
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke oprette opgaven");
       const { task: t } = await res.json();
-      setTasks((prev) => [...prev, { id: t.id, title: t.title, due: t.due, owner: t.owner }]);
+      setTasks((prev) => [...prev, { id: t.id, title: t.title, due: t.due, owner: t.owner, note: t.note, important: t.important }]);
       setTitle(""); setDue("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "kunne ikke oprette opgaven");
@@ -54,7 +55,11 @@ export default function CompanyTasks({ companyId, company, initialTasks, today }
     patchTask(id, { due: newDue }).catch((e) => { setTasks(prev); setErr(e instanceof Error ? e.message : "kunne ikke flytte opgaven"); });
   }
 
-  const items: TaskRowItem[] = tasks.map((t) => ({ id: t.id, title: t.title, companyId, company, owner: t.owner, due: t.due }));
+  function changed(id: string, change: Omit<EditableTask, "id" | "companyId"> | null) {
+    setTasks((prev) => change ? prev.map((t) => t.id === id ? { ...t, ...change } : t) : prev.filter((t) => t.id !== id));
+  }
+
+  const items: TaskRowItem[] = [...tasks].sort((a, b) => Number(b.important) - Number(a.important) || (a.due || "9999").localeCompare(b.due || "9999")).map((t) => ({ ...t, companyId, company }));
 
   return (
     <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -65,7 +70,7 @@ export default function CompanyTasks({ companyId, company, initialTasks, today }
       ) : (
         <div className="op-group" style={{ marginBottom: 0 }}>
           {items.map((i) => (
-            <TaskRow key={i.id} item={i} today={today} showCompany={false} onComplete={complete} onReschedule={reschedule} />
+            <TaskRow key={i.id} item={i} today={today} showCompany={false} onComplete={complete} onReschedule={reschedule} onChanged={changed} />
           ))}
         </div>
       )}

@@ -1,4 +1,9 @@
+"use client";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import TaskEditDialog from "@/components/opgaver/TaskEditDialog";
+import "@/components/opgaver/opgaver.css";
 import type { NextStep } from "@/lib/hq/summary";
 
 const MONTH = ["JAN", "FEB", "MAR", "APR", "MAJ", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEC"];
@@ -39,6 +44,8 @@ function OwnerAvatar({ owner }: { owner: string }) {
 }
 
 export default function NextStepsTable({ steps, today }: { steps: NextStep[]; today: string }) {
+  const [editing, setEditing] = useState<NextStep | null>(null);
+  const router = useRouter();
   const overdue = steps.filter((s) => s.state === "forfalden").length;
   const upcoming = steps.length - overdue;
 
@@ -69,7 +76,7 @@ export default function NextStepsTable({ steps, today }: { steps: NextStep[]; to
                 <div className="hq-row-deal">{s.what}</div>
               </div>
               <div className={`hq-row-step${!s.step.trim() ? " missing" : ""}`}>
-                {s.step.trim() || "Intet næste skridt"}
+                {s.step.trim() || "Intet næste skridt"}{s.important && <span className="op-important">Vigtig</span>}
               </div>
               <div className="hq-row-owner">
                 <OwnerAvatar owner={s.owner} />
@@ -80,18 +87,15 @@ export default function NextStepsTable({ steps, today }: { steps: NextStep[]; to
               </div>
             </>
           );
-          const key = `${s.companyId ?? s.company}-${i}`;
-          return s.companyId ? (
-            <Link key={key} href={`/virksomheder/${s.companyId}`} className="hq-row cc-focus">
-              {body}
-            </Link>
-          ) : (
-            <div key={key} className="hq-row hq-row-static">
+          const key = s.id || `${s.companyId ?? s.company}-${i}`;
+          return (
+            <div key={key} className="hq-row hq-row-static" onClick={() => setEditing(s)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditing(s); } }}>
               {body}
             </div>
           );
         })
       )}
+      {editing && <TaskEditDialog item={{ id: editing.id, title: editing.step, due: editing.due, owner: editing.owner, note: editing.note, important: editing.important, companyId: editing.companyId }} onClose={() => setEditing(null)} onChanged={() => router.refresh()} />}
     </div>
   );
 }

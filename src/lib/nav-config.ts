@@ -27,6 +27,7 @@ export const NAV_PRIMARY: NavItem[] = [
 
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
 export const NAV_MORE: NavItem[] = [
+  { href: "/profil", label: "Profil", icon: "Users", hint: "Mine opgaver og kalender" },
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. kunde" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },

@@ -6,15 +6,11 @@ import { useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
 import { addDays, nextMonday } from "./date-shortcuts";
+import TaskEditDialog, { type EditableTask } from "./TaskEditDialog";
 
-export interface TaskRowItem {
-  id: string; // opgave-id, eller "deal:<aftale-id>"
-  title: string; // "" kun for en aftale uden næste skridt (ikke afkrydsbar)
+export interface TaskRowItem extends EditableTask {
   context?: string; // fx aftalens navn
-  companyId: string | null;
   company: string;
-  owner: string;
-  due: string;
 }
 
 const MONTH = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
@@ -35,16 +31,18 @@ function OwnerPill({ owner }: { owner: string }) {
 }
 
 export default function TaskRow({
-  item, today, showCompany = true, onComplete, onReschedule,
+  item, today, showCompany = true, onComplete, onReschedule, onChanged,
 }: {
   item: TaskRowItem;
   today: string;
   showCompany?: boolean;
   onComplete: (id: string) => void;
   onReschedule: (id: string, due: string) => void;
+  onChanged: (id: string, change: Omit<EditableTask, "id" | "companyId"> | null) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [pickingDate, setPickingDate] = useState(false);
+  const [editing, setEditing] = useState(false);
   const completable = item.title.trim() !== "";
   const overdue = !!item.due && item.due < today;
 
@@ -72,9 +70,9 @@ export default function TaskRow({
         onClick={complete}
       />
       <div className="op-row-body">
-        <div className="op-row-title" data-missing={!completable || undefined}>
-          {completable ? item.title : "Intet næste skridt"}
-        </div>
+        <button type="button" className="op-row-title op-edit-trigger" data-missing={!completable || undefined} onClick={() => setEditing(true)}>
+          {completable ? item.title : "Intet næste skridt"}{item.important && <span className="op-important">Vigtig</span>}
+        </button>
         <div className="op-row-meta">
           {showCompany && item.companyId ? (
             <Link href={`/virksomheder/${item.companyId}`} className="op-row-company">{item.company}</Link>
@@ -108,6 +106,7 @@ export default function TaskRow({
           )}
         </div>
       </details>
+      {editing && <TaskEditDialog item={item} onClose={() => setEditing(false)} onChanged={(change) => onChanged(item.id, change)} />}
     </div>
   );
 }

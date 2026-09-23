@@ -53,3 +53,15 @@ test("HQ-tal læses korrekt fra Postgres", async () => {
   assert.equal(s.team[0].summary, "Nyhedsbrev-skabelon færdig");
   assert.equal(s.team[1].at, null);
 });
+
+test("HQ viser kun ejerens opgaver og placerer vigtige først", async () => {
+  await db.insert(task).values([
+    { owner: "lucas", title: "Lille opgave", due: TODAY },
+    { owner: "lucas", title: "Vigtig opgave", due: "2026-10-01", important: true },
+    { owner: "charlie", title: "Charlies opgave", due: TODAY, important: true },
+  ]);
+  const lucas = await getHqSummary(db, TODAY, "lucas");
+  assert.deepEqual(lucas.nextSteps.map((x) => x.step), ["Vigtig opgave", "Lille opgave"]);
+  const charlie = await getHqSummary(db, TODAY, "charlie");
+  assert.deepEqual(charlie.nextSteps.map((x) => x.step), ["Charlies opgave"]);
+});

@@ -73,6 +73,20 @@
 .op-row-body { min-width: 0; flex: 1; }
 .op-row-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
 .op-row-title[data-missing="true"] { font-weight: 500; color: var(--text-dim); font-style: italic; }
+.op-edit-trigger { border: 0; padding: 0; background: none; text-align: left; cursor: pointer; font-family: inherit; }
+.op-edit-trigger:hover { text-decoration: underline; }
+.op-important { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; text-decoration: none; }
+.op-dialog-backdrop { position: fixed; inset: 0; z-index: 1500; background: rgba(20, 20, 20, .45); display: grid; place-items: center; padding: 16px; }
+.op-dialog { width: min(420px, 100%); padding: 20px; display: flex; flex-direction: column; gap: 13px; }
+.op-dialog-head, .op-dialog-actions { display: flex; align-items: center; gap: 8px; }
+.op-dialog-head { justify-content: space-between; }
+.op-dialog-head button { border: 0; background: none; font-size: 22px; cursor: pointer; }
+.op-dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; }
+.op-dialog .op-input { width: 100%; }
+.op-dialog-note { min-height: 78px; padding-top: 9px; resize: vertical; }
+.op-dialog .op-dialog-check { flex-direction: row; align-items: center; gap: 8px; }
+.op-dialog-actions { justify-content: flex-end; margin-top: 4px; }
+.op-dialog-actions button:first-child:not(:last-child) { margin-right: auto; }
 .op-row-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-size: 12px; color: var(--text-dim); }
 .op-row-company { color: inherit; text-decoration: none; }
 a.op-row-company:hover { text-decoration: underline; }

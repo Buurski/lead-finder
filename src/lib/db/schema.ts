@@ -152,6 +152,8 @@ export const task = pgTable("task", {
   owner: text("owner").notNull().default(""),
   title: text("title").notNull().default(""),
   due: text("due").notNull().default(""),
+  note: text("note").notNull().default(""),
+  important: boolean("important").notNull().default(false),
   doneAt: timestamp("done_at", { withTimezone: true }),
   data: jsonb("data"),
   createdAt: createdAt(),
