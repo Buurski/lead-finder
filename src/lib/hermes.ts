@@ -8,7 +8,7 @@
 // Hermes CLI only exposes session previews, not full transcripts.
 
 import crypto from "node:crypto";
-import { store } from "./store";
+import { store } from "./store.ts";
 import type { HermesUsageSummary, HermesKanbanSummary, SynlighedSnapshot } from "./hermes-client";
 
 export type HermesProfile = "default" | "lucas" | "charlie";
@@ -42,6 +42,9 @@ export interface HermesSessionMeta {
   title: string;
   updatedAt: string;
   messageCount: number;
+  /** Hvem samtalen tilhører ("lucas"/"charlie"/"delt"). Valgfri: gamle poster
+   *  blev skrevet før ejerskab fandtes og har kun `profile`. */
+  owner?: string | null;
 }
 
 export interface HermesMessage {
@@ -253,10 +256,36 @@ export async function hermesChat(
 const SESSIONS_KEY = "hermes/sessions";
 const messagesKey = (id: string) => `hermes/messages-${id}`;
 
-export async function listHermesSessions(profile?: HermesProfile): Promise<HermesSessionMeta[]> {
-  const all = (await store.get<HermesSessionMeta[]>(SESSIONS_KEY)) ?? [];
-  const filtered = profile ? all.filter((s) => s.profile === profile) : all;
-  return filtered.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, 30);
+// Ejer pr. samtale. Nye poster har `owner`; gamle faldt tilbage til `profile`
+// (lucas/charlie = personligt, "default" = den fælles bøtte → null).
+export function effectiveOwner(
+  meta: Pick<HermesSessionMeta, "owner" | "profile">,
+): string | null {
+  return meta.owner ?? (meta.profile === "lucas" || meta.profile === "charlie" ? meta.profile : null);
+}
+
+// Lucas/Charlie ser KUN deres egne samtaler. "delt" (det gamle fælles login)
+// ser den delte bøtte: samtaler ejet af "delt" eller helt uden ejer.
+export function canAccessSession(
+  meta: Pick<HermesSessionMeta, "owner" | "profile">,
+  user: string,
+): boolean {
+  const owner = effectiveOwner(meta);
+  if (user === "lucas" || user === "charlie") return owner === user;
+  if (user === "delt") return owner === "delt" || owner === null;
+  return false;
+}
+
+/** Rå liste — ruterne filtrerer selv, så de kan svare 404 på fremmede id'er. */
+export async function listAllSessions(): Promise<HermesSessionMeta[]> {
+  return (await store.get<HermesSessionMeta[]>(SESSIONS_KEY)) ?? [];
+}
+
+export async function listSessionsFor(user: string): Promise<HermesSessionMeta[]> {
+  return (await listAllSessions())
+    .filter((s) => canAccessSession(s, user))
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+    .slice(0, 30);
 }
 
 export async function getHermesMessages(sessionId: string): Promise<HermesMessage[]> {
@@ -265,7 +294,7 @@ export async function getHermesMessages(sessionId: string): Promise<HermesMessag
 
 export async function appendHermesExchange(
   sessionId: string,
-  profile: HermesProfile,
+  owner: string,
   userText: string,
   replyText: string,
 ): Promise<void> {
@@ -274,28 +303,45 @@ export async function appendHermesExchange(
   // Reply gets +1ms so two messages never share an identical timestamp
   // (keeps sortering/dedup deterministisk).
   const replyTs = new Date(t + 1).toISOString();
+
+  // Ejerskabs-tjekket ligger FØR nogen skrivning: en fremmed samtale må hverken
+  // få tilføjet beskeder eller flyttet metadata, selvom ruterne allerede afviser.
+  const all = await listAllSessions();
+  const existing = all.find((s) => s.id === sessionId);
+  if (existing && !canAccessSession(existing, owner)) throw new Error("ikke din samtale");
+
   const msgs = await getHermesMessages(sessionId);
   msgs.push({ role: "you", text: userText, ts: now }, { role: "hermes", text: replyText, ts: replyTs });
   await store.put(messagesKey(sessionId), msgs.slice(-200));
 
-  const all = (await store.get<HermesSessionMeta[]>(SESSIONS_KEY)) ?? [];
-  const existing = all.find((s) => s.id === sessionId);
   if (existing) {
     existing.updatedAt = now;
     existing.messageCount = msgs.length;
+    existing.owner = owner;
   } else {
     all.push({
       id: sessionId,
-      profile,
+      // profile bevares for gamle læsere (eksport-note, /hermes-siden).
+      profile: owner === "lucas" || owner === "charlie" ? owner : "default",
+      owner,
       title: userText.slice(0, 60),
       updatedAt: now,
       messageCount: msgs.length,
     });
   }
-  // Per-profil loft (30 nyeste) i stedet for globalt — ellers kan én flittig
-  // profil skubbe de andres historik ud af KV.
+  // Loft pr. ejer-bøtte (30 nyeste) i stedet for pr. profil — ellers kan én
+  // flittig bruger skubbe de andres historik ud af KV.
   const sorted = all.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  const trimmed = HERMES_PROFILES.flatMap((p) => sorted.filter((s) => s.profile === p).slice(0, 30));
+  const buckets = new Map<string, HermesSessionMeta[]>();
+  for (const s of sorted) {
+    const key = effectiveOwner(s) ?? "fælles";
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(s);
+    else buckets.set(key, [s]);
+  }
+  const trimmed = [...buckets.values()]
+    .flatMap((bucket) => bucket.slice(0, 30))
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
   await store.put(SESSIONS_KEY, trimmed);
 }
 // Hardcoded URL fallback removed 2026-07-23: env-driven only.\n
