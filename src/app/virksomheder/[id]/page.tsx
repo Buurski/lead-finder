@@ -26,6 +26,7 @@ import Overblik from "@/components/virksomheder/Overblik";
 import ProfileTabs from "@/components/virksomheder/ProfileTabs";
 import ProfileQuickActions from "@/components/virksomheder/ProfileQuickActions";
 import TrackRecentCompany from "@/components/virksomheder/TrackRecentCompany";
+import CompanyTasks from "@/components/virksomheder/CompanyTasks";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -170,21 +171,12 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             )}
           </div>
 
-          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="virk-section-title"><span>Åbne opgaver</span></div>
-            {dossier.openTasks.length === 0 ? (
-              <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen åbne opgaver.</p>
-            ) : (
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                {dossier.openTasks.map((t) => (
-                  <li key={t.id} style={{ fontSize: 13 }}>
-                    {t.title}
-                    {t.due && <span className="cc-dim cc-mono" style={{ marginLeft: 6, fontSize: 11.5 }}>{t.due}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <CompanyTasks
+            companyId={c.id}
+            company={c.name}
+            today={today}
+            initialTasks={dossier.openTasks.map((t) => ({ id: t.id, title: t.title, due: t.due, owner: t.owner }))}
+          />
         </>
       ),
     },

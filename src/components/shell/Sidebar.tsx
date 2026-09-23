@@ -10,8 +10,9 @@ interface Counts {
 }
 
 // Bundbar-genveje (mobil, <768px): kun de 3 vigtigste + "Mere", som åbner et
-// ark med hele IA'en. Rækkefølgen matcher spec §4/§5.
-const BOTTOMBAR_HREFS = ["/", "/approve", "/pipeline"];
+// ark med hele IA'en. Opgaver er den daglige arbejdsløkke for begge ejere og
+// har erstattet Pipeline her (Pipeline er stadig i railen og i "Mere").
+const BOTTOMBAR_HREFS = ["/", "/opgaver", "/approve"];
 
 function RailItem({ item, active, badge }: { item: (typeof NAV_PRIMARY)[number]; active: boolean; badge?: number }) {
   return (

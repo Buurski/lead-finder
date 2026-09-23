@@ -83,6 +83,7 @@ a.hq-row:hover { background: var(--surface-2); }
 .hq-pill.warn { background: var(--amber-dim); color: var(--amber); }
 .hq-pill.faded { background: var(--surface-2); color: var(--text-dim); }
 .hq-empty { padding: 34px 18px; text-align: center; color: var(--text-dim); font-size: 13.5px; }
+.hq-table-status { display: flex; align-items: center; gap: 4px; padding: 12px 24px; font-size: 12.5px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
 
 /* ---------- Agent card (Hermes, mørk) ---------- */
 .hq-agent-card { background: var(--kinly-rail); color: #EDEDEA; border-radius: var(--radius); padding: 24px; }

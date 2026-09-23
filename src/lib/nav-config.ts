@@ -16,6 +16,7 @@ export interface NavItem {
 // under /agenter (fase 2).
 export const NAV_PRIMARY: NavItem[] = [
   { href: "/", label: "HQ", icon: "Home", hint: "Dagens overblik" },
+  { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
   { href: "/virksomheder", label: "Virksomheder", icon: "Building2", hint: "Kundeprofiler og sites" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
