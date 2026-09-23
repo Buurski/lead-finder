@@ -23,6 +23,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
   { href: "/agenter", label: "Agenter", icon: "Sparkles", hint: "Hermes og sessioner" },
+  { href: "/mit-rum", label: "Mit rum", icon: "NotebookPen", hint: "Dine private noter" },
 ];
 
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
