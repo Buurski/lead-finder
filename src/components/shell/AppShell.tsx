@@ -30,7 +30,13 @@ function pauseLine(p: PauseInfo): string {
   return `Al afsendelse er på pause til ${new Date(t).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`;
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  defaultOwner = "lucas",
+}: {
+  children: React.ReactNode;
+  defaultOwner?: "lucas" | "charlie";
+}) {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>({});
@@ -86,7 +92,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className="cc-search-kbd">⌘K</span>
             </button>
             <Bell counts={counts} />
-            <QuickActions />
+            <QuickActions defaultOwner={defaultOwner} />
           </div>
         </header>
         <SectionTabs />

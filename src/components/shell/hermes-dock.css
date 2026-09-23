@@ -24,6 +24,15 @@
      at ligge oven på tekst. Ryddet igen 500ms efter sidste scroll-event. */
   .hermes-dock-fab[data-dim="true"] { opacity: 0.4; }
 }
+@media (max-width: 767px) {
+  /* Charlie 23/9: sidste linje i lange lister (fx tidslinjen på en
+     kundeprofil) endte for tæt på/under knappen — globals.css' .cc-content
+     reserverer kun plads til bundbaren, ikke til denne knap oveni. Kan ikke
+     redigeres i globals.css selv (fælles-regel #7), så lægges den ekstra
+     bundplads her, hvor knappen bor. !important fordi importrækkefølgen
+     mellem globals.css og denne fil ellers ikke er garanteret. */
+  .cc-content { padding-bottom: 140px !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   .hermes-dock-fab { transition: none; }
 }

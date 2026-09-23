@@ -218,7 +218,9 @@
 
 /* ---- profil-faner (Overblik · Tidslinje · Aftaler · Fakturaer · Viden) ---- */
 
-.virk-tabs { margin: 0 0 16px; align-self: flex-start; }
+/* Wrapperen (cc-section-tabs-wrap, delt med SectionTabs) bærer margin +
+   fade — se section-tabs.css for [data-more]-reglen, som gælder her uændret. */
+.virk-tabs-wrap { margin: 0 0 16px; align-self: flex-start; max-width: 100%; }
 .virk-tabs .cc-section-tab { background: transparent; border: none; font-family: inherit; cursor: pointer; }
 .virk-tabs .cc-section-tab[data-active="true"] { background: var(--kinly-ink); color: #fff; }
 .virk-tab-panel { display: flex; flex-direction: column; gap: 16px; }

@@ -55,10 +55,14 @@ export default async function PipelinePage({
       <div className="pl-header">
         <div>
           <h1>Pipeline</h1>
-          <p>Livsfaser til venstre for kontakt, aftaler til højre for penge. Træk et kort eller brug menuknappen (⋯) for at flytte fase.</p>
+          <p>To adskilte overblik: hvor langt leads er i kontakten, og hvor aftalerne står med penge.</p>
         </div>
       </div>
 
+      <div className="pl-section-head">
+        <h2>Leads</h2>
+        <p>Hvor mange virksomheder er i hvert trin af kontakten — fra ny til kunde.</p>
+      </div>
       <div className="cc-card cc-card-pad pl-funnel">
         <div className="pl-funnel-bar">
           {summary.funnel.map((f) => (
@@ -87,6 +91,10 @@ export default async function PipelinePage({
         </div>
       </div>
 
+      <div className="pl-section-head">
+        <h2>Aftaler</h2>
+        <p>Aktive aftaler efter fase og penge. Træk et kort eller brug menuknappen (⋯) for at flytte fase.</p>
+      </div>
       <PipelineBoard
         key={`${owner}:${actionOnly}`}
         initialCards={cards}
