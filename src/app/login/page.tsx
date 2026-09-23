@@ -1,8 +1,10 @@
 import "./login.css";
+import LoginForm from "./login-form";
 
-// Login: mail et engangs-link (magic link). Med ?t=… vises en bekræft-knap,
-// der POST'er tokenet — så mail-scannere ikke kan bruge linket op.
-// Login-LOGIKKEN (form action/method/felter) er urørt — kun markup/stil er nyt.
+// Login: mail + adgangskode (personligt login). Koden til første login sættes
+// offline (scripts/hq-bootstrap.ts) og tastes ind via opsætningskode-togglen.
+// ?t=… er den gamle magic-link-bekræftelse og bliver liggende, så links der
+// allerede er sendt ikke brænder.
 export default async function LoginPage({
   searchParams,
 }: {
@@ -11,8 +13,7 @@ export default async function LoginPage({
   const q = await searchParams;
   const token = typeof q.t === "string" ? q.t : "";
   const msg =
-    q.sendt ? "Tjek din mail — linket virker i 15 minutter."
-    : q.fejl === "for-mange" ? "For mange forsøg. Prøv igen om lidt."
+    q.fejl === "for-mange" ? "For mange forsøg. Prøv igen om lidt."
     : q.fejl ? "Linket er udløbet eller allerede brugt. Bed om et nyt."
     : "";
 
@@ -24,7 +25,9 @@ export default async function LoginPage({
         <div className="login-copy">
           <h1 className="login-title">{token ? "Bekræft login" : "Log ind på Kinly HQ"}</h1>
           <p className="login-sub">
-            {token ? "Tryk for at bekræfte engangslinket fra mailen." : "Indtast din mail — vi sender et engangslink, der virker i 15 minutter."}
+            {token
+              ? "Tryk for at bekræfte engangslinket fra mailen."
+              : "Log ind med din mail og adgangskode."}
           </p>
         </div>
         {token ? (
@@ -33,13 +36,9 @@ export default async function LoginPage({
             <button type="submit" className="login-btn">Log ind</button>
           </form>
         ) : (
-          <form method="post" action="/api/auth/magic" className="login-form">
-            <label htmlFor="email" className="login-label">Din mail</label>
-            <input id="email" name="email" type="email" required autoComplete="email" className="cc-input" />
-            <button type="submit" className="login-btn">Send login-link</button>
-          </form>
+          <LoginForm initialMsg={msg} />
         )}
-        {msg && <p role="status" className="login-msg">{msg}</p>}
+        {token && msg && <p role="status" className="login-msg">{msg}</p>}
         {/* Fuld sideindlæsning (ikke <Link>): proxyen skal svare 401, så browserens kode-dialog vises. */}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         {!token && <a href="/?kode=1" className="login-alt">Log ind med fælles kode i stedet</a>}
