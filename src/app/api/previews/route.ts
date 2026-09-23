@@ -52,17 +52,14 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Henvendelsen kobles på virksomheden i CRM'et (fase 6). Må aldrig vælte formularen.
+// Henvendelsen kobles på virksomheden i CRM'et (fase 6). Må aldrig vælte formularen —
+// fejler den, samler den timelige kv-crm-bridge-cron den op igen (idempotent).
 async function linkToCrm(request: PreviewRequest): Promise<void> {
   try {
     const { getDb, pgEnabled } = await import("@/lib/db/client");
     if (!pgEnabled()) return;
-    const { recordInbound } = await import("@/lib/hq/inbound");
-    const r = await recordInbound(getDb(), request);
-    if (r.rowNo > 0) {
-      const { stopOpenForRows } = await import("@/lib/pg/queue");
-      await stopOpenForRows([r.rowNo], "henvendte sig selv via kinly.dk", new Date().toISOString());
-    }
+    const { linkPreview } = await import("@/lib/hq/inbound");
+    await linkPreview(getDb(), request);
   } catch (error) {
     console.error(JSON.stringify({ evt: "inbound.crm.failed", error: String(error).slice(0, 300) }));
   }

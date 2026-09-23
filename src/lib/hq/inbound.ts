@@ -127,3 +127,12 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
     return { companyId, created, rowNo: co.rowNo, duplicate: false };
   });
 }
+
+/** Henvendelse → CRM + stop kolde kladder. Idempotent (legacyId), så den trygt kan køres igen. */
+export async function linkPreview(db: Db, request: InboundInput): Promise<void> {
+  const r = await recordInbound(db, request);
+  if (r.rowNo > 0) {
+    const { stopOpenForRows } = await import("../pg/queue.ts");
+    await stopOpenForRows([r.rowNo], "henvendte sig selv via kinly.dk", new Date().toISOString());
+  }
+}
