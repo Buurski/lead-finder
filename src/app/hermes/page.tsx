@@ -140,8 +140,7 @@ export default async function HermesPage() {
                 Hermes WebUI
               </h2>
               <p className="cc-dim" style={{ margin: 0, fontSize: 13.5, maxWidth: 460, lineHeight: 1.55 }}>
-                Chat med Hermes direkte. Åbner i en ny fane — login med{" "}
-                <code style={{ background: "var(--bg-2)", padding: "1px 6px", borderRadius: 4 }}>Kinly1234</code>.
+                Hermes' eget værktøj med jobs og historik. Åbner i en ny fane.
               </p>
             </div>
 

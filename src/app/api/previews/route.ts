@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
   try {
     const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey });
     await linkToCrm(request);
+    const { attachProfile } = await import("@/lib/hq/draft-profile");
+    await attachProfile(request.id, request);
     return NextResponse.json({ ok: true, request }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "invalid_request" }, { status: 400 });

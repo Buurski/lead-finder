@@ -74,6 +74,8 @@ export async function applyDraftRequests(items: DigestItemLike[]): Promise<numbe
     });
     existing.add(email);
     created++;
+    const { attachProfile } = await import("./draft-profile.ts");
+    await attachProfile(request.id, request);
     const { getDb, pgEnabled } = await import("../db/client.ts");
     if (pgEnabled()) {
       const { recordInbound } = await import("./inbound.ts");

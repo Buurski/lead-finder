@@ -40,6 +40,8 @@ export interface PreviewRequest extends PreviewRequestInput {
   // Human-review feedback fra Lucas/Charlie på previewet (reel-idé DcWsaXfgKiW,
   // minimal udgave: fritekst i stedet for inline-kommentarer på siden).
   reviewNotes?: string;
+  // Jev-profil (stil/størrelse/ambition) til Hermes' valg af referencer — se hq/draft-profile.ts.
+  profile?: import("./hq/draft-profile.ts").DraftProfile;
 }
 
 const KEY = "preview-requests";
@@ -108,4 +110,13 @@ export async function updatePreviewStatus(
   records[index] = next;
   await store.put(KEY, records);
   return next;
+}
+
+/** Gem Jev-profilen uden at røre status. */
+export async function setPreviewProfile(requestId: string, profile: NonNullable<PreviewRequest["profile"]>): Promise<void> {
+  const records = await readPreviewRequests();
+  const r = records.find((item) => item.id === requestId);
+  if (!r) return;
+  r.profile = profile;
+  await store.put(KEY, records);
 }
