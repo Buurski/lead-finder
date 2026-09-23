@@ -1,0 +1,224 @@
+/* Virksomheder — liste + profil (fase 2 Task 4). Bruger kun tokens fra
+   globals.css; ingen skygger, ingen gradients.
+
+   Bevægelse: diskret CRM, ikke en app-demo (Lucas 22/9) — kun korte
+   opacity-fades ~120-150ms og tryk-feedback (scale). Ingen stagger, ingen
+   glid/translateY på lister eller rækker. Paneler ("Flet med…") må glide
+   ind — det er den ene tilladte undtagelse. */
+
+@keyframes virk-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.virk-fade-in { animation: virk-fade-in 130ms ease both; }
+
+@keyframes virk-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.virk-panel-in { animation: virk-panel-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* ---- liste ---- */
+
+.virk-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.virk-search input[type="search"] {
+  height: 38px;
+  min-width: 220px;
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 0 12px;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.virk-search input[type="search"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.virk-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.virk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.virk-chip:hover { background: var(--bg-2); color: var(--text); }
+.virk-chip[aria-current="true"] { background: var(--text); border-color: var(--text); color: #fff; }
+.virk-chip .virk-chip-n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; opacity: 0.75; }
+
+.virk-list { display: flex; flex-direction: column; }
+
+.virk-row {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--border);
+  transition: background 120ms ease;
+}
+
+.virk-row:last-child { border-bottom: none; }
+.virk-row:hover { background: var(--bg-2); }
+.virk-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.virk-row-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) auto auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 20px;
+}
+
+.virk-row-name { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.virk-row-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.virk-row-branch { font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.virk-row-updated { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .virk-row-inner {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "name lifecycle" "branch updated";
+    row-gap: 4px;
+  }
+  .virk-row-branch { grid-area: branch; }
+  .virk-row-updated { grid-area: updated; justify-self: end; }
+}
+
+.virk-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 2px; }
+.virk-pagination-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+
+/* ---- profil ---- */
+
+.virk-profile-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+@media (max-width: 900px) {
+  .virk-profile-grid { grid-template-columns: 1fr; }
+}
+
+.virk-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.virk-header-links { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); }
+.virk-header-links a { color: var(--text); text-decoration: none; }
+.virk-header-links a:hover { text-decoration: underline; }
+
+.virk-section-title { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.virk-deal { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.virk-deal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.virk-deal-amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.virk-deal-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.virk-stage-select {
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.virk-inline-input {
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 0 9px;
+  font-size: 12.5px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.virk-timeline { display: flex; flex-direction: column; }
+
+.virk-timeline-item { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.virk-timeline-item:last-child { border-bottom: none; }
+
+.virk-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--kinly-rail);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.virk-timeline-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.virk-timeline-body { min-width: 0; flex: 1; }
+.virk-timeline-meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.virk-timeline-text { font-size: 13.5px; white-space: pre-wrap; word-break: break-word; }
+
+.virk-log-type { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; background: var(--bg-2); }
+.virk-log-type button {
+  border: none;
+  background: transparent;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+.virk-log-type button[aria-checked="true"] { background: var(--text); color: #fff; }
+.virk-log-type button:active { transform: scale(0.98); }
+
+.virk-btn-press:active { transform: scale(0.98); }
+
+.virk-invoice-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.virk-invoice-row:last-child { border-bottom: none; }
+
+.virk-status-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+
+.virk-kv { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.virk-kv-row { display: flex; justify-content: space-between; gap: 10px; }
+.virk-kv-row dt { color: var(--text-dim); }
+.virk-kv-row dd { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+.virk-note { display: flex; flex-direction: column; gap: 8px; }
+.virk-note + .virk-note { border-top: 1px solid var(--border); padding-top: 14px; }
+.virk-note-title { font-weight: 600; font-size: 13.5px; }
+.virk-note-body { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; overflow: hidden; }
+.virk-note-body h3 { font-size: 13.5px; font-weight: 700; color: var(--text); margin-top: 10px; }
+.virk-note-body ul { padding-left: 18px; margin: 4px 0; }
+.virk-note-body p { margin: 6px 0; }
+
+.virk-merge-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .virk-merge-cols { grid-template-columns: 1fr; } }
+.virk-merge-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .virk-fade-in, .virk-panel-in, .virk-row, .virk-chip, .virk-log-type button, .virk-btn-press {
+    animation: none !important;
+    transition: none !important;
+  }
+}
