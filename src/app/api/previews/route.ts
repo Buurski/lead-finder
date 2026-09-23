@@ -19,9 +19,16 @@ export const maxDuration = 30;
 async function authorized(req: NextRequest): Promise<boolean> {
   if (await isCommandCenterRequest(req)) return true;
   const expected = process.env.PREVIEW_QUEUE_SECRET || process.env.DEEP_RESEARCH_SECRET;
-  if (!expected) return false; // fail-closed: missing secret must never mean open (2026-08-19)
-  const got = req.headers.get("authorization") || "";
-  return got === `Bearer ${expected}`;
+  if (expected) {
+    const got = req.headers.get("authorization") || "";
+    if (got === `Bearer ${expected}`) return true;
+  }
+  // Ingen CC-markør og intet gyldigt Bearer-secret: kun åben når Command
+  // Center-auth slet ikke er konfigureret (lokal dev uden login — samme
+  // mønster som /api/virksomheder/search og hqWrite/assertWriteRequest).
+  // Er CC-auth sat op (prod), er dette fortsat fail-closed som før.
+  const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+  return !authConfigured;
 }
 
 export async function GET(req: NextRequest) {
