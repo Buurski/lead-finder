@@ -240,9 +240,13 @@ export async function applyNoThanks(
     const regex = i.snippet ? classifyReply(i.snippet).category : "other";
     if (i.category !== "not-interested" && regex !== "not-interested" && regex !== "unsubscribe") continue;
     const lead = leads.get(i.leadId!);
-    if (!lead || ["not-interested", "client", "interested"].includes(lead.status)) continue;
-    const line = `Svarede nej tak ${(i.date ?? new Date().toISOString()).slice(0, 10)}`;
-    await updateLeadStatus(Number(i.leadId) - 2, "not-interested", lead.notes ? `${lead.notes}\n${line}` : line);
+    if (!lead) continue;
+    // Sekvensen stopper ALTID ved et nej (Sol 23/9) — men status røres kun hvis ingen
+    // har vurderet leadet (interesseret/kunde er en menneskelig beslutning).
+    if (!["not-interested", "client", "interested"].includes(lead.status)) {
+      const line = `Svarede nej tak ${(i.date ?? new Date().toISOString()).slice(0, 10)}`;
+      await updateLeadStatus(Number(i.leadId) - 2, "not-interested", lead.notes ? `${lead.notes}\n${line}` : line);
+    }
     rows.push(Number(i.leadId) - 2);
   }
   await store.put(DONE_KEY, [...done].slice(-2000));

@@ -4,7 +4,7 @@ import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "./followup-ga
 
 const NOW = Date.parse("2026-09-22T12:00:00Z");
 const fu = { source: "opfoelgning", step: 2, leadId: "12" };
-const lead = { email: "hej@salon.dk", status: "called", emailSentAt: "2026-09-15T10:00:00Z" };
+const lead = { id: "12", email: "hej@salon.dk", status: "called", emailSentAt: "2026-09-15T10:00:00Z" };
 const ledgerWith = (sent: Array<{ leadId: string; recipientEmail?: string }>) =>
   buildSentLedger(sent.map((s) => ({ ...s, status: "sent" })));
 const ctx = (sent = [{ leadId: "12", recipientEmail: "hej@salon.dk" }]) => ({ ledger: ledgerWith(sent), sentThisRun: new Set<string>(), now: NOW });
@@ -38,4 +38,8 @@ test("afvises: ny adresse, for tæt på sidste mail, over loftet, nej tak, uden 
   assert.equal(followUpAllowed(fu, lead, "hej@salon.dk", c).ok, false);
   // lead-rækkens mail er skiftet siden: opfølgning må kun gå til den adresse der blev sendt til
   assert.equal(followUpAllowed(fu, { ...lead, email: "ny@salon.dk" }, "ny@salon.dk", ctx()).ok, false);
+});
+
+test("afvises: navne-match på en anden række end kladdens lead", () => {
+  assert.equal(followUpAllowed(fu, { ...lead, id: "99" }, "hej@salon.dk", ctx()).ok, false);
 });

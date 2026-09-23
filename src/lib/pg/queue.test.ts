@@ -113,5 +113,10 @@ test("sendte og system-stoppede kladder kan ikke genoplives af et forældet snap
   assert.equal(after.get("open1")?.status, "rejected");
   assert.equal(after.get("open1")?.stoppedReason, "svar modtaget");
   await writeQueue([]);
-  assert.ok((await readQueue()).some((d) => d.id === "sent1"), "sendte slettes aldrig");
+  const left = new Set((await readQueue()).map((d) => d.id));
+  assert.ok(left.has("sent1"), "sendte slettes aldrig");
+  assert.ok(left.has("open1"), "system-stoppede slettes aldrig");
+  // Forældet snapshot efter en tom skrivning må stadig ikke genoplive den stoppede.
+  await writeQueue(stale.map((d) => ({ ...d, status: "approved" })) as never);
+  assert.equal(new Map((await readQueue()).map((d) => [d.id, d])).get("open1")?.status, "rejected");
 });

@@ -19,6 +19,7 @@ export interface FollowUpDraftLike {
 }
 
 export interface FollowUpLeadLike {
+  id: string;
   email?: string;
   status?: string;
   emailSentAt?: string;
@@ -68,6 +69,9 @@ export function followUpAllowed(
   ctx: { ledger: SentLedger; sentThisRun: Set<string>; now?: number },
 ): { ok: true } | { ok: false; reason: string } {
   if (!lead || !d.leadId) return { ok: false, reason: "opfølgning uden lead" };
+  // Kun præcis det lead sekvensen startede på — aldrig et navne-match på en anden række
+  // (så kunne et svar/afmelding på den oprindelige række omgås; Sol 23/9).
+  if (lead.id !== d.leadId) return { ok: false, reason: "opfølgning matcher ikke kladdens lead" };
   const step = d.step ?? 1;
   if (step > MAX_TOUCHES) return { ok: false, reason: "opfølgning over loftet" };
   const st = (lead.status || "").trim().toLowerCase();

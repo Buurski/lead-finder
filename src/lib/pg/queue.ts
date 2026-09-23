@@ -2,7 +2,7 @@
 // draft jsonb er hele QueueDraft-objektet (loss-fri); de typede kolonner findes
 // kun for at kunne filtrere/joine (spec §3).
 import "server-only";
-import { and, asc, inArray, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, inArray, notInArray, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
@@ -34,6 +34,9 @@ export async function stopOpenForRows(rowNos: number[], reason: string, now: str
     .returning({ id: outreach.id });
   return rows.length;
 }
+
+/** Sendt eller system-stoppet = endelig. */
+const FINAL = sql`(${outreach.status} = 'sent' or (${outreach.status} = 'rejected' and ${outreach.draft} ? 'stoppedReason'))`;
 
 export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
   const db = getDb();
@@ -75,12 +78,13 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
           // En sendt eller system-stoppet kladde er endelig: et forældet snapshot
           // (fx queue-enrich der holder køen i minutter) må aldrig gøre den
           // "godkendt" igen — så kunne den blive sendt en gang til (Opus 22/9).
-          setWhere: sql`not (${outreach.status} = 'sent' or (${outreach.status} = 'rejected' and ${outreach.draft} ? 'stoppedReason'))`,
+          setWhere: sql`not ${FINAL}`,
         });
-      // Sendte kladder slettes aldrig (historik + dobbelt-mail-værn).
-      await tx.delete(outreach).where(and(notInArray(outreach.id, ids), ne(outreach.status, "sent")));
+      // Endelige kladder slettes aldrig (historik + dobbelt-mail-værn): ellers kunne et
+      // forældet snapshot bagefter indsætte et system-stoppet id som "godkendt" (Sol 23/9).
+      await tx.delete(outreach).where(and(notInArray(outreach.id, ids), sql`not ${FINAL}`));
     } else {
-      await tx.delete(outreach).where(ne(outreach.status, "sent"));
+      await tx.delete(outreach).where(sql`not ${FINAL}`);
     }
   });
 }
