@@ -1,0 +1,30 @@
+/* /agenter — "Seneste fra agenterne". Genbruger hq-table-card (src/components/hq/hq.css)
+   for kortet omkring listen; rækken har sit eget layout (hq-row er en 4-kolonne
+   grid bygget til NextStepsTable, passer ikke pille+tekst+tid). */
+.agenter-feed-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 22px; border-top: 1px solid var(--border);
+}
+.agenter-feed-row:first-child { border-top: none; }
+.agenter-actor-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.agenter-actor-pill[data-actor="hermes"] { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--text); }
+.agenter-feed-body { min-width: 0; flex: 1; }
+.agenter-feed-summary { font-size: 13.5px; color: var(--text); line-height: 1.4; }
+.agenter-feed-company { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.agenter-feed-company a { color: var(--text-muted); font-weight: 600; text-decoration: none; }
+.agenter-feed-company a:hover { text-decoration: underline; }
+.agenter-feed-time { flex-shrink: 0; font-size: 11px; color: var(--text-dim); }

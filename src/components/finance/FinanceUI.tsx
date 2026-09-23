@@ -378,11 +378,8 @@ export function BuildingHistory({ what = "historik" }: { what?: string }) {
 
 export function SheetsFallback() {
   return (
-    <div className="cc-card cc-card-pad" role="status" style={{ display: "flex", alignItems: "center", gap: 10, borderColor: "var(--amber)" }}>
-      <span style={{ fontSize: 16 }} aria-hidden>⚠️</span>
-      <span style={{ fontSize: 13.5, color: "var(--text-muted)" }}>
-        Kunne ikke hente klient-data lige nu. Tallene her er afledt af Sheets — genindlæs om et øjeblik.
-      </span>
+    <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span className="cc-dim" style={{ fontSize: 13.5 }}>Kunne ikke hente tallene lige nu.</span>
       {/* href="" genindlæser den aktuelle URL — retry uden at gøre komponenten client-side. */}
       <a className="cc-btn" href="" style={{ marginLeft: "auto", textDecoration: "none" }}>Prøv igen</a>
     </div>

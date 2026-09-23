@@ -43,7 +43,7 @@ export default async function OkonomiPage() {
         title="Økonomi"
         subtitle={sheetsOk
           ? `${quarter.key} · MRR, omsætning & mål · afledt af ${clients.length} klient-rækker + ${snapshots.length} snapshots`
-          : "Kunne ikke nå Google Sheets — prøv at genindlæse."}
+          : "Kunne ikke hente tallene — prøv at genindlæse."}
       />
 
       {!sheetsOk ? <SheetsFallback /> : (

@@ -122,7 +122,6 @@ export default async function HermesPage() {
                 height: 88,
                 borderRadius: 22,
                 background: "var(--text)",
-                boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -162,7 +161,6 @@ export default async function HermesPage() {
                   textDecoration: "none",
                   color: "#fff",
                   background: "var(--text)",
-                  boxShadow: "0 6px 18px rgba(23,24,22,0.16)",
                 }}
               >
                 Åbn Hermes nu ↗
