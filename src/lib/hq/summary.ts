@@ -100,7 +100,7 @@ export async function getHqSummary(db: Db, today: string): Promise<HqSummary> {
     kpi: {
       draftsPending: drafts.n,
       newReplies: replies.n,
-      overdueNextSteps: steps.filter((s) => s.state === "forfalden").length,
+      overdueNextSteps: steps.filter((s) => s.state === "forfalden" || !s.step.trim()).length,
     },
     funnel: FUNNEL.map((stage) => ({ stage, n: counts.get(stage) ?? 0 })),
     nextSteps: steps.slice(0, 8),

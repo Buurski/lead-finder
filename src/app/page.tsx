@@ -34,7 +34,7 @@ export default async function HomePage() {
     { label: "Godkend kladder", value: summary.kpi.draftsPending, sub: "Venter i Indbakke", href: "/approve", hero: true },
     { label: "Nye svar", value: summary.kpi.newReplies, sub: "Kræver svar", href: "/replies" },
     { label: "Henvendelser fra kinly.dk", value: inbound, sub: "Ubehandlede", href: "/previews" },
-    { label: "Forfaldne næste skridt", value: summary.kpi.overdueNextSteps, sub: "På tværs af Lucas og Charlie", href: "/pipeline" },
+    { label: "Næste skridt der halter", value: summary.kpi.overdueNextSteps, sub: "Forfaldne eller mangler", href: "/pipeline" },
   ];
 
   return (
