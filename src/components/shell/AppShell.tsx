@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import Bell from "./Bell";
 import Icon from "./Icon";
 import CommandPalette from "./CommandPalette";
+import HermesDock from "./HermesDock";
 
 interface Counts {
   queue?: number;
@@ -110,7 +111,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="cc-content">{children}</div>
       </div>
 
-      {/* Hermes-dock mounter her (fase 2, Task 7) — erstatter den fjernede Claude-chat. */}
+      <HermesDock />
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>

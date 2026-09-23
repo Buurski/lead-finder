@@ -1,0 +1,126 @@
+/* Hermes-dock (fase 2, Task 7) — mørk rund knap + panel fra højre (desktop) /
+   fuldskærms-sheet fra bund (mobil). Ingen skygger, kun flader + kant (spec §5).
+   Bevægelse: transform/opacity only, 150-250ms ease-out — reduced-motion nulles
+   globalt af `*` reglen i globals.css. */
+
+.hermes-dock-fab {
+  position: fixed; right: 24px; bottom: 24px; z-index: 45;
+  width: 52px; height: 52px; border-radius: 999px;
+  background: var(--kinly-ink); color: #fff;
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1), background 140ms ease;
+}
+.hermes-dock-fab:hover { transform: translateY(-1px); background: #000; }
+.hermes-dock-fab:active { transform: scale(0.96); }
+.hermes-dock-badge {
+  position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 999px;
+  background: var(--accent); border: 2px solid var(--kinly-ink);
+}
+@media (max-width: 640px) {
+  .hermes-dock-fab { right: 16px; bottom: calc(66px + env(safe-area-inset-bottom) + 14px); width: 48px; height: 48px; }
+}
+
+.hermes-dock-backdrop { position: fixed; inset: 0; z-index: 58; background: transparent; pointer-events: none; }
+@media (max-width: 640px) {
+  .hermes-dock-backdrop { background: oklch(24% 0.02 70 / 0.32); pointer-events: auto; }
+}
+
+.hermes-dock-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 59;
+  width: 420px; max-width: 100vw;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  animation: hermes-dock-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes hermes-dock-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+@media (max-width: 640px) {
+  .hermes-dock-panel {
+    top: auto; left: 0; right: 0; width: auto; height: 88dvh;
+    border-left: none; border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    animation: hermes-dock-slide-up 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes hermes-dock-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+}
+
+.hermes-dock-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.hermes-dock-head-left { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.hermes-dock-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.hermes-dock-head-right { display: flex; gap: 6px; }
+.hermes-dock-icon-btn {
+  width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); display: grid; place-items: center; color: var(--text-muted);
+  cursor: pointer; transition: background 140ms ease, color 140ms ease;
+}
+.hermes-dock-icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+.hermes-dock-chip {
+  display: inline-flex; width: fit-content; align-items: center; gap: 6px;
+  margin: 10px 16px 2px; padding: 5px 11px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent-ink);
+  font-size: 11.5px; font-weight: 600;
+}
+
+.hermes-dock-body {
+  flex: 1; overflow-y: auto; padding: 8px 16px 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.hermes-dock-suggestions { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 8px; }
+.hermes-dock-suggestion {
+  text-align: left; padding: 11px 13px; border-radius: 14px; border: 1px solid var(--border);
+  background: var(--surface); font: inherit; font-size: 13px; color: var(--text-muted); cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.hermes-dock-suggestion:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+
+.hermes-dock-msg {
+  max-width: 86%; padding: 10px 13px; border-radius: 16px;
+  font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  animation: hermes-dock-fade 140ms ease both;
+}
+.hermes-dock-msg-user { align-self: flex-end; background: var(--kinly-ink); color: #fff; border-bottom-right-radius: 4px; }
+.hermes-dock-msg-hermes { align-self: flex-start; background: var(--surface-2); color: var(--text); border-bottom-left-radius: 4px; }
+.hermes-dock-msg a { color: inherit; text-decoration: underline; }
+@keyframes hermes-dock-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Ét roligt "tænker"-punkt — ingen hoppende prikker (Lucas: diskret, det er et CRM). */
+.hermes-dock-pending {
+  display: flex; align-items: center; gap: 8px; color: var(--text-muted);
+  font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.hermes-dock-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--text-dim); animation: hermes-dock-pulse 1.6s ease-in-out infinite; }
+@keyframes hermes-dock-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.hermes-dock-error {
+  display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-radius: 14px;
+  background: var(--red-dim); color: var(--text); font-size: 13px;
+}
+.hermes-dock-retry {
+  margin-left: auto; flex-shrink: 0; border: 1px solid var(--border-strong); background: var(--surface);
+  border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text);
+}
+.hermes-dock-retry:hover { background: var(--surface-2); }
+
+.hermes-dock-input-row {
+  display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border);
+}
+.hermes-dock-input {
+  flex: 1; resize: none; border: 1px solid var(--border); border-radius: 14px;
+  padding: 10px 13px; font: inherit; font-size: 13.5px; line-height: 1.4;
+  max-height: 120px; background: var(--surface-2); color: var(--text);
+}
+.hermes-dock-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.hermes-dock-send {
+  width: 36px; height: 36px; border-radius: 999px; border: none; background: var(--kinly-ink); color: #fff;
+  display: grid; place-items: center; cursor: pointer; flex-shrink: 0;
+  transition: background 140ms ease, transform 100ms ease;
+}
+.hermes-dock-send:disabled { background: var(--border-strong); cursor: not-allowed; }
+.hermes-dock-send:not(:disabled):active { transform: scale(0.94); }
