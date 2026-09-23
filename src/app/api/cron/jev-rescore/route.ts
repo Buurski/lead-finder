@@ -11,7 +11,6 @@ import { runJevBatch, clampBatch } from "@/lib/leads/jev-run";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export { clampBatch };
 
 export async function GET(req: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
