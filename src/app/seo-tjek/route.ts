@@ -10,7 +10,7 @@ const FORM_HTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gratis SEO-tjek af din hjemmeside | Buur Web</title>
+<title>Gratis SEO-tjek af din hjemmeside | Kinly</title>
 <meta name="description" content="Få en gratis rapport om din hjemmesides synlighed på Google og i AI-søgning (ChatGPT). Tager 1 minut, leveres på mail.">
 <style>
   :root{--bg:#fafbfa;--ink:#202320;--muted:#68716b;--accent:#202320;--border:#e1e4e1}
@@ -89,7 +89,7 @@ const FORM_HTML = `<!doctype html>
     <button id="btn" type="submit">Tjek min side gratis</button>
     <p class="status" id="status" role="status"></p>
   </form>
-  <p class="foot">Buur Web · Rapporten genereres automatisk med Googles PageSpeed-data og en gennemgang af din side. Ingen betaling, intet kort, ingen binding.</p>
+  <p class="foot">Kinly · Rapporten genereres automatisk med Googles PageSpeed-data og en gennemgang af din side. Ingen betaling, intet kort, ingen binding.</p>
 </div>
 <script>
 (function () {
