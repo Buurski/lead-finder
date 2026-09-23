@@ -74,7 +74,8 @@ export function buildOverview(
   const acts = [...d.activities].sort((a, b) => b.at.getTime() - a.at.getTime());
   const mails = acts.filter((a) => a.type === "email").map((a) => ({ at: a.at.toISOString(), dir: mailDirection(a.summary), summary: a.summary }));
   const work = acts
-    .filter((a) => WORK_TYPES.has(a.type))
+    // Systemets egne noter/fase-skift (flet, data udfyldt) er ikke "arbejde for kunden".
+    .filter((a) => WORK_TYPES.has(a.type) && !((a.type === "note" || a.type === "fase") && ["system", "claude", "codex"].includes(a.actor)))
     .map((a) => ({ at: a.at.toISOString(), type: a.type, actor: a.actor, summary: a.summary }));
 
   const invoices = d.invoices;
