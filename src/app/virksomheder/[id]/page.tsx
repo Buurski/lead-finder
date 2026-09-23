@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { activity, company } from "@/lib/db/schema";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
+import KnowledgeUpdate from "@/components/virksomheder/KnowledgeUpdate";
 import { normalizeStage } from "@/lib/hq/deals";
 import { getFollowUpOverview } from "@/lib/hq/followup-overview";
 import { unbilledWork } from "@/lib/hq/billing";
@@ -229,11 +230,11 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="virk-section-title">
             <span>Kundeviden</span>
-            <button className="cc-btn" disabled title="Kommer snart">Opdater vidensbase</button>
           </div>
+          <KnowledgeUpdate companyId={dossier.company.id} />
           {dossier.notes.length === 0 ? (
             <p className="cc-dim" style={{ fontSize: 12.5 }}>
-              Ingen vault-note fundet endnu{process.env.GITHUB_TOKEN ? "." : " — vault-læsning kræver GITHUB_TOKEN lokalt."}
+              Ingen kundenote i vaulten endnu — knappen ovenfor laver en ny.
             </p>
           ) : (
             dossier.notes.map((n) => <NoteCard key={n.path} title={n.title} body={n.body} />)
