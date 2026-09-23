@@ -39,7 +39,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ leadId: string
     }
 
     // Best-effort: udfaldet er allerede gemt; en fejl her må ikke fejle svaret.
-    await markReplyHandled(leadId).catch(() => {});
+    // Det viste svars tidspunkt (ikke "nu"): et svar der lander imens, forbliver synligt (Sol 23/9).
+    const upTo = typeof b.replyDate === "string" && !Number.isNaN(Date.parse(b.replyDate)) ? new Date(b.replyDate).toISOString() : undefined;
+    await markReplyHandled(leadId, upTo).catch(() => {});
 
     return { ok: true, ...result };
   });

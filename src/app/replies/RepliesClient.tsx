@@ -103,7 +103,7 @@ function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: (
       const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId!)}/udfald`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outcome, note: note.trim() || undefined, followUpDue: followUpDue || undefined, owner }),
+        body: JSON.stringify({ outcome, note: note.trim() || undefined, followUpDue: followUpDue || undefined, owner, replyDate: item.date }),
       });
       const d = await res.json();
       if (!res.ok || d.error) { setErr(d.error ?? "Kunne ikke gemme."); return; }

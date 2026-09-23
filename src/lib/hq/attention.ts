@@ -127,5 +127,8 @@ export async function getAttention(
 
   // Haster først, ellers indsættelsesrækkefølgen ovenfor (stabil sort).
   items.sort((a, b) => (a.level === b.level ? 0 : a.level === "haster" ? -1 : 1));
-  return items.slice(0, MAX_ITEMS);
+  // Samle-linjerne (svar/kladder/udkast) er én linje hver og må aldrig skæres væk af loftet (Sol 23/9).
+  const isAgg = (i: AttentionItem) => i.kind === "svar" || i.kind === "kladde" || i.kind === "preview";
+  const keep = new Set([...items.filter(isAgg), ...items.filter((i) => !isAgg(i)).slice(0, MAX_ITEMS - items.filter(isAgg).length)]);
+  return items.filter((i) => keep.has(i));
 }

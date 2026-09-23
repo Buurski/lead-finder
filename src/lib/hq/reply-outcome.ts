@@ -4,9 +4,9 @@
 // next/server, som node:test ikke kan resolve uden for Next's runtime); ruten
 // oversætter selv (samme mønster som onboarding.ts/OnboardingError).
 import "server-only";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, task } from "../db/schema.ts";
+import { activity, company, outreach, task } from "../db/schema.ts";
 import { stopOpenForRows } from "../pg/queue.ts";
 
 export class ReplyOutcomeError extends Error {}
@@ -79,7 +79,25 @@ export async function recordReplyOutcome(db: Db, input: RecordReplyOutcomeInput)
   const summary = `Svar sendt til ${c.name || "leadet"}: ${OUTCOME_LABEL[input.outcome]}${note ? ` — ${note}` : ""}`;
 
   // Et svar betyder altid stop for kolde mails — også ved dobbeltklik (harmløst, ingen åbne rækker anden gang).
-  await stopOpenForRows([c.rowNo], "svar modtaget", new Date().toISOString());
+  const nowIso = new Date().toISOString();
+  await stopOpenForRows([c.rowNo], "svar modtaget", nowIso);
+  // Kladder fra ingest kan mangle company_row_no og kun kendes på draft.leadId (Sol 23/9).
+  await db
+    .update(outreach)
+    .set({
+      status: "rejected",
+      updatedAt: nowIso,
+      draft: sql`${outreach.draft} || jsonb_build_object('status', 'rejected', 'stoppedReason', 'svar modtaget', 'updatedAt', ${nowIso}::text)`,
+    })
+    .where(and(
+      inArray(outreach.status, ["pending", "edited", "approved"]),
+      or(sql`${outreach.draft}->>'leadId' = ${input.leadId}`, c.placeId ? sql`${outreach.draft}->>'leadId' = ${c.placeId}` : sql`false`),
+    ));
+
+  // Samtidige klik (to faner): én ad gangen pr. virksomhed, så idempotens-tjekket holder (Sol 23/9).
+  return db.transaction(async (tx0) => {
+  const db = tx0 as unknown as Db;
+  await tx0.execute(sql`select pg_advisory_xact_lock(hashtext(${"reply-outcome:" + c.id}))`);
 
   // Idempotens: samme lead+udfald-tekst inden for 1 minut → ingen ekstra aktivitet/opgave.
   const oneMinAgo = new Date(Date.now() - 60_000);
@@ -96,7 +114,7 @@ export async function recordReplyOutcome(db: Db, input: RecordReplyOutcomeInput)
     await db.update(company).set({ leadStatus: newStatus, updatedAt: new Date() }).where(eq(company.id, c.id));
   }
 
-  const [row] = await db.insert(activity).values({ companyId: c.id, actor: input.actor, type: "email", summary }).returning({ id: activity.id });
+  const [row] = await db.insert(activity).values({ companyId: c.id, actor: input.actor, type: "email", summary, payload: { replyOutcome: input.outcome } }).returning({ id: activity.id });
 
   // "ring-op" opretter altid sin egen opkalds-opgave (bruger followUpDue som dato hvis sat).
   // For de andre udfald er en opfølgningsopgave valgfri — kun når en dato er valgt.
@@ -107,4 +125,5 @@ export async function recordReplyOutcome(db: Db, input: RecordReplyOutcomeInput)
   }
 
   return { companyId: c.id, activityId: row.id, leadStatus: newStatus ?? c.leadStatus };
+  });
 }

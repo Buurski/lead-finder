@@ -96,14 +96,23 @@ export async function saveDigest(d: InboxDigest): Promise<void> {
   await store.put(DIGEST_KEY, d);
 }
 
-const HANDLED_KEY = "replies/handled"; // leadId → ISO for hvornår svaret blev behandlet
+// Én nøgle pr. lead (ingen delt map → to samtidige klik kan ikke overskrive hinanden).
+const handledKey = (leadId: string) => `replies/handled/${leadId}`;
 
-/** "Markér som besvaret": svar fra dette lead til og med nu er håndteret. Overlever at
- * oversigten bygges på ny fra Gmail; et NYT svar efter tidspunktet dukker op igen. */
-export async function markReplyHandled(leadId: string, at = new Date().toISOString()): Promise<void> {
-  const map = (await store.get<Record<string, string>>(HANDLED_KEY)) ?? {};
-  map[leadId] = at;
-  await store.put(HANDLED_KEY, map);
+/** "Markér som besvaret": svar fra dette lead til og med `upTo` (det viste svars tidspunkt)
+ * er håndteret. Overlever at oversigten bygges på ny; et NYERE svar dukker op igen. */
+export async function markReplyHandled(leadId: string, upTo = new Date().toISOString()): Promise<void> {
+  const prev = await store.get<string>(handledKey(leadId));
+  if (!prev || upTo > prev) await store.put(handledKey(leadId), upTo);
+}
+
+/** Påfør markeringerne på en oversigt — bruges af ALLE veje der returnerer en digest. */
+export async function withHandled(d: InboxDigest): Promise<InboxDigest> {
+  const ids = [...new Set(d.items.filter((i) => i.needsReply && i.leadId).map((i) => i.leadId!))];
+  const pairs = await Promise.all(ids.map(async (id) => [id, await store.get<string>(handledKey(id)).catch(() => null)] as const));
+  const handled: Record<string, string> = {};
+  for (const [id, at] of pairs) if (at) handled[id] = at;
+  return applyHandled(d, handled);
 }
 
 /** Ren: slår behandlede svar fra (needsReply=false) når svaret ikke er nyere end behandlingen. */
@@ -119,8 +128,7 @@ export function applyHandled(d: InboxDigest, handled: Record<string, string>): I
 export async function loadDigest(): Promise<InboxDigest | null> {
   try {
     const d = await store.get<InboxDigest>(DIGEST_KEY);
-    if (!d) return null;
-    return applyHandled(d, (await store.get<Record<string, string>>(HANDLED_KEY)) ?? {});
+    return d ? await withHandled(d) : null;
   } catch {
     return null;
   }

@@ -19,6 +19,11 @@ export function unhandledReplyWhere() {
     eq(company.emailStatus, "replied"),
     inArray(company.leadStatus, ["new", "called"]),
     sql`greatest(nullif(${company.emailSentAt}, ''), nullif(${company.followupSentAt}, ''))::timestamptz > now() - make_interval(days => ${UNHANDLED_REPLY_DAYS})`,
+    // "Markér som besvaret" (alle udfald) efter vores seneste mail = behandlet.
+    // ponytail: vi kender ikke svarets eget tidspunkt her — et nyt svar på et allerede behandlet
+    // lead tæller først igen når vi har skrevet igen. Klokkens svar-liste (digest) fanger det.
+    sql`not exists (select 1 from activity a where a.company_id = ${company.id} and a.payload ? 'replyOutcome'
+      and a.at >= greatest(nullif(${company.emailSentAt}, ''), nullif(${company.followupSentAt}, ''))::timestamptz)`,
   );
 }
 

@@ -110,3 +110,15 @@ test("ukendt udfald og ugyldig dato fejler tydeligt", async () => {
     ReplyOutcomeError,
   );
 });
+
+test("udfald: kladder kendt kun på draft.leadId stoppes; svaret tæller ikke længere som ubehandlet", async () => {
+  const { unhandledReplyWhere } = await import("./summary.ts");
+  const sentAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  await db.update(company).set({ emailStatus: "replied", emailSentAt: sentAt, placeId: "ChIJtest" }).where(eq(company.id, companyId));
+  await db.insert(outreach).values({ id: "ing1", status: "approved", draft: { leadId: "ChIJtest" } });
+  assert.equal((await db.select().from(company).where(unhandledReplyWhere())).length, 1);
+  await recordReplyOutcome(db, { leadId: "ChIJtest", outcome: "andet", owner: "lucas", actor: "lucas" });
+  const [d] = await db.select().from(outreach).where(eq(outreach.id, "ing1"));
+  assert.equal(d.status, "rejected");
+  assert.equal((await db.select().from(company).where(unhandledReplyWhere())).length, 0);
+});

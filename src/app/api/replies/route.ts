@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { loadDigest, saveDigest, summarizeDigest, normalizeDigest } from "@/lib/inbox-digest";
+import { loadDigest, saveDigest, summarizeDigest, normalizeDigest, withHandled } from "@/lib/inbox-digest";
 import type { InboxDigest } from "@/lib/inbox-digest";
 import { liveScanDigest } from "@/lib/inbox-live";
 import { readVaultJson } from "@/lib/vault";
@@ -35,7 +35,8 @@ export async function GET() {
   if (vaultRaw && Array.isArray(vaultRaw.items) && vaultRaw.items.length > 0 && vaultFresher) {
     const vault = normalizeDigest(vaultRaw, "cowork-opus");
     await saveDigest(vault);
-    return NextResponse.json({ ok: true, source: "artifact", digest: vault, summary: summarizeDigest(vault) });
+    const shown = await withHandled(vault); // "besvaret" gælder også en frisk oversigt (Sol 23/9)
+    return NextResponse.json({ ok: true, source: "artifact", digest: shown, summary: summarizeDigest(shown) });
   }
   if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
     return NextResponse.json({ ok: true, source: "artifact", digest: stored, summary: summarizeDigest(stored) });
@@ -48,5 +49,6 @@ export async function GET() {
   // Cache the fallback so the page + deck don't re-scan every load (a Cowork POST
   // to /api/inbox/digest overwrites it with the richer AI digest).
   if (live.digest.items.length > 0) await saveDigest(live.digest);
-  return NextResponse.json({ ok: true, source: "live-fallback", digest: live.digest, summary: summarizeDigest(live.digest) });
+  const shown = await withHandled(live.digest);
+  return NextResponse.json({ ok: true, source: "live-fallback", digest: shown, summary: summarizeDigest(shown) });
 }
