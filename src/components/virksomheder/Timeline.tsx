@@ -23,6 +23,7 @@ const TYPE_ICON: Record<string, string> = {
   checkin: "CircleDot",
   faktura: "Receipt",
   kundeopdatering: "Mail",
+  opgave: "ListChecks",
 };
 
 const LOG_TYPES: { key: "note" | "opkald" | "moede" | "arbejde"; label: string }[] = [

@@ -22,10 +22,10 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { date, hour } = copenhagenNow();
-  const [summary, previewRequests, user] = await Promise.all([
-    getHqSummary(getDb(), date),
+  const user = await currentUser();
+  const [summary, previewRequests] = await Promise.all([
+    getHqSummary(getDb(), date, user),
     readPreviewRequests().catch(() => []),
-    currentUser(),
   ]);
 
   const inbound = previewRequests.filter((p) => p.status === "ny").length;

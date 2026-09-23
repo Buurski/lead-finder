@@ -39,6 +39,9 @@ function OwnerAvatar({ owner }: { owner: string }) {
 }
 
 export default function NextStepsTable({ steps, today }: { steps: NextStep[]; today: string }) {
+  const overdue = steps.filter((s) => s.state === "forfalden").length;
+  const upcoming = steps.length - overdue;
+
   return (
     <div className="hq-table-card cc-card">
       <div className="hq-table-head" role="presentation">
@@ -49,8 +52,15 @@ export default function NextStepsTable({ steps, today }: { steps: NextStep[]; to
       </div>
 
       {steps.length === 0 ? (
-        <div className="hq-empty">Ingen åbne næste skridt — godt gået.</div>
+        <div className="hq-empty">Ingen opgaver eller næste skridt i kø.</div>
       ) : (
+        <div className="hq-table-status">
+          {overdue > 0 ? `${overdue} forfaldne. ` : "Intet forfalder i dag. "}
+          {upcoming > 0 ? `${upcoming} kommende. ` : ""}
+          <Link href="/opgaver" className="cc-link">Se alle opgaver</Link>
+        </div>
+      )}
+      {steps.length > 0 && (
         steps.map((s, i) => {
           const body = (
             <>
@@ -58,8 +68,8 @@ export default function NextStepsTable({ steps, today }: { steps: NextStep[]; to
                 <div className="hq-row-name">{s.company}</div>
                 <div className="hq-row-deal">{s.what}</div>
               </div>
-              <div className={`hq-row-step${s.state === "mangler" ? " missing" : ""}`}>
-                {s.state === "mangler" ? "Intet næste skridt" : s.step}
+              <div className={`hq-row-step${!s.step.trim() ? " missing" : ""}`}>
+                {s.step.trim() || "Intet næste skridt"}
               </div>
               <div className="hq-row-owner">
                 <OwnerAvatar owner={s.owner} />
