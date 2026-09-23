@@ -12,6 +12,7 @@ import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
 import { formatSignature, stripSignature, type SenderId } from "./senders.ts";
+import { personalGreetingName } from "./qualify.ts";
 
 export interface Draft {
   subject: string;
@@ -72,9 +73,16 @@ export function validateDraft(text: string): ValidationResult {
 // ---- Deterministic composer ----------------------------------------------
 
 function firstName(name: string): string {
-  // For the greeting we address the business by name as-is (Danish businesses
-  // are usually greeted by business name, not a person).
+  // For body/subject references we still use the business name as-is (Danish
+  // businesses are usually referred to by business name, not a person).
   return name.trim();
+}
+
+// The mail's "Hej X," opener — a personal name ONLY when one clearly leads the
+// business name (personalGreetingName), never the business name/.dk/city/parens.
+function greetingLine(businessName: string): string {
+  const name = personalGreetingName(businessName);
+  return name ? `Hej ${name},` : "Hej,";
 }
 
 // Stable per-lead index so 12 mails in a batch don't share one opener, without
@@ -211,7 +219,7 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
-    `Hej ${name},`,
+    greetingLine(lead.name),
     ``,
     opener,
     ``,
