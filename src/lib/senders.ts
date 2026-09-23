@@ -111,8 +111,14 @@ function fromEnv(): Record<SenderId, SenderCreds | null> {
   const charliePw = process.env.CHARLIE_GMAIL_APP_PASSWORD;
   // Visible From is a fixed brand identity; SMTP login stays independently
   // configurable through the existing Gmail credentials.
-  const lucasFrom = LUCAS_DEFAULT_EMAIL;
-  const charlieFrom = CHARLIE_DEFAULT_EMAIL;
+  // From = the account that actually authenticates. kinly.dk has DMARC
+  // p=quarantine, so a kinly.dk From sent through a gmail.com login fails
+  // alignment and lands in spam (23/9). Brand address only when the login IS
+  // on kinly.dk.
+  const brandFrom = (login: string | undefined, brand: string) =>
+    login && !/@kinly\.dk$/i.test(login.trim()) ? login.trim() : brand;
+  const lucasFrom = brandFrom(lucasEmail, LUCAS_DEFAULT_EMAIL);
+  const charlieFrom = brandFrom(charlieEmail, CHARLIE_DEFAULT_EMAIL);
 
   // 2026-06-26: use pickEnv() instead of || so that an empty env var means
   // "explicit opt-out" — the field is stored as "" in creds and formatSignature
@@ -329,50 +335,23 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // title/tagline er tomme, så de filtreres væk og han ser stadig kun
   // "navn + telefon").
   const trim = (s: string) => s.trim();
-  const textLines = [name, title, creds?.fromEmail ?? (senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL), phone]
+  const textLines = [name, title, senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL, phone]
     .map(trim).filter((s) => s.length > 0);
 
-  // 2026-07-16: Kinly-brand i alle signaturer (Lucas + Charlies fælles firma).
-  // Text-delen får en "Kinly"-linje; HTML-delen er en tabel-baseret signatur
-  // efter email-standard (inline CSS, web-safe font, hostet lille PNG, <600px)
-  // så den renderer ens i Gmail/Outlook/Apple Mail. kinly.dk-link og klikbart
-  // logo tændes via KINLY_SITE_URL når domænet er live — indtil da vises
-  // domænet som ren tekst (døde links i kold mail skader mere end intet link).
-  const siteUrl = (process.env.KINLY_SITE_URL || "").trim().replace(/\/$/, "");
-  textLines.push(siteUrl ? `kinly.dk · ${siteUrl.replace(/^https?:\/\//, "")}` : "kinly.dk");
-  textLines.push("EST · 2026 · HERNING · DK · KODET I DANMARK");
-
-  // Two small brand assets only — never a flattened signature image. Text and
-  // contact details stay real HTML so Gmail can index and users can click them.
-  const EMBER = "#d4500f";
-  const INK = "#191713";
-  const PAPER = "#f6f3ee";
-  const senderEmail = senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL;
-  const phoneHref = trim(phone).replace(/\s/g, "");
-  const portrait = `${KINLY_ASSET_BASE}/img/team/${senderId}.jpg`;
-  const mark = `${KINLY_ASSET_BASE}/brand/kinly-mark-tight-512.png`;
-  const htmlTable = [
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:${INK};border:1px solid ${INK};border-top:6px solid ${EMBER};background:#ffffff;">`,
-    `<tr>`,
-    `<td width="126" valign="middle" style="padding:18px 16px 18px 18px;border-right:2px solid #e9e6e2;">`,
-    `<img src="${portrait}" alt="${trim(name)}" width="104" height="104" style="display:block;width:104px;height:104px;border-radius:52px;border:4px solid ${EMBER};" />`,
-    `</td>`,
-    `<td valign="middle" style="padding:18px 14px 18px 20px;">`,
-    `<div style="font-size:25px;line-height:30px;font-weight:700;letter-spacing:-0.4px;">${trim(name)}</div>`,
-    `<div style="font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:21px;font-style:italic;color:#6d675c;padding-top:2px;">${title}</div>`,
-    `<div style="width:44px;height:3px;background:${EMBER};font-size:1px;line-height:1px;margin:12px 0 11px;">&nbsp;</div>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">`,
-    `<tr><td style="padding:0 16px 5px 0;font-size:10px;letter-spacing:2px;color:#999;">MAIL</td><td style="padding:0 0 5px;font-family:monospace;font-size:15px;"><a href="mailto:${senderEmail}" style="color:${INK};text-decoration:none;">${senderEmail}</a></td></tr>`,
-    `<tr><td style="padding:0 16px 0 0;font-size:10px;letter-spacing:2px;color:#999;">TLF</td><td style="padding:0;font-family:monospace;font-size:15px;"><a href="tel:${phoneHref}" style="color:${INK};text-decoration:none;">${trim(phone)}</a></td></tr>`,
-    `</table>`,
-    `</td>`,
-    `<td width="88" valign="middle" align="center" style="padding:14px 18px 14px 4px;">`,
-    `<a href="${siteUrl || "https://kinly.dk"}" style="text-decoration:none;"><img src="${mark}" alt="Kinly" width="66" height="97" style="display:block;width:66px;height:auto;border:0;" /></a>`,
-    `</td>`,
-    `</tr>`,
-    `<tr><td colspan="3" style="padding:8px 12px;background:${PAPER};border-top:1px solid #e9e6e2;text-align:center;font-family:monospace;font-size:9px;letter-spacing:1.5px;color:${INK};">EST&nbsp; · &nbsp;2026&nbsp; · &nbsp;HERNING&nbsp; · &nbsp;DK&nbsp; · &nbsp;KODET I DANMARK</td></tr>`,
-    `</table>`,
-  ].join("\n");
+  // 23/9 (Lucas): ren tekst-signatur — ingen billeder, ingen tabel. Billeder
+  // og tunge HTML-tabeller i kold mail trækker mod spam-filteret.
+  textLines.splice(1, 1, `${title}, Kinly`);
+  textLines.push("kinly.dk");
+  const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const htmlTable = textLines
+    .map((l, i) => {
+      if (i === 0) return `<strong>${esc(l)}</strong>`;
+      if (l === "kinly.dk") return `<a href="https://kinly.dk" style="color:#1a5fb4;">kinly.dk</a>`;
+      if (/@/.test(l)) return `<a href="mailto:${esc(l)}" style="color:inherit;text-decoration:none;">${esc(l)}</a>`;
+      if (/^\+?[\d\s]{6,}$/.test(l)) return `<a href="tel:${l.replace(/\s/g, "")}" style="color:inherit;text-decoration:none;">${esc(l)}</a>`;
+      return esc(l);
+    })
+    .join("<br>");
 
   return {
     text: textLines.join("\n"),
@@ -381,9 +360,6 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   };
 }
 
-// Hosted outside lead-system so the two small signature assets keep working
-// across lead-system deployments.
-const KINLY_ASSET_BASE = (process.env.KINLY_ASSET_URL || "https://kinly-site.vercel.app").replace(/\/$/, "");
 
 // ---- Legacy applySignature helper ----------------------------------------
 // 2026-06-26: re-sign a body for the chosen sender (used by /api/approve/send

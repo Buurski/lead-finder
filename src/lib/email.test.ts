@@ -243,9 +243,9 @@ test("HTML-form: Lucas-signatur (Kinly-kort) har navn i bold-div + telefon", () 
   setLucas();
   try {
     const tpl = buildLeadEmail({ ...baseLead, sender: "lucas" }, "cold");
-    assert.equal((tpl.html.match(/<img\b/gi) || []).length, 2);
-    assert.ok(tpl.html.includes('https://kinly-site.vercel.app/img/team/lucas.jpg'));
-    assert.ok(tpl.html.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'));
+    // 23/9: ren tekst-signatur — ingen billeder.
+    assert.equal((tpl.html.match(/<img\b/gi) || []).length, 0);
+    assert.ok(tpl.html.includes("<strong>Lucas Buur</strong>"));
     assert.ok(tpl.html.includes('href="mailto:lucas@kinly.dk"'));
     assert.ok(tpl.html.includes('href="tel:+4523242482"'));
   } finally { clearLucas(); }

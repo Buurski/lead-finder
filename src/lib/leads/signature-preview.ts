@@ -54,10 +54,10 @@ function signatureFor(id: SenderId, lucasPhone: string, charliePhone: string): s
   // 2026-07-16: begge signerer nu som Kinly (Lucas + Charlies fælles firma).
   // HTML-versionen (senders.ts) viser logoet; text-versionen denne brand-linje.
   if (id === "lucas") {
-    const lines = ["Lucas Buur", "Co-founder", "lucas@kinly.dk", lucasPhone, "kinly.dk", "EST · 2026 · HERNING · DK · KODET I DANMARK"].map((s) => s.trim()).filter((s) => s.length > 0);
+    const lines = ["Lucas Buur", "Co-founder, Kinly", "lucas@kinly.dk", lucasPhone, "kinly.dk"].map((s) => s.trim()).filter((s) => s.length > 0);
     return `Med venlig hilsen\n${lines.join("\n")}`;
   }
-  const lines = ["Charlie Nielsen", "Co-founder", "charlie@kinly.dk", charliePhone, "kinly.dk", "EST · 2026 · HERNING · DK · KODET I DANMARK"].map((s) => s.trim()).filter((s) => s.length > 0);
+  const lines = ["Charlie Nielsen", "Co-founder, Kinly", "charlie@kinly.dk", charliePhone, "kinly.dk"].map((s) => s.trim()).filter((s) => s.length > 0);
   return `Med venlig hilsen\n${lines.join("\n")}`;
 }
 

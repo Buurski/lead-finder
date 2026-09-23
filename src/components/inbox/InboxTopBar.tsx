@@ -75,7 +75,9 @@ export default function InboxTopBar({
           <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{sendProg.line} · {sendProg.sent} sendt{sendProg.failed ? ` · ${sendProg.failed} fejlede` : ""}</span>
         </div>
       ) : (
-        sendMsg && approved === 0 && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>✓ {sendMsg}</span>
+        // Vises altid — før blev en blokering ("ingen af de N kan sendes") skjult
+        // så længe der fandtes godkendte, og knappen så ud til at gøre ingenting.
+        sendMsg && <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-line", maxWidth: 420 }}>{sendMsg}</span>
       )}
 
       {approved > 0 && (

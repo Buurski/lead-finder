@@ -59,15 +59,12 @@ function clearCharlieEnv() {
 test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
   withEnv(setLucasEnv, clearLucasEnv, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
-    assert.ok(sig.html.startsWith("<table"));
+    assert.equal(sig.text, "Lucas Buur\nCo-founder, Kinly\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk");
+    assert.ok(sig.html.startsWith("<strong>"));
     assert.ok(sig.html.includes('href="mailto:lucas@kinly.dk"'));
     assert.ok(sig.html.includes('href="tel:+4523242482"'));
     assert.ok(sig.html.includes('href="https://kinly.dk"'));
-    assert.ok(sig.html.includes('https://kinly-site.vercel.app/img/team/lucas.jpg'));
-    assert.ok(sig.html.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'));
-    assert.ok(sig.html.includes('border-top:6px solid #d4500f'));
-    assert.equal((sig.html.match(/<img\b/gi) || []).length, 2);
+    assert.equal((sig.html.match(/<img\b/gi) || []).length, 0);
     assert.equal(sig.closing, "Mvh, Lucas Buur");
   });
 });
@@ -75,7 +72,7 @@ test("formatSignature: Lucas defaults — navn + telefon, ingen titel", () => {
 test("formatSignature: Lucas creds-missing fallback — defaults stadig active", () => {
   withEnv(clearLucasEnv, () => {}, () => {
     const sig = formatSignature("lucas");
-    assert.equal(sig.text, "Lucas Buur\nCo-founder\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
+    assert.equal(sig.text, "Lucas Buur\nCo-founder, Kinly\nlucas@kinly.dk\n+45 23 24 24 82\nkinly.dk");
   });
 });
 
@@ -86,13 +83,11 @@ test("formatSignature: Lucas creds-missing fallback — defaults stadig active",
 test("formatSignature: Charlie defaults — officiel Kinly-signatur", () => {
   withEnv(setCharlieEnv, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.equal(sig.text, "Charlie Nielsen\nCo-founder\ncharlie@kinly.dk\n+45 42 25 32 62\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
+    assert.equal(sig.text, "Charlie Nielsen\nCo-founder, Kinly\ncharlie@kinly.dk\n+45 42 25 32 62\nkinly.dk");
     assert.equal(sig.closing, "Mvh, Charlie Nielsen");
     assert.ok(sig.html.includes("Charlie Nielsen"));
     assert.ok(sig.html.includes('href="mailto:charlie@kinly.dk"'));
     assert.ok(sig.html.includes('href="tel:+4542253262"'));
-    assert.ok(sig.html.includes('https://kinly-site.vercel.app/img/team/charlie.jpg'));
-    assert.ok(sig.html.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'));
   });
 });
 
@@ -187,7 +182,7 @@ test("formatSignature: credsOverride tvinger bestemte værdier (test/dry-run)", 
     title: "QA-test",
     tagline: "",
   });
-  assert.equal(sig.text, "Charlie Test\nCo-founder\ncharlie@kinly.dk\n+45 00 00 00 00\nkinly.dk\nEST · 2026 · HERNING · DK · KODET I DANMARK");
+  assert.equal(sig.text, "Charlie Test\nCo-founder, Kinly\ncharlie@kinly.dk\n+45 00 00 00 00\nkinly.dk");
   assert.equal(sig.closing, "Mvh, Charlie Test");
 });
 
@@ -226,10 +221,13 @@ test("formatFrom: SMTP-login og officiel Kinly From-adresse er separate", () => 
   process.env.GMAIL_APP_PASSWORD = DUMMY_PW;
   const f = formatFrom("lucas");
   assert.ok(f.includes("Lucas Buur"));
-  assert.equal(f, "Lucas Buur <lucas@kinly.dk>");
+  // From = the authenticated account (DMARC alignment, 23/9).
+  assert.equal(f, "Lucas Buur <buur.aigro@gmail.com>");
+  process.env.GMAIL_USER = "lucas@kinly.dk";
+  assert.equal(formatFrom("lucas"), "Lucas Buur <lucas@kinly.dk>");
   process.env.CHARLIE_GMAIL_USER = "1charlie.nielsen@gmail.com";
   process.env.CHARLIE_GMAIL_APP_PASSWORD = DUMMY_PW;
-  assert.equal(formatFrom("charlie"), "Charlie Nielsen <charlie@kinly.dk>");
+  assert.equal(formatFrom("charlie"), "Charlie Nielsen <1charlie.nielsen@gmail.com>");
   clearLucasEnv();
   clearCharlieEnv();
 });
@@ -348,7 +346,7 @@ test("applySignature: ingen dobbelt-signatur oven paa closing-linje", async () =
   assert.equal(/Mvh, Lucas Buur[\s\S]*Lucas Buur/.test(out), false);
   assert.equal((out.match(/Lucas Buur/g) || []).length, 1);
   assert.equal(/Med venlig hilsen\nLucas Buur/.test(out), true);
-  assert.equal(out.endsWith("EST · 2026 · HERNING · DK · KODET I DANMARK"), true);
+  assert.equal(out.endsWith("kinly.dk"), true);
 });
 
 // ---------------------------------------------------------------------------
@@ -380,7 +378,7 @@ test("previewSignature: toggle frem og tilbage stabler ikke", async () => {
     body = previewSignature(body, "lucas", "+45 23 24 24 82", "+45 42 25 32 62");
   }
   assert.equal((body.match(/Med venlig hilsen/g) || []).length, 1);
-  assert.equal(body, `Hej\n\ntekst.\n\n${LUCAS_BLOCK}`);
+  assert.equal(body, `Hej\n\ntekst.\n\n${LUCAS_BLOCK.replace("\nCo-founder\n", "\nCo-founder, Kinly\n").replace("\nEST · 2026 · HERNING · DK · KODET I DANMARK", "")}`);
 });
 
 test("applySignature: matcher preview-formatet (Med venlig hilsen + blok)", async () => {
@@ -397,10 +395,9 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   const out = applySignatureHtml("Hej <Vida>,\n\nSe https://demo.dk\n\nMvh, Lucas Buur", "lucas");
   assert.equal(out.includes("&lt;Vida&gt;"), true);
   assert.equal(out.includes('<a href="https://demo.dk"'), true);
-  assert.equal((out.match(/<img\b/gi) || []).length, 2);
-  assert.equal(out.includes('https://kinly-site.vercel.app/img/team/lucas.jpg'), true);
-  assert.equal(out.includes('https://kinly-site.vercel.app/brand/kinly-mark-tight-512.png'), true);
-  assert.equal(out.includes('href="mailto:lucas@kinly.dk"'), true);
+  // Ren tekst-signatur (23/9): ingen billeder, link til kinly.dk.
+  assert.equal((out.match(/<img\b/gi) || []).length, 0);
+  assert.equal(out.includes('href="https://kinly.dk"'), true);
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });
