@@ -16,9 +16,9 @@ export interface NavItem {
 // under /agenter (fase 2).
 export const NAV_PRIMARY: NavItem[] = [
   { href: "/", label: "HQ", icon: "Home", hint: "Dagens overblik" },
+  { href: "/kunder", label: "Kunder", icon: "Building2", hint: "Aktive kunder" },
   { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
-  { href: "/virksomheder", label: "Virksomheder", icon: "Building2", hint: "Kundeprofiler og sites" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
@@ -27,6 +27,7 @@ export const NAV_PRIMARY: NavItem[] = [
 
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
 export const NAV_MORE: NavItem[] = [
+  { href: "/virksomheder", label: "Alle virksomheder", icon: "Building2", hint: "Alle virksomheder og leads" },
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. kunde" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
@@ -68,6 +69,7 @@ export interface Section {
 }
 
 export const SECTIONS: Section[] = [
+  { root: "/kunder", tabs: [{ href: "/kunder", label: "Kunder" }, { href: "/virksomheder", label: "Alle virksomheder" }] },
   {
     root: "/approve",
     tabs: [

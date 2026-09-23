@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
+import RelationsPanel from "./RelationsPanel";
 import { safeHref } from "@/lib/safe-href";
 // Kun type-imports fra overview.ts/invoices.ts/cms-usage.ts: de trækker (via
 // deals.ts/db/client.ts) "server-only"-moduler ind, som ikke må rørt fra en
@@ -496,13 +497,14 @@ function MissingPills({ missing, onOpen }: { missing: string[]; onOpen: (key: st
 }
 
 export default function Overblik({
-  companyId, overview, cms, servicesCatalog, onboarding,
+  companyId, overview, cms, servicesCatalog, onboarding, relations,
 }: {
   companyId: string;
   overview: CustomerOverview;
   cms: CmsUsage | null;
   servicesCatalog: Record<string, string>;
   onboarding: OnboardingTaskRow[];
+  relations: Array<{ id: string; otherId: string; name: string; label: string }>;
 }) {
   const router = useRouter();
   const [editingAftale, setEditingAftale] = useState(false);
@@ -518,6 +520,7 @@ export default function Overblik({
   return (
     <div className="ov-grid">
       <AttentionStrip items={overview.attention} />
+      <RelationsPanel companyId={companyId} relations={relations} />
 
       {showOpstart && <OpstartCard companyId={companyId} items={onboarding} onSaved={() => router.refresh()} />}
 
