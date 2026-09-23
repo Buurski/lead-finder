@@ -252,7 +252,15 @@ export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
 /** Skift præsentationen i en færdig kladde til den nye afsenders (samme plads). */
 export function adaptToSender(body: string, sender: "lucas" | "charlie"): string {
   const from = sender === "charlie" ? DISCLOSURES.lucas : DISCLOSURES.charlie;
-  return from.reduce((out, line, i) => out.split(line).join(DISCLOSURES[sender][i]), body);
+  // Sætning for sætning: kladder kan have præsentationen brudt over flere linjer.
+  const sentences = (t: string) => t.match(/[^.!?]+[.!?]/g)?.map((x) => x.trim()) ?? [];
+  let out = body;
+  from.forEach((line, i) => {
+    const a = sentences(line);
+    const b = sentences(DISCLOSURES[sender][i]);
+    a.forEach((x, j) => { if (b[j]) out = out.split(x).join(b[j]); });
+  });
+  return out;
 }
 
 /** Lucas' personlige detaljer i en mail der sendes fra Charlie. */

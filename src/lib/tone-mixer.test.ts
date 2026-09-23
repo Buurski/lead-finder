@@ -10,4 +10,6 @@ test("Charlie får aldrig Lucas' salgselev-historie; skift frem og tilbage er ta
   const asCharlie = adaptToSender(lucasBody, "charlie");
   assert.equal(LUCAS_ONLY.test(asCharlie), false);
   assert.equal(adaptToSender(asCharlie, "lucas"), lucasBody);
+  const wrapped = lucasBody.replace(". Jeg går", ".\nJeg går"); // brudt over to linjer
+  assert.equal(LUCAS_ONLY.test(adaptToSender(wrapped, "charlie")), false);
 });
