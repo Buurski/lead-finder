@@ -85,7 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className="txt">Søg virksomheder, aftaler…</span>
               <span className="cc-search-kbd">⌘K</span>
             </button>
-            <Bell counts={counts} />
+            <Bell />
             <QuickActions />
           </div>
         </header>

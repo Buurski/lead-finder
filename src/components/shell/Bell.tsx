@@ -1,109 +1,70 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Icon from "./Icon";
+import AttentionPanel from "./AttentionPanel";
+import type { AttentionItem } from "@/lib/hq/attention";
 
-interface Counts {
-  queue?: number;
-  needs?: number;
-  invoicesOverdue?: number;
-}
-
-// Notifikations-klokke i topbaren (Bundle G): viser summen af ubehandlede
-// drafts + svar-der-kraever-dig + forfaldne fakturaer paa tvaers af kanaler.
-// Dataen er den samme deck-summary som sidebar-badges bruger, saa de kan
-// aldrig drifte.
-export default function Bell({ counts }: { counts: Counts }) {
+// Klokken i topbaren: "hvad kræver min opmærksomhed nu?" — opgaver, svar,
+// kladder, fakturaer, gratis udkast og kunder der venter, samlet af
+// hq/attention.ts. Tallet = antal haster-punkter; klik åbner panelet med
+// hele listen (Haster / Til opfølgning). Henter selv (ikke via AppShell), så
+// den altid viser den friskeste liste når man skifter side.
+export default function Bell() {
+  const pathname = usePathname();
+  const [items, setItems] = useState<AttentionItem[]>([]);
   const [open, setOpen] = useState(false);
 
-  // Esc lukker dropdownen (tastatur-brugere forventer det; backdrop-klik
-  // dækker kun mus). stopPropagation ikke nødvendig — AppShell's Esc-handler
-  // lukker kun shortcuts-overlayet.
   useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+    if (pathname === "/login") return;
+    let alive = true;
+    // Ét retry-forsøg: siden har ofte en byge af prefetch-kald lige efter
+    // hydrering (nav-links, ⌘K), og klokkens eget kald kan tabe det kapløb.
+    // Et enkelt gensvar 1s senere er billigere end at vise en falsk "intet".
+    function load(retriesLeft: number) {
+      fetch("/api/opmaerksomhed")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((d) => {
+          if (alive && Array.isArray(d?.items)) setItems(d.items);
+        })
+        .catch(() => {
+          if (alive && retriesLeft > 0) setTimeout(() => load(retriesLeft - 1), 1000);
+        });
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+    load(1);
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
 
-  const queue = counts.queue ?? 0;
-  const needs = counts.needs ?? 0;
-  const invoicesOverdue = counts.invoicesOverdue ?? 0;
-  const total = queue + needs + invoicesOverdue;
+  const haster = items.filter((i) => i.level === "haster").length;
 
   return (
     <div style={{ position: "relative" }}>
       <button
         className="cc-cmdk"
         onClick={() => setOpen((v) => !v)}
-        aria-label={total > 0 ? `${total} ting venter` : "Ingen ventende ting"}
+        aria-label={haster > 0 ? `${haster} ting kræver dig` : "Intet kræver dig lige nu"}
         aria-expanded={open}
         style={{ paddingLeft: 10, paddingRight: 10, position: "relative" }}
       >
         <Icon name="Bell" style={{ width: 15, height: 15 }} />
-        {total > 0 && (
+        {haster > 0 && (
           <span
             style={{
               position: "absolute", top: -4, right: -4,
               minWidth: 16, height: 16, padding: "0 4px",
               display: "grid", placeItems: "center",
               borderRadius: 999, fontSize: 10, fontWeight: 700,
-              background: "var(--accent)", color: "#fff",
+              background: "var(--red)", color: "#fff",
             }}
           >
-            {total}
+            {haster}
           </span>
         )}
       </button>
 
-      {open && (
-        <>
-          <div
-            role="presentation"
-            onClick={() => setOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 45 }}
-          />
-          <div
-            className="cc-card"
-            role="menu"
-            aria-label="Ventende ting"
-            style={{
-              position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 46,
-              width: 250, padding: 8, display: "grid", gap: 2,
-              boxShadow: "0 8px 28px oklch(24% 0.02 70 / 0.14)",
-            }}
-          >
-            {total === 0 && (
-              <div className="cc-dim" style={{ fontSize: 13, padding: "8px 10px" }}>
-                Alt er behandlet. Ingen ventende drafts eller svar.
-              </div>
-            )}
-            {queue > 0 && (
-              <Link href="/approve" className="cc-navlink" onClick={() => setOpen(false)}>
-                <Icon name="CheckCheck" />
-                <span>{queue} {queue === 1 ? "draft venter" : "drafts venter"}</span>
-                <span className="cc-count">{queue}</span>
-              </Link>
-            )}
-            {needs > 0 && (
-              <Link href="/replies" className="cc-navlink" onClick={() => setOpen(false)}>
-                <Icon name="Inbox" />
-                <span>{needs} {needs === 1 ? "svar kræver dig" : "svar kræver dig"}</span>
-                <span className="cc-count">{needs}</span>
-              </Link>
-            )}
-            {invoicesOverdue > 0 && (
-              <Link href="/fakturaer" className="cc-navlink" onClick={() => setOpen(false)}>
-                <Icon name="Receipt" />
-                <span>{invoicesOverdue} {invoicesOverdue === 1 ? "forfalden faktura" : "forfaldne fakturaer"}</span>
-                <span className="cc-count">{invoicesOverdue}</span>
-              </Link>
-            )}
-          </div>
-        </>
-      )}
+      <AttentionPanel items={items} open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }
