@@ -41,6 +41,115 @@ function catTone(c: string): { bg: string; fg: string } {
   return { bg: "var(--bg-3)", fg: "var(--text-muted)" };
 }
 
+// Gmail-konti pr. indbakke — samme mapping som kontopillen nedenfor (RepliesClient
+// kan ikke importere src/lib/senders.ts, den er server-only/nodemailer).
+const ACCOUNT_EMAIL: Record<string, string> = { lucas: "buur.aigro@gmail.com", charlie: "1charlie.nielsen@gmail.com" };
+
+// Gmail-compose-link, forudfyldt med kladden — "authuser" hopper direkte ind på
+// den konto svaret kom ind på, hvis Lucas/Charlie er logget ind med flere konti.
+function gmailComposeLink(item: InboxItem): string {
+  const authuser = ACCOUNT_EMAIL[item.account] ?? ACCOUNT_EMAIL.lucas;
+  const params = new URLSearchParams({
+    view: "cm", fs: "1", to: item.from, su: `Re: ${item.subject}`, body: item.suggestedReply ?? "", authuser,
+  });
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+function CopyReplyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ingen clipboard-adgang (sjældent) — knappen ligger stille, intet at vise.
+    }
+  }
+  return (
+    <button className="cc-btn" onClick={copy}>
+      <Icon name="Copy" style={{ width: 14, height: 14 }} /> {copied ? "Kopieret ✓" : "Kopiér svar"}
+    </button>
+  );
+}
+
+const OUTCOME_OPTIONS: { value: string; label: string }[] = [
+  { value: "interesseret", label: "Interesseret" },
+  { value: "ikke-interesseret", label: "Ikke interesseret" },
+  { value: "ring-op", label: "Skal ringes op" },
+  { value: "kunde-spoergsmaal", label: "Har et spørgsmål" },
+  { value: "andet", label: "Andet" },
+];
+
+// Erstatter det gamle "Marker lead" (skrev til Sheets, kun status — se
+// /api/replies/[leadId]/status). Denne knap er den ene vej til at lukke et
+// svar: sætter status, stopper kolde kladder, logger tidslinjen og kan sætte
+// en opfølgning, alt i ét kald (src/lib/hq/reply-outcome.ts).
+function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [outcome, setOutcome] = useState("interesseret");
+  const [note, setNote] = useState("");
+  const [followUpDue, setFollowUpDue] = useState("");
+  const [owner, setOwner] = useState<"lucas" | "charlie">("lucas");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  if (!item.leadId) return null;
+
+  async function submit() {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId!)}/udfald`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome, note: note.trim() || undefined, followUpDue: followUpDue || undefined, owner }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { setErr(d.error ?? "Kunne ikke gemme."); return; }
+      onAnswered();
+    } catch {
+      setErr("Netværksfejl. Prøv igen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button className="cc-btn cc-btn-accent" onClick={() => setOpen(true)}>
+        <Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> Markér som besvaret
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 8, padding: "12px 14px", background: "var(--surface-2)", borderRadius: 10, width: "100%" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <select className="cc-input" style={{ height: 38 }} value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+          {OUTCOME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <input type="date" className="cc-input" style={{ height: 38 }} value={followUpDue} onChange={(e) => setFollowUpDue(e.target.value)} title="Følg op den (valgfri)" />
+        <div style={{ display: "inline-flex", gap: 4 }}>
+          {(["lucas", "charlie"] as const).map((o) => (
+            <button key={o} type="button" className="cc-chip" onClick={() => setOwner(o)} title="Hvem opfølgningen er for"
+              style={{ cursor: "pointer", border: "1px solid var(--border)", background: owner === o ? "var(--accent-soft)" : "transparent", color: owner === o ? "var(--accent-ink)" : "var(--text-muted)" }}>
+              {o === "lucas" ? "Lucas" : "Charlie"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <textarea className="cc-input" style={{ height: "auto", padding: "10px 14px", resize: "vertical" }} rows={2}
+        placeholder="Note (valgfri)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
+      {err && <span style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="cc-btn cc-btn-accent" onClick={submit} disabled={busy}>{busy ? "Gemmer…" : "Gem"}</button>
+        <button className="cc-btn" onClick={() => setOpen(false)} disabled={busy}>Fortryd</button>
+      </div>
+    </div>
+  );
+}
+
 function QaSendButton({ item }: { item: InboxItem }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -100,34 +209,7 @@ function LiveSendButton({ item }: { item: InboxItem }) {
   return <span className="cc-dim" style={{ fontSize: 12.5, color: state === "error" ? "var(--red)" : state === "done" ? "var(--accent-ink)" : "var(--text-muted)" }}>{state === "sending" ? "Sender…" : msg}</span>;
 }
 
-function StatusButtons({ item }: { item: InboxItem }) {
-  const [done, setDone] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function set(status: "interested" | "not-interested" | "maybe-later") {
-    if (!item.leadId) return;
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId)}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, leadName: item.fromName }),
-      });
-      const d = await res.json();
-      setDone(d.ok ? (status === "not-interested" ? "Markeret: ikke interesseret — kontakter ikke igen" : status === "maybe-later" ? "Markeret: måske senere (~30 dage)" : "Markeret: interesseret") : (d.error ?? "fejl"));
-    } catch { setDone("fejl"); } finally { setBusy(false); }
-  }
-  if (!item.leadId) return null;
-  if (done) return <span className="cc-dim" style={{ fontSize: 12, color: "var(--accent-ink)" }}>{done}</span>;
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <button className="cc-btn" onClick={() => set("interested")} disabled={busy}>Interesseret</button>
-      <button className="cc-btn" onClick={() => set("maybe-later")} disabled={busy}>Måske senere</button>
-      <button className="cc-btn" onClick={() => set("not-interested")} disabled={busy} style={{ borderColor: "var(--red)", color: "var(--red)" }}>Ikke interesseret</button>
-    </div>
-  );
-}
-
-function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
+function ItemCard({ item, armed, onAnswered }: { item: InboxItem; armed: boolean; onAnswered: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const tone = catTone(item.category);
   return (
@@ -175,21 +257,23 @@ function ItemCard({ item, armed }: { item: InboxItem; armed: boolean }) {
             </div>
           )}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            {item.gmailLink && (
-              <a className="cc-btn" href={item.gmailLink} target="_blank" rel="noreferrer">
+            {item.suggestedReply && <CopyReplyButton text={item.suggestedReply} />}
+            {item.from && (
+              <a className="cc-btn" href={gmailComposeLink(item)} target="_blank" rel="noreferrer">
                 <Icon name="Mail" style={{ width: 14, height: 14 }} /> Åbn i Gmail
               </a>
             )}
-            {item.leadId && item.suggestedReply && <QaSendButton item={item} />}
-            {armed && item.leadId && item.suggestedReply && <LiveSendButton item={item} />}
+            {item.leadId && <MarkAnsweredForm item={item} onAnswered={() => onAnswered(item.id)} />}
           </div>
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-            <div className="cc-kicker" style={{ marginBottom: 6 }}>Marker lead</div>
-            <StatusButtons item={item} />
-          </div>
+          {(item.leadId && item.suggestedReply) && (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <QaSendButton item={item} />
+              {armed && <LiveSendButton item={item} />}
+            </div>
+          )}
           <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
-            Triage er read-only. QA-kopi går kun til buur.aigro. Rigtigt svar + status-skift er din egen handling.
+            Selve mailen sender du fra Gmail. &quot;Markér som besvaret&quot; opdaterer CRM&apos;et — status, tidslinje og opfølgning i ét klik.
           </div>
         </div>
       )}
@@ -278,6 +362,14 @@ export default function RepliesClient() {
     load();
   }, []);
 
+  // Udfaldet er allerede gemt server-side (API'et markerer også den cachede
+  // digest, se /api/replies/[leadId]/udfald) — her flipper vi bare needsReply
+  // lokalt så svaret med det samme forsvinder fra "kræver svar" og lander i
+  // den skjulte "resten"-liste i stedet, uden en ny hentning.
+  function markAnswered(id: string) {
+    setDigest((d) => (d ? { ...d, items: d.items.map((i) => (i.id === id ? { ...i, needsReply: false } : i)) } : d));
+  }
+
   if (state === "loading") {
     return <div style={{ display: "grid", gap: 12 }}>{[0, 1, 2].map((i) => <div key={i} className="cc-skel" style={{ height: 72 }} />)}</div>;
   }
@@ -337,14 +429,14 @@ export default function RepliesClient() {
         <div className="cc-card"><div className="cc-empty"><Icon name="Inbox" /><div>Ingen svar at triagere lige nu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Morgen-scanneren fylder de vigtige svar ind her.</div></div></div>
       ) : (
         <>
-          {needs.map((it) => <ItemCard key={it.id} item={it} armed={armed} />)}
+          {needs.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} />)}
           {noise.length > 0 && (
             <>
               <button className="cc-btn" style={{ justifySelf: "start" }} onClick={() => setShowNoise((v) => !v)}>
                 <Icon name="ChevronRight" style={{ width: 14, height: 14, transform: showNoise ? "rotate(90deg)" : "none" }} />
                 {showNoise ? "Skjul" : `Vis resten (${noise.length})`}
               </button>
-              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} armed={armed} />)}
+              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} />)}
             </>
           )}
         </>
