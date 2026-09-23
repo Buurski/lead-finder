@@ -8,7 +8,7 @@ export default function AgentFeed({ rows }: { rows: AgentFeedRow[] }) {
   return (
     <div className="hq-table-card cc-card">
       {rows.length === 0 ? (
-        <div className="hq-empty">Agenter logger her med scripts/agent-log.mjs.</div>
+        <div className="hq-empty">Ingen aktivitet fra agenterne endnu.</div>
       ) : (
         rows.map((r) => (
           <div key={r.id} className="agenter-feed-row">

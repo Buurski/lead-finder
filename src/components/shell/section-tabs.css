@@ -1,0 +1,29 @@
+/* SectionTabs — design-review #9: sidste fane ("Messer…") blev hård-klippet
+   på mobil uden antydning af at der var mere at scrolle til. globals.css'
+   .cc-section-tabs har allerede overflow-x:auto + skjult scrollbar — her
+   lægges kun en ikke-scrollende wrapper udenom, så en diskret fade i højre
+   kant kan ligge OVEN PÅ (ikke inde i) det scrollende indhold. Wrapperen
+   overtager nav'ens margin/max-width 1:1 (nav'ens egne sættes til 0/none),
+   så det visuelle layout er uændret når der ikke er mere at scrolle. */
+.cc-section-tabs-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+  margin: -8px 40px 20px;
+  max-width: calc(100% - 80px);
+}
+.cc-section-tabs-wrap .cc-section-tabs {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+}
+@media (max-width: 767px) {
+  .cc-section-tabs-wrap { margin: 0 18px 16px; max-width: calc(100% - 36px); }
+}
+.cc-section-tabs-wrap[data-more="true"]::after {
+  content: "";
+  position: absolute; top: 0; right: 0; bottom: 0; width: 26px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(to right, transparent, var(--surface));
+  pointer-events: none;
+}

@@ -108,6 +108,23 @@ export default function HermesDock() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Mobil (design-review #8): FAB'en dæmpes mens man scroller, så den ikke
+  // dækker kortindhold/statustekst permanent — kun opacity, ingen layout-flyt.
+  const [scrolling, setScrolling] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    function onScroll() {
+      setScrolling(true);
+      clearTimeout(t);
+      t = setTimeout(() => setScrolling(false), 500);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+    };
+  }, []);
+
   const pathCompanyId = useMemo(() => pathname.match(COMPANY_RE)?.[1] ?? null, [pathname]);
   const eventCompanyId = companyOverride?.path === pathname ? companyOverride.id : null;
   const companyId = eventCompanyId ?? pathCompanyId;
@@ -270,6 +287,7 @@ export default function HermesDock() {
       <button
         type="button"
         className="hermes-dock-fab cc-focus"
+        data-dim={scrolling && !open}
         onClick={() => {
           setOpen((o) => !o);
           setBadge(false);

@@ -116,7 +116,7 @@ export default function OkonomiPage() {
       <PageHeader
         icon="Wallet"
         title="Udgifter"
-        subtitle="Fælles abonnementer, split og overførsler. Redigér poster i src/lib/subscriptions.ts."
+        subtitle="Fælles abonnementer, split og overførsler."
       />
 
       <div style={{ display: "grid", gap: 18, gridTemplateColumns: "minmax(0, 1fr)" }}>

@@ -140,7 +140,7 @@ export default async function HermesPage() {
                 Hermes WebUI
               </h2>
               <p className="cc-dim" style={{ margin: 0, fontSize: 13.5, maxWidth: 460, lineHeight: 1.55 }}>
-                Hermes' eget værktøj med jobs og historik. Åbner i en ny fane.
+                Hermes&apos; eget værktøj med jobs og historik. Åbner i en ny fane.
               </p>
             </div>
 
