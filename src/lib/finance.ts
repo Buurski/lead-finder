@@ -25,6 +25,9 @@ export interface DealInput {
   owner?: string;
   source?: string;
   package?: string;
+  /** Aktivt abonnements månedsbeløb (Postgres). Sat = det der faktisk faktureres, og
+   * så er det MRR — uanset aftale-fase. Udefineret (Sheets) = gammel fase-regel. */
+  planMrr?: number;
 }
 
 export type Stage =
@@ -83,8 +86,14 @@ const setupOf = (d: DealInput) => num(d.setupFee);
 
 // Resolve a deal's stage. Explicit `stage` wins; otherwise fall back from the
 // legacy websiteStatus so existing rows (no stage set yet) still render.
+// Pipelinens nye faser (deals.ts) → de gamle økonomi-faser.
+const NEW_STAGE: Record<string, Stage> = {
+  tilbud: "offer", aftalt: "won", i_gang: "delivering", leveret: "live", betalt: "live", tabt: "lost",
+};
+
 export function stageOf(d: DealInput): Stage {
   const raw = (d.stage || "").trim().toLowerCase();
+  if (NEW_STAGE[raw]) return NEW_STAGE[raw];
   if (raw && (raw in STAGE_PROB || ["won", "delivering", "live", "lost", "retainer"].includes(raw))) {
     return (raw === "retainer" ? "live" : raw) as Stage;
   }
@@ -151,7 +160,7 @@ export function quarterOf(now: Date): Quarter {
 // ---- core aggregates ------------------------------------------------------
 
 export function mrrRunRate(deals: DealInput[]): number {
-  return deals.reduce((sum, d) => (RUN_RATE_STAGES.has(stageOf(d)) ? sum + mrrOf(d) : sum), 0);
+  return deals.reduce((sum, d) => sum + (d.planMrr !== undefined ? d.planMrr : RUN_RATE_STAGES.has(stageOf(d)) ? mrrOf(d) : 0), 0);
 }
 
 export interface StageBar { stage: Stage; label: string; count: number; value: number; }
@@ -189,7 +198,7 @@ export function setupBooked(deals: DealInput[], p: Period): number {
 
 // Number of currently-recurring clients (same stage set as MRR run-rate).
 export function liveClientCount(deals: DealInput[]): number {
-  return deals.reduce((n, d) => (RUN_RATE_STAGES.has(stageOf(d)) ? n + 1 : n), 0);
+  return deals.reduce((n, d) => ((d.planMrr !== undefined ? d.planMrr > 0 : RUN_RATE_STAGES.has(stageOf(d))) ? n + 1 : n), 0);
 }
 
 // Revenue in a period = setup_fee won in the period + current MRR run-rate.

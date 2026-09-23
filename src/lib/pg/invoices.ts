@@ -2,7 +2,7 @@
 // Hele Invoice/Subscription-objektet ligger i `data` (loss-frit); de typede
 // kolonner findes for at kunne filtrere og for company_id-koblingen, som
 // erstatter navne-matchet i fase 4.
-import { asc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb, type Db } from "../db/client.ts";
 import { activity, company, counter, invoice, subscriptionPlan } from "../db/schema.ts";
 import { canonicalClientName } from "../client-alias.ts";
@@ -58,6 +58,20 @@ export async function deleteInvoiceRow(number: string): Promise<void> {
       .set({ invoicedAt: null, payload: sql`${activity.payload} - 'invoiceNumber'` })
       .where(sql`${activity.payload}->>'invoiceNumber' = ${number}`);
   });
+}
+
+/** Atomisk afsendelses-lås: kun ét request kan sætte sendingAt (Sol 23/9). force = bevidst gen-afsendelse. */
+export async function claimInvoiceSend(number: string, at: string, force = false): Promise<boolean> {
+  const rows = await getDb()
+    .update(invoice)
+    .set({ data: sql`${invoice.data} || jsonb_build_object('sendingAt', ${at}::text)` })
+    .where(and(eq(invoice.number, number), force ? sql`true` : sql`not (${invoice.data} ? 'sendingAt')`))
+    .returning({ n: invoice.number });
+  return rows.length === 1;
+}
+
+export async function releaseInvoiceSend(number: string): Promise<void> {
+  await getDb().update(invoice).set({ data: sql`${invoice.data} - 'sendingAt'` }).where(eq(invoice.number, number));
 }
 
 export async function getInvoice(number: string): Promise<Invoice | null> {

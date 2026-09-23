@@ -31,7 +31,7 @@ export interface Invoice {
   payerType: "privat" | "cvr";
   note?: string;
   /** "abonnement" (månedscron) · "arbejde" (samlet fra arbejdsloggen). Mangler på ældre fakturaer. */
-  kind?: "abonnement" | "arbejde";
+  kind?: "abonnement" | "arbejde" | "manuel";
   /** Sat lige før mailen sendes; spærrer en gen-afsendelse hvis gemningen bagefter fejler. */
   sendingAt?: string;
 }
@@ -104,7 +104,7 @@ export function subscriptionsDue(subs: Subscription[], existing: Invoice[], toda
     const alreadyInvoiced = existing.some(
       (inv) => canonicalClientName(inv.clientName) === canonicalClientName(sub.clientName)
         && inv.issueDate.slice(0, 7) === yearMonth
-        && inv.kind !== "arbejde",
+        && inv.kind !== "arbejde" && inv.kind !== "manuel",
     );
     return !alreadyInvoiced;
   });
@@ -241,6 +241,21 @@ export async function deleteInvoice(number: string): Promise<void> {
   if (pgEnabled()) await (await pg()).deleteInvoiceRow(number);
   else await store.delete(`invoice/${number}`);
   await store.deleteAsset(`invoices/faktura-${number}.pdf`).catch(() => {});
+}
+
+/** Se pg/invoices.ts. KV-udgaven er ikke atomisk (kun lokal/gammel backend). */
+export async function claimInvoiceSend(number: string, at: string, force = false): Promise<boolean> {
+  if (pgEnabled()) return (await pg()).claimInvoiceSend(number, at, force);
+  const inv = await store.get<Invoice>(`invoice/${number}`);
+  if (!inv || (inv.sendingAt && !force)) return false;
+  await store.put(`invoice/${number}`, { ...inv, sendingAt: at });
+  return true;
+}
+
+export async function releaseInvoiceSend(number: string): Promise<void> {
+  if (pgEnabled()) return (await pg()).releaseInvoiceSend(number);
+  const inv = await store.get<Invoice>(`invoice/${number}`);
+  if (inv) { delete inv.sendingAt; await store.put(`invoice/${number}`, inv); }
 }
 
 export async function getInvoice(number: string): Promise<Invoice | null> {

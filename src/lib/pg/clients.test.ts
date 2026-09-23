@@ -25,6 +25,7 @@ test("addClientManual + getClients roundtripper en fuld Client-form", async () =
   await addClientManual({ name: "Kinly", branch: "HQ", phone: "123", monthlyFee: "500", setupFee: "1000" });
   const [c] = await getClients();
   assert.deepEqual(c, {
+    planMrr: 0, // intet aktivt abonnement endnu
     id: "2",
     name: "Kinly",
     branch: "HQ",

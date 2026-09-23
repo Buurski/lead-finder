@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getInvoice, saveInvoice, getBusinessSettings, invoiceTotal } from "@/lib/invoices.ts";
+import { getInvoice, claimInvoiceSend, releaseInvoiceSend, saveInvoice, getBusinessSettings, invoiceTotal } from "@/lib/invoices.ts";
 import { renderInvoicePdf } from "@/lib/invoice-pdf.tsx";
 import { getTransporter, formatFrom, applySignature, applySignatureHtml } from "@/lib/senders.ts";
 import { store } from "@/lib/store.ts";
@@ -28,17 +28,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     return NextResponse.json({ error: `kan ikke sende faktura med status "${inv.status}"` }, { status: 400 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string; extra?: string; dueDate?: string };
+  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string; extra?: string; dueDate?: string; force?: boolean };
   if (!body.to) return NextResponse.json({ error: "mangler modtager-email (to)" }, { status: 400 });
   if (body.dueDate !== undefined && !ISO.test(body.dueDate)) {
     return NextResponse.json({ error: "dueDate skal være YYYY-MM-DD" }, { status: 400 });
   }
-  // Idempotens (Sol 23/9): mailen går ud før status gemmes. Fejler gemningen, må et
-  // nyt klik ikke sende den igen — markøren står, til nogen har tjekket Sendt-mappen.
-  if (inv.sendingAt && inv.status === "kladde") {
-    return NextResponse.json({ error: "Fakturaen blev måske allerede sendt. Tjek Sendt-mappen, og markér den som sendt." }, { status: 409 });
-  }
-
   // Forfaldsdato låses ved afsendelse — så den regnes fra den dag mailen faktisk går ud.
   if (body.dueDate) inv.dueDate = body.dueDate;
 
@@ -70,7 +64,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     const text = applySignature(unsignedText, "lucas");
 
     const transporter = getTransporter("lucas");
-    await saveInvoice({ ...inv, sendingAt: new Date().toISOString() });
+    // Idempotens (Sol 23/9): atomisk lås før mailen. Står låsen fra et tidligere forsøg
+    // (to klik, eller en gemning der fejlede efter mailen), sendes intet uden force.
+    if (!(await claimInvoiceSend(number, new Date().toISOString(), body.force === true))) {
+      return NextResponse.json(
+        { error: "Fakturaen er ved at blive sendt, eller blev måske sendt i et tidligere forsøg. Tjek Sendt-mappen først.", maybeSent: true },
+        { status: 409 },
+      );
+    }
     await transporter.sendMail({
       from: formatFrom("lucas"),
       to: body.to,
@@ -79,8 +80,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
       html: applySignatureHtml(unsignedText, "lucas"),
       attachments: [{ filename: `faktura-${number}.pdf`, content: buf }],
     }).catch(async (e) => {
-      // Mailen gik ikke ud: fjern markøren, så man kan prøve igen.
-      await saveInvoice(inv).catch(() => {});
+      // Kun når serveren med sikkerhed ikke fik mailen, frigives låsen. Et afvist svar
+      // efter DATA kan betyde at mailen alligevel gik ud — så står låsen.
+      const code = (e as { code?: string })?.code ?? "";
+      if (["EAUTH", "ECONNECTION", "EDNS", "EENVELOPE", "ETLS"].includes(code)) await releaseInvoiceSend(number).catch(() => {});
       throw e;
     });
 

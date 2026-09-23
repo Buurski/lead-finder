@@ -5,7 +5,7 @@
 // var i sheets.ts.
 import { and, asc, eq, isNotNull, max, min, sql } from "drizzle-orm";
 import { getDb, type Db } from "../db/client.ts";
-import { company, deal, site } from "../db/schema.ts";
+import { company, deal, site, subscriptionPlan } from "../db/schema.ts";
 import { canonicalClientName } from "../client-alias.ts";
 import type { Client, ClientDealPatch, Lead } from "../sheets.ts";
 
@@ -17,8 +17,9 @@ type SiteRow = typeof site.$inferSelect;
 // db.transaction(...) — så helperne herunder kan bruges begge steder.
 type Queryable = Pick<Db, "select" | "insert" | "update" | "execute">;
 
-function toClient(c: CompanyRow, d: DealRow | undefined, s: SiteRow | undefined): Client {
+function toClient(c: CompanyRow, d: DealRow | undefined, s: SiteRow | undefined, planMrr = 0): Client {
   return {
+    planMrr,
     id: String(c.clientNo),
     name: c.name,
     branch: c.branch,
@@ -45,11 +46,19 @@ export async function getClients(): Promise<Client[]> {
     .from(company)
     .where(and(isNotNull(company.clientNo), eq(company.clientRemoved, false)))
     .orderBy(asc(company.clientNo));
+  // MRR = aktive abonnementer (det der faktureres) — samme kilde som HQ.
+  const plans = await db.select({ companyId: subscriptionPlan.companyId, data: subscriptionPlan.data }).from(subscriptionPlan);
+  const planMrr = new Map<string, number>();
+  for (const p of plans) {
+    const sub = p.data as { active?: boolean; lines?: Array<{ amount?: number }> };
+    if (!p.companyId || !sub.active) continue;
+    planMrr.set(p.companyId, (planMrr.get(p.companyId) ?? 0) + (sub.lines ?? []).reduce((a, l) => a + (Number(l.amount) || 0), 0));
+  }
   const out: Client[] = [];
   for (const c of companies) {
     const [d] = await db.select().from(deal).where(and(eq(deal.companyId, c.id), eq(deal.isPrimary, true)));
     const [s] = await db.select().from(site).where(eq(site.companyId, c.id));
-    out.push(toClient(c, d, s));
+    out.push(toClient(c, d, s, planMrr.get(c.id) ?? 0));
   }
   return out;
 }

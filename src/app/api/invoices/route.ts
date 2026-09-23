@@ -107,6 +107,7 @@ export async function POST(req: Request) {
     status: "kladde",
     payerType: biz.payerType,
     note: body.note,
+    kind: "manuel",
   };
 
   await saveInvoice(inv);

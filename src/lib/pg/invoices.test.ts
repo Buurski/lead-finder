@@ -5,6 +5,8 @@ import { company } from "../db/schema.ts";
 import type { Db } from "../db/client.ts";
 import type { Invoice, Subscription } from "../invoices.ts";
 import {
+  claimInvoiceSend,
+  releaseInvoiceSend,
   deleteInvoiceRow,
   ensureInvoiceCounterAtLeast,
   getInvoice,
@@ -91,4 +93,15 @@ test("abonnementer erstatter hele listen og bevarer rækkefølgen", async () => 
   await saveSubscriptions([s("A", 15)]);
   assert.deepEqual(await getSubscriptions(), [s("A", 15)]);
   await assert.rejects(saveSubscriptions([s("A", 1), s("A", 2)]), /Dobbelt/);
+});
+
+test("afsendelses-lås: kun ét samtidigt krav vinder; frigivelse og force virker", async () => {
+  await saveInvoice(inv("007", "Vida"));
+  const [a, b] = await Promise.all([claimInvoiceSend("007", "t1"), claimInvoiceSend("007", "t2")]);
+  assert.equal(Number(a) + Number(b), 1);
+  assert.equal(await claimInvoiceSend("007", "t3"), false);
+  assert.equal(await claimInvoiceSend("007", "t4", true), true);
+  await releaseInvoiceSend("007");
+  assert.equal((await getInvoice("007"))?.sendingAt, undefined);
+  assert.equal(await claimInvoiceSend("007", "t5"), true);
 });

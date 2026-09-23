@@ -86,6 +86,7 @@ export interface Client {
   owner: string;         // column M — charlie|lucas
   package: string;       // column N — basis|standard|custom
   lostDate: string;      // column O — YYYY-MM-DD, stamped when stage first hits lost (for churn/win-rate)
+  planMrr?: number;      // kun Postgres: aktive abonnementers månedsbeløb (se finance.ts DealInput)
 }
 
 // Bumped from A2:U to A2:V to include the new skipReason column. Existing
