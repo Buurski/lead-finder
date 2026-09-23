@@ -46,6 +46,10 @@
       "schedule": "15 5 * * *"
     },
     {
+      "path": "/api/cron/seo-snapshot",
+      "schedule": "40 4 * * 1"
+    },
+    {
       "path": "/api/cron/followups",
       "schedule": "10 5 * * *"
     }

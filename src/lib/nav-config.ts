@@ -19,6 +19,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
   { href: "/virksomheder", label: "Virksomheder", icon: "Building2", hint: "Kundeprofiler og sites" },
+  { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
@@ -28,7 +29,6 @@ export const NAV_PRIMARY: NavItem[] = [
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
 export const NAV_MORE: NavItem[] = [
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
-  { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. kunde" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
   { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse og status" },
   { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer og split" },
@@ -100,7 +100,6 @@ export const SECTIONS: Section[] = [
     tabs: [
       { href: "/leadgen", label: "Find leads" },
       { href: "/studio", label: "Demoer" },
-      { href: "/seo", label: "SEO" },
     ],
   },
 ];

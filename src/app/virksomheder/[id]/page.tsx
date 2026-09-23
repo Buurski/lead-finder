@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { activity, company } from "@/lib/db/schema";
+import { activity, company, seoSnapshot } from "@/lib/db/schema";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
 import KnowledgeUpdate from "@/components/virksomheder/KnowledgeUpdate";
@@ -139,9 +139,12 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const overview = await loadOverview(db, dossier);
   const cms = await cmsUsageFor(c, dossier.site?.cmsUrl);
   const onboarding = c.clientNo !== null ? await getOnboardingChecklist(db, c.id) : [];
+  const seoRows = c.clientNo !== null
+    ? await db.select().from(seoSnapshot).where(eq(seoSnapshot.companyId, c.id)).orderBy(desc(seoSnapshot.takenAt)).limit(12)
+    : [];
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} /> },
+    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} /> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
     {
       key: "aftaler",

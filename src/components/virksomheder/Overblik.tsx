@@ -6,6 +6,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
+import Link from "next/link";
+import SeoChart from "@/components/seo/SeoChart";
 import { safeHref } from "@/lib/safe-href";
 // Kun type-imports fra overview.ts/invoices.ts/cms-usage.ts: de trækker (via
 // deals.ts/db/client.ts) "server-only"-moduler ind, som ikke må rørt fra en
@@ -496,13 +498,14 @@ function MissingPills({ missing, onOpen }: { missing: string[]; onOpen: (key: st
 }
 
 export default function Overblik({
-  companyId, overview, cms, servicesCatalog, onboarding,
+  companyId, overview, cms, servicesCatalog, onboarding, seoPoints,
 }: {
   companyId: string;
   overview: CustomerOverview;
   cms: CmsUsage | null;
   servicesCatalog: Record<string, string>;
   onboarding: OnboardingTaskRow[];
+  seoPoints: Array<{ takenAt: string; performance: number | null; seo: number | null; accessibility: number | null; onpage: number | null }>;
 }) {
   const router = useRouter();
   const [editingAftale, setEditingAftale] = useState(false);
@@ -530,6 +533,12 @@ export default function Overblik({
         <ServicesCard companyId={companyId} services={overview.services} catalog={servicesCatalog} onSaved={() => router.refresh()} />
         <SiteCard companyId={companyId} site={overview.site} cms={cms} editing={editingSite} onEdit={setEditingSite} onSaved={() => router.refresh()} />
       </div>
+
+      <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 8 }}>
+        <div className="virk-section-title"><span>SEO</span><Link className="cc-link" href="/seo" style={{ fontSize: 12 }}>Se historik →</Link></div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}><strong style={{ fontSize: 24 }}>{seoPoints[0]?.seo == null ? "—" : `${seoPoints[0].seo}/100`}</strong><span className="cc-dim" style={{ fontSize: 12 }}>PageSpeed SEO på mobil</span></div>
+        <SeoChart compact points={seoPoints} />
+      </section>
 
       <WorkCard items={overview.lastWork} />
 
