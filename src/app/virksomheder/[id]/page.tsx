@@ -275,7 +275,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
             {canMakeCustomer && <MakeCustomerButton companyId={c.id} companyName={c.name} />}
-            <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} defaultOwner={defaultOwner} />
+            <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} defaultOwner={defaultOwner} canDraft={c.clientNo == null} />
             <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
             <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo, rowNo: c.rowNo }} />
           </div>

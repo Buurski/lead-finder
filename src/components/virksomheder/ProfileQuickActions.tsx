@@ -13,14 +13,33 @@ import NewTaskDialog from "@/components/shell/NewTaskDialog";
 type DialogKind = "arbejde" | "opgave" | "aftale" | null;
 
 export default function ProfileQuickActions({
-  companyId, companyName, defaultOwner = "lucas",
+  companyId, companyName, defaultOwner = "lucas", canDraft = false,
 }: {
   companyId: string;
   companyName: string;
   defaultOwner?: "lucas" | "charlie";
+  /** Kun for leads (ikke kunder): kold mail-kladde → godkendelsen. */
+  canDraft?: boolean;
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<DialogKind>(null);
+  const [draftMsg, setDraftMsg] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+
+  async function makeDraft() {
+    setDrafting(true);
+    setDraftMsg(null);
+    try {
+      const res = await fetch(`/api/virksomheder/${companyId}/kladde`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setDraftMsg(data.error ?? "Kunne ikke lave kladden"); return; }
+      router.push(`/approve?id=${encodeURIComponent(data.draftId)}`);
+    } catch {
+      setDraftMsg("Netværksfejl. Prøv igen.");
+    } finally {
+      setDrafting(false);
+    }
+  }
   const company = { id: companyId, name: companyName };
 
   return (
@@ -35,7 +54,13 @@ export default function ProfileQuickActions({
         <button className="cc-btn virk-btn-press" onClick={() => setDialog("aftale")}>
           <Icon name="Briefcase" style={{ width: 14, height: 14 }} /> Ny aftale
         </button>
+        {canDraft && (
+          <button className="cc-btn virk-btn-press" onClick={makeDraft} disabled={drafting} title="Lægger en kold mail-kladde i Indbakke → Afventer. Der sendes intet.">
+            <Icon name="Mail" style={{ width: 14, height: 14 }} /> {drafting ? "Laver kladde…" : "Lav mail-kladde"}
+          </button>
+        )}
       </div>
+      {draftMsg && <p role="alert" style={{ margin: "6px 0 0", fontSize: 12.5, color: "var(--red)" }}>{draftMsg}</p>}
 
       {dialog === "arbejde" && (
         <LogWorkDialog

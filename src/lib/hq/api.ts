@@ -7,6 +7,7 @@ import { DealInputError } from "./deals.ts";
 import { MergeError } from "../pg/merge.ts";
 import { BillingError } from "./billing.ts";
 import { UpdateError } from "./customer-updates.ts";
+import { DraftInputError } from "./company-draft.ts";
 
 export class HqInputError extends Error {}
 
@@ -21,7 +22,7 @@ export async function hqWrite<T>(req: Request, handler: (actor: string) => Promi
   try {
     return NextResponse.json(await handler(actor));
   } catch (err) {
-    if (err instanceof HqInputError || err instanceof DealInputError || err instanceof MergeError || err instanceof BillingError || err instanceof UpdateError) {
+    if (err instanceof HqInputError || err instanceof DealInputError || err instanceof MergeError || err instanceof BillingError || err instanceof UpdateError || err instanceof DraftInputError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error(JSON.stringify({ evt: "hq.write.failed", error: String(err).slice(0, 300) }));
