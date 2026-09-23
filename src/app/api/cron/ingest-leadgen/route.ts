@@ -8,6 +8,7 @@ import { hasUsableEmail } from "@/lib/leads/channel";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
 import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
+import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -153,8 +154,8 @@ async function ingest() {
   }
   let backfilled = 0;
   for (const d of queue) {
-    // Both source names treated equally — historical "cowork-leadgen" + current "leadgen-ingest".
-    if (d.source !== "leadgen-ingest" && d.source !== "cowork-leadgen") continue;
+    // Historical Cowork, cron-ingest, and VPS-generated drafts all share this backfill.
+    if (!isLeadgenBackfillSource(d.source)) continue;
     if (d.status === "sent" || d.status === "rejected") continue;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
     let email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;

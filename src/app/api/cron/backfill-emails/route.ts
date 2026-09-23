@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
+import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -102,7 +103,7 @@ export async function GET(req: Request) {
   const patches: { id: string; name: string; email: string }[] = [];
 
   for (const d of queue) {
-    if (d.source !== "leadgen-ingest" && d.source !== "cowork-leadgen") continue;
+    if (!isLeadgenBackfillSource(d.source)) continue;
     if (d.status === "sent" || d.status === "rejected") continue;
     scanned++;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
