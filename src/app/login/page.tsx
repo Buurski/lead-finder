@@ -40,6 +40,7 @@ export default async function LoginPage({
           </form>
         )}
         {msg && <p role="status" className="login-msg">{msg}</p>}
+        {!token && <a href="/?kode=1" className="login-alt">Log ind med fælles kode i stedet</a>}
       </div>
     </main>
   );

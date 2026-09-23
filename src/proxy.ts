@@ -153,7 +153,9 @@ export async function proxy(req: NextRequest): Promise<Response> {
       // Magic-link-login slået til (CC_MAGIC=1): send browser-navigation til
       // /login i stedet for Basic-dialogen. API-kald får stadig 401.
       const wantsPage = req.method === "GET" && !req.nextUrl.pathname.startsWith("/api/");
-      if (process.env.CC_MAGIC === "1" && wantsPage) {
+      // Nødudgang: "?kode=1" giver den fælles Basic-dialog, så en fejlende
+      // login-mail (SMTP nede) aldrig låser os ude.
+      if (process.env.CC_MAGIC === "1" && wantsPage && req.nextUrl.searchParams.get("kode") !== "1") {
         return NextResponse.redirect(new URL("/login", req.url));
       }
       return unauthorized();
