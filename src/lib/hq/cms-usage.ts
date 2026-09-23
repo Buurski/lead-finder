@@ -38,12 +38,27 @@ export async function cmsUsageAll(): Promise<CmsUsage[]> {
   }
 }
 
+function fold(v: string): string {
+  return v
+    .toLowerCase()
+    .replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "aa")
+    .normalize("NFKD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** Navn ↔ CMS-slug: "Jernbanecaféen" ↔ jernbane-cafeen, "VIDA Skønhedsklinik" ↔ vida. */
+export function slugMatches(companyName: string, slug: string): boolean {
+  const a = fold(companyName);
+  const b = fold(slug);
+  if (a.length < 3 || b.length < 3) return false;
+  return a === b || a.startsWith(b) || b.includes(a);
+}
+
 /** Kundens CMS-brug: slug fra CMS-linket, ellers entydigt navnematch. */
 export async function cmsUsageFor(company: { name: string }, cmsUrl: string | null | undefined): Promise<CmsUsage | null> {
   const all = await cmsUsageAll();
   const slug = cmsSlug(cmsUrl);
   if (slug) return all.find((s) => s.slug === slug) ?? null;
-  const want = company.name.trim().toLowerCase();
-  const hits = all.filter((s) => s.navn.trim().toLowerCase() === want || want.startsWith(s.navn.trim().toLowerCase() + " "));
+  const hits = all.filter((s) => slugMatches(company.name, s.slug) || slugMatches(company.name, s.navn));
   return hits.length === 1 ? hits[0] : null;
 }
