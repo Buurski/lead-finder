@@ -7,6 +7,7 @@ import { getClients } from "@/lib/sheets";
 import type { Client } from "@/lib/sheets";
 import { hermesSynlighed } from "@/lib/hermes";
 import type { SynlighedSite } from "@/lib/hermes-client";
+import SeoHistoryPage from "./SeoHistoryPage";
 
 export const metadata = { title: "SEO-overblik · Kinly Lead System" };
 export const dynamic = "force-dynamic";
@@ -129,7 +130,8 @@ function SiteCard({ site }: { site: SynlighedSite }) {
   );
 }
 
-export default async function SeoPage() {
+export default async function SeoPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  if ((await searchParams).tab !== "vaerktoejer") return <SeoHistoryPage />;
   let clients: Client[] = [];
   let ok = true;
   try {
@@ -145,6 +147,7 @@ export default async function SeoPage() {
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <nav aria-label="SEO-faner" style={{ display: "flex", gap: 8 }}><Link className="cc-btn" href="/seo">Historik</Link><Link className="cc-btn cc-btn-accent" href="/seo?tab=vaerktoejer">Værktøjer</Link></nav>
       <PageHeader
         icon="Search"
         title="SEO-overblik"

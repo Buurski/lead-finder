@@ -30,7 +30,7 @@ export const NAV_MORE: NavItem[] = [
   { href: "/virksomheder", label: "Alle virksomheder", icon: "Building2", hint: "Alle virksomheder og leads" },
   { href: "/profil", label: "Profil", icon: "Users", hint: "Mine opgaver og kalender" },
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
-  { href: "/seo", label: "SEO", icon: "Search", hint: "Søgning pr. kunde" },
+  { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
   { href: "/fakturaer", label: "Fakturaer", icon: "Receipt", hint: "Kladder, afsendelse og status" },
   { href: "/udgifter", label: "Udgifter", icon: "Wallet", hint: "Abonnementer og split" },
@@ -103,7 +103,6 @@ export const SECTIONS: Section[] = [
     tabs: [
       { href: "/leadgen", label: "Find leads" },
       { href: "/studio", label: "Demoer" },
-      { href: "/seo", label: "SEO" },
     ],
   },
 ];

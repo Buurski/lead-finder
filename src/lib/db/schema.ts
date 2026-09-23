@@ -6,9 +6,11 @@ import {
   boolean,
   integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
+  index,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -135,6 +137,21 @@ export const site = pgTable("site", {
   // Dagligt tjek af det live site (cron site-health): {checkedAt, ok, status, ms, sslDaysLeft, error, downSince}
   health: jsonb("health"),
 });
+
+export const seoSnapshot = pgTable("seo_snapshot", {
+  id: id(),
+  companyId: uuid("company_id").references(() => company.id),
+  url: text("url").notNull(),
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  performance: integer("performance"),
+  seo: integer("seo"),
+  accessibility: integer("accessibility"),
+  bestPractices: integer("best_practices"),
+  onpage: integer("onpage"),
+  lcpMs: integer("lcp_ms"),
+  cls: numeric("cls"),
+  issues: jsonb("issues").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+}, (t) => [index("seo_snapshot_company_taken_idx").on(t.companyId, t.takenAt)]);
 
 export const activity = pgTable("activity", {
   id: id(),
