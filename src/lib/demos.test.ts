@@ -43,3 +43,9 @@ test("branche uden branche-side får kun demo-links (tandlæge)", () => {
   const links = text.split("\n").filter((l) => l.startsWith("→ ")).map((l) => l.slice(2));
   assert.deepEqual(links, pickDemos("tandlæge", "Klinik Test").slice(0, 2).map((d) => d.url));
 });
+
+test("dødt demo-link stopper kladden", async () => {
+  const { validateDraft } = await import("./draft.ts");
+  const r = validateDraft("Se fx https://vestfjends.vercel.app/ her");
+  assert.equal(r.ok, false);
+});

@@ -52,6 +52,9 @@ const ROBOT_PATTERNS: Array<[RegExp, string]> = [
   [/jeg\s+har\s+lavet\s+(sider|hjemmesider)\s+for\s+\d+/i, "kunde-volumen-pral"],
 ];
 
+// Demoer der er gået ned: en mail med linket må aldrig sendes (vestfjends 404, 23/9).
+const DEAD_DEMO_HOSTS = ["vestfjends.vercel.app"];
+
 export function validateDraft(text: string): ValidationResult {
   const errors: string[] = [];
   for (const [re, label] of PRICE_PATTERNS) {
@@ -59,6 +62,9 @@ export function validateDraft(text: string): ValidationResult {
   }
   for (const [re, label] of ROBOT_PATTERNS) {
     if (re.test(text)) errors.push(`robot-CTA: ${label}`);
+  }
+  for (const dead of DEAD_DEMO_HOSTS) {
+    if (text.includes(dead)) errors.push(`dødt demo-link: ${dead} — vælg andre demoer`);
   }
   return { ok: errors.length === 0, errors };
 }

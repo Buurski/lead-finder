@@ -116,12 +116,13 @@ export function pickDemos(branch: string, name: string): Demo[] {
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.jernbanecafeenCase, D.underKlippen];
-  if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.vestfjends];
+  if (PROFESSIONAL.test(t)) return [D.midtadvokaterne, D.ikastCase];
   if (AUTO.test(t)) return [D.ikastCase, D.ktvvs];
   if (CRAFT_UTIL.test(t)) return [D.ktvvs, D.denlillemaler];
   if (CRAFT.test(t)) return [D.ktvvs, D.denlillemaler];
-  if (SERVICE_MAINT.test(t)) return [D.vestfjends, D.denlillemaler];
-  return [D.vestfjends, D.underKlippen];
+  if (SERVICE_MAINT.test(t)) return [D.ktvvs, D.denlillemaler];
+  // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
+  return [D.ikastCase, D.underKlippen];
 }
 
 // Branche-sider på kinly.dk — matcher branch-teksten mod de samme regexes som
