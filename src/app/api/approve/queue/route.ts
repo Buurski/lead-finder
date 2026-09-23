@@ -124,7 +124,6 @@ interface ActionBody {
     | "unapprove"
     | "set-demos"
     | "set-sender"
-    | "reset-sent"
     | "reset-approved"
     | "cleanup-no-email"
     | "reject-seen";
@@ -146,19 +145,6 @@ export async function POST(req: Request) {
   }
 
   const { id, action } = payload;
-
-  // One-time cleanup (no id needed): the old test-mode marked drafts "sent" without
-  // really mailing. Flip those back to "approved" so they show under Godkendt + can
-  // be sent for real.
-  if (action === "reset-sent") {
-    const drafts = await readQueue();
-    let reset = 0;
-    for (const d of drafts) {
-      if (d.status === "sent") { d.status = "approved"; d.updatedAt = new Date().toISOString(); reset++; }
-    }
-    await writeQueue(drafts);
-    return NextResponse.json({ ok: true, reset });
-  }
 
   // Bulk-fortryd (no id): flyt ALLE godkendte (approved + legacy "edited")
   // tilbage til afventer. Lucas's nødbremse mod gamle masse-godkendelser
@@ -312,7 +298,21 @@ export async function POST(req: Request) {
     });
   }
 
+  // Sendt eller system-stoppet (svar/nej tak) er endeligt: en forældet fane må
+  // aldrig kunne godkende/rette den tilbage i køen (council 23/9).
+  const finalBlock = async (): Promise<NextResponse | null> => {
+    const d = (await readQueue()).find((x) => x.id === id);
+    if (!d) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    if (d.status === "sent") return NextResponse.json({ error: "allerede sendt — kan ikke ændres", status: d.status }, { status: 409 });
+    if (d.status === "rejected" && d.stoppedReason) {
+      return NextResponse.json({ error: `stoppet (${d.stoppedReason}) — kan ikke genoplives`, status: d.status }, { status: 409 });
+    }
+    return null;
+  };
+
   if (action === "edit") {
+    const blocked = await finalBlock();
+    if (blocked) return blocked;
     // Enforce the HARD RULES on edited copy too — a human edit must not
     // reintroduce price/kr or a robot CTA.
     const candidate = payload.body ?? "";
@@ -336,6 +336,8 @@ export async function POST(req: Request) {
   }
 
   if (action === "set-demos") {
+    const blocked = await finalBlock();
+    if (blocked) return blocked;
     // Lucas picked different demos for this draft. The client sends the new pair
     // (2 from the catalog) + the body with the URLs already swapped. We validate
     // the body and persist demoPair + body WITHOUT changing status (still pending).
@@ -371,11 +373,8 @@ export async function POST(req: Request) {
     // Council-fund 2026-09-02: uden denne guard kunne en stale fane (fx /send på
     // to enheder) approve et allerede SENDT draft tilbage til "approved" og sende
     // det igen — ingest-leads uden Sheets-række har ingen anden aldrig-igen-guard.
-    const current = (await readQueue()).find((d) => d.id === id);
-    if (!current) return NextResponse.json({ error: "draft not found" }, { status: 404 });
-    if (current.status === "sent") {
-      return NextResponse.json({ error: "allerede sendt — kan ikke godkendes igen", status: current.status }, { status: 409 });
-    }
+    const blocked = await finalBlock();
+    if (blocked) return blocked;
     const updated = await updateDraft(id, { status: "approved" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     // Register back to Sheets so the lead leaves the engine's "new" pool — the
