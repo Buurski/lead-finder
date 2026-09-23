@@ -2,10 +2,41 @@ import Link from "next/link";
 import { and, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { company } from "@/lib/db/schema";
+import { getDossier } from "@/lib/hq/dossier";
+import { loadOverview } from "@/lib/hq/overview-load";
+import { copenhagenNow } from "@/lib/settings";
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
 import "@/components/virksomheder/virksomheder.css";
+
+const kr = (n: number) => `${n.toLocaleString("da-DK")} kr`;
+
+// Kort til "Kunder"-fanen: hvad kræver noget lige nu, MRR og hvad de skylder.
+// Kun kaldt for kunde-filtret (få stk.) — sekventielt, lokal pglite tåler kun
+// 1 samtidig forbindelse (fælles-regel #23).
+interface CustomerCard { id: string; name: string; city: string | null; branch: string | null; attention: string | null; level: "haster" | "obs" | null; mrr: number; unpaid: number }
+
+async function loadCustomerCards(db: ReturnType<typeof getDb>, rows: Array<{ id: string; name: string; city: string | null; branch: string | null }>): Promise<CustomerCard[]> {
+  const today = copenhagenNow().date;
+  const cards: CustomerCard[] = [];
+  for (const r of rows) {
+    const dossier = await getDossier(db, r.id, { today });
+    if (!dossier) continue;
+    const overview = await loadOverview(db, dossier);
+    cards.push({
+      id: r.id,
+      name: r.name,
+      city: r.city,
+      branch: r.branch,
+      attention: overview.attention[0]?.text ?? null,
+      level: overview.attention[0]?.level ?? null,
+      mrr: overview.money.plan?.perMonth ?? 0,
+      unpaid: overview.money.unpaid,
+    });
+  }
+  return cards;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +127,9 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
   const [{ total: alleTotal }] = await db.select({ total: sql<number>`count(*)::int` }).from(company).where(countBase);
   const tabtCount = (countsByLifecycle.get("tabt") ?? 0) + (countsByLifecycle.get("ikke_egnet") ?? 0);
 
+  // Kunder-fanen: kort i stedet for rækker, så det ses hvem der kræver noget (Lucas 23/9).
+  const customerCards = wantKunder ? await loadCustomerCards(db, rows) : null;
+
   function href(overrides: { fase?: string; kunder?: string }): string {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -150,11 +184,37 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
         ))}
       </nav>
 
+      {customerCards ? (
+        customerCards.length === 0 ? (
+          <div className="cc-card">
+            <div className="cc-empty">
+              <Icon name="Building2" />
+              {q ? "Ingen kunder matcher søgningen." : "Ingen kunder endnu."}
+            </div>
+          </div>
+        ) : (
+          <div className="ov-card-grid">
+            {customerCards.map((c) => (
+              <Link key={c.id} href={`/virksomheder/${c.id}`} className="cc-card cc-card-pad ov-card cc-focus">
+                <div className="ov-card-top">
+                  <span className="ov-card-name">{c.name || "(uden navn)"}</span>
+                </div>
+                <span className="cc-dim" style={{ fontSize: 12 }}>{[c.city, c.branch].filter(Boolean).join(" · ") || "–"}</span>
+                <span className="ov-card-attention" data-level={c.level ?? undefined}>{c.attention ?? "Intet der haster."}</span>
+                <div className="ov-card-nums">
+                  <span>MRR <b>{c.mrr > 0 ? kr(c.mrr) : "–"}</b></span>
+                  <span>Skylder <b style={c.unpaid > 0 ? { color: "var(--red)" } : undefined}>{c.unpaid > 0 ? kr(c.unpaid) : "–"}</b></span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )
+      ) : (
       <div className="cc-card">
         {rows.length === 0 ? (
           <div className="cc-empty">
             <Icon name="Building2" />
-            {q || fase || wantKunder ? "Ingen virksomheder matcher filtret." : "Ingen virksomheder endnu."}
+            {q || fase ? "Ingen virksomheder matcher filtret." : "Ingen virksomheder endnu."}
           </div>
         ) : (
           <ul className="virk-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -177,6 +237,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
           </ul>
         )}
       </div>
+      )}
 
       {total > PAGE_SIZE && (
         <div className="virk-pagination">
