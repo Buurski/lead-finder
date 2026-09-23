@@ -82,8 +82,10 @@ export async function checkAllSites(db: Db, opts: { now?: number; probeFn?: type
   const recovered: string[] = [];
   let checked = 0;
   for (const r of rows) {
-    // Uden domæne bruges website kun når vores site er live — ellers er det kundens gamle site.
-    const url = siteUrl(r.domain, r.status === "live" ? r.website : null);
+    // Kun live sites: et domæne sat under opstart peger måske ikke nogen steder endnu,
+    // og uden domæne er website kundens gamle site (council 23/9).
+    if (r.status !== "live") continue;
+    const url = siteUrl(r.domain, r.website);
     if (!url) continue;
     const prev = (r.health as SiteHealth | null) ?? null;
     const next = nextHealth(prev, await run(url, now), nowIso);

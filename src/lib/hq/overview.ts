@@ -10,7 +10,8 @@ export type MailDir = "ud" | "ind";
 
 // Hermes' mail-resuméer er skrevet som "Svar sendt til Allan: …" / "Lene svarer på …".
 const OUT =
-  /^(svar sendt|sendt|mail sendt|påmindelse sendt|opfølgning sendt|tilbud sendt|faktura \d* ?sendt|vi (har )?(sendt|skrevet|svaret|spurgt)|(lucas|charlie) (sendte|skrev|svarede|bad|spurgte|modtog|fulgte op|mindede))/i;
+  /^(svar sendt|sendt|mail sendt|påmindelse sendt|opfølgning sendt|tilbud sendt|faktura \d* ?sendt|vi (har )?(sendt|skrevet|svaret|spurgt)|(lucas|charlie) (sendte|skrev|svarede|bad|spurgte|fulgte op|mindede)|(lucas|charlie) modtog\b.*\bog (bad|spurgte|sendte|svarede|skrev))/i;
+// "Lucas modtog svar fra X" alene er indgående; "modtog … og bad om …" slutter med os.
 
 // Passiv form om os selv tidligt i resuméet: "Nyhedsbrevet spurgt ind til igen: …".
 const OUT_PASSIVE = /^[^:.]{0,50}(spurgt ind til|fulgt op|rykket( for)?|mindet om|påmindet|sendt til)/i;

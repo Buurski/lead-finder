@@ -86,3 +86,7 @@ test("website i headeren dækker for manglende site.domain", () => {
   );
   assert.ok(!o.missing.includes("domæne"));
 });
+
+test("'Lucas modtog svar' er indgående", () => {
+  assert.equal(mailDirection("Lucas modtog svar fra Henrik om tidsplanen"), "ind");
+});

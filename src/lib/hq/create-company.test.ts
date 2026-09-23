@@ -33,3 +33,10 @@ test("row_no falder for hver ny manuel virksomhed og kolliderer aldrig med et le
 test("tomt navn afvises", async () => {
   await assert.rejects(createLeadCompany(db, { name: "   " }), CreateCompanyError);
 });
+
+test("dublet: samme navn (også uden mellemrum) i samme by afvises; anden by er ok", async () => {
+  await createLeadCompany(db, { name: "KT VVS", city: "Ikast" });
+  await assert.rejects(() => createLeadCompany(db, { name: "ktvvs", city: "Ikast" }), /findes allerede/);
+  await assert.rejects(() => createLeadCompany(db, { name: "KT VVS" }), /findes allerede/);
+  await createLeadCompany(db, { name: "KT VVS", city: "Aarhus" });
+});
