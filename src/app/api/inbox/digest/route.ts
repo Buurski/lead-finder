@@ -56,7 +56,13 @@ export async function POST(req: NextRequest) {
     console.error(JSON.stringify({ evt: "digest.no_thanks_failed", error: String(err).slice(0, 200) }));
     return 0;
   });
-  return NextResponse.json({ ok: true, summary: summarizeDigest(digest), noThanks });
+  // "Ja tak til et udkast" → udkast-opgave til Hermes (samme kø som kinly.dk-formularen).
+  const { applyDraftRequests } = await import("@/lib/hq/draft-requests");
+  const draftRequests = await applyDraftRequests(digest.items).catch((err) => {
+    console.error(JSON.stringify({ evt: "digest.draft_requests_failed", error: String(err).slice(0, 200) }));
+    return 0;
+  });
+  return NextResponse.json({ ok: true, summary: summarizeDigest(digest), noThanks, draftRequests });
 }
 
 export async function GET() {
