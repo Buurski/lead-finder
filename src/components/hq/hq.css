@@ -165,6 +165,11 @@ a.hq-row:hover { background: var(--surface-2); }
   .hq-seg-bar { height: 32px; }
   .hq-seg-label .n { font-size: 15px; }
   .hq-seg-label .t { font-size: 10px; }
+  /* Charlie 23/9: den flydende Hermes-knap (nederst til højre) dækkede det
+     sidste tal ("Kunde") allerede ved sideindlæsning, uden scroll — bjælken
+     er den eneste kort-indhold der når helt ud til kortets højre kant.
+     Reservér knappens eget aftryk (48px bredde + 16px afstand). */
+  .hq-seg-bar, .hq-seg-labels { margin-right: 64px; }
 
   .hq-columns { grid-template-columns: 1fr; }
 

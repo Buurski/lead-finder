@@ -13,7 +13,7 @@ import "./quick-actions.css";
 
 type DialogKind = "opgave" | "aftale" | "arbejde" | "virksomhed" | null;
 
-export default function QuickActions() {
+export default function QuickActions({ defaultOwner = "lucas" }: { defaultOwner?: "lucas" | "charlie" }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogKind>(null);
@@ -79,7 +79,9 @@ export default function QuickActions() {
         <LogWorkDialog onClose={() => setDialog(null)} onLogged={(r) => afterCreate(r.companyId)} />
       )}
       {dialog === "virksomhed" && <NewCompanyDialog onClose={() => setDialog(null)} />}
-      {dialog === "opgave" && <NewTaskDialog onClose={() => setDialog(null)} onCreated={() => { setDialog(null); router.push("/opgaver"); }} />}
+      {dialog === "opgave" && (
+        <NewTaskDialog defaultOwner={defaultOwner} onClose={() => setDialog(null)} onCreated={() => { setDialog(null); router.push("/opgaver"); }} />
+      )}
     </div>
   );
 }

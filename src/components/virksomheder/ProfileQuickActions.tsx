@@ -12,7 +12,13 @@ import NewTaskDialog from "@/components/shell/NewTaskDialog";
 
 type DialogKind = "arbejde" | "opgave" | "aftale" | null;
 
-export default function ProfileQuickActions({ companyId, companyName }: { companyId: string; companyName: string }) {
+export default function ProfileQuickActions({
+  companyId, companyName, defaultOwner = "lucas",
+}: {
+  companyId: string;
+  companyName: string;
+  defaultOwner?: "lucas" | "charlie";
+}) {
   const router = useRouter();
   const [dialog, setDialog] = useState<DialogKind>(null);
   const company = { id: companyId, name: companyName };
@@ -39,7 +45,12 @@ export default function ProfileQuickActions({ companyId, companyName }: { compan
         />
       )}
       {dialog === "opgave" && (
-        <NewTaskDialog initialCompany={company} onClose={() => setDialog(null)} onCreated={() => { setDialog(null); router.refresh(); }} />
+        <NewTaskDialog
+          initialCompany={company}
+          defaultOwner={defaultOwner}
+          onClose={() => setDialog(null)}
+          onCreated={() => { setDialog(null); router.refresh(); }}
+        />
       )}
       {dialog === "aftale" && (
         <NewDealDialog

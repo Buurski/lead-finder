@@ -14,6 +14,7 @@ import { SERVICES } from "@/lib/hq/overview";
 import { cmsUsageFor } from "@/lib/hq/cms-usage";
 import { getOnboardingChecklist } from "@/lib/hq/onboarding";
 import { copenhagenNow } from "@/lib/settings";
+import { currentUser } from "@/lib/current-user";
 import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
@@ -82,6 +83,9 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const dossier = await getDossier(db, id, { today: copenhagenNow().date, loadNotes: loadCustomerNotes });
   if (!dossier) notFound();
   const c = dossier.company;
+  // Charlie 23/9: "Hvem"-valget i Ny opgave skal følge den indloggede person.
+  const user = await currentUser();
+  const defaultOwner = user === "charlie" ? "charlie" : "lucas";
 
   if (c.archived && c.lifecycle === "flettet") {
     const target = await findMergeTarget(id);
@@ -271,7 +275,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
             {canMakeCustomer && <MakeCustomerButton companyId={c.id} companyName={c.name} />}
-            <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} />
+            <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} defaultOwner={defaultOwner} />
             <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
             <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo, rowNo: c.rowNo }} />
           </div>

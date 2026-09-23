@@ -6,9 +6,10 @@ import Icon from "./Icon";
 import "./quick-actions.css";
 
 export default function NewTaskDialog({
-  initialCompany, onClose, onCreated,
+  initialCompany, defaultOwner = "lucas", onClose, onCreated,
 }: {
   initialCompany?: { id: string; name: string };
+  defaultOwner?: "lucas" | "charlie";
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -17,7 +18,7 @@ export default function NewTaskDialog({
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(initialCompany ?? null);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
-  const [owner, setOwner] = useState<"lucas" | "charlie">("lucas");
+  const [owner, setOwner] = useState<"lucas" | "charlie">(defaultOwner);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
