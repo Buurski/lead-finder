@@ -30,6 +30,10 @@ export interface Invoice {
   pdfUrl?: string;
   payerType: "privat" | "cvr";
   note?: string;
+  /** "abonnement" (månedscron) · "arbejde" (samlet fra arbejdsloggen). Mangler på ældre fakturaer. */
+  kind?: "abonnement" | "arbejde";
+  /** Sat lige før mailen sendes; spærrer en gen-afsendelse hvis gemningen bagefter fejler. */
+  sendingAt?: string;
 }
 
 export interface Subscription {
@@ -95,16 +99,21 @@ export function subscriptionsDue(subs: Subscription[], existing: Invoice[], toda
   return subs.filter((sub) => {
     if (!sub.active) return false;
     if (sub.dayOfMonth > d) return false;
+    // En arbejds-faktura dækker ikke månedens abonnement (Sol 23/9). Ældre fakturaer
+    // uden kind tæller stadig — de er typisk "opstart + første måned".
     const alreadyInvoiced = existing.some(
-      (inv) => inv.clientName === sub.clientName && inv.issueDate.slice(0, 7) === yearMonth,
+      (inv) => canonicalClientName(inv.clientName) === canonicalClientName(sub.clientName)
+        && inv.issueDate.slice(0, 7) === yearMonth
+        && inv.kind !== "arbejde",
     );
     return !alreadyInvoiced;
   });
 }
 
-// Sendt faktura hvis forfaldsdato er passeret (dueDate < today).
+// Ubetalt faktura hvis forfaldsdato er passeret (dueDate < today). Cronen flytter
+// "sendt" → "forfalden"; de skal stadig tælle som forfaldne bagefter (Sol 23/9).
 export function isOverdue(inv: Pick<Invoice, "status" | "dueDate">, today: string): boolean {
-  return inv.status === "sendt" && inv.dueDate < today;
+  return (inv.status === "sendt" || inv.status === "forfalden" || inv.status === "rykket") && inv.dueDate < today;
 }
 
 /**

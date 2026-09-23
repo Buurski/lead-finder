@@ -73,6 +73,7 @@ export async function invoiceFromWork(
       status: "kladde",
       payerType: opts.payerType,
       note: "Samlet fra arbejdsloggen",
+      kind: "arbejde",
     };
     await tx.insert(invoice).values({
       number,

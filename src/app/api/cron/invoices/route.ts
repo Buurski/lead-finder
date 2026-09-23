@@ -46,13 +46,14 @@ export async function GET(req: Request) {
       vatRate: 0,
       status: "kladde",
       payerType: biz.payerType,
+      kind: "abonnement",
     });
     created.push(number);
   }
 
   const overdue: string[] = [];
   for (const inv of invoices) {
-    if (isOverdue(inv, today)) {
+    if (inv.status === "sendt" && isOverdue(inv, today)) {
       await saveInvoice({ ...inv, status: "forfalden" });
       overdue.push(inv.number);
     }

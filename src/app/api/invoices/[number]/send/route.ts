@@ -33,6 +33,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
   if (body.dueDate !== undefined && !ISO.test(body.dueDate)) {
     return NextResponse.json({ error: "dueDate skal være YYYY-MM-DD" }, { status: 400 });
   }
+  // Idempotens (Sol 23/9): mailen går ud før status gemmes. Fejler gemningen, må et
+  // nyt klik ikke sende den igen — markøren står, til nogen har tjekket Sendt-mappen.
+  if (inv.sendingAt && inv.status === "kladde") {
+    return NextResponse.json({ error: "Fakturaen blev måske allerede sendt. Tjek Sendt-mappen, og markér den som sendt." }, { status: 409 });
+  }
+
   // Forfaldsdato låses ved afsendelse — så den regnes fra den dag mailen faktisk går ud.
   if (body.dueDate) inv.dueDate = body.dueDate;
 
@@ -64,6 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     const text = applySignature(unsignedText, "lucas");
 
     const transporter = getTransporter("lucas");
+    await saveInvoice({ ...inv, sendingAt: new Date().toISOString() });
     await transporter.sendMail({
       from: formatFrom("lucas"),
       to: body.to,
@@ -71,10 +78,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
       text,
       html: applySignatureHtml(unsignedText, "lucas"),
       attachments: [{ filename: `faktura-${number}.pdf`, content: buf }],
+    }).catch(async (e) => {
+      // Mailen gik ikke ud: fjern markøren, så man kan prøve igen.
+      await saveInvoice(inv).catch(() => {});
+      throw e;
     });
 
     inv.status = "sendt";
     inv.sentAt = new Date().toISOString();
+    delete inv.sendingAt;
     inv.pdfUrl = pdfUrl;
     await saveInvoice(inv);
 

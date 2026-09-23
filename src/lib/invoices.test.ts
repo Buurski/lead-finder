@@ -211,3 +211,16 @@ test("applyStatusChange: rykket sætter remindedAt; betalt efter rykket beholder
   assert.equal(paid.paidAt, "2026-09-12T12:00:00Z");
   assert.equal(paid.remindedAt, "2026-09-11T12:00:00Z");
 });
+
+test("isOverdue — forfalden/rykket tæller stadig (Sol 23/9)", () => {
+  assert.equal(isOverdue({ status: "forfalden", dueDate: "2026-07-01" }, "2026-07-16"), true);
+  assert.equal(isOverdue({ status: "rykket", dueDate: "2026-07-01" }, "2026-07-16"), true);
+  assert.equal(isOverdue({ status: "betalt", dueDate: "2026-07-01" }, "2026-07-16"), false);
+});
+
+test("subscriptionsDue — arbejds-faktura dækker ikke abonnementet; alias-navn matcher", () => {
+  const sub = { clientName: "Henrik Korshøj - KT VVS", lines: [{ description: "Hosting", amount: 250 }], dayOfMonth: 4, active: true };
+  const base = { recipient: { name: "KT VVS" }, issueDate: "2026-07-10", dueDate: "2026-07-24", lines: [{ description: "x", amount: 1 }], vatRate: 0, status: "kladde" as const, payerType: "cvr" as const };
+  assert.deepEqual(subscriptionsDue([sub], [{ ...base, number: "011", clientName: "KT VVS", kind: "arbejde" }], "2026-07-16"), [sub]);
+  assert.deepEqual(subscriptionsDue([sub], [{ ...base, number: "012", clientName: "KT VVS" }], "2026-07-16"), []);
+});
