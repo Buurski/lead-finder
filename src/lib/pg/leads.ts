@@ -24,7 +24,9 @@ function toLead(r: CompanyRow): Lead {
     source: r.source,
     website: r.website,
     websiteStatus: r.websiteStatus as Lead["websiteStatus"],
-    status: r.leadStatus as LeadStatus,
+    // En kunde (kundenr. sat, ikke fjernet) er altid "client" — også hvis den gamle
+    // lead-række aldrig blev opdateret. Send- og opfølgningsgaten stoler på feltet.
+    status: (r.clientNo !== null && !r.clientRemoved ? "client" : r.leadStatus) as LeadStatus,
     notes: r.notes,
     lastUpdated: r.lastUpdated,
     websiteQualityTier: r.websiteQualityTier as WebsiteQualityTier,

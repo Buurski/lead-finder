@@ -203,3 +203,17 @@ test("moveLeadsToDeadLeads og purgeAndArchiveLeads arkiverer og returnerer sheet
   assert.deepEqual(await moveLeadsToDeadLeads([], "x"), { moved: 0 });
   assert.deepEqual(await purgeAndArchiveLeads([], [], "x"), { deleted: 0, archived: 0 });
 });
+
+test("en kunde med gammel lead-status 'new' læses som client", async () => {
+  const { freshTestDb } = await import("../db/test-db.ts");
+  const db = await freshTestDb();
+  const { company } = await import("../db/schema.ts");
+  await db.insert(company).values([
+    { rowNo: 18, name: "Ikast AutoService", clientNo: 5, leadStatus: "new" },
+    { rowNo: 19, name: "Fjernet kunde", clientNo: 6, clientRemoved: true, leadStatus: "new" },
+  ]);
+  const { getLeads } = await import("./leads.ts");
+  const byName = new Map((await getLeads()).map((l) => [l.name, l.status]));
+  assert.equal(byName.get("Ikast AutoService"), "client");
+  assert.equal(byName.get("Fjernet kunde"), "new");
+});
