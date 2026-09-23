@@ -189,6 +189,8 @@ export default function IndsigterClient({
           <div style={{ display: "grid", gap: 9, marginTop: 8 }}>
             {segSource.every((s) => s.value === 0) ? (
               <p style={{ fontSize: 12.5, color: DIM }}>Ingen vundet omsætning at fordele endnu — vind den første deal, så tegnes fordelingen her.</p>
+            ) : segSource.every((s) => s.key === "ukendt") ? (
+              <p style={{ fontSize: 12.5, color: DIM }}>Kilde er ikke registreret på fakturaerne endnu.</p>
             ) : segSource.map((s) => (
               <BarRow key={s.key} label={<span style={{ textTransform: "capitalize" }}>{s.key}</span>} frac={s.value / maxSeg} value={dkk(s.value)} tip={`${s.key}: ${dkk(s.value)} · win rate ${pct(s.win.rate)}`} />
             ))}

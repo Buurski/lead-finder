@@ -394,7 +394,7 @@ export function renderReportHtml(r: SeoTjekReport, opts: { standalone?: boolean;
     <header>
       <p class="kicker">Gratis SEO- og AI-tjek</p>
       <h1>${esc(r.host)}</h1>
-      <p class="muted">Kørt ${date} af Buur Web</p>
+      <p class="muted">Kørt ${date} af Kinly</p>
     </header>
 
     <h2>Hastighed og teknik (Google PageSpeed)</h2>

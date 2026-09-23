@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 interface SequenceInfo {
   ok: true;
+  found: boolean;
   sentCount: number;
   history: { step: number; sentAt: string; angle: string | null }[];
   maxTouches: number;
@@ -51,6 +52,16 @@ export default function InboxSequence({ leadId }: { leadId: string }) {
   }, [leadId]);
 
   if (failed || !info) return null;
+  if (!info.found) {
+    return (
+      <div className="inbox-sequence">
+        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
+          Sekvens
+        </div>
+        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Ingen sekvensdata for dette lead endnu.</span>
+      </div>
+    );
+  }
   if (info.sentCount === 0 && !info.stopped && info.nextStep == null) return null;
 
   return (

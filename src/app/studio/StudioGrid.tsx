@@ -4,6 +4,35 @@ import Icon from "@/components/shell/Icon";
 import { DEMO_CATALOG } from "@/lib/demos";
 import type { DemoEntry } from "@/lib/demos";
 
+// Sites der blokerer indlejring (X-Frame-Options/CSP frame-ancestors). Det kan
+// ikke opdages robust fra en iframes onLoad — Chrome fyrer typisk load selv
+// når indholdet er nægtet, så en timeout-baseret detektor ville aldrig ramme
+// netop det tilfælde. En kendt-liste er derfor det pålidelige valg her.
+// ponytail: statisk liste, tilføj domænet her hvis et nyt site blokerer.
+const EMBED_BLOCKED = new Set(["vida-klinik.dk", "ikastautoservice.dk"]);
+
+function DemoThumb({ url, label }: { url: string; label: string }) {
+  const host = prettyHost(url);
+  if (EMBED_BLOCKED.has(host)) {
+    return (
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--bg-3)" }}>
+        <Icon name="Globe" style={{ width: 20, height: 20, color: "var(--text-dim)" }} />
+        <span className="cc-dim" style={{ fontSize: 12 }}>{host}</span>
+        <span className="cc-btn" style={{ fontSize: 11.5, pointerEvents: "none" }}>Åbn site ↗</span>
+      </div>
+    );
+  }
+  return (
+    <iframe
+      src={url}
+      title={label}
+      loading="lazy"
+      tabIndex={-1}
+      style={{ position: "absolute", top: 0, left: 0, width: "200%", height: "200%", transform: "scale(0.5)", transformOrigin: "top left", border: "none", pointerEvents: "none" }}
+    />
+  );
+}
+
 const BRANCHES: { id: DemoEntry["branch"] | "alle"; label: string }[] = [
   { id: "alle", label: "Alle" },
   { id: "mad", label: "Mad" },
@@ -98,13 +127,7 @@ export default function StudioGrid() {
             style={{ overflow: "hidden", textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", transition: "transform 140ms ease, border-color 140ms ease" }}
           >
             <div style={{ aspectRatio: "16 / 10", position: "relative", background: "var(--bg-3)", overflow: "hidden" }}>
-              <iframe
-                src={d.url}
-                title={d.label}
-                loading="lazy"
-                tabIndex={-1}
-                style={{ position: "absolute", top: 0, left: 0, width: "200%", height: "200%", transform: "scale(0.5)", transformOrigin: "top left", border: "none", pointerEvents: "none" }}
-              />
+              <DemoThumb url={d.url} label={d.label} />
             </div>
             <div className="cc-card-pad" style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ minWidth: 0 }}>

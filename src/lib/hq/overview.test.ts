@@ -74,3 +74,15 @@ test("site nede → haster; SSL snart udløbet → obs", () => {
   );
   assert.ok(ssl.attention.some((a) => a.level === "obs" && a.text.includes("SSL")));
 });
+
+test("website i headeren dækker for manglende site.domain", () => {
+  const o = buildOverview(
+    dossier({
+      company: { clientNo: 4, clientRemoved: false, email: "x@y.dk", services: ["hjemmeside"], website: "https://www.ktvvs.dk" } as never,
+      deals: [{ title: "Hjemmeside", stage: "live" } as never],
+      site: { status: "live", domain: "", cmsUrl: null, lastDeployAt: null } as never,
+    }),
+    { subscription: { clientName: "KT VVS", lines: [{ description: "Hosting", amount: 250 }], dayOfMonth: 15, active: true }, unbilled: 0, now: NOW },
+  );
+  assert.ok(!o.missing.includes("domæne"));
+});

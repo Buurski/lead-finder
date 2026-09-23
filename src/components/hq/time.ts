@@ -9,5 +9,6 @@ export function timeAgo(iso: string | null | undefined): string {
   const hrs = Math.round(min / 60);
   if (hrs < 24) return `${hrs} t siden`;
   const days = Math.round(hrs / 24);
-  return `${days} d siden`;
+  if (days === 1) return "i går";
+  return `${days} dage siden`;
 }

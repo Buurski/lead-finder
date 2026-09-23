@@ -2,7 +2,7 @@
 // (kinly.dk-henvendelser) og Hermes hentes af siden selv og må fejle uden at
 // vælte resten.
 import "server-only";
-import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, invoice, outreach, subscriptionPlan, task } from "../db/schema.ts";
 import { invoiceTotal, isOverdue, type Invoice, type Subscription } from "../invoices.ts";
@@ -113,15 +113,19 @@ export async function getHqSummary(db: Db, today: string): Promise<HqSummary> {
   };
 }
 
-// Seneste menneskelige handling pr. person (check-ins kommer i fase 5).
+// Seneste menneskelige handling pr. person, seneste 7 dage (check-ins fra
+// Hermes logges med actor=lucas/charlie og type=checkin, se agent-log.ts —
+// de tælles med her uden ekstra filter). Ældre end 7 dage regnes som ingen
+// aktivitet, så kortet ikke viser en månedsgammel note som "seneste".
 async function teamNow(db: Db): Promise<HqSummary["team"]> {
   const people = ["lucas", "charlie"] as const;
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   return Promise.all(
     people.map(async (person) => {
       const [row] = await db
         .select({ summary: activity.summary, at: activity.at })
         .from(activity)
-        .where(and(eq(activity.actor, person), ne(activity.type, "invoice")))
+        .where(and(eq(activity.actor, person), ne(activity.type, "invoice"), gte(activity.at, cutoff)))
         .orderBy(sql`${activity.at} desc`)
         .limit(1);
       return { person, summary: row?.summary ?? "", at: row?.at ? row.at.toISOString() : null };

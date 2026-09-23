@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { and, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { company } from "@/lib/db/schema";
+import { activity, company } from "@/lib/db/schema";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadOverview } from "@/lib/hq/overview-load";
 import { copenhagenNow } from "@/lib/settings";
@@ -119,6 +119,17 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
     .orderBy(sql`case when ${company.clientNo} is not null and ${company.clientRemoved} = false then 0 else 1 end`, desc(company.updatedAt))
     .limit(PAGE_SIZE)
     .offset((side - 1) * PAGE_SIZE);
+  // Rækkens tidsstempel skal være seneste RIGTIGE aktivitet, ikke company.updatedAt
+  // (den rammes af bulk-import og scoring-crons — så viser "16 t siden" på næsten
+  // alle rækker uden det betyder noget skete). max(activity.at) pr. virksomhed;
+  // ingen aktivitet ⇒ intet tidsstempel i stedet for et misvisende ét.
+  const rowIds = rows.map((r) => r.id);
+  const lastActivityRows = rowIds.length
+    ? await db.select({ companyId: activity.companyId, at: sql<string>`max(${activity.at})` })
+        .from(activity).where(inArray(activity.companyId, rowIds)).groupBy(activity.companyId)
+    : [];
+  const lastActivityAt = new Map(lastActivityRows.filter((r) => r.companyId).map((r) => [r.companyId as string, r.at]));
+
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(company).where(where);
   const lifecycleCounts = await db.select({ lifecycle: company.lifecycle, n: sql<number>`count(*)::int` }).from(company).where(countBase).groupBy(company.lifecycle);
   const [{ kunderTotal }] = await db.select({ kunderTotal: sql<number>`count(*)::int` }).from(company).where(and(countBase, kunderFilter));
@@ -229,7 +240,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
                     <div className="virk-row-branch">{[r.city, r.branch].filter(Boolean).join(" · ") || "–"}</div>
                     <span className="cc-chip" style={{ ...lifecycleChipStyle(r.lifecycle), whiteSpace: "nowrap" }}>{lifecycleLabel(r.lifecycle)}</span>
                     {r.jevGrade ? <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {r.jevGrade}</span> : <span />}
-                    <span className="virk-row-updated">{relTime(r.updatedAt.toISOString())}</span>
+                    <span className="virk-row-updated">{lastActivityAt.has(r.id) ? relTime(lastActivityAt.get(r.id)!) : ""}</span>
                   </div>
                 </Link>
               </li>
