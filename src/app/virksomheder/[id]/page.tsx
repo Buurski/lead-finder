@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { activity } from "@/lib/db/schema";
+import { activity, company } from "@/lib/db/schema";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
 import { normalizeStage } from "@/lib/hq/deals";
@@ -53,9 +53,15 @@ async function findMergeTarget(companyId: string): Promise<{ id: string; name: s
 
 export default async function VirksomhedProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const db = getDb();
+  // Kladder/leads kender kun rækkenummeret (leadId) — slå virksomheden op og viderestil.
+  if (/^\d{1,7}$/.test(id)) {
+    const [hit] = await db.select({ id: company.id }).from(company).where(eq(company.rowNo, Number(id)));
+    if (hit) redirect(`/virksomheder/${hit.id}`);
+    notFound();
+  }
   if (!UUID.test(id)) notFound();
 
-  const db = getDb();
   const dossier = await getDossier(db, id, { today: copenhagenNow().date, loadNotes: loadCustomerNotes });
   if (!dossier) notFound();
   const c = dossier.company;
