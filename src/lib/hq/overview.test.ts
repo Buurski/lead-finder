@@ -26,6 +26,8 @@ test("retning læses af Hermes' resuméer", () => {
   assert.equal(mailDirection("Lucas modtog kundelisten og bad om fem afklaringer"), "ud");
   assert.equal(mailDirection("Allan spørger om vi kan lave et nyhedsbrev"), "ind");
   assert.equal(mailDirection("Lene svarer på faktura 009"), "ind");
+  assert.equal(mailDirection("Nyhedsbrevet spurgt ind til igen: afventer stadig antal"), "ud");
+  assert.equal(mailDirection("Lars (ditmedie.dk) skriver om vida-klinik.dk: to ting"), "ind");
 });
 
 test("KT VVS-mønstret: betalt, i gang, vi skrev sidst for 12 dage siden", () => {

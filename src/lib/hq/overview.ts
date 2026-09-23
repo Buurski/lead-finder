@@ -12,8 +12,12 @@ export type MailDir = "ud" | "ind";
 const OUT =
   /^(svar sendt|sendt|mail sendt|påmindelse sendt|opfølgning sendt|tilbud sendt|faktura \d* ?sendt|vi (har )?(sendt|skrevet|svaret|spurgt)|(lucas|charlie) (sendte|skrev|svarede|bad|spurgte|modtog|fulgte op|mindede))/i;
 
+// Passiv form om os selv tidligt i resuméet: "Nyhedsbrevet spurgt ind til igen: …".
+const OUT_PASSIVE = /^[^:.]{0,50}(spurgt ind til|fulgt op|rykket( for)?|mindet om|påmindet|sendt til)/i;
+
 export function mailDirection(summary: string): MailDir {
-  return OUT.test(summary.trim()) ? "ud" : "ind";
+  const t = summary.trim();
+  return OUT.test(t) || OUT_PASSIVE.test(t) ? "ud" : "ind";
 }
 
 export interface Attention {
