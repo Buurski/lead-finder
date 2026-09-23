@@ -8,9 +8,10 @@ import Icon from "./Icon";
 import NewDealDialog from "@/components/pipeline/NewDealDialog";
 import LogWorkDialog from "./LogWorkDialog";
 import NewCompanyDialog from "./NewCompanyDialog";
+import NewTaskDialog from "./NewTaskDialog";
 import "./quick-actions.css";
 
-type DialogKind = "aftale" | "arbejde" | "virksomhed" | null;
+type DialogKind = "opgave" | "aftale" | "arbejde" | "virksomhed" | null;
 
 export default function QuickActions() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function QuickActions() {
 
       {menuOpen && (
         <div className="qa-menu cc-fade" role="menu">
-          <button type="button" role="menuitem" className="qa-menu-item" disabled title="Kommer snart">
+          <button type="button" role="menuitem" className="qa-menu-item" onClick={() => { setDialog("opgave"); setMenuOpen(false); }}>
             <Icon name="ListChecks" />
             Ny opgave
           </button>
@@ -78,6 +79,7 @@ export default function QuickActions() {
         <LogWorkDialog onClose={() => setDialog(null)} onLogged={(r) => afterCreate(r.companyId)} />
       )}
       {dialog === "virksomhed" && <NewCompanyDialog onClose={() => setDialog(null)} />}
+      {dialog === "opgave" && <NewTaskDialog onClose={() => setDialog(null)} onCreated={() => { setDialog(null); router.push("/opgaver"); }} />}
     </div>
   );
 }

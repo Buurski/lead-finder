@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import LogWorkDialog from "@/components/shell/LogWorkDialog";
 import NewDealDialog from "@/components/pipeline/NewDealDialog";
+import NewTaskDialog from "@/components/shell/NewTaskDialog";
 
-type DialogKind = "arbejde" | "aftale" | null;
+type DialogKind = "arbejde" | "opgave" | "aftale" | null;
 
 export default function ProfileQuickActions({ companyId, companyName }: { companyId: string; companyName: string }) {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function ProfileQuickActions({ companyId, companyName }: { compan
         <button className="cc-btn virk-btn-press" onClick={() => setDialog("arbejde")}>
           <Icon name="Clock" style={{ width: 14, height: 14 }} /> Log arbejde
         </button>
-        <button className="cc-btn virk-btn-press" disabled title="Kommer snart">
+        <button className="cc-btn virk-btn-press" onClick={() => setDialog("opgave")}>
           <Icon name="ListChecks" style={{ width: 14, height: 14 }} /> Ny opgave
         </button>
         <button className="cc-btn virk-btn-press" onClick={() => setDialog("aftale")}>
@@ -36,6 +37,9 @@ export default function ProfileQuickActions({ companyId, companyName }: { compan
           onClose={() => setDialog(null)}
           onLogged={() => { setDialog(null); router.refresh(); }}
         />
+      )}
+      {dialog === "opgave" && (
+        <NewTaskDialog initialCompany={company} onClose={() => setDialog(null)} onCreated={() => { setDialog(null); router.refresh(); }} />
       )}
       {dialog === "aftale" && (
         <NewDealDialog
