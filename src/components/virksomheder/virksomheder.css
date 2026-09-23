@@ -216,8 +216,63 @@
 @media (max-width: 560px) { .virk-merge-cols { grid-template-columns: 1fr; } }
 .virk-merge-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
 
+/* ---- profil-faner (Overblik · Tidslinje · Aftaler · Fakturaer · Viden) ---- */
+
+.virk-tabs { margin: 0 0 16px; align-self: flex-start; }
+.virk-tabs .cc-section-tab { background: transparent; border: none; font-family: inherit; cursor: pointer; }
+.virk-tabs .cc-section-tab[data-active="true"] { background: var(--kinly-ink); color: #fff; }
+.virk-tab-panel { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---- kundeoverblik (fase 2, Lucas 23/9) ---- */
+
+.ov-grid { display: flex; flex-direction: column; gap: 16px; }
+.ov-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .ov-row { grid-template-columns: 1fr; } }
+
+.ov-attention-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ov-attention-item { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.ov-attention-item[data-level="haster"] { color: var(--red); font-weight: 600; }
+.ov-attention-item[data-level="obs"] { color: var(--text-muted); }
+.ov-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex-shrink: 0; }
+
+.ov-waiting { display: inline-flex; align-items: center; width: fit-content; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.ov-waiting[data-side="us"] { background: var(--amber-dim); color: var(--amber); }
+.ov-waiting[data-side="customer"] { background: var(--bg-3); color: var(--text-muted); }
+
+.ov-mail-list, .ov-work-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ov-mail-item, .ov-work-item { display: flex; gap: 9px; align-items: flex-start; }
+.ov-mail-dir { flex-shrink: 0; margin-top: 2px; color: var(--text-dim); }
+.ov-mail-dir[data-dir="ud"] { color: var(--text-muted); }
+.ov-mail-summary { font-size: 13px; line-height: 1.4; }
+.ov-mail-date { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+.ov-plan { display: flex; flex-direction: column; gap: 6px; }
+.ov-plan-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.ov-plan-total { font-size: 13px; font-weight: 600; padding-top: 6px; border-top: 1px solid var(--border); }
+
+.ov-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ov-service-chip, .ov-missing-chip { font-family: inherit; cursor: pointer; }
+.ov-service-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: #fff; }
+.ov-service-chip:disabled { opacity: 0.6; cursor: default; }
+.ov-missing-chip { color: var(--amber); border-color: var(--amber-dim); background: var(--amber-dim); }
+.ov-missing-chip:hover { background: var(--amber); color: var(--kinly-ink); }
+
+.ov-editor { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---- kunde-kort på /virksomheder (kun ved filteret "Kunder") ---- */
+
+.ov-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.ov-card { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; }
+.ov-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ov-card-name { font-weight: 600; font-size: 14.5px; }
+.ov-card-attention { font-size: 12.5px; color: var(--text-muted); }
+.ov-card-attention[data-level="haster"] { color: var(--red); }
+.ov-card-nums { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 8px; }
+.ov-card-nums b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+
 @media (prefers-reduced-motion: reduce) {
-  .virk-fade-in, .virk-panel-in, .virk-row, .virk-chip, .virk-log-type button, .virk-btn-press {
+  .virk-fade-in, .virk-panel-in, .virk-row, .virk-chip, .virk-log-type button, .virk-btn-press,
+  .ov-service-chip, .ov-missing-chip, .virk-tabs .cc-section-tab {
     animation: none !important;
     transition: none !important;
   }

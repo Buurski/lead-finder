@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { safeHref } from "@/lib/safe-href";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
@@ -9,6 +8,9 @@ import { loadCustomerNotes } from "@/lib/hq/notes";
 import { normalizeStage } from "@/lib/hq/deals";
 import { getFollowUpOverview } from "@/lib/hq/followup-overview";
 import { unbilledWork } from "@/lib/hq/billing";
+import { loadOverview } from "@/lib/hq/overview-load";
+import { SERVICES } from "@/lib/hq/overview";
+import { cmsUsageFor } from "@/lib/hq/cms-usage";
 import { copenhagenNow } from "@/lib/settings";
 import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
@@ -19,6 +21,8 @@ import MergePanel from "@/components/virksomheder/MergePanel";
 import NoteCard from "@/components/virksomheder/NoteCard";
 import HermesAskButton from "@/components/virksomheder/HermesAskButton";
 import UnbilledWork from "@/components/virksomheder/UnbilledWork";
+import Overblik from "@/components/virksomheder/Overblik";
+import ProfileTabs from "@/components/virksomheder/ProfileTabs";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +36,6 @@ const INVOICE_STATUS_STYLE: Record<InvoiceStatus, { background: string; color: s
   forfalden: { background: "var(--red-dim)", color: "var(--red)" },
   rykket: { background: "var(--red-dim)", color: "var(--red)" },
 };
-
-const SITE_STATUS_LABEL: Record<string, string> = { demo: "Demo", "in progress": "I gang", live: "Live" };
 
 function websiteHref(w: string): string {
   return /^https?:\/\//i.test(w) ? w : `https://${w}`;
@@ -115,41 +117,18 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const openInvoices = dossier.invoices.filter((i) => i.status !== "betalt" && i.status !== "kladde");
   const followUps = await getFollowUpOverview(c.rowNo, c.maxTouches);
   const unbilled = await unbilledWork(db, id);
+  // Sekventielt (ikke Promise.all) — lokal pglite tåler kun 1 samtidig forbindelse (fælles-regel #23).
+  const overview = await loadOverview(db, dossier);
+  const cms = await cmsUsageFor(c, dossier.site?.cmsUrl);
 
-  return (
-    <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <PageHeader
-        icon="Building2"
-        title={c.name || "(uden navn)"}
-        subtitle={
-          // Spans, ikke divs — PageHeader sætter subtitlen i en <p>, og en <div>
-          // ville brække HTML-nestingen (block-i-p) og give en hydration-fejl.
-          <span style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span className="cc-chip" style={lifecycleChipStyle(c.lifecycle)}>{lifecycleLabel(c.lifecycle)}</span>
-              {c.jevGrade && <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {c.jevGrade}</span>}
-              <span>{[c.city, c.branch].filter(Boolean).join(" · ") || "–"}</span>
-              {c.clientNo !== null && <span>· Kunde #{c.clientNo}</span>}
-              {mrrSum > 0 && <span>· MRR {mrrSum.toLocaleString("da-DK")} kr</span>}
-            </span>
-            <span className="virk-header-links">
-              {c.website && <a href={websiteHref(c.website)} target="_blank" rel="noreferrer">{c.website}</a>}
-              {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
-              {c.phone && <a href={`tel:${c.phone}`}>{c.phone}</a>}
-              {!c.website && !c.email && !c.phone && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
-            </span>
-          </span>
-        }
-        action={
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
-            <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo }} />
-          </div>
-        }
-      />
-
-      <div className="virk-profile-grid">
-        <div className="virk-col">
+  const tabs = [
+    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} /> },
+    { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
+    {
+      key: "aftaler",
+      label: "Aftaler",
+      content: (
+        <>
           <DealsSection companyId={c.id} deals={dealRows} />
 
           <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -163,53 +142,6 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
                 {followUps.lastSentAt && ` · sidst ${new Date(followUps.lastSentAt).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}`}
                 {followUps.stoppedReason && <span style={{ color: "var(--red)" }}> · stoppet ({followUps.stoppedReason})</span>}
               </p>
-            )}
-          </div>
-
-          <Timeline companyId={c.id} activities={timelineActivities} />
-        </div>
-
-        <div className="virk-col">
-          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="virk-section-title">
-              <span>Økonomi</span>
-              <Link className="cc-link" href="/fakturaer" style={{ fontSize: 12.5 }}>Alle fakturaer</Link>
-            </div>
-            <dl className="virk-kv">
-              <div className="virk-kv-row"><dt>Ubetalt</dt><dd className="cc-mono">{dossier.balance.unpaid.toLocaleString("da-DK")} kr</dd></div>
-              <div className="virk-kv-row"><dt>Forfaldent</dt><dd className="cc-mono" style={dossier.balance.overdue > 0 ? { color: "var(--red)" } : undefined}>{dossier.balance.overdue.toLocaleString("da-DK")} kr</dd></div>
-            </dl>
-            {openInvoices.length === 0 ? (
-              <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen åbne fakturaer.</p>
-            ) : (
-              <div>
-                {openInvoices.map((inv) => {
-                  const overdue = isOverdue(inv, today);
-                  const status = overdue && inv.status === "sendt" ? "forfalden" : inv.status;
-                  return (
-                    <div key={inv.number} className="virk-invoice-row">
-                      <span>Faktura {inv.number}</span>
-                      <span className="cc-mono">{invoiceTotal(inv).total.toLocaleString("da-DK")} kr</span>
-                      <span className="virk-status-chip" style={INVOICE_STATUS_STYLE[status] ?? INVOICE_STATUS_STYLE.kladde}>{status}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <UnbilledWork companyId={c.id} items={unbilled} />
-
-          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="virk-section-title"><span>Site</span></div>
-            {dossier.site ? (
-              <dl className="virk-kv">
-                <div className="virk-kv-row"><dt>Status</dt><dd>{SITE_STATUS_LABEL[dossier.site.status] ?? dossier.site.status}</dd></div>
-                {dossier.site.domain && <div className="virk-kv-row"><dt>Domæne</dt><dd><a className="cc-link" href={websiteHref(dossier.site.domain)} target="_blank" rel="noreferrer">{dossier.site.domain}</a></dd></div>}
-                {dossier.site.cmsUrl && <div className="virk-kv-row"><dt>CMS</dt><dd><a className="cc-link" href={safeHref(dossier.site.cmsUrl)} target="_blank" rel="noreferrer">Åbn CMS</a></dd></div>}
-              </dl>
-            ) : (
-              <p className="cc-dim" style={{ fontSize: 12.5 }}>Intet site oprettet endnu.</p>
             )}
           </div>
 
@@ -244,22 +176,100 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
               </ul>
             )}
           </div>
-
-          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        </>
+      ),
+    },
+    {
+      key: "fakturaer",
+      label: "Fakturaer",
+      content: (
+        <>
+          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div className="virk-section-title">
-              <span>Kundeviden</span>
-              <button className="cc-btn" disabled title="Kommer snart">Opdater vidensbase</button>
+              <span>Økonomi</span>
+              <Link className="cc-link" href="/fakturaer" style={{ fontSize: 12.5 }}>Alle fakturaer</Link>
             </div>
-            {dossier.notes.length === 0 ? (
-              <p className="cc-dim" style={{ fontSize: 12.5 }}>
-                Ingen vault-note fundet endnu{process.env.GITHUB_TOKEN ? "." : " — vault-læsning kræver GITHUB_TOKEN lokalt."}
-              </p>
+            <dl className="virk-kv">
+              <div className="virk-kv-row"><dt>Ubetalt</dt><dd className="cc-mono">{dossier.balance.unpaid.toLocaleString("da-DK")} kr</dd></div>
+              <div className="virk-kv-row"><dt>Forfaldent</dt><dd className="cc-mono" style={dossier.balance.overdue > 0 ? { color: "var(--red)" } : undefined}>{dossier.balance.overdue.toLocaleString("da-DK")} kr</dd></div>
+            </dl>
+            {openInvoices.length === 0 ? (
+              <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen åbne fakturaer.</p>
             ) : (
-              dossier.notes.map((n) => <NoteCard key={n.path} title={n.title} body={n.body} />)
+              <div>
+                {openInvoices.map((inv) => {
+                  const overdue = isOverdue(inv, today);
+                  const status = overdue && inv.status === "sendt" ? "forfalden" : inv.status;
+                  return (
+                    <div key={inv.number} className="virk-invoice-row">
+                      <span>Faktura {inv.number}</span>
+                      <span className="cc-mono">{invoiceTotal(inv).total.toLocaleString("da-DK")} kr</span>
+                      <span className="virk-status-chip" style={INVOICE_STATUS_STYLE[status] ?? INVOICE_STATUS_STYLE.kladde}>{status}</span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
+
+          <UnbilledWork companyId={c.id} items={unbilled} />
+        </>
+      ),
+    },
+    {
+      key: "viden",
+      label: "Viden",
+      content: (
+        <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="virk-section-title">
+            <span>Kundeviden</span>
+            <button className="cc-btn" disabled title="Kommer snart">Opdater vidensbase</button>
+          </div>
+          {dossier.notes.length === 0 ? (
+            <p className="cc-dim" style={{ fontSize: 12.5 }}>
+              Ingen vault-note fundet endnu{process.env.GITHUB_TOKEN ? "." : " — vault-læsning kræver GITHUB_TOKEN lokalt."}
+            </p>
+          ) : (
+            dossier.notes.map((n) => <NoteCard key={n.path} title={n.title} body={n.body} />)
+          )}
         </div>
-      </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <PageHeader
+        icon="Building2"
+        title={c.name || "(uden navn)"}
+        subtitle={
+          // Spans, ikke divs — PageHeader sætter subtitlen i en <p>, og en <div>
+          // ville brække HTML-nestingen (block-i-p) og give en hydration-fejl.
+          <span style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span className="cc-chip" style={lifecycleChipStyle(c.lifecycle)}>{lifecycleLabel(c.lifecycle)}</span>
+              {c.jevGrade && <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {c.jevGrade}</span>}
+              <span>{[c.city, c.branch].filter(Boolean).join(" · ") || "–"}</span>
+              {c.clientNo !== null && <span>· Kunde #{c.clientNo}</span>}
+              {mrrSum > 0 && <span>· MRR {mrrSum.toLocaleString("da-DK")} kr</span>}
+            </span>
+            <span className="virk-header-links">
+              {c.website && <a href={websiteHref(c.website)} target="_blank" rel="noreferrer">{c.website}</a>}
+              {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
+              {c.phone && <a href={`tel:${c.phone}`}>{c.phone}</a>}
+              {!c.website && !c.email && !c.phone && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
+            </span>
+          </span>
+        }
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
+            <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo }} />
+          </div>
+        }
+      />
+
+      <ProfileTabs tabs={tabs} />
     </div>
   );
 }
