@@ -100,7 +100,7 @@ export default function OpgaverBoard({
 
   return (
     <div className="op-board">
-      <QuickAdd defaultOwner={owner || "lucas"} onCreated={reload} />
+      <QuickAdd defaultOwner={owner || "lucas"} today={today} onCreated={(msg) => { void reload(); notify(msg); }} />
 
       <div className="op-controls">
         <nav className="cc-section-tabs" aria-label="Opgavevisning">

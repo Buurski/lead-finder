@@ -17,7 +17,7 @@ export default function NewTaskDialog({
   const [results, setResults] = useState<{ id: string; name: string; city: string }[]>([]);
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(initialCompany ?? null);
   const [title, setTitle] = useState("");
-  const [due, setDue] = useState("");
+  const [due, setDue] = useState(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" })); // i dag
   const [owner, setOwner] = useState<"lucas" | "charlie">(defaultOwner);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

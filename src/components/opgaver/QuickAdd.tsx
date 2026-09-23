@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from "react";
 
 interface CompanyHit { id: string; name: string }
 
-export default function QuickAdd({ defaultOwner, onCreated }: { defaultOwner: string; onCreated: () => void }) {
+export default function QuickAdd({ defaultOwner, today, onCreated }: { defaultOwner: string; today: string; onCreated: (msg: string) => void }) {
   const [title, setTitle] = useState("");
-  const [due, setDue] = useState("");
+  // I dag som standard — ellers lander opgaven under "Uden dato" og er usynlig i "Min dag" (Lucas 23/9).
+  const [due, setDue] = useState(today);
   const [owner, setOwner] = useState(defaultOwner || "lucas");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<CompanyHit[]>([]);
@@ -43,8 +44,9 @@ export default function QuickAdd({ defaultOwner, onCreated }: { defaultOwner: st
         body: JSON.stringify({ title: title.trim(), due: due || undefined, owner, companyId: picked?.id }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke oprette opgaven");
-      setTitle(""); setDue(""); setQ(""); setPicked(null); setShowHits(false);
-      onCreated();
+      const where = !due ? "under Alle (uden dato)" : due === today ? "i Min dag" : `under Alle (${due})`;
+      setTitle(""); setDue(today); setQ(""); setPicked(null); setShowHits(false);
+      onCreated(`Opgave tilføjet — ligger ${where}.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "kunne ikke oprette opgaven");
     } finally {
