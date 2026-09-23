@@ -1,0 +1,187 @@
+/* HQ-forsiden (fase 2, Task 3). Tokens fra src/app/globals.css — ingen nye
+   farver her. Motion: 150-250ms ease-out, transform/opacity kun,
+   prefers-reduced-motion nulstiller alt nederst i filen. */
+
+.hq-page { display: flex; flex-direction: column; gap: 16px; padding-top: 28px; }
+
+.hq-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---------- Greeting ---------- */
+.hq-greeting { margin-bottom: 4px; }
+.hq-greeting h1 { font-size: clamp(22px, 2.2vw, 28px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
+.hq-date { font-size: 12px; color: var(--text-dim); }
+
+/* ---------- Section label ---------- */
+.hq-section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim); margin: 8px 0 12px 4px;
+}
+
+/* ---------- KPI row ---------- */
+.hq-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.hq-kpi-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; min-height: 128px;
+  transition: border-color 140ms ease;
+}
+.hq-kpi-card:hover { border-color: var(--border-strong); }
+.hq-kpi-card.hero { background: var(--text); border-color: var(--text); color: #fff; }
+.hq-kpi-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.hq-kpi-card.hero .hq-kpi-label { color: #B9B4AA; }
+.hq-kpi-num { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.hq-kpi-sub { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.hq-kpi-card.hero .hq-kpi-sub { color: #8F8A7E; }
+.hq-kpi-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
+
+/* ---------- Pipeline strip ---------- */
+.hq-pipeline-card { padding: 24px; }
+.hq-pipeline-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.hq-pipeline-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
+.hq-open-link { display: flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--text); }
+.hq-seg-bar { display: flex; gap: 4px; height: 40px; margin-bottom: 14px; }
+.hq-seg { border-radius: 10px; background: var(--surface-2); }
+.hq-seg.on { background: var(--accent); }
+.hq-seg-labels { display: flex; gap: 4px; }
+.hq-seg-label { display: flex; flex-direction: column; gap: 2px; }
+.hq-seg-label .n { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.hq-seg-label .t { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+
+/* ---------- Columns (desktop: table+penge venstre, agent+team højre) --- */
+.hq-columns { display: grid; grid-template-columns: 1.62fr 1fr; gap: 16px; align-items: start; }
+.hq-col-left, .hq-col-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ---------- Next steps table ---------- */
+.hq-table-card { overflow: hidden; }
+.hq-table-head {
+  display: grid; grid-template-columns: 1.5fr 1.7fr 0.45fr 0.85fr; gap: 12px; padding: 16px 24px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.hq-table-head .right { text-align: right; }
+.hq-row {
+  display: grid; grid-template-columns: 1.5fr 1.7fr 0.45fr 0.85fr; gap: 12px; align-items: center;
+  padding: 16px 24px; border-top: 1px solid var(--border); color: inherit; text-decoration: none;
+  transition: background 140ms ease;
+}
+.hq-row:first-of-type { border-top: none; }
+a.hq-row:hover { background: var(--surface-2); }
+.hq-row-name { font-size: 14px; font-weight: 700; }
+.hq-row-deal { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+.hq-row-step { font-size: 13.5px; color: var(--text-muted); }
+.hq-row-step.missing { color: var(--red); }
+.hq-owner {
+  width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.hq-owner.l { background: var(--accent); color: var(--accent-ink); }
+.hq-owner.c { background: var(--text); color: var(--accent); }
+.hq-owner.none { background: var(--surface-2); color: var(--text-dim); }
+.hq-row-due { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hq-due-date { font-size: 11px; color: var(--text-dim); }
+.hq-pill { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.hq-pill.risk { background: var(--red-dim); color: var(--red); }
+.hq-pill.warn { background: var(--amber-dim); color: var(--amber); }
+.hq-pill.faded { background: var(--surface-2); color: var(--text-dim); }
+.hq-empty { padding: 34px 18px; text-align: center; color: var(--text-dim); font-size: 13.5px; }
+
+/* ---------- Agent card (Hermes, mørk) ---------- */
+.hq-agent-card { background: var(--kinly-rail); color: #EDEDEA; border-radius: var(--radius); padding: 24px; }
+.hq-agent-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.hq-agent-who { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #C9C4B8; }
+.hq-agent-who svg { color: var(--accent); }
+.hq-agent-ago { font-size: 11px; color: #7C7669; }
+.hq-agent-card h3 { font-size: 17px; font-weight: 700; margin: 6px 0 16px; line-height: 1.35; }
+.hq-agent-error { font-size: 13.5px; color: #A19C8F; margin: 6px 0 18px; }
+.hq-agent-jobs { display: flex; flex-direction: column; gap: 9px; margin-bottom: 18px; }
+.hq-agent-job { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #D9D5CB; }
+.hq-agent-job .dot { width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
+.hq-agent-job .dot.ok { background: var(--accent); }
+.hq-agent-job .dot.bad { background: var(--red); }
+.hq-agent-job .dot.warn { background: var(--amber); }
+.hq-agent-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.hq-btn-lime {
+  background: var(--accent); color: var(--accent-ink); border: none; border-radius: 999px;
+  padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: transform 120ms ease;
+}
+.hq-btn-lime:active { transform: scale(0.98); }
+.hq-agent-link { font-size: 12.5px; font-weight: 700; color: #D9D5CB; text-decoration: none; }
+.hq-agent-link:hover { color: #fff; }
+
+/* ---------- Team card ---------- */
+.hq-team-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 16px; }
+.hq-team-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.hq-team-row + .hq-team-row { border-top: 1px solid var(--border); }
+.hq-avatar-sm { width: 34px; height: 34px; border-radius: 999px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.hq-avatar-sm.l { background: var(--text); color: var(--accent); }
+.hq-avatar-sm.c { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.hq-team-body { min-width: 0; }
+.hq-team-body .who { font-size: 13px; font-weight: 700; }
+.hq-team-body .what { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; }
+.hq-team-time { margin-left: auto; font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+/* ---------- Money card ---------- */
+.hq-money-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.hq-money-head h3 { font-size: 14px; font-weight: 700; margin: 0; }
+.hq-money-link {
+  width: 28px; height: 28px; border-radius: 999px; background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+  transition: background 140ms ease;
+}
+.hq-money-link:hover { background: var(--border); }
+.hq-money-block { background: var(--accent); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 14px; }
+.hq-mrr-label { font-size: 12px; font-weight: 700; color: var(--accent-ink); opacity: 0.75; }
+.hq-mrr-num { font-size: 32px; font-weight: 800; color: var(--accent-ink); letter-spacing: -0.02em; margin-top: 4px; }
+.hq-money-stats { display: flex; flex-direction: column; gap: 10px; }
+.hq-money-stat { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.hq-money-stat .k { color: var(--text-muted); }
+.hq-money-stat .v { font-weight: 700; }
+.hq-money-stat .v.risk { color: var(--red); }
+
+/* ---------- Omverden ---------- */
+.hq-omverden-wrap { margin-top: 8px; }
+.hq-omverden { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.hq-om-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px 20px; display: flex; align-items: flex-start; gap: 12px; }
+.hq-om-card .tag { width: 8px; height: 8px; border-radius: 999px; background: var(--text-dim); margin-top: 6px; flex-shrink: 0; }
+.hq-om-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.4; }
+.hq-om-title a { color: inherit; text-decoration: none; }
+.hq-om-title a:hover { text-decoration: underline; }
+.hq-om-summary { margin: 4px 0 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* ===================================================================== */
+/* Mobile (<768px) — single column; næste-skridt-rækker på én linje       */
+/* ===================================================================== */
+@media (max-width: 767px) {
+  .hq-page { padding-top: 8px; gap: 14px; }
+  .hq-greeting h1 { font-size: 22px; }
+
+  .hq-kpi-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .hq-kpi-card { padding: 18px; min-height: 108px; }
+  .hq-kpi-num { font-size: 30px; }
+
+  .hq-pipeline-card { padding: 18px; }
+  .hq-pipeline-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .hq-seg-bar { height: 32px; }
+  .hq-seg-label .n { font-size: 15px; }
+  .hq-seg-label .t { font-size: 10px; }
+
+  .hq-columns { grid-template-columns: 1fr; }
+
+  /* Rettelse 4: navn + forfalds-pille på én linje, handling under i lille tekst. */
+  .hq-table-head { display: none; }
+  .hq-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "company due" "step step";
+    row-gap: 6px; column-gap: 10px; padding: 16px;
+  }
+  .hq-row-company { grid-area: company; }
+  .hq-row-due { grid-area: due; flex-direction: row; align-items: center; gap: 8px; }
+  .hq-row-step { grid-area: step; font-size: 12.5px; }
+  .hq-row-owner { display: none; }
+
+  .hq-omverden { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hq-kpi-card, .hq-btn-lime, .hq-row, .hq-money-link { transition: none !important; }
+}
