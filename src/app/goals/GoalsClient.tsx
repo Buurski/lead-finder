@@ -126,7 +126,7 @@ export default function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) 
       </form>
       <p className="cc-dim" style={{ fontSize: 11.5, margin: "10px 0 0" }}>
         Ændringer committes direkte til vaulten (roadmap-naeste-skridt.md) — Obsidian og Hermes ser det samme.
-        Du kan også bede Claude nede i hjørnet: “tilføj mål: …”.
+        Du kan også bede Hermes (⌘J): “tilføj mål: …”.
       </p>
     </section>
   );
