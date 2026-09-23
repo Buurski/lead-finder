@@ -24,17 +24,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
   const { number } = await params;
   const inv = await getInvoice(number);
   if (!inv) return NextResponse.json({ error: "invoice not found" }, { status: 404 });
-  if (inv.status !== "kladde" && inv.status !== "sendt") {
-    return NextResponse.json({ error: `kan ikke sende faktura med status "${inv.status}"` }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string; extra?: string; dueDate?: string; force?: boolean; reminder?: boolean };
+  // reminder = betalingspåmindelse på en allerede sendt, ubetalt faktura (samme PDF, ny tekst).
+  const reminder = body.reminder === true;
+  const allowed = reminder ? ["sendt", "forfalden", "rykket"] : ["kladde", "sendt"];
+  if (!allowed.includes(inv.status)) {
+    return NextResponse.json({ error: `kan ikke ${reminder ? "rykke for" : "sende"} en faktura med status "${inv.status}"` }, { status: 400 });
   }
-
-  const body = (await req.json().catch(() => ({}))) as { to?: string; subject?: string; body?: string; extra?: string; dueDate?: string; force?: boolean };
   if (!body.to) return NextResponse.json({ error: "mangler modtager-email (to)" }, { status: 400 });
   if (body.dueDate !== undefined && !ISO.test(body.dueDate)) {
     return NextResponse.json({ error: "dueDate skal være YYYY-MM-DD" }, { status: 400 });
   }
   // Forfaldsdato låses ved afsendelse — så den regnes fra den dag mailen faktisk går ud.
-  if (body.dueDate) inv.dueDate = body.dueDate;
+  // En påmindelse flytter ikke den oprindelige forfaldsdato.
+  if (body.dueDate && !reminder) inv.dueDate = body.dueDate;
 
   const biz = await getBusinessSettings();
 
@@ -53,14 +56,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     const month = new Date(inv.issueDate).toLocaleDateString("da-DK", { month: "long", year: "numeric" });
     const dueFmt = new Date(inv.dueDate + "T00:00:00Z").toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
     const extra = body.extra?.trim();
-    const subject = body.subject || `Faktura ${number} — ${biz.name}`;
+    const subject = body.subject || (reminder ? `Påmindelse: faktura ${number} — ${biz.name}` : `Faktura ${number} — ${biz.name}`);
     const unsignedText =
-      body.body ||
+      body.body || (reminder
+        ? `Hej ${inv.recipient.att || inv.recipient.name}\n\n` +
+          `En venlig påmindelse: faktura ${number} på ${total.toLocaleString("da-DK")} kr. forfaldt ${dueFmt}, og vi kan ikke se betalingen endnu. Fakturaen er vedhæftet igen.\n\n` +
+          (extra ? `${extra}\n\n` : "") +
+          `Betaling via bankoverførsel:\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\n` +
+          `Har I allerede betalt, så se bort fra denne mail.`
+        :
       `Hej ${inv.recipient.att || inv.recipient.name}\n\n` +
       `Her er fakturaen for ${month} — ${total.toLocaleString("da-DK")} kr., betales senest ${dueFmt}.\n\n` +
       (extra ? `${extra}\n\n` : "") +
       `Betaling via bankoverførsel (nemt at kopiere herfra):\nReg.nr.: ${biz.bankReg}\nKontonr.: ${biz.bankAccount}\nBeløb: ${total.toLocaleString("da-DK")} kr.\n\n` +
-      `Sig endelig til hvis noget driller.`;
+      `Sig endelig til hvis noget driller.`);
     const text = applySignature(unsignedText, "lucas");
 
     const transporter = getTransporter("lucas");
@@ -87,14 +96,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
       throw e;
     });
 
-    inv.status = "sendt";
-    inv.sentAt = new Date().toISOString();
+    if (reminder) {
+      inv.status = "rykket";
+      inv.remindedAt = new Date().toISOString();
+    } else {
+      inv.status = "sendt";
+      inv.sentAt = new Date().toISOString();
+    }
     delete inv.sendingAt;
     inv.pdfUrl = pdfUrl;
     await saveInvoice(inv);
 
     // System-hændelse i CRM-loggen (per-dag-dedup).
-    await appendSystemActivity(inv.clientName, `inv_${number}_sent_${new Date().toISOString().slice(0, 10)}`, `Faktura ${number} sendt`).catch(() => {});
+    await appendSystemActivity(inv.clientName, `inv_${number}_${reminder ? "reminded" : "sent"}_${new Date().toISOString().slice(0, 10)}`, reminder ? `Påmindelse om faktura ${number} sendt` : `Faktura ${number} sendt`).catch(() => {});
 
     return NextResponse.json({ ok: true, invoice: inv });
   } catch (err) {
