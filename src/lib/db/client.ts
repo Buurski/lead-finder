@@ -20,7 +20,8 @@ export function getDb(): Db {
   if (_db) return _db;
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATA_BACKEND=pg men DATABASE_URL mangler");
-  _db = drizzle(postgres(url, { prepare: false, max: 5 }), { schema });
+  // DB_POOL_MAX=1 lokalt: pglite-server tåler ikke flere samtidige forbindelser.
+  _db = drizzle(postgres(url, { prepare: false, max: Number(process.env.DB_POOL_MAX) || 5 }), { schema });
   return _db;
 }
 
