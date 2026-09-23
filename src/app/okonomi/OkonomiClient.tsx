@@ -88,7 +88,7 @@ function ProgressRow({
   const marker = Math.min(Math.max(markerFrac, 0), 1) * 100;
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 7 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{label}</span>
         <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6, fontSize: 13, color: DIM }}>
           <strong style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--text)", fontVariantNumeric: "tabular-nums lining-nums" }}>{actual}</strong>
