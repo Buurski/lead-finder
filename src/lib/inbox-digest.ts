@@ -96,9 +96,31 @@ export async function saveDigest(d: InboxDigest): Promise<void> {
   await store.put(DIGEST_KEY, d);
 }
 
+const HANDLED_KEY = "replies/handled"; // leadId → ISO for hvornår svaret blev behandlet
+
+/** "Markér som besvaret": svar fra dette lead til og med nu er håndteret. Overlever at
+ * oversigten bygges på ny fra Gmail; et NYT svar efter tidspunktet dukker op igen. */
+export async function markReplyHandled(leadId: string, at = new Date().toISOString()): Promise<void> {
+  const map = (await store.get<Record<string, string>>(HANDLED_KEY)) ?? {};
+  map[leadId] = at;
+  await store.put(HANDLED_KEY, map);
+}
+
+/** Ren: slår behandlede svar fra (needsReply=false) når svaret ikke er nyere end behandlingen. */
+export function applyHandled(d: InboxDigest, handled: Record<string, string>): InboxDigest {
+  return {
+    ...d,
+    items: d.items.map((i) =>
+      i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
+    ),
+  };
+}
+
 export async function loadDigest(): Promise<InboxDigest | null> {
   try {
-    return await store.get<InboxDigest>(DIGEST_KEY);
+    const d = await store.get<InboxDigest>(DIGEST_KEY);
+    if (!d) return null;
+    return applyHandled(d, (await store.get<Record<string, string>>(HANDLED_KEY)) ?? {});
   } catch {
     return null;
   }

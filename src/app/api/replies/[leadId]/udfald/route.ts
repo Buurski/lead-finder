@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { HqInputError, hqWrite, jsonBody } from "@/lib/hq/api";
 import { recordReplyOutcome, ReplyOutcomeError, type ReplyOutcome } from "@/lib/hq/reply-outcome";
-import { loadDigest, saveDigest } from "@/lib/inbox-digest";
+import { markReplyHandled } from "@/lib/inbox-digest";
 
 export const runtime = "nodejs";
 
@@ -38,19 +38,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ leadId: string
       throw err;
     }
 
-    try {
-      const digest = await loadDigest();
-      if (digest) {
-        let changed = false;
-        const items = digest.items.map((i) => {
-          if (i.leadId === leadId && i.needsReply) { changed = true; return { ...i, needsReply: false }; }
-          return i;
-        });
-        if (changed) await saveDigest({ ...digest, items });
-      }
-    } catch {
-      // Best-effort: udfaldet er allerede gemt; en digest-cache-fejl skal ikke fejle svaret.
-    }
+    // Best-effort: udfaldet er allerede gemt; en fejl her må ikke fejle svaret.
+    await markReplyHandled(leadId).catch(() => {});
 
     return { ok: true, ...result };
   });
