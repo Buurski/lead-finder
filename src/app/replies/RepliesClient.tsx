@@ -117,7 +117,7 @@ function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: (
 
   if (!open) {
     return (
-      <button className="cc-btn cc-btn-accent" onClick={() => setOpen(true)}>
+      <button className="cc-btn" onClick={() => setOpen(true)}>
         <Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> Markér som besvaret
       </button>
     );
@@ -177,7 +177,7 @@ function ReplyComposer({ item, onSent }: { item: InboxItem; onSent: () => void }
     <div style={{ display: "grid", gap: 8 }}>
       <label className="cc-kicker" htmlFor={`svar-${item.id}`}>Dit svar</label>
       <textarea id={`svar-${item.id}`} className="cc-input" rows={7} value={text} onChange={(e) => { setText(e.target.value); if (state === "confirm") setState("idle"); }}
-        disabled={locked} style={{ lineHeight: 1.55, resize: "vertical" }} placeholder="Skriv svaret her…" />
+        disabled={locked} style={{ height: "auto", minHeight: 170, padding: "12px 14px", lineHeight: 1.55, resize: "vertical" }} placeholder="Skriv svaret her…" />
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", gap: 10, alignItems: "center" }} disabled={locked}>
           <legend className="cc-dim" style={{ fontSize: 12.5, float: "left", marginRight: 6 }}>Fra</legend>
