@@ -102,6 +102,16 @@ test("for kort adgangskode giver svag uden at forbruge koden", async () => {
   assert.equal(retry.ok, true, "samme kode skal virke bagefter");
 });
 
+test("kort adgangskode med forkert kode giver ugyldig (ingen enumeration om aktivt bevis)", async () => {
+  await giveCode("lucas@kinly.dk", CODE, omLidt());
+  const wrongCode = await setupAccount(db, { email: "lucas@kinly.dk", code: "ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ", password: "kort" });
+  assert.deepEqual(wrongCode, { ok: false, reason: "ugyldig" });
+
+  // charlie har intet aktivt bevis: kort adgangskode må heller ikke give "svag" her.
+  const noProof = await setupAccount(db, { email: "charlie@kinly.dk", code: CODE, password: "kort" });
+  assert.deepEqual(noProof, { ok: false, reason: "ugyldig" });
+});
+
 test("ukendt mail giver ugyldig ved opsætning", async () => {
   const res = await setupAccount(db, { email: "ingen@kinly.dk", code: CODE, password: PASSWORD });
   assert.deepEqual(res, { ok: false, reason: "ugyldig" });

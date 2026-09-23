@@ -61,8 +61,10 @@ export async function setupAccount(
   if (user.passwordHash && !user.setupHash) return afvis("brugt");
   if (!user.setupHash || !user.setupExpiresAt) return afvis("ugyldig");
   if (user.setupExpiresAt.getTime() <= Date.now()) return afvis("udloebet");
-  if (input.password.length < MIN_PASSWORD_LENGTH) return { ok: false, reason: "svag" };
+  // Koden verificeres FØR længde-tjekket: ellers ville svaret "svag" afsløre,
+  // at mailen har et aktivt opsætningsbevis (bruger-enumeration).
   if (!(await verifyPassword(input.code, user.setupHash))) return { ok: false, reason: "ugyldig" };
+  if (input.password.length < MIN_PASSWORD_LENGTH) return { ok: false, reason: "svag" };
 
   const passwordHash = await hashPassword(input.password);
   const consumed = await db
