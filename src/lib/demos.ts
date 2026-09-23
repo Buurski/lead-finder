@@ -107,12 +107,13 @@ const PROFESSIONAL = /advokat|jurist|jura|revisor|revision|bogholder|regnskab|ej
 export function pickDemos(branch: string, name: string): Demo[] {
   const t = `${name} ${branch}`.toLowerCase();
 
-  // VIDA (reel kunde på eget domæne vida-klinik.dk) er altid hovedpunktet for
+  // Rigtige kunder linkes via kinly.dk-casesiden (Lucas 23/9), aldrig direkte til
+  // kundens eget domæne. VIDA-casen er altid hovedpunktet for
   // skønhed/klinik. Andre demos er supplement — rækkefølgen i array er den
   // rækkefølge de vises i mailen.
-  if (CLINIC.test(t)) return [D.vidaCase, D.vida];
+  if (CLINIC.test(t)) return [D.vidaCase, D.salonArtec];
   if (BARBER.test(t)) return [D.salonArtec, D.streetcut];
-  if (BEAUTY.test(t)) return [D.vidaCase, D.vida, D.salonArtec];
+  if (BEAUTY.test(t)) return [D.vidaCase, D.salonArtec];
   if (PHOTO.test(t)) return [D.buurfoto, D.underKlippen];
   if (FOOD_INTL.test(t)) return [D.zaytoon, D.underKlippen];
   if (FOOD.test(t)) return [D.jernbanecafeenCase, D.underKlippen];

@@ -12,13 +12,13 @@ import { DEMO_SITES } from "../demos.ts";
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
   beautySalon: DEMO_SITES.salonArtec,
-  beautyClinic: DEMO_SITES.vida,
+  beautyClinic: DEMO_SITES.vidaCase,
   foodInter: DEMO_SITES.zaytoon,
-  foodCafe: DEMO_SITES.underKlippen,
+  foodCafe: DEMO_SITES.jernbanecafeenCase,
   photo: DEMO_SITES.buurfoto,
   craftUtility: DEMO_SITES.ktvvs,
   craft: DEMO_SITES.denlillemaler,
-  service: DEMO_SITES.vestfjends,
+  service: DEMO_SITES.ikastCase,
 };
 
 export function branchGroupFor(branch: string, name: string): MsgGroup {
