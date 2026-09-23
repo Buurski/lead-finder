@@ -43,7 +43,8 @@ function catTone(c: string): { bg: string; fg: string } {
 
 // Gmail-konti pr. indbakke — samme mapping som kontopillen nedenfor (RepliesClient
 // kan ikke importere src/lib/senders.ts, den er server-only/nodemailer).
-const ACCOUNT_EMAIL: Record<string, string> = { lucas: "buur.aigro@gmail.com", charlie: "1charlie.nielsen@gmail.com" };
+// Lucas skriver fra lucas@kinly.dk (Workspace) — ikke den gamle buur.aigro-konto (23/9).
+const ACCOUNT_EMAIL: Record<string, string> = { lucas: "lucas@kinly.dk", charlie: "1charlie.nielsen@gmail.com" };
 
 // Gmail-compose-link, forudfyldt med kladden — "authuser" hopper direkte ind på
 // den konto svaret kom ind på, hvis Lucas/Charlie er logget ind med flere konti.
