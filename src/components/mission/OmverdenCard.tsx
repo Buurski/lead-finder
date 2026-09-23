@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { safeHref } from "@/lib/safe-href";
 import Icon from "@/components/shell/Icon";
 
 // "Omverden" — kurateret daglig viden udefra (TechTwitter, AI-nyt, idéer der
@@ -65,7 +66,7 @@ export default function OmverdenCard() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.4 }}>
                 {it.url ? (
-                  <a href={it.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
+                  <a href={safeHref(it.url)} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
                     {it.title} <span className="cc-dim" style={{ fontSize: 11 }}>↗</span>
                   </a>
                 ) : it.title}

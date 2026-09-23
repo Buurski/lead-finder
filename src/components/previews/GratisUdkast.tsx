@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { safeHref } from "@/lib/safe-href";
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { timeAgo } from "@/components/hq/time";
@@ -320,8 +321,8 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
 
       <div className="gu-visual">
         {item.screenshotUrl && !screenshotFailed ? (
-          <a href={item.previewUrl || item.screenshotUrl} target="_blank" rel="noreferrer" style={{ flex: 1 }}>
-            <img src={item.screenshotUrl} alt={`Screenshot af ${item.company}`} onError={() => setScreenshotFailed(true)} />
+          <a href={safeHref(item.previewUrl || item.screenshotUrl)} target="_blank" rel="noreferrer" style={{ flex: 1 }}>
+            <img src={safeHref(item.screenshotUrl)} alt={`Screenshot af ${item.company}`} onError={() => setScreenshotFailed(true)} />
           </a>
         ) : (
           <span className="gu-visual-empty" style={{ margin: "auto" }}>
@@ -329,7 +330,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
           </span>
         )}
         {item.previewUrl && (
-          <a className="gu-visual-link" href={item.previewUrl} target="_blank" rel="noreferrer">
+          <a className="gu-visual-link" href={safeHref(item.previewUrl)} target="_blank" rel="noreferrer">
             <Icon name="ArrowUpRight" style={{ width: 14, height: 14 }} /> Åbn udkastet
           </a>
         )}
@@ -356,7 +357,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
         {item.website && (
           <div>
             <span className="cc-kicker">Nuværende side</span>
-            <div className="gu-field-value"><a href={item.website} target="_blank" rel="noreferrer">{item.website}</a></div>
+            <div className="gu-field-value"><a href={safeHref(item.website)} target="_blank" rel="noreferrer">{item.website}</a></div>
           </div>
         )}
         <CompanyLink item={item} />

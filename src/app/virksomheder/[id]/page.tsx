@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { safeHref } from "@/lib/safe-href";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
@@ -89,7 +90,9 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
     );
   }
 
-  const mrrSum = dossier.deals.reduce((sum, d) => sum + (d.mrrDkk ?? 0), 0);
+  // Kun aftaler der er landet — tilbud og tabte tæller ikke som månedlig indtægt.
+  const LIVE = new Set(["aftalt", "i_gang", "leveret", "betalt"]);
+  const mrrSum = dossier.deals.filter((d) => LIVE.has(normalizeStage(d.stage))).reduce((sum, d) => sum + (d.mrrDkk ?? 0), 0);
   const timelineActivities = dossier.activities.map((a) => ({
     id: a.id,
     type: a.type,
@@ -203,7 +206,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
               <dl className="virk-kv">
                 <div className="virk-kv-row"><dt>Status</dt><dd>{SITE_STATUS_LABEL[dossier.site.status] ?? dossier.site.status}</dd></div>
                 {dossier.site.domain && <div className="virk-kv-row"><dt>Domæne</dt><dd><a className="cc-link" href={websiteHref(dossier.site.domain)} target="_blank" rel="noreferrer">{dossier.site.domain}</a></dd></div>}
-                {dossier.site.cmsUrl && <div className="virk-kv-row"><dt>CMS</dt><dd><a className="cc-link" href={dossier.site.cmsUrl} target="_blank" rel="noreferrer">Åbn CMS</a></dd></div>}
+                {dossier.site.cmsUrl && <div className="virk-kv-row"><dt>CMS</dt><dd><a className="cc-link" href={safeHref(dossier.site.cmsUrl)} target="_blank" rel="noreferrer">Åbn CMS</a></dd></div>}
               </dl>
             ) : (
               <p className="cc-dim" style={{ fontSize: 12.5 }}>Intet site oprettet endnu.</p>

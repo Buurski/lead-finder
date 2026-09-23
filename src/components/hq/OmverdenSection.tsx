@@ -1,4 +1,5 @@
 import { readVaultJson } from "@/lib/vault";
+import { safeHref } from "@/lib/safe-href";
 
 interface OmverdenItem {
   title: string;
@@ -48,7 +49,7 @@ export default async function OmverdenSection() {
             <div>
               <p className="hq-om-title">
                 {it.url ? (
-                  <a href={it.url} target="_blank" rel="noopener noreferrer" className="cc-focus">
+                  <a href={safeHref(it.url)} target="_blank" rel="noopener noreferrer" className="cc-focus">
                     {it.title}
                   </a>
                 ) : (
