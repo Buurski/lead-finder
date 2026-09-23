@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
 import type { DealStage, PipelineCard } from "@/lib/hq/deals";
-import { OWNER_LABEL, STALE_EXEMPT, formatDue, formatKr, staleDays, stepState, type Owner, type StageInfo, type StepState } from "./pipeline-utils";
+import MakeCustomerButton from "@/components/virksomheder/MakeCustomerButton";
+import { OWNER_LABEL, STALE_EXEMPT, WON_STAGES, formatDue, formatKr, staleDays, stepState, type Owner, type StageInfo, type StepState } from "./pipeline-utils";
 
 export default function DealCard({
-  card, today, stages, dealCount, draggable, dragging, onDragStart, onDragEnd, onMove, onOwner, onStep,
+  card, today, stages, dealCount, draggable, dragging, isCustomer, onDragStart, onDragEnd, onMove, onOwner, onStep,
 }: {
   card: PipelineCard;
   today: string;
@@ -15,6 +16,7 @@ export default function DealCard({
   dealCount: number;
   draggable: boolean;
   dragging: boolean;
+  isCustomer: boolean;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onMove: (id: string, stage: DealStage) => void;
@@ -98,6 +100,10 @@ export default function DealCard({
       </div>
 
       {amount && <div className="pl-card-amount">{amount}</div>}
+
+      {!isCustomer && WON_STAGES.has(card.stage) && (
+        <MakeCustomerButton companyId={card.companyId} companyName={card.company} small />
+      )}
 
       <div className="pl-nextstep">
         {editing ? (

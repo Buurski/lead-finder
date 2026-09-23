@@ -4,6 +4,9 @@ import type { DealStage, PipelineCard } from "@/lib/hq/deals";
 export type Owner = "" | "lucas" | "charlie";
 export const OWNER_LABEL: Record<Owner, string> = { "": "ingen ejer", lucas: "Lucas", charlie: "Charlie" };
 export const STALE_EXEMPT = new Set(["betalt", "tabt"]);
+// Aftalt eller længere fremme = vundet (bølge 3, "Vundet → kunde"). Spejler
+// LIVE-sættet i virksomhedsprofilens page.tsx.
+export const WON_STAGES = new Set<DealStage>(["aftalt", "i_gang", "leveret", "betalt"]);
 
 export interface StageInfo {
   stage: DealStage;

@@ -19,9 +19,10 @@ interface Props {
   today: string;
   owner: Owner;
   actionOnly: boolean;
+  customerByCompany: Record<string, boolean>;
 }
 
-export default function PipelineBoard({ initialCards, stages, today, owner, actionOnly }: Props) {
+export default function PipelineBoard({ initialCards, stages, today, owner, actionOnly, customerByCompany }: Props) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -137,6 +138,7 @@ export default function PipelineBoard({ initialCards, stages, today, owner, acti
                     dealCount={dealCounts.get(card.companyId) ?? 1}
                     draggable={!touchDevice}
                     dragging={dragId === card.id}
+                    isCustomer={customerByCompany[card.companyId] ?? false}
                     onDragStart={setDragId}
                     onDragEnd={() => { setDragId(null); setDragOverStage(null); }}
                     onMove={moveDeal}

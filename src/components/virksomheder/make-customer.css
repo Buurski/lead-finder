@@ -1,0 +1,36 @@
+/* "Gør til kunde"-knap + bekræftelsesdialog, og opstarts-tjeklisten på
+   kundeprofilens Overblik-fane (bølge 3). Egen fil (fælles-regel #7) — genbruger
+   kun tokens + samme overlay/dialog-mål som pipeline.css' NewDealDialog, ikke en
+   ny stil-familie. Bevægelse: kun opacity, 140ms, ingen stagger (fælles-regel #16). */
+
+.mkk-overlay {
+  position: fixed; inset: 0; background: rgba(22, 19, 15, 0.4); z-index: 1000;
+  display: grid; place-items: center; padding: 16px;
+}
+
+.mkk-dialog {
+  width: min(420px, 100%); max-height: 88vh; overflow-y: auto;
+  background: var(--surface); border-radius: var(--radius); padding: 22px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: mkk-fade 140ms ease both;
+}
+
+@keyframes mkk-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.mkk-dialog h2 { margin: 0; font-size: 16px; }
+
+.mkk-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+
+.mkk-error { color: var(--red); font-size: 12.5px; margin: 0; }
+
+.mkk-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.mkk-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+
+.mkk-check { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+.mkk-check input { width: 16px; height: 16px; accent-color: var(--text); flex-shrink: 0; }
+.mkk-check span[data-done="true"] { color: var(--text-dim); text-decoration: line-through; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mkk-dialog { animation: none !important; }
+}
