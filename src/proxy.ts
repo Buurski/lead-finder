@@ -34,7 +34,7 @@ export const config = {
   // seo-tjek er den offentlige lead-magnet-tragt: formular + rapport + afmeld
   // skal kunne nås af fremmede uden kodeord. Stats-endpointet (api/seo-tjek/stats)
   // matcher IKKE undtagelserne og forbliver bag basic auth.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|api/hermes/crm-dossier$|api/agent/log$|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  matcher: ["/((?!_next/|api/health|api/cron/|api/hermes/status|api/hermes/crm-dossier$|api/agent/|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/submit|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 
