@@ -52,6 +52,19 @@ function daysSince(iso: string, now: number): number {
 const dage = (n: number) => (n === 1 ? "1 dag" : `${n} dage`);
 const kr = (n: number) => `${n.toLocaleString("da-DK")} kr`;
 
+// Fallback-domæne: virksomhedens website (Sheets-feltet) er ofte udfyldt
+// længe før et site oprettes i src/lib/db/schema.ts's site-tabel — værtsnavnet
+// derfra er bedre end at sige "mangler" når det reelt står i headeren.
+function hostnameFrom(website: string | null | undefined): string | null {
+  const w = (website ?? "").trim();
+  if (!w) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 export function buildOverview(
   d: Dossier,
   extra: { subscription: Subscription | null; unbilled: number; now: number },
@@ -95,11 +108,12 @@ export function buildOverview(
     if (!x.nextStep?.trim()) attention.push({ level: "obs", text: `"${x.title || "Aftale"}" har intet næste skridt` });
   }
 
+  const fallbackDomain = hostnameFrom(d.company.website);
   const isClient = d.company.clientNo !== null && !d.company.clientRemoved;
   const missing: string[] = [];
   if (isClient && !plan) missing.push("aftale/pris");
   if (!d.contacts.some((c) => c.email) && !d.company.email) missing.push("kontakt-mail");
-  if (isClient && !d.site?.domain) missing.push("domæne");
+  if (isClient && !d.site?.domain && !fallbackDomain) missing.push("domæne");
   if (isClient && !(d.company.services ?? []).length) missing.push("hvad vi leverer");
   if (isClient && !d.deals.length) missing.push("aftale i pipeline");
 
