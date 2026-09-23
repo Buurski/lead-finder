@@ -1,0 +1,67 @@
+/* Kundeopdateringer — kladde-editor (virksomhedsprofil, inline) + liste/detalje
+   (/kundeopdateringer). Bruger kun tokens fra globals.css; genbruger virk-*
+   for kort/knapper/chips (samme visuelle sprog som virksomheder-fanen).
+
+   Bevægelse: ingen — kun diskret hover/tryk fra virk-btn-press/virk-row. */
+
+.ko-editor { display: flex; flex-direction: column; gap: 10px; }
+
+.ko-editor-row { display: flex; align-items: center; gap: 8px; }
+
+.ko-field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--text-dim); }
+
+.ko-field input,
+.ko-field textarea {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 8px 10px;
+  font-size: 13.5px;
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.ko-field input:disabled,
+.ko-field textarea:disabled { color: var(--text-muted); background: var(--surface-2); }
+
+.ko-field input:focus-visible,
+.ko-field textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.ko-editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.ko-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; align-items: start; }
+
+@media (max-width: 900px) {
+  .ko-grid { grid-template-columns: 1fr; }
+}
+
+.ko-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: background 120ms ease;
+}
+
+.ko-row:last-child { border-bottom: none; }
+.ko-row:hover { background: var(--bg-2); }
+.ko-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ko-row[aria-current="true"] { background: var(--bg-2); }
+
+.ko-row-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.ko-row-company { font-weight: 600; font-size: 13.5px; }
+.ko-row-time { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+.ko-row-subject { font-size: 12.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ko-row { transition: none !important; }
+}
