@@ -72,6 +72,14 @@ export const company = pgTable(
   (t) => [uniqueIndex("company_place_id_uq").on(t.placeId).where(sql`${t.placeId} is not null`)],
 );
 
+export const companyRelation = pgTable("company_relation", {
+  id: id(),
+  aId: uuid("a_id").notNull().references(() => company.id),
+  bId: uuid("b_id").notNull().references(() => company.id),
+  label: text("label").notNull().default(""),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("company_relation_pair_uq").on(t.aId, t.bId)]);
+
 export const contact = pgTable("contact", {
   id: id(),
   legacyId: text("legacy_id").unique(),

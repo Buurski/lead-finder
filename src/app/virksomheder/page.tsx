@@ -179,7 +179,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <PageHeader icon="Building2" title="Virksomheder" subtitle={`${alleTotal} virksomheder${ejer ? ` · ejer: ${ejer}` : ""}`} />
+      <PageHeader icon="Building2" title="Alle virksomheder" subtitle={`${alleTotal} virksomheder${ejer ? ` · ejer: ${ejer}` : ""}`} />
 
       <form action="/virksomheder" method="get" className="virk-search" role="search">
         <input type="search" name="q" defaultValue={q} placeholder="Søg på navn, by eller mail…" aria-label="Søg virksomheder" />

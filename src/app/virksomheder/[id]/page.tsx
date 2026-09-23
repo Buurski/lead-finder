@@ -10,6 +10,7 @@ import { normalizeStage } from "@/lib/hq/deals";
 import { getFollowUpOverview } from "@/lib/hq/followup-overview";
 import { unbilledWork } from "@/lib/hq/billing";
 import { loadOverview } from "@/lib/hq/overview-load";
+import { listRelations } from "@/lib/hq/relations";
 import { SERVICES } from "@/lib/hq/overview";
 import { cmsUsageFor } from "@/lib/hq/cms-usage";
 import { getOnboardingChecklist } from "@/lib/hq/onboarding";
@@ -137,11 +138,12 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const unbilled = await unbilledWork(db, id);
   // Sekventielt (ikke Promise.all) — lokal pglite tåler kun 1 samtidig forbindelse (fælles-regel #23).
   const overview = await loadOverview(db, dossier);
+  const relations = await listRelations(db, id);
   const cms = await cmsUsageFor(c, dossier.site?.cmsUrl);
   const onboarding = c.clientNo !== null ? await getOnboardingChecklist(db, c.id) : [];
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} /> },
+    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} /> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
     {
       key: "aftaler",
