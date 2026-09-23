@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { desc, eq } from "drizzle-orm";
 import Icon from "@/components/shell/Icon";
 import { hermesCronRuns } from "@/lib/hermes";
+import { getDb, pgEnabled } from "@/lib/db/client";
+import { activity } from "@/lib/db/schema";
 import { timeAgo } from "./time";
 import AskHermesButton from "./AskHermesButton";
 
@@ -43,9 +46,30 @@ export default async function AgentCard() {
   const runs = recentRuns(jobs);
   const bad = runs.filter((r) => r.status === "error").length;
 
+  // Ingen cron-runs betyder ikke "ingen Hermes-aktivitet" — Hermes gør meget
+  // uden for cron-jobs (chat, check-ins). Falder tilbage til seneste
+  // activity-post med actor=hermes, så teksten ikke lyver om det.
+  let lastActivity: { summary: string; at: string } | null = null;
+  if (runs.length === 0 && !unreachable && pgEnabled()) {
+    try {
+      const db = getDb();
+      const [row] = await db
+        .select({ summary: activity.summary, at: activity.at })
+        .from(activity)
+        .where(eq(activity.actor, "hermes"))
+        .orderBy(desc(activity.at))
+        .limit(1);
+      if (row) lastActivity = { summary: row.summary, at: row.at.toISOString() };
+    } catch {
+      // stille — kortet falder tilbage til "ingen jobs"-teksten
+    }
+  }
+
   const headline =
     runs.length === 0
-      ? "Ingen jobs kørt de seneste 24 timer"
+      ? lastActivity
+        ? `Ingen jobs kørt de seneste 24 timer — seneste aktivitet: ${lastActivity.summary}`
+        : "Ingen jobs kørt de seneste 24 timer"
       : bad > 0
         ? `${runs.length} job${runs.length === 1 ? "" : "s"} kørte — ${bad} fejlede`
         : `${runs.length} job${runs.length === 1 ? "" : "s"} kørte — alle ok`;
@@ -57,7 +81,9 @@ export default async function AgentCard() {
           <Icon name="Sparkles" style={{ width: 16, height: 16 }} />
           Hermes
         </span>
-        {runs[0] && <span className="hq-agent-ago hq-mono">{timeAgo(runs[0].timestamp)}</span>}
+        {runs[0]
+          ? <span className="hq-agent-ago hq-mono">{timeAgo(runs[0].timestamp)}</span>
+          : lastActivity && <span className="hq-agent-ago hq-mono">{timeAgo(lastActivity.at)}</span>}
       </div>
 
       {unreachable ? (
