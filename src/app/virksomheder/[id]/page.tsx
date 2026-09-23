@@ -6,6 +6,7 @@ import { activity } from "@/lib/db/schema";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
 import { normalizeStage } from "@/lib/hq/deals";
+import { getFollowUpOverview } from "@/lib/hq/followup-overview";
 import { copenhagenNow } from "@/lib/settings";
 import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
@@ -14,6 +15,7 @@ import DealsSection from "@/components/virksomheder/DealsSection";
 import Timeline from "@/components/virksomheder/Timeline";
 import MergePanel from "@/components/virksomheder/MergePanel";
 import NoteCard from "@/components/virksomheder/NoteCard";
+import HermesAskButton from "@/components/virksomheder/HermesAskButton";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +102,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
 
   const today = copenhagenNow().date;
   const openInvoices = dossier.invoices.filter((i) => i.status !== "betalt" && i.status !== "kladde");
+  const followUps = await getFollowUpOverview(c.rowNo, c.maxTouches);
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -125,12 +128,32 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             </span>
           </span>
         }
-        action={<MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo }} />}
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
+            <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo }} />
+          </div>
+        }
       />
 
       <div className="virk-profile-grid">
         <div className="virk-col">
           <DealsSection companyId={c.id} deals={dealRows} />
+
+          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="virk-section-title"><span>Opfølgning</span></div>
+            {followUps.sent === 0 ? (
+              <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen opfølgningsmails sendt endnu.</p>
+            ) : (
+              <p style={{ fontSize: 13 }}>
+                Kontaktet {followUps.sent}/{followUps.maxTouches}
+                {followUps.angleLabel && ` · seneste: ${followUps.angleLabel}`}
+                {followUps.lastSentAt && ` · sidst ${new Date(followUps.lastSentAt).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}`}
+                {followUps.stoppedReason && <span style={{ color: "var(--red)" }}> · stoppet ({followUps.stoppedReason})</span>}
+              </p>
+            )}
+          </div>
+
           <Timeline companyId={c.id} activities={timelineActivities} />
         </div>
 

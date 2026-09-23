@@ -69,27 +69,28 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
   // så man kan se hvor mange der er i hver fane uanset hvilken der er valgt.
   const countBase = and(eq(company.archived, false), qFilter, ejer ? eq(company.owner, ejer) : undefined);
 
-  const [rows, [{ total }], lifecycleCounts, [{ kunderTotal }]] = await Promise.all([
-    db
-      .select({
-        id: company.id,
-        name: company.name,
-        city: company.city,
-        branch: company.branch,
-        lifecycle: company.lifecycle,
-        jevGrade: company.jevGrade,
-        clientNo: company.clientNo,
-        updatedAt: company.updatedAt,
-      })
-      .from(company)
-      .where(where)
-      .orderBy(sql`case when ${company.clientNo} is not null and ${company.clientRemoved} = false then 0 else 1 end`, desc(company.updatedAt))
-      .limit(PAGE_SIZE)
-      .offset((side - 1) * PAGE_SIZE),
-    db.select({ total: sql<number>`count(*)::int` }).from(company).where(where),
-    db.select({ lifecycle: company.lifecycle, n: sql<number>`count(*)::int` }).from(company).where(countBase).groupBy(company.lifecycle),
-    db.select({ kunderTotal: sql<number>`count(*)::int` }).from(company).where(and(countBase, kunderFilter)),
-  ]);
+  // Sekventielle kald, ikke Promise.all: den lokale pglite-server tillader kun
+  // 1 samtidig forbindelse (fælles-regel #19) — parallelle kald her gav
+  // ECONNRESET. Rammer ikke Neon i prod (samme pool, bare ingen kø lokalt).
+  const rows = await db
+    .select({
+      id: company.id,
+      name: company.name,
+      city: company.city,
+      branch: company.branch,
+      lifecycle: company.lifecycle,
+      jevGrade: company.jevGrade,
+      clientNo: company.clientNo,
+      updatedAt: company.updatedAt,
+    })
+    .from(company)
+    .where(where)
+    .orderBy(sql`case when ${company.clientNo} is not null and ${company.clientRemoved} = false then 0 else 1 end`, desc(company.updatedAt))
+    .limit(PAGE_SIZE)
+    .offset((side - 1) * PAGE_SIZE);
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(company).where(where);
+  const lifecycleCounts = await db.select({ lifecycle: company.lifecycle, n: sql<number>`count(*)::int` }).from(company).where(countBase).groupBy(company.lifecycle);
+  const [{ kunderTotal }] = await db.select({ kunderTotal: sql<number>`count(*)::int` }).from(company).where(and(countBase, kunderFilter));
 
   const countsByLifecycle = new Map(lifecycleCounts.map((r) => [r.lifecycle, r.n]));
   const [{ total: alleTotal }] = await db.select({ total: sql<number>`count(*)::int` }).from(company).where(countBase);
