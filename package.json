@@ -25,7 +25,7 @@
     "googleapis": "^171.4.0",
     "imapflow": "^1.4.2",
     "lucide-react": "^1.12.0",
-    "next": "16.2.4",
+    "next": "16.3.3",
     "nodemailer": "^8.0.7",
     "postgres": "^3.4.9",
     "react": "19.2.4",
