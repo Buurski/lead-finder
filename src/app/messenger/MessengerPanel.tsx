@@ -53,11 +53,13 @@ function CandidateCard({ c, onMark }: { c: Candidate; onMark: (id: string, actio
         </div>
       </div>
 
-      <div style={{ position: "relative" }}>
-        <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap", padding: "12px 14px", background: "var(--surface-2)", borderRadius: 10 }}>{c.draft}</p>
-        <button className="cc-btn" onClick={copy} style={{ position: "absolute", top: 8, right: 8 }}>
-          <Icon name="FileText" style={{ width: 13, height: 13 }} /> {copied ? "Kopieret ✓" : "Kopiér"}
-        </button>
+      <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "10px 14px 12px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+          <button className="cc-btn" onClick={copy}>
+            <Icon name="FileText" style={{ width: 13, height: 13 }} /> {copied ? "Kopieret ✓" : "Kopiér"}
+          </button>
+        </div>
+        <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>{c.draft}</p>
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
