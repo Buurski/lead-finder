@@ -73,8 +73,13 @@
    ghost håndterer det) — her fades det blot let mens det slæbes. */
 .pl-card[data-dragging="true"] { opacity: 0.45; }
 .pl-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.pl-card-company-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pl-card-company { font-size: 13px; font-weight: 700; color: var(--text); text-decoration: none; }
 .pl-card-company:hover { text-decoration: underline; }
+.pl-card-count {
+  font-size: 10.5px; font-weight: 600; color: var(--text-dim); background: var(--surface-2);
+  border-radius: 999px; padding: 1px 7px; font-family: var(--font-mono);
+}
 .pl-card-title { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 .pl-card-amount { font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono); font-variant-numeric: tabular-nums; margin-top: 7px; }
 .pl-card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
