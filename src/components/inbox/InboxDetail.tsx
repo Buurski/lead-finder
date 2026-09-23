@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_CATALOG } from "@/lib/demos";
 import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import Icon from "@/components/shell/Icon";
-import { DEFAULT_SEQUENCE_LENGTH, GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
+import { GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
+import InboxSequence from "./InboxSequence";
 
 // Sender-telefoner brugt i preview. Embedded client-side så bundlen ikke
 // trækker server-only env-vars; senders.ts er source of truth ved faktisk
@@ -25,6 +26,7 @@ export default function InboxDetail({
   draft,
   label,
   onLabel,
+  senders,
   onClose,
   onPrev,
   onNext,
@@ -35,6 +37,9 @@ export default function InboxDetail({
   draft: QueueDraft;
   label: "god" | "daarlig" | null;
   onLabel: (id: string, value: "god" | "daarlig" | null) => void;
+  // Hvilke afsendere har mail-creds sat lige nu — null mens status ikke er hentet
+  // endnu. Driver "Ikke forbundet"-pillen (ui-common2.md §18 — ingen bannere).
+  senders: { lucas: boolean; charlie: boolean } | null;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -84,9 +89,14 @@ export default function InboxDetail({
   async function saveDemos() {
     setBusy("set-demos");
     setViolations([]);
-    const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
-    if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    setBusy(null);
+    try {
+      const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
   }
 
   // Én smart godkend-knap: gemmer selv alt der er dirty (demoer → rettelse)
@@ -94,33 +104,48 @@ export default function InboxDetail({
   const approveSmart = useCallback(async () => {
     setBusy("approve");
     setViolations([]);
-    if (demosDirty) {
-      const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
-      if (!r.ok) { setViolations(r.violations ?? ["Ukendt fejl"]); setBusy(null); return; }
+    try {
+      if (demosDirty) {
+        const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
+        if (!r.ok) { setViolations(r.violations ?? ["Ukendt fejl"]); return; }
+      }
+      const r = dirty
+        ? await onAct(draft.id, "edit", { subject, body })
+        : await onAct(draft.id, "approve");
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
     }
-    const r = dirty
-      ? await onAct(draft.id, "edit", { subject, body })
-      : await onAct(draft.id, "approve");
-    if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    setBusy(null);
   }, [draft.id, subject, body, demos, dirty, demosDirty]);
 
   const reject = useCallback(async () => {
     if (!window.confirm(`Afvis "${draft.name}"? Lead'en blokeres 14 dage. Intet sendes.`)) return;
     setBusy("reject");
     setViolations([]);
-    const r = await onAct(draft.id, "reject");
-    if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    setBusy(null);
+    try {
+      const r = await onAct(draft.id, "reject");
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
   }, [draft.id, draft.name]);
 
   async function unapprove() {
     if (!window.confirm(`Fjern "${draft.name}" fra godkendt-listen?\n\nDen flyttes til afviste, og lead'en blokeres 14 dage så motoren ikke re-vælger.`)) return;
     setBusy("unapprove");
     setViolations([]);
-    const r = await onAct(draft.id, "unapprove");
-    if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    setBusy(null);
+    try {
+      const r = await onAct(draft.id, "unapprove");
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } catch {
+      setViolations(["Netværksfejl. Prøv igen."]);
+    } finally {
+      setBusy(null);
+    }
   }
 
   function focusEdit() {
@@ -147,15 +172,18 @@ export default function InboxDetail({
         <div className="inbox-detail-title-row">
           <div style={{ minWidth: 0 }}>
             <h2 className="inbox-detail-title">
-              <a href={`/virksomheder?q=${encodeURIComponent(draft.name)}`} target="_blank" rel="noopener noreferrer">{draft.name}</a>
+              <a href={`/virksomheder/${encodeURIComponent(draft.leadId)}`} target="_blank" rel="noopener noreferrer">{draft.name}</a>
             </h2>
             <p className="inbox-detail-sub">
               {[draft.branch, draft.city].filter(Boolean).join(" · ")}
-              {draft.professionalism ? ` — ${draft.professionalism}` : ""}
+              {/* Opfølgnings-kladder genbruger professionalism-feltet til "Opfølgning
+                  X/Y · Vinkel" (sat af followUpDraft() i sequence.ts) — vises i sin
+                  egen fremhævede linje nedenunder i stedet, ikke dobbelt her. */}
+              {draft.professionalism && draft.source !== "opfoelgning" ? ` — ${draft.professionalism}` : ""}
             </p>
-            {draft.source === "opfoelgning" && draft.step && (
+            {draft.source === "opfoelgning" && draft.professionalism && (
               <p className="inbox-detail-sub" style={{ marginTop: 4, fontWeight: 600, color: "var(--text)" }}>
-                Opfølgning {draft.step}/{DEFAULT_SEQUENCE_LENGTH}
+                {draft.professionalism}
               </p>
             )}
           </div>
@@ -222,6 +250,9 @@ export default function InboxDetail({
                 <button key={s} type="button" className="inbox-chip" data-active={sender === s} onClick={() => chooseSender(s)}>{s === "lucas" ? "Lucas" : "Charlie"}</button>
               ))}
             </div>
+            {senders && senders[sender] === false && (
+              <span className="inbox-notconnected" title="Ingen mail-creds sat for denne afsender — der kan ikke sendes fra den endnu">Ikke forbundet</span>
+            )}
             <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>Konto + underskrift sættes automatisk ved afsendelse.</span>
           </div>
         )}
@@ -281,6 +312,8 @@ export default function InboxDetail({
           </div>
         </details>
 
+        <InboxSequence leadId={draft.leadId} />
+
         {violations.length > 0 && (
           <div className="inbox-violations">
             <strong style={{ color: "var(--amber)" }}>Bryder stemme-guiden:</strong> {violations.join(" · ")}
@@ -297,6 +330,9 @@ export default function InboxDetail({
           <button type="button" className="inbox-btn inbox-btn-danger" onClick={reject} disabled={busy !== null}>
             {busy === "reject" ? "Afviser…" : "Afvis"}
           </button>
+          {(dirty || demosDirty) && (
+            <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>U-gemte ændringer — &quot;Gem + godkend&quot; gemmer det hele</span>
+          )}
           <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
             {([["god", "God kunde", "var(--green)"], ["daarlig", "Dårlig", "var(--red)"]] as const).map(([v, t, farve]) => {
               const aktiv = label === v;

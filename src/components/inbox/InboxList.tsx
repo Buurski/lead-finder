@@ -28,7 +28,7 @@ export default function InboxList({
     return (
       <div className="inbox-empty-list">
         {tab === "followups"
-          ? "Opfølgninger kommer her, når sekvenserne er slået til."
+          ? "Ingen opfølgninger er modne endnu — cronnen lægger dem herind, når trinnet er klar."
           : "Intet her endnu."}
       </div>
     );

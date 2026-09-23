@@ -15,6 +15,8 @@ export default function InboxTopBar({
   resetBusy,
   sendProg,
   sendMsg,
+  loading,
+  onRefresh,
   onSend,
   onSendLucas,
   onSendCharlie,
@@ -30,6 +32,8 @@ export default function InboxTopBar({
   resetBusy: boolean;
   sendProg: { processed: number; total: number; sent: number; failed: number; line: string } | null;
   sendMsg: string;
+  loading: boolean;
+  onRefresh: () => void;
   onSend: () => void;
   onSendLucas: () => void;
   onSendCharlie: () => void;
@@ -58,6 +62,10 @@ export default function InboxTopBar({
       )}
 
       <div className="spacer" />
+
+      <button type="button" className="inbox-btn" onClick={onRefresh} disabled={loading} title="Genindlæs køen" aria-label="Genindlæs køen">
+        <Icon name="RefreshCw" style={{ width: 14, height: 14 }} />
+      </button>
 
       {sendProg ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 220 }}>

@@ -53,20 +53,23 @@ export interface QueueDraft {
   stoppedReason?: string;
 }
 
-// Standard sekvenslængde (spec §11: "Standard er 3 trin"). Kun brugt til
-// visning ("Opfølgning 2/3") — ikke en garanti, blot det almindelige tilfælde.
-export const DEFAULT_SEQUENCE_LENGTH = 3;
-
-// De 5 faner i det nye mail-app-layout. "followups" har ingen data endnu —
-// backend til opfølgnings-sekvenser bygges senere (spec §11).
+// De 5 faner i det nye mail-app-layout. Opfølgnings-trin/vinkel-tekst
+// ("Opfølgning 2/5 · Gratis udkast") kommer allerede færdigformateret fra
+// backend i draft.professionalism (followUpDraft() i src/lib/hq/sequence.ts)
+// — ingen lokal konstant til at genopbygge den streng.
 export type Tab = "pending" | "approved" | "followups" | "sent" | "rejected";
 
+// Rækkefølge + navne som Lucas bad om (opgave-kontrakt 23/9): Til godkendelse
+// · Opfølgninger · Godkendt · Sendt · Stoppet. "Stoppet" dækker BÅDE manuelt
+// afviste kladder og sekvenser systemet selv stoppede (stoppedReason, spec §11)
+// — begge betyder "ikke længere aktiv", som er hvad fanen faktisk viser.
+export const TAB_ORDER: Tab[] = ["pending", "followups", "approved", "sent", "rejected"];
 export const TAB_META: Record<Tab, string> = {
   pending: "Til godkendelse",
-  approved: "Godkendt",
   followups: "Opfølgninger",
+  approved: "Godkendt",
   sent: "Sendt",
-  rejected: "Afvist",
+  rejected: "Stoppet",
 };
 
 // Jev-prioritet: kladde-kvalitet vejer tungest, lead-attraktivitet er

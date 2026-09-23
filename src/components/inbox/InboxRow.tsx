@@ -1,4 +1,4 @@
-import { DEFAULT_SEQUENCE_LENGTH, GRADE_META, type QueueDraft } from "./types";
+import { GRADE_META, type QueueDraft } from "./types";
 
 // Én række i listen. Bevidst enkel — 150 rækker har ikke brug for
 // virtualisering (ui-common.md).
@@ -22,13 +22,15 @@ export default function InboxRow({
   const initials = (draft.sender ?? draft.sentBy) === "charlie" ? "C" : "L";
   const contacted = draft.history?.seenBefore;
 
-  // Opfølgnings-kladder viser sekvens-fremdrift i stedet for det normale
-  // emne; stoppede sekvenser viser hvorfor (spec §11).
+  // Opfølgnings-kladder viser sekvens-fremdrift i stedet for det normale emne;
+  // stoppede sekvenser viser hvorfor (spec §11). `professionalism` ER allerede
+  // formatteret "Opfølgning X/Y · Vinkel" af followUpDraft() i sequence.ts —
+  // den må ikke genopbygges her (forkert loft + dublet tekst).
   const stopped = draft.source === "opfoelgning" && draft.status === "rejected" && draft.stoppedReason;
   const subjectLine = stopped
     ? `Stoppet: ${draft.stoppedReason}`
     : draft.source === "opfoelgning" && draft.step
-      ? `Opfølgning ${draft.step}/${DEFAULT_SEQUENCE_LENGTH}${draft.professionalism ? ` · ${draft.professionalism}` : ""}`
+      ? draft.professionalism || `Opfølgning ${draft.step}`
       : draft.subject;
 
   return (

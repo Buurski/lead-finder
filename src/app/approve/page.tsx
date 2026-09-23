@@ -124,12 +124,17 @@ function InboxApp() {
   // ---- pause-status + dagens send-loft (GET-only preflight — sender intet) --
   const [pauseInfo, setPauseInfo] = useState<{ paused: boolean; until?: string } | null>(null);
   const [cap, setCap] = useState<number | null>(null);
+  // Hvilke afsendere har creds sat — driver "Ikke forbundet"-pillen ved
+  // afsender-valget i stedet for det gamle "Gmail er ikke sat op"-banner
+  // (ui-common2.md §18: ingen bannere, en lille rolig pille).
+  const [senders, setSenders] = useState<{ lucas: boolean; charlie: boolean } | null>(null);
   const refreshSendStatus = useCallback(async () => {
     try {
       const pf = await fetch("/api/approve/send").then((r) => r.json());
       if (pf?.ok) {
         setPauseInfo({ paused: !!pf.paused, until: pf.until });
         setCap(typeof pf.cap === "number" ? pf.cap : null);
+        if (pf.senders) setSenders({ lucas: !!pf.senders.lucas, charlie: !!pf.senders.charlie });
       }
     } catch { /* status-bjælken er ekstra info, ikke kritisk */ }
   }, []);
@@ -144,6 +149,7 @@ function InboxApp() {
         if (!cancelled && pf?.ok) {
           setPauseInfo({ paused: !!pf.paused, until: pf.until });
           setCap(typeof pf.cap === "number" ? pf.cap : null);
+          if (pf.senders) setSenders({ lucas: !!pf.senders.lucas, charlie: !!pf.senders.charlie });
         }
       } catch { /* status-bjælken er ekstra info, ikke kritisk */ }
     })();
@@ -240,20 +246,26 @@ function InboxApp() {
       const idx = visible.findIndex((d) => d.id === id);
       if (idx >= 0) nextId = visible[idx + 1]?.id ?? visible[idx - 1]?.id ?? null;
     }
-    const res = await fetch("/api/approve/queue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      return { ok: false, violations: Array.isArray(data.violations) ? data.violations : [data.error ?? "Ukendt fejl"] };
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, violations: Array.isArray(data.violations) ? data.violations : [data.error ?? "Ukendt fejl"] };
+      }
+      patchLocal(data.draft as QueueDraft);
+      if ((action === "approve" || action === "edit" || action === "reject") && id === selectedId) {
+        setSelectedId(nextId, { push: false });
+      }
+      return { ok: true };
+    } catch {
+      // Netværksfejl (fx serveren væk midt i et klik) — samme besked som resten
+      // af siden bruger, og busy-state hos kalderen nulstilles altid i dens finally.
+      return { ok: false, violations: ["Netværksfejl. Prøv igen."] };
     }
-    patchLocal(data.draft as QueueDraft);
-    if ((action === "approve" || action === "edit" || action === "reject") && id === selectedId) {
-      setSelectedId(nextId, { push: false });
-    }
-    return { ok: true };
   }, [patchLocal, visible, selectedId, setSelectedId]);
 
   // ---- tastatur: j/k flytter, a godkend, r afvis, e ret, space/x vælg ----
@@ -697,6 +709,8 @@ function InboxApp() {
         resetBusy={resetBusy}
         sendProg={sendProg}
         sendMsg={sendMsg}
+        loading={loading}
+        onRefresh={load}
         onSend={() => sendApproved()}
         onSendLucas={() => sendApproved("lucas")}
         onSendCharlie={() => sendApproved("charlie")}
@@ -781,6 +795,7 @@ function InboxApp() {
                 draft={selectedDraft}
                 label={labels[selectedDraft.id] ?? null}
                 onLabel={setLabel}
+                senders={senders}
                 onClose={closeDraft}
                 onPrev={() => { const prev = visible[selectedIndex - 1]; if (prev) setSelectedId(prev.id, { push: false }); }}
                 onNext={() => { const next = visible[selectedIndex + 1]; if (next) setSelectedId(next.id, { push: false }); }}

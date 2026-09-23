@@ -1,4 +1,4 @@
-import { TAB_META, type Tab } from "./types";
+import { TAB_META, TAB_ORDER, type Tab } from "./types";
 
 export default function InboxTabs({
   active,
@@ -9,10 +9,9 @@ export default function InboxTabs({
   counts: Record<Tab, number>;
   onChange: (t: Tab) => void;
 }) {
-  const order: Tab[] = ["pending", "approved", "followups", "sent", "rejected"];
   return (
     <div className="inbox-tabs" role="tablist" aria-label="Indbakke-faner">
-      {order.map((t) => (
+      {TAB_ORDER.map((t) => (
         <button
           key={t}
           type="button"
