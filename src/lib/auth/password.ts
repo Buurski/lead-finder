@@ -1,6 +1,8 @@
 // Adgangskode-hashing til personligt login. scrypt fra node:crypto (ingen
 // ny afhængighed), versionsmærket lagringsformat så parametrene kan hæves
 // senere uden at gamle hashes knækker: scrypt$N$r$p$<saltB64>$<hashB64>.
+// KEYLEN (32) står IKKE i formatet — skifter den, SKAL PREFIX bumpes
+// (fx "scrypt2"), ellers læser verifyPassword gamle hashes som malformed.
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 
 export const MIN_PASSWORD_LENGTH = 8;
@@ -43,7 +45,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const r = Number(rRaw);
   const p = Number(pRaw);
   if (!Number.isInteger(n) || !Number.isInteger(r) || !Number.isInteger(p)) return false;
-  if (n < 2 || r < 1 || p < 1 || n > MAX_MEM / (128 * r)) return false;
+  if (n < 2 || r < 1 || p < 1 || p > 16 || n > MAX_MEM / (128 * r)) return false;
   const salt = Buffer.from(saltB64, "base64");
   const expected = Buffer.from(hashB64, "base64");
   if (salt.length === 0 || expected.length !== KEYLEN) return false;

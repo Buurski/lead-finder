@@ -35,6 +35,13 @@ test("ændret parameterdel i den gemte hash giver false", async () => {
   assert.equal(await verifyPassword("hemmelig-kode-42", tampered), false);
 });
 
+test("absurd scrypt-p afvises (CPU-loft)", async () => {
+  const stored = await hashPassword("hemmelig-kode-42");
+  const tampered = stored.replace("$16384$8$1$", "$16384$8$99$");
+  assert.notEqual(tampered, stored);
+  assert.equal(await verifyPassword("hemmelig-kode-42", tampered), false);
+});
+
 test("getDummyHash er stabil og et rigtigt hash-format", async () => {
   const a = await getDummyHash();
   const b = await getDummyHash();

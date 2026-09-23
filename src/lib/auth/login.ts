@@ -47,13 +47,20 @@ export async function setupAccount(
   db: Db,
   input: { email: string; code: string; password: string },
 ): Promise<{ ok: true; user: PublicUser } | { ok: false; reason: SetupFailReason }> {
+  // Afvisninger med ensartet tidsforbrug: alle tidlige udgange kører et rigtigt
+  // scrypt-verify, så svartiden ikke afslører om kontoen har et aktivt bevis.
+  const afvis = async (reason: SetupFailReason) => {
+    await verifyPassword(input.code, await getDummyHash());
+    return { ok: false as const, reason };
+  };
+
   const user = await findByEmail(db, input.email);
-  if (!user) return { ok: false, reason: "ugyldig" };
+  if (!user) return afvis("ugyldig");
 
   // Allerede opsat konto uden aktiv kode = beviset er brugt op.
-  if (user.passwordHash && !user.setupHash) return { ok: false, reason: "brugt" };
-  if (!user.setupHash || !user.setupExpiresAt) return { ok: false, reason: "ugyldig" };
-  if (user.setupExpiresAt.getTime() <= Date.now()) return { ok: false, reason: "udloebet" };
+  if (user.passwordHash && !user.setupHash) return afvis("brugt");
+  if (!user.setupHash || !user.setupExpiresAt) return afvis("ugyldig");
+  if (user.setupExpiresAt.getTime() <= Date.now()) return afvis("udloebet");
   if (input.password.length < MIN_PASSWORD_LENGTH) return { ok: false, reason: "svag" };
   if (!(await verifyPassword(input.code, user.setupHash))) return { ok: false, reason: "ugyldig" };
 
