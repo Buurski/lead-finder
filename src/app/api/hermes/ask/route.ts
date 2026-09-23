@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { assertWriteRequest } from "@/lib/cc-auth";
 import { currentUser } from "@/lib/current-user";
 import { getDb } from "@/lib/db/client";
-import { appendHermesExchange, hermesChat, type HermesProfile } from "@/lib/hermes";
+import {
+  appendHermesExchange,
+  canAccessSession,
+  hermesChat,
+  listAllSessions,
+  type HermesProfile,
+} from "@/lib/hermes";
 import { dossierText, getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
 import { copenhagenNow } from "@/lib/settings";
@@ -28,7 +34,13 @@ export async function POST(req: Request) {
   if (!SESSION_RE.test(sessionId)) return NextResponse.json({ ok: false, error: "ugyldig session" }, { status: 400 });
 
   const user = await currentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "ikke logget ind" }, { status: 401 });
   const profile: HermesProfile = user === "lucas" || user === "charlie" ? user : "default";
+  // Ejerskabs-gate: ukendt id = ny samtale (tilladt), fremmed id = afvist.
+  const existing = (await listAllSessions()).find((s) => s.id === sessionId);
+  if (existing && !canAccessSession(existing, user)) {
+    return NextResponse.json({ ok: false, error: "samtalen tilhører en anden bruger" }, { status: 403 });
+  }
 
   let context = "";
   if (typeof b?.companyId === "string" && UUID.test(b.companyId)) {
@@ -45,6 +57,6 @@ export async function POST(req: Request) {
   const result = await hermesChat(prompt, profile, sessionId);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
   // Historikken gemmer spørgsmålet uden den lange kontekst.
-  await appendHermesExchange(sessionId, profile, message, result.reply ?? "");
+  await appendHermesExchange(sessionId, user, message, result.reply ?? "");
   return NextResponse.json({ ok: true, reply: result.reply, elapsedMs: result.elapsedMs ?? Date.now() - started, withContext: Boolean(context) });
 }

@@ -11,8 +11,12 @@ import "./hermes-dock.css";
 
 type ChatMsg = { id: string; role: "user" | "hermes"; text: string };
 
+// Nøglerne er brugerspecifikke: to personer i samme browser (login-skift) må
+// ikke arve hinandens samtale-id eller beskedhistorik fra sessionStorage.
 const SESSION_KEY = "hermes-dock:session";
 const MESSAGES_KEY = "hermes-dock:messages";
+const sessionKey = (userKey: string) => `${SESSION_KEY}:${userKey}`;
+const messagesKey = (userKey: string) => `${MESSAGES_KEY}:${userKey}`;
 const COMPANY_RE = /^\/virksomheder\/([0-9a-f-]{36})(?:\/|$)/i;
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 const CALM_ERROR = "Hermes svarer ikke lige nu — prøv igen";
@@ -21,23 +25,23 @@ function newSessionId(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
-function loadSessionId(): string {
+function loadSessionId(userKey: string): string {
   if (typeof window === "undefined") return "";
   try {
-    const existing = sessionStorage.getItem(SESSION_KEY);
+    const existing = sessionStorage.getItem(sessionKey(userKey));
     if (existing) return existing;
   } catch {}
   const id = newSessionId();
   try {
-    sessionStorage.setItem(SESSION_KEY, id);
+    sessionStorage.setItem(sessionKey(userKey), id);
   } catch {}
   return id;
 }
 
-function loadMessages(): ChatMsg[] {
+function loadMessages(userKey: string): ChatMsg[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = sessionStorage.getItem(MESSAGES_KEY);
+    const raw = sessionStorage.getItem(messagesKey(userKey));
     return raw ? (JSON.parse(raw) as ChatMsg[]) : [];
   } catch {
     return [];
@@ -86,12 +90,12 @@ function renderText(text: string): ReactNode[] {
   );
 }
 
-export default function HermesDock() {
+export default function HermesDock({ userKey = "ukendt" }: { userKey?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [badge, setBadge] = useState(false);
-  const [sessionId, setSessionId] = useState(loadSessionId);
-  const [messages, setMessages] = useState<ChatMsg[]>(loadMessages);
+  const [sessionId, setSessionId] = useState(() => loadSessionId(userKey));
+  const [messages, setMessages] = useState<ChatMsg[]>(() => loadMessages(userKey));
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -192,9 +196,9 @@ export default function HermesDock() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(messagesKey(userKey), JSON.stringify(messages));
     } catch {}
-  }, [messages]);
+  }, [messages, userKey]);
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
@@ -263,8 +267,8 @@ export default function HermesDock() {
     setRetryText(null);
     setInput("");
     try {
-      sessionStorage.setItem(SESSION_KEY, id);
-      sessionStorage.setItem(MESSAGES_KEY, "[]");
+      sessionStorage.setItem(sessionKey(userKey), id);
+      sessionStorage.setItem(messagesKey(userKey), "[]");
     } catch {}
   }
 

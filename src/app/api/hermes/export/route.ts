@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getHermesMessages, listHermesSessions } from "@/lib/hermes";
+import { currentUser } from "@/lib/current-user";
+import { canAccessSession, getHermesMessages, listAllSessions } from "@/lib/hermes";
 import { writeVaultNote } from "@/lib/vault";
 
 export const dynamic = "force-dynamic";
@@ -32,11 +33,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "ugyldigt sessionId" }, { status: 400 });
   }
 
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "ikke logget ind" }, { status: 401 });
+  const meta = (await listAllSessions()).find((s) => s.id === sessionId);
+  // Ukendt id og fremmed samtale svarer ens.
+  if (!meta || !canAccessSession(meta, user)) {
+    return NextResponse.json({ ok: false, error: "ikke fundet" }, { status: 404 });
+  }
+
   const msgs = await getHermesMessages(sessionId);
   if (!msgs.length) {
     return NextResponse.json({ ok: false, error: "ingen beskeder i sessionen" }, { status: 404 });
   }
-  const meta = (await listHermesSessions()).find((s) => s.id === sessionId);
   const title = meta?.title || msgs[0].text.slice(0, 60);
   const date = new Date().toISOString().slice(0, 10);
   const rel = `wiki/os/sessions/${date}-${slugify(title)}.md`;

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/current-user";
 import {
   appendHermesExchange,
+  canAccessSession,
   hermesChat,
   hermesChatStreamRaw,
-  HERMES_PROFILES,
+  listAllSessions,
   type HermesProfile,
 } from "@/lib/hermes";
 
@@ -22,20 +24,29 @@ function sse(obj: unknown): Uint8Array {
 }
 
 export async function POST(req: Request) {
-  let body: { message?: string; profile?: string; sessionId?: string };
+  let body: { message?: string; sessionId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "ugyldig JSON" }, { status: 400 });
   }
   const message = (body.message ?? "").trim();
-  const profile = (body.profile ?? "default") as HermesProfile;
   const sessionId = (body.sessionId ?? "").trim();
 
   if (!message) return NextResponse.json({ ok: false, error: "besked mangler" }, { status: 400 });
   if (message.length > 8000) return NextResponse.json({ ok: false, error: "besked over 8000 tegn" }, { status: 400 });
-  if (!HERMES_PROFILES.includes(profile)) return NextResponse.json({ ok: false, error: "ukendt profil" }, { status: 400 });
   if (!SESSION_RE.test(sessionId)) return NextResponse.json({ ok: false, error: "ugyldigt sessionId" }, { status: 400 });
+
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ ok: false, error: "ikke logget ind" }, { status: 401 });
+  const profile: HermesProfile = user === "lucas" || user === "charlie" ? user : "default";
+  // Ejerskabs-gaten kører FØR streamen startes (og dermed før det første
+  // appendHermesExchange i stream-callbacken) — en fremmed samtale afvises med
+  // 403 og når aldrig at blive læst eller skrevet til. Ukendt id = ny samtale.
+  const existing = (await listAllSessions()).find((s) => s.id === sessionId);
+  if (existing && !canAccessSession(existing, user)) {
+    return NextResponse.json({ ok: false, error: "samtalen tilhører en anden bruger" }, { status: 403 });
+  }
 
   const upstream = await hermesChatStreamRaw(message, profile, sessionId);
 
@@ -50,7 +61,7 @@ export async function POST(req: Request) {
         if (result.ok && result.reply) {
           controller.enqueue(sse({ text: result.reply }));
           controller.enqueue(sse({ done: true, method: "fallback", elapsed_ms: result.elapsedMs }));
-          await appendHermesExchange(sessionId, profile, message, result.reply).catch(() => {});
+          await appendHermesExchange(sessionId, user, message, result.reply).catch(() => {});
         } else {
           controller.enqueue(sse({ error: result.error ?? "Hermes svarede ikke", done: true }));
         }
@@ -90,7 +101,7 @@ export async function POST(req: Request) {
       }
 
       if (fullText) {
-        await appendHermesExchange(sessionId, profile, message, fullText).catch(() => {});
+        await appendHermesExchange(sessionId, user, message, fullText).catch(() => {});
       }
       controller.close();
     },
