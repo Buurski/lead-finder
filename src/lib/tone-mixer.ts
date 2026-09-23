@@ -234,7 +234,31 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
   return out;
 }
 
-export function mixForLead(lead: MixLead): ToneMix {
+// Samme index = samme plads i mailen, så en kladde kan skifte afsender (adaptToSender).
+// "salgselev" er Lucas' historie og må ALDRIG stå i en mail fra Charlie (about_charlie.md).
+export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
+  lucas: [
+    `Jeg arbejder med min sidevirksomhed Kinly ved siden af min salgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.`,
+    `Ved siden af min salgselevplads driver jeg Kinly, hvor jeg bygger hjemmesider til lokale virksomheder. Jeg går meget op i, at siden ikke bare ser godt ud, men faktisk gør det lettere for nye kunder at finde jer.`,
+    `Jeg har min egen sidevirksomhed, Kinly, ved siden af min salgselevplads. Det er mig selv der bygger og følger op, og jeg brænder for at hjælpe virksomheder som jeres med at få flere relevante henvendelser.`,
+  ],
+  charlie: [
+    `Sammen med Lucas driver jeg Kinly ved siden af mit arbejde, og vi har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Vi står selv for både design, kode og kontakt.`,
+    `Ved siden af mit arbejde driver jeg Kinly sammen med Lucas, hvor vi bygger hjemmesider til lokale virksomheder. Vi går meget op i, at siden ikke bare ser godt ud, men faktisk gør det lettere for nye kunder at finde jer.`,
+    `Jeg er en del af Kinly, hvor vi bygger hjemmesider til lokale virksomheder. Det er os selv der bygger og følger op, og vi brænder for at hjælpe virksomheder som jeres med at få flere relevante henvendelser.`,
+  ],
+};
+
+/** Skift præsentationen i en færdig kladde til den nye afsenders (samme plads). */
+export function adaptToSender(body: string, sender: "lucas" | "charlie"): string {
+  const from = sender === "charlie" ? DISCLOSURES.lucas : DISCLOSURES.charlie;
+  return from.reduce((out, line, i) => out.split(line).join(DISCLOSURES[sender][i]), body);
+}
+
+/** Lucas' personlige detaljer i en mail der sendes fra Charlie. */
+export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82/i;
+
+export function mixForLead(lead: MixLead, sender: "lucas" | "charlie" = "lucas"): ToneMix {
   const seed = lead.name;
   const openers = eligibleOpeners(lead);
   // Priority: achievement > lokation (branch+city) > others. Achievement
@@ -265,12 +289,8 @@ export function mixForLead(lead: MixLead): ToneMix {
   }
 
   // Honest Kinly disclosure: personal founder-led work without sounding like a
-  // student project. No "pris"/"gratis" in cold mail.
-  const disclosure = pick(seed + "i", [
-    `Jeg arbejder med min sidevirksomhed Kinly ved siden af min salgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.`,
-    `Ved siden af min salgselevplads driver jeg Kinly, hvor jeg bygger hjemmesider til lokale virksomheder. Jeg går meget op i, at siden ikke bare ser godt ud, men faktisk gør det lettere for nye kunder at finde jer.`,
-    `Jeg har min egen sidevirksomhed, Kinly, ved siden af min salgselevplads. Det er mig selv der bygger og følger op, og jeg brænder for at hjælpe virksomheder som jeres med at få flere relevante henvendelser.`,
-  ]);
+  // student project. No "pris"/"gratis" in cold mail. Afsenderens egen historie.
+  const disclosure = pick(seed + "i", DISCLOSURES[sender]);
 
   const demoIntro = pick(seed + "dm", [
     `Jeg lavede et par demoer I kan kigge på:`,

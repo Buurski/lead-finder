@@ -1,3 +1,4 @@
+import { LUCAS_ONLY } from "@/lib/tone-mixer";
 import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
 import { store } from "@/lib/store";
@@ -448,6 +449,14 @@ export async function POST(req: Request) {
               send({ type: "skipped", index: processed, total, name: d.name, reason });
               continue;
             }
+          }
+
+          // 8. Lucas' personlige historie må aldrig gå ud fra Charlies konto (about_charlie.md).
+          if (transportFor(fresh.sender).id === "charlie" && LUCAS_ONLY.test(fresh.body)) {
+            const reason = "Lucas' præsentation står i en mail fra Charlie — skift afsender igen eller ret teksten";
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
+            continue;
           }
 
           const { id: senderId, transport, from } = transportFor(fresh.sender);

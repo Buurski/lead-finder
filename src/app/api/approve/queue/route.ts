@@ -364,7 +364,9 @@ export async function POST(req: Request) {
     if (target.status === "sent") {
       return NextResponse.json({ error: "draft already sent — afsender kan ikke ændres", status: target.status }, { status: 409 });
     }
-    const updated = await updateDraft(id, { sender });
+    // Præsentationen følger afsenderen: Lucas' "salgselev"-historie må aldrig gå ud fra Charlie.
+    const { adaptToSender } = await import("@/lib/tone-mixer");
+    const updated = await updateDraft(id, { sender, body: adaptToSender(target.body ?? "", sender) });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }

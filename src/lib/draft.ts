@@ -193,7 +193,7 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     websiteStatus: lead.websiteStatus,
     hooks: research.hooks,
     achievements: research.achievements,
-  });
+  }, sender === "charlie" ? "charlie" : "lucas");
   const opener = validateDraft(mix.opener).ok ? mix.opener : buildOpener(lead, research);
 
   const tailorLine = pick(lead.name + "t", [
