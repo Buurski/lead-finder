@@ -5,6 +5,7 @@ import {
   updatePreviewStatus,
   PREVIEW_STATUSES,
   type PreviewChannel,
+  type PreviewRequest,
   type PreviewStatus,
 } from "@/lib/preview-queue";
 import { isCommandCenterRequest } from "@/lib/cc-auth";
@@ -42,9 +43,26 @@ export async function POST(req: NextRequest) {
   }
   try {
     const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey });
+    await linkToCrm(request);
     return NextResponse.json({ ok: true, request }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "invalid_request" }, { status: 400 });
+  }
+}
+
+// Henvendelsen kobles på virksomheden i CRM'et (fase 6). Må aldrig vælte formularen.
+async function linkToCrm(request: PreviewRequest): Promise<void> {
+  try {
+    const { getDb, pgEnabled } = await import("@/lib/db/client");
+    if (!pgEnabled()) return;
+    const { recordInbound } = await import("@/lib/hq/inbound");
+    const r = await recordInbound(getDb(), request);
+    if (!r.duplicate && r.rowNo > 0) {
+      const { stopOpenForRows } = await import("@/lib/pg/queue");
+      await stopOpenForRows([r.rowNo], "henvendte sig selv via kinly.dk", new Date().toISOString());
+    }
+  } catch (error) {
+    console.error(JSON.stringify({ evt: "inbound.crm.failed", error: String(error).slice(0, 300) }));
   }
 }
 
