@@ -77,7 +77,7 @@ export default function Sidebar({ counts }: { counts: Counts }) {
           ))}
         </nav>
         <div className="cc-rail-spacer" />
-        <div className="cc-rail-avatar" aria-hidden="true">LB</div>
+        <Link href="/profil" className="cc-rail-avatar cc-focus" aria-label="Profil" title="Profil">LB</Link>
       </aside>
 
       {/* --- mobile bottom bar --------------------------------------------- */}

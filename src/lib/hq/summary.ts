@@ -37,12 +37,16 @@ const UNPAID = ["sendt", "forfalden", "rykket"];
 export type StepState = "forfalden" | "snart" | "ok" | "mangler";
 
 export interface NextStep {
+  id: string;
+  kind: "task" | "deal";
   companyId: string | null;
   company: string;
   what: string; // deal-titel eller "Opgave"
   step: string;
   owner: string;
   due: string; // YYYY-MM-DD eller ""
+  note: string;
+  important: boolean;
   state: StepState;
 }
 
@@ -74,8 +78,7 @@ function itemState(item: MyDayItem, today: string): StepState {
 
 /**
  * HQ's næste-skridt-tabel: samme kilde som /opgaver (tasks.ts#listMyDay), ikke en
- * egen forespørgsel. `me` (den indloggede person) sorteres øverst blandt de
- * forfaldne/i dag-opgaver, resten følger den almindelige forfald-rækkefølge.
+ * egen forespørgsel. Personligt login viser kun egne opgaver; vigtige står først.
  */
 export async function getHqSummary(db: Db, today: string, me?: string | null): Promise<HqSummary> {
   const n = sql<number>`count(*)::int`;
@@ -88,25 +91,28 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
     db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle),
     db.select({ data: invoice.data }).from(invoice).where(inArray(invoice.status, UNPAID)),
     db.select({ data: subscriptionPlan.data }).from(subscriptionPlan),
-    listMyDay(db, { today }),
+    listMyDay(db, { today, owner: me === "lucas" || me === "charlie" ? me : undefined }),
   ]);
 
   const counts = new Map(funnelRows.map((r) => [r.stage, r.n]));
 
   const steps: NextStep[] = items
     .map((it) => ({
+      id: it.id,
+      kind: it.kind,
       companyId: it.companyId,
       company: it.company,
       what: it.context,
       step: it.title,
       owner: it.owner,
       due: it.due,
+      note: it.note,
+      important: it.important,
       state: itemState(it, today),
     }))
     .sort((a, b) => {
-      const aMine = me && a.owner === me && (a.state === "forfalden" || a.due === today) ? 0 : 1;
-      const bMine = me && b.owner === me && (b.state === "forfalden" || b.due === today) ? 0 : 1;
-      return aMine - bMine || ORDER[a.state] - ORDER[b.state] || (a.due || "9999").localeCompare(b.due || "9999");
+      if (a.important !== b.important) return Number(b.important) - Number(a.important);
+      return ORDER[a.state] - ORDER[b.state] || (a.due || "9999").localeCompare(b.due || "9999");
     });
 
   const invoices = invRows.map((r) => r.data as Invoice);
