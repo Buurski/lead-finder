@@ -21,7 +21,7 @@ export async function unbilledWork(db: Db, companyId: string): Promise<UnbilledI
   const rows = await db
     .select({ id: activity.id, summary: activity.summary, amount: activity.billableDkk, at: activity.at, actor: activity.actor })
     .from(activity)
-    .where(and(eq(activity.companyId, companyId), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
+    .where(and(eq(activity.companyId, companyId), eq(activity.type, "arbejde"), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
     .orderBy(desc(activity.at));
   return rows.map((r) => ({ ...r, amount: r.amount ?? 0, at: r.at.toISOString() }));
 }
@@ -43,7 +43,7 @@ export async function invoiceFromWork(
     const taken = await tx
       .update(activity)
       .set({ invoicedAt: now })
-      .where(and(inArray(activity.id, ids), eq(activity.companyId, companyId), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
+      .where(and(inArray(activity.id, ids), eq(activity.companyId, companyId), eq(activity.type, "arbejde"), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
       .returning({ id: activity.id, summary: activity.summary, amount: activity.billableDkk, at: activity.at });
     // Alle eller ingen: en aktivitet der allerede er faktureret (eller hører til en
     // anden kunde) ruller det hele tilbage, så to klik aldrig giver to fakturaer.

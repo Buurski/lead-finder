@@ -25,14 +25,32 @@ function host(url: string): string {
   }
 }
 
+function norm(s: string): string {
+  return s.toLowerCase().replace(/\b(aps|a\/s|ivs|i\/s)\b/g, "").replace(/[^a-z0-9æøå]/g, "");
+}
+
+function corroborates(c: { name: string; website: string }, name: string, h: string): boolean {
+  const ch = host(c.website);
+  if (h && ch) return h === ch;
+  const a = norm(name);
+  const b = norm(c.name);
+  return !a || !b || a.includes(b) || b.includes(a);
+}
+
 async function findCompany(db: Db, input: InboundInput): Promise<string | null> {
   const live = eq(company.archived, false);
   const email = input.email.trim().toLowerCase();
-  if (email) {
-    const hits = await db.select({ id: company.id }).from(company).where(and(live, sql`lower(${company.email}) = ${email}`));
-    if (hits.length === 1) return hits[0].id;
-  }
   const h = host(input.website ?? "");
+  if (email) {
+    const hits = await db
+      .select({ id: company.id, name: company.name, website: company.website })
+      .from(company)
+      .where(and(live, sql`lower(${company.email}) = ${email}`));
+    // Samme mail kan høre til to forretninger: mail-match gælder kun hvis intet
+    // i henvendelsen peger på en anden (Sol 23/9).
+    const ok = hits.filter((c) => corroborates(c, input.company, h));
+    if (ok.length === 1) return ok[0].id;
+  }
   if (h) {
     const hits = await db
       .select({ id: company.id, website: company.website })
@@ -59,10 +77,11 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
       return { companyId: seen.companyId, created: false, rowNo: c?.rowNo ?? 0, duplicate: true };
     }
 
+    // Låsen tages FØR opslaget, så to samtidige første-henvendelser ikke begge opretter.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('company_row_no'))`);
     let companyId = await findCompany(t, input);
     let created = false;
     if (!companyId) {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('company_row_no'))`);
       const [{ value }] = await tx.select({ value: max(company.rowNo) }).from(company);
       const [row] = await tx
         .insert(company)

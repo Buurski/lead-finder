@@ -57,7 +57,7 @@ async function linkToCrm(request: PreviewRequest): Promise<void> {
     if (!pgEnabled()) return;
     const { recordInbound } = await import("@/lib/hq/inbound");
     const r = await recordInbound(getDb(), request);
-    if (!r.duplicate && r.rowNo > 0) {
+    if (r.rowNo > 0) {
       const { stopOpenForRows } = await import("@/lib/pg/queue");
       await stopOpenForRows([r.rowNo], "henvendte sig selv via kinly.dk", new Date().toISOString());
     }

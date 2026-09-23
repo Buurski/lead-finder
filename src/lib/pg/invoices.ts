@@ -4,7 +4,7 @@
 // erstatter navne-matchet i fase 4.
 import { asc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb, type Db } from "../db/client.ts";
-import { company, counter, invoice, subscriptionPlan } from "../db/schema.ts";
+import { activity, company, counter, invoice, subscriptionPlan } from "../db/schema.ts";
 import { canonicalClientName } from "../client-alias.ts";
 import type { Invoice, Subscription } from "../invoices.ts";
 
@@ -50,7 +50,14 @@ export async function saveInvoice(inv: Invoice): Promise<void> {
 }
 
 export async function deleteInvoiceRow(number: string): Promise<void> {
-  await getDb().delete(invoice).where(eq(invoice.number, number));
+  // Arbejde der blev samlet til denne kladde bliver ufaktureret igen (Sol 23/9).
+  await getDb().transaction(async (tx) => {
+    await tx.delete(invoice).where(eq(invoice.number, number));
+    await tx
+      .update(activity)
+      .set({ invoicedAt: null, payload: sql`${activity.payload} - 'invoiceNumber'` })
+      .where(sql`${activity.payload}->>'invoiceNumber' = ${number}`);
+  });
 }
 
 export async function getInvoice(number: string): Promise<Invoice | null> {

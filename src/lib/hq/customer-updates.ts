@@ -86,11 +86,16 @@ export async function draftCustomerUpdate(db: Db, companyId: string, actor: stri
       .insert(activity)
       .values({ companyId, clientName: co.name, actor, type: "kundeopdatering", summary: `Kundeopdatering (kladde): ${payload.subject}`, payload })
       .returning();
-    // Arbejdet markeres som "fortalt" — en kasseret kladde frigiver det igen.
-    await tx
+    // Arbejdet markeres som "fortalt" — en kasseret kladde frigiver det igen. Kun
+    // rækker der stadig er ufortalte; er nogle taget af en samtidig kladde → rul tilbage.
+    const claimed = await tx
       .update(activity)
       .set({ payload: sql`coalesce(${activity.payload}, '{}'::jsonb) || jsonb_build_object('updateId', ${row.id}::text)` })
-      .where(sql`${activity.id} in (${sql.join(payload.activityIds.map((i) => sql`${i}::uuid`), sql`, `)})`);
+      .where(
+        sql`${activity.id} in (${sql.join(payload.activityIds.map((i) => sql`${i}::uuid`), sql`, `)}) and not (coalesce(${activity.payload}, '{}'::jsonb) ? 'updateId')`,
+      )
+      .returning({ id: activity.id });
+    if (claimed.length !== payload.activityIds.length) throw new UpdateError("arbejdet er lige kommet med i en anden kladde — genindlæs");
     return { ...payload, id: row.id, companyId, company: co.name, actor, at: row.at.toISOString() };
   });
 }

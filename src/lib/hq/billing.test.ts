@@ -56,3 +56,14 @@ test("andre kunders arbejde og tom liste afvises", async () => {
   await assert.rejects(invoiceFromWork(db, companyId, [x], opts), BillingError);
   await assert.rejects(invoiceFromWork(db, companyId, [], opts), BillingError);
 });
+
+test("slettet kladde frigiver arbejdet; noter med beløb faktureres ikke", async () => {
+  const a = await work(companyId, "Ny forside", 1500);
+  const [n] = await db.insert(activity).values({ companyId, type: "note", summary: "Snak", billableDkk: 300 }).returning({ id: activity.id });
+  assert.equal((await unbilledWork(db, companyId)).length, 1);
+  await assert.rejects(invoiceFromWork(db, companyId, [n.id], opts), BillingError);
+  const inv = await invoiceFromWork(db, companyId, [a], opts);
+  const { deleteInvoiceRow } = await import("../pg/invoices.ts");
+  await deleteInvoiceRow(inv.number);
+  assert.equal((await unbilledWork(db, companyId)).length, 1);
+});

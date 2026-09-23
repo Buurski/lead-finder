@@ -42,3 +42,10 @@ test("kunde forbliver kunde; ukendt opretter ny virksomhed med rækkenummer", as
   assert.equal(ny.source, "kinly.dk");
   assert.equal(ny.lifecycle, "interesseret");
 });
+
+test("delt mail hæfter ikke en anden forretning på det gamle lead", async () => {
+  const r = await recordInbound(db, { ...base, id: "p4", company: "Maja Negle", email: "hej@salonlux.dk", website: "majanegle.dk" });
+  assert.equal(r.created, true);
+  const same = await recordInbound(db, { ...base, id: "p5", company: "Salon Lux ApS", email: "hej@salonlux.dk" });
+  assert.equal(same.rowNo, 5);
+});
