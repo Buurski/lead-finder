@@ -1,128 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { DEMO_CATALOG } from "@/lib/demos";
-import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import WarnBanner from "@/components/WarnBanner";
+import InboxTopBar from "@/components/inbox/InboxTopBar";
+import InboxTabs from "@/components/inbox/InboxTabs";
+import InboxFilterBar from "@/components/inbox/InboxFilterBar";
+import InboxList from "@/components/inbox/InboxList";
+import InboxDetail from "@/components/inbox/InboxDetail";
+import { jevPriority, type ActFn, type QueueDraft, type Tab } from "@/components/inbox/types";
+import "@/components/inbox/inbox.css";
 
-// Sender-telefoner brugt i /approve-preview. Embedded client-side så bundle
-// ikke trækker server-only env-vars; serveren (senders.ts) er source of
-// truth ved faktisk afsendelse. Hold disse i sync med LUCAS_SENDER_PHONE /
-// CHARLIE_SENDER_PHONE i Vercel-env.
-const PREVIEW_LUCAS_PHONE = "+45 23 24 24 82";
-const PREVIEW_CHARLIE_PHONE = "+45 42 25 32 62";
+const LIST_PAGE = 30;
 
-// Mirror of QueueDraft (src/lib/queue.ts) — kept local so this client component
-// has no server-only imports.
-interface Demo {
-  label: string;
-  url: string;
-}
-type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
-interface QueueDraft {
-  id: string;
-  leadId: string;
-  name: string;
-  branch: string;
-  city: string;
-  hooks: string[];
-  demoPair: Demo[];
-  professionalism: string;
-  subject: string;
-  body: string;
-  status: DraftStatus;
-  source: string;
-  createdAt: string;
-  updatedAt: string;
-  sender?: "lucas" | "charlie";
-  sentBy?: "lucas" | "charlie";
-  // Jev-vurdering (2026-09-20): sat af /api/approve/queue fra jev-shadow (lead)
-  // + jev-draft-shadow (denne kladde). Begge kan være null (ikke vurderet endnu).
-  jev?: {
-    lead: number | null;
-    draft: number | null;
-    flags: string[];
-    grade?: "A" | "B" | "C" | "?";
-    priority?: number | null;
-    links?: { kind: "web" | "maps" | "facebook" | "instagram" | "mail"; label: string; href: string }[];
-    facts?: string[];
-    // Facebook-følgertal (2026-09-20), kun sat efter "Hent følgertal"-klik —
-    // se hvor stor forretningen er FØR man sender. Bucket-streng, aldrig et
-    // eksakt tal (falsk præcision på et skrabet estimat).
-    followers?: string | null;
-  };
-  // Serverside historik-badge (2026-07-17): sat af /api/approve/queue når
-  // forretningen matcher en allerede-kontaktet i Sheets (navn+by eller email/domæne).
-  history?: {
-    seenBefore: boolean;
-    reason: string;
-    lastContactAt?: string | null;
-    daysSince?: number | null;
-    replied?: "ja" | "nej" | "aldrig";
-    warmth?: "varm" | "lun" | "kold" | "død";
-  };
-}
-
-// Jev-prioritet for "Afventer"-fanen (2026-09-20): kladde-kvalitet vejer
-// tungest (det Lucas sender ud), lead-attraktivitet er sekundær. Ingen
-// vurdering endnu (null) → neutral 50 så ikke-vurderede kladder ikke synker
-// til bunds eller springer foran gode.
-function jevPriority(d: QueueDraft): number {
-  // Serverens tal (lead-grade.ts) er kilden — den blander ikke længere en
-  // manglende halvdel ind i sig selv. Uvurderede (-1) ligger sidst, ikke
-  // midt i feltet: vi VED ikke at de er gennemsnitlige.
-  return d.jev?.priority ?? -1;
-}
-
-// Varme-badge (2026-07-18): farve + label pr. varme-trin. "død" = svarede nej —
-// må aldrig kontaktes igen (dedup-gaten blokerer dem også serverside).
-const WARMTH_META: Record<string, { label: string; fg: string; bg: string }> = {
-  varm: { label: "varm",    fg: "var(--amber)", bg: "var(--amber-dim)" },
-  lun:  { label: "lun",     fg: "var(--text-muted)", bg: "var(--bg-3)" },
-  kold: { label: "kold",    fg: "var(--blue)", bg: "var(--blue-dim)" },
-  død:  { label: "✕ svarede nej", fg: "var(--red)", bg: "var(--red-dim)" },
-};
-
-// A/B/C-karakter (2026-09-20): fra jev.priority (lead-grade.ts, samme vægtning
-// som jevPriority herunder). "?" = endnu ikke vurderet, hverken lead eller kladde.
-const GRADE_META: Record<string, { fg: string; bg: string; border: string }> = {
-  A: { fg: "var(--green)", bg: "var(--bg-2)", border: "var(--green)" },
-  B: { fg: "var(--amber)", bg: "var(--amber-dim)", border: "var(--amber)" },
-  C: { fg: "var(--text-muted)", bg: "var(--bg-3)", border: "var(--border)" },
-  "?": { fg: "var(--text-dim)", bg: "transparent", border: "var(--border)" },
-};
-
-// "seen" (2026-07-17): pending drafts hvis forretning findes i kontakt-
-// historikken (history.seenBefore fra /api/approve/queue). "pending" viser KUN
-// friske — så Lucas aldrig godkender en gensending ved et uheld.
-type Filter = "pending" | "seen" | "approved" | "decided" | "all";
-
-// Demo catalog grouped by branch family, for the per-draft demo picker.
-const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
-  const m = new Map<string, { label: string; url: string }[]>();
-  for (const d of DEMO_CATALOG) {
-    if (!m.has(d.branch)) m.set(d.branch, []);
-    m.get(d.branch)!.push({ label: d.label, url: d.url });
-  }
-  return [...m.entries()];
-})();
-
-const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: string }> = {
-  pending: { label: "afventer", fg: "var(--amber)", bg: "var(--amber-dim)" },
-  approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--bg-2)" },
-  edited: { label: "redigeret · godkendt", fg: "var(--blue)", bg: "var(--blue-dim)" },
-  rejected: { label: "afvist", fg: "var(--red)", bg: "var(--red-dim)" },
-  sent: { label: "sendt (test)", fg: "var(--blue)", bg: "var(--blue-dim)" },
-};
-
+// Suspense er påkrævet af Next 16 når en client-side page bruger
+// useSearchParams (?id=<draftId> — URL-state for detaljevisningen), ellers
+// fejler production-build (missing-suspense-with-csr-bailout).
 export default function ApprovePage() {
+  return (
+    <Suspense fallback={<div className="cc-skel" style={{ height: 480, borderRadius: 14 }} />}>
+      <InboxApp />
+    </Suspense>
+  );
+}
+
+function InboxApp() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [drafts, setDrafts] = useState<QueueDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("pending");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  // Lucas' egne domme (2026-09-21). Optimistisk i UI, gemt serverside.
-  // Ændrer INTET ved kladden — ren træningsdata til næste kalibrering.
   const [labels, setLabels] = useState<Record<string, "god" | "daarlig">>({});
   const [labelStat, setLabelStat] = useState<{ god: number; daarlig: number; nok: boolean } | null>(null);
 
@@ -133,7 +42,6 @@ export default function ApprovePage() {
     return Array.isArray(data.drafts) ? (data.drafts as QueueDraft[]) : [];
   }, []);
 
-  // Manual refresh (button handler — setState here is fine, not an effect body).
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -146,29 +54,21 @@ export default function ApprovePage() {
     }
   }, [fetchQueue]);
 
-  // Initial load — all setState happens after await, so it is not a synchronous
-  // setState inside the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const drafts = await fetchQueue();
-        if (!cancelled) {
-          setDrafts(drafts);
-          setError(null);
-        }
+        const d = await fetchQueue();
+        if (!cancelled) { setDrafts(d); setError(null); }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error && e.message ? `Kunne ikke hente køen (${e.message}).` : "Kunne ikke hente køen.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [fetchQueue]);
 
-  // Hent eksisterende labels én gang, så knapperne står rigtigt efter reload.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -181,9 +81,7 @@ export default function ApprovePage() {
         for (const l of data.labels ?? []) m[l.draftId] = l.label;
         setLabels(m);
         setLabelStat(data.stats ?? null);
-      } catch {
-        /* labels er en ekstra — køen virker uden dem */
-      }
+      } catch { /* labels er en ekstra — køen virker uden dem */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -202,35 +100,242 @@ export default function ApprovePage() {
         body: JSON.stringify({ id, label: value, jevLead: draft?.jev?.lead ?? null, jevDraft: draft?.jev?.draft ?? null }),
       });
       if (res.ok) setLabelStat((await res.json()).stats ?? null);
-    } catch {
-      /* mistet label er ikke værd at afbryde arbejdet for */
-    }
+    } catch { /* mistet label er ikke værd at afbryde arbejdet for */ }
   }, [drafts]);
 
   const patchLocal = useCallback((d: QueueDraft) => {
     setDrafts((prev) => prev.map((x) => (x.id === d.id ? d : x)));
   }, []);
 
+  // ---- URL-state (?id=<draftId>) — link + tilbage-knap -------------------
+  // Ingen lokal kopi/useState nødvendig — searchParams ER kilden, og Next
+  // rerenderer allerede når den ændres (undgår en synkron setState-i-effect).
+  const selectedId = searchParams.get("id");
+
+  const setSelectedId = useCallback((id: string | null, opts?: { push?: boolean }) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (id) params.set("id", id); else params.delete("id");
+    const qs = params.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (opts?.push) router.push(url, { scroll: false });
+    else router.replace(url, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  // ---- pause-status + dagens send-loft (GET-only preflight — sender intet) --
+  const [pauseInfo, setPauseInfo] = useState<{ paused: boolean; until?: string } | null>(null);
+  const [cap, setCap] = useState<number | null>(null);
+  // Hvilke afsendere har creds sat — driver "Ikke forbundet"-pillen ved
+  // afsender-valget i stedet for det gamle "Gmail er ikke sat op"-banner
+  // (ui-common2.md §18: ingen bannere, en lille rolig pille).
+  const [senders, setSenders] = useState<{ lucas: boolean; charlie: boolean } | null>(null);
+  const refreshSendStatus = useCallback(async () => {
+    try {
+      const pf = await fetch("/api/approve/send").then((r) => r.json());
+      if (pf?.ok) {
+        setPauseInfo({ paused: !!pf.paused, until: pf.until });
+        setCap(typeof pf.cap === "number" ? pf.cap : null);
+        if (pf.senders) setSenders({ lucas: !!pf.senders.lucas, charlie: !!pf.senders.charlie });
+      }
+    } catch { /* status-bjælken er ekstra info, ikke kritisk */ }
+  }, []);
+  // Hent status ved mount — pakket i en IIFE (setState sker efter await, ikke
+  // synkront i effect-kroppen) i stedet for at kalde refreshSendStatus()
+  // direkte, som react-hooks/set-state-in-effect flager.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const pf = await fetch("/api/approve/send").then((r) => r.json());
+        if (!cancelled && pf?.ok) {
+          setPauseInfo({ paused: !!pf.paused, until: pf.until });
+          setCap(typeof pf.cap === "number" ? pf.cap : null);
+          if (pf.senders) setSenders({ lucas: !!pf.senders.lucas, charlie: !!pf.senders.charlie });
+        }
+      } catch { /* status-bjælken er ekstra info, ikke kritisk */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---- faner + filtre -----------------------------------------------------
+  const [tab, setTabState] = useState<Tab>("pending");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingSort, setPendingSort] = useState<"jev" | "newest">("jev");
+  const [seenOnly, setSeenOnly] = useState(false);
+  const [q, setQ] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [gradeFilter, setGradeFilter] = useState<"ok" | "all" | "best" | "A" | "B" | "C">("ok");
+  const [shownCount, setShownCount] = useState(LIST_PAGE);
+
+  const setTab = useCallback((t: Tab) => {
+    setTabState(t);
+    setShownCount(LIST_PAGE);
+    setSelected(new Set());
+    setSeenOnly(false);
+    setSelectedId(null, { push: false });
+  }, [setSelectedId]);
+
+  const branches = useMemo(
+    () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
+    [drafts]
+  );
+
   const counts = useMemo(() => {
     const pendingAll = drafts.filter((d) => d.status === "pending");
     const seen = pendingAll.filter((d) => d.history?.seenBefore).length;
-    const pending = pendingAll.length - seen;
-    // "edited" = legacy redigeret·godkendt — tælles og sendes som godkendt.
     const approvedList = drafts.filter((d) => d.status === "approved" || d.status === "edited");
     const approved = approvedList.length;
     const approvedCharlie = approvedList.filter((d) => (d.sender ?? "lucas") === "charlie").length;
     const approvedLucas = approved - approvedCharlie;
-    const decided = drafts.length - pendingAll.length;
-    return { pending, seen, approved, approvedLucas, approvedCharlie, decided, all: drafts.length };
+    const sent = drafts.filter((d) => d.status === "sent").length;
+    const rejected = drafts.filter((d) => d.status === "rejected").length;
+    const followups = drafts.filter((d) => d.source === "opfoelgning").length;
+    return { pending: pendingAll.length, seen, approved, approvedLucas, approvedCharlie, sent, rejected, followups };
   }, [drafts]);
 
-  // Send the approved drafts. The route streams SSE progress, so the UI shows a
-  // live "i/N · sender…" line while it works (a run takes minutes — paced sends).
+  const tabCounts: Record<Tab, number> = useMemo(() => ({
+    pending: counts.pending, approved: counts.approved, followups: counts.followups, sent: counts.sent, rejected: counts.rejected,
+  }), [counts]);
+
+  // Base pr. fane, FØR gradeFilter/søgning/branche — "Set før" og
+  // Jev-prioritet/nyeste-sortering hører kun til "Til godkendelse".
+  const baseByTab = useMemo(() => {
+    if (tab === "pending") {
+      let base = drafts.filter((d) => d.status === "pending");
+      if (seenOnly) {
+        base = base.filter((d) => d.history?.seenBefore);
+        const rank: Record<string, number> = { varm: 0, lun: 1, kold: 2, "død": 3 };
+        base = [...base].sort((a, b) =>
+          (rank[a.history?.warmth ?? "kold"] - rank[b.history?.warmth ?? "kold"]) ||
+          ((a.history?.daysSince ?? 9999) - (b.history?.daysSince ?? 9999)));
+      } else if (pendingSort === "jev") {
+        base = [...base].sort((a, b) => jevPriority(b) - jevPriority(a));
+      }
+      return base;
+    }
+    if (tab === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
+    if (tab === "sent") return drafts.filter((d) => d.status === "sent");
+    if (tab === "rejected") return drafts.filter((d) => d.status === "rejected");
+    // Opfølgninger (spec §11, backend landet 2026-09-22): kladder fra
+    // sekvens-motoren. Findes feltet ikke endnu (ældre kø/lokal DB), er
+    // listen bare tom — InboxList viser da den tomme tilstand.
+    return drafts.filter((d) => d.source === "opfoelgning");
+  }, [drafts, tab, seenOnly, pendingSort]);
+
+  const visible = useMemo(() => {
+    let base = baseByTab;
+    if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
+    if (gradeFilter === "best") {
+      base = base.filter((d) => (d.jev?.grade ?? "?") === "A" && !(d.jev?.flags ?? []).includes("send ikke"))
+        .sort((a, b) => jevPriority(b) - jevPriority(a));
+    } else if (gradeFilter === "ok") {
+      base = base.filter((d) => (d.jev?.grade ?? "?") !== "C" && !(d.jev?.flags ?? []).includes("send ikke"));
+    } else if (gradeFilter !== "all") {
+      base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
+    }
+    const needle = q.trim().toLowerCase();
+    if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
+    return base;
+  }, [baseByTab, branchFilter, gradeFilter, q]);
+
+  // ---- delt handling (knapper OG tastatur-triage) -------------------------
+  const actOn: ActFn = useCallback(async (id, action, payload) => {
+    // Næste kladde beregnes FØR status ændres — ellers er den handlede
+    // kladde allerede filtreret ud, og "næste" bliver forkert.
+    let nextId: string | null = null;
+    if (action === "approve" || action === "edit" || action === "reject") {
+      const idx = visible.findIndex((d) => d.id === id);
+      if (idx >= 0) nextId = visible[idx + 1]?.id ?? visible[idx - 1]?.id ?? null;
+    }
+    try {
+      const res = await fetch("/api/approve/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, violations: Array.isArray(data.violations) ? data.violations : [data.error ?? "Ukendt fejl"] };
+      }
+      patchLocal(data.draft as QueueDraft);
+      if ((action === "approve" || action === "edit" || action === "reject") && id === selectedId) {
+        setSelectedId(nextId, { push: false });
+      }
+      return { ok: true };
+    } catch {
+      // Netværksfejl (fx serveren væk midt i et klik) — samme besked som resten
+      // af siden bruger, og busy-state hos kalderen nulstilles altid i dens finally.
+      return { ok: false, violations: ["Netværksfejl. Prøv igen."] };
+    }
+  }, [patchLocal, visible, selectedId, setSelectedId]);
+
+  // ---- tastatur: j/k flytter, a godkend, r afvis, e ret, space/x vælg ----
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      if (document.querySelector(".cc-palette")) return;
+      const idx = visible.findIndex((d) => d.id === selectedId);
+      const cur = idx >= 0 ? visible[idx] : visible[0];
+      const k = e.key.toLowerCase();
+      if (k === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIdx = Math.min((idx < 0 ? -1 : idx) + 1, visible.length - 1);
+        if (nextIdx >= shownCount) setShownCount((c) => c + LIST_PAGE);
+        const next = visible[nextIdx];
+        if (next) setSelectedId(next.id, { push: false });
+      } else if (k === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = visible[Math.max((idx < 0 ? 0 : idx) - 1, 0)];
+        if (prev) setSelectedId(prev.id, { push: false });
+      } else if (cur && tab === "pending" && k === "a") {
+        e.preventDefault();
+        actOn(cur.id, "approve");
+      } else if (cur && tab === "pending" && k === "r") {
+        e.preventDefault();
+        actOn(cur.id, "reject");
+      } else if (cur && tab === "pending" && k === "e") {
+        e.preventDefault();
+        document.getElementById(`inbox-body-${cur.id}`)?.focus();
+      } else if (cur && tab === "pending" && (e.key === " " || k === "x")) {
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(cur.id)) next.delete(cur.id); else next.add(cur.id);
+          return next;
+        });
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, selectedId, tab, actOn, shownCount, setSelectedId]);
+
+  // ---- desktop: åbn altid noget i højre panel (mail-app-mønster) --------
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    if (isMobile) return;
+    if (selectedId && visible.some((d) => d.id === selectedId)) return;
+    if (visible.length > 0) setSelectedId(visible[0].id, { push: false });
+    else if (selectedId) setSelectedId(null, { push: false });
+  }, [isMobile, visible, selectedId, setSelectedId]);
+
+  const selectedDraft = useMemo(() => drafts.find((d) => d.id === selectedId) ?? null, [drafts, selectedId]);
+  const openDraft = useCallback((id: string) => setSelectedId(id, { push: true }), [setSelectedId]);
+  const closeDraft = useCallback(() => setSelectedId(null, { push: false }), [setSelectedId]);
+
+  // ---- send de godkendte (uændret flow — se ui-common.md: ikke rørt) -----
   const [sendMsg, setSendMsg] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendProg, setSendProg] = useState<{ processed: number; total: number; sent: number; failed: number; line: string } | null>(null);
   const sendApproved = useCallback(async (senderFilter?: "lucas" | "charlie") => {
-    if (sendBusy) return;               // hard guard: ignore extra clicks while a run is in flight
+    if (sendBusy) return;
     const filterCount = senderFilter === "lucas" ? counts.approvedLucas
       : senderFilter === "charlie" ? counts.approvedCharlie
       : counts.approved;
@@ -238,10 +343,6 @@ export default function ApprovePage() {
     const qs = senderFilter ? `?sender=${senderFilter}` : "";
     const who = senderFilter === "lucas" ? " (kun Lucas)" : senderFilter === "charlie" ? " (kun Charlie)" : "";
 
-    // Preflight (GET på send-ruten): kører alle guards uden at sende, så
-    // bekræftelsen viser de RIGTIGE tal (sendes nu / venter / springes over)
-    // og blokkere fanges FØR dialogen. Best-effort: fejler preflight, falder
-    // vi tilbage til den gamle dialog.
     let confirmText = `Send ${filterCount} godkendte udkast${who}?`;
     try {
       const pf = await fetch(`/api/approve/send${qs}`).then((r) => r.json());
@@ -277,7 +378,6 @@ export default function ApprovePage() {
       const res = await fetch(`/api/approve/send${qs}`, { method: "POST" });
       const ct = res.headers.get("content-type") || "";
 
-      // Pre-flight guards (pause / busy / no-creds / nothing-to-send) return JSON.
       if (ct.includes("application/json") || !res.body) {
         const d = await res.json().catch(() => ({}));
         const msg = d.paused
@@ -289,10 +389,10 @@ export default function ApprovePage() {
               : (d.error ?? "Kunne ikke sende.");
         setSendMsg(msg);
         await load();
+        await refreshSendStatus();
         return;
       }
 
-      // SSE stream — parse "data: {...}" frames and update the progress line live.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
@@ -339,15 +439,14 @@ export default function ApprovePage() {
         }
       }
       await load();
+      await refreshSendStatus();
     } catch {
       setSendMsg("Netværksfejl ved afsendelse.");
     } finally {
       setSendBusy(false);
     }
-  }, [sendBusy, counts.approved, counts.approvedLucas, counts.approvedCharlie, load]);
+  }, [sendBusy, counts.approved, counts.approvedLucas, counts.approvedCharlie, load, refreshSendStatus]);
 
-  // Nødbremse: flyt ALLE godkendte tilbage til afventer (intet sendes).
-  // Til gamle masse-godkendelser (fx 221 legacy "redigeret · godkendt").
   const [resetBusy, setResetBusy] = useState(false);
   const resetApproved = useCallback(async () => {
     if (resetBusy || sendBusy || counts.approved === 0) return;
@@ -369,16 +468,7 @@ export default function ApprovePage() {
     }
   }, [resetBusy, sendBusy, counts.approved, load]);
 
-  // Prioritering af "Afventer" (2026-09-20): Jev-vurdering øverst som standard
-  // så de bedste kladder sendes først — toggle falder tilbage til den gamle
-  // nyeste-først rækkefølge (køen kommer allerede createdAt-sorteret fra API'et).
-  const [pendingSort, setPendingSort] = useState<"jev" | "newest">("jev");
-
-  // "Vurdér kladder nu" (2026-09-20): kør en Jev-batch on-demand i stedet for
-  // at vente på nat-cronnen (03:30, som Lucas ikke selv kan trigge — den
-  // hemmelighed kan han ikke læse i Vercel). Ruten kører bag samme basic auth
-  // som resten af siden. limit=30 så et enkelt klik ikke løber for langt ud
-  // over Vercels 120s-loft.
+  // ---- Jev / berigelse / følgertal (uændrede rute-kald) -------------------
   const [jevRunBusy, setJevRunBusy] = useState(false);
   const [jevRunMsg, setJevRunMsg] = useState("");
   const runJevNow = useCallback(async () => {
@@ -402,10 +492,6 @@ export default function ApprovePage() {
     }
   }, [jevRunBusy, load]);
 
-  // "Hent forretningsdata" (2026-09-21): Google Places-opslag på de kladder der
-  // aldrig har haft en Sheets-række, så forretningen bag dem kan vurderes.
-  // KOSTER PENGE (ét kald pr. kladde), derfor bekræftelse med pris FØRST —
-  // GET'en svarer med hvor mange der mangler og hvad det løber op i.
   const [enrichBusy, setEnrichBusy] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState("");
   const enrichQueue = useCallback(async () => {
@@ -422,15 +508,7 @@ export default function ApprovePage() {
       return;
     }
     if (mangler === 0) { setEnrichMsg("Alle kladder har allerede forretningsdata."); return; }
-    if (!window.confirm(
-      `Slå ${mangler} forretninger op hos Google?
-
-Koster ca. ${pris}. ` +
-      `De får website, anmeldelsestal og drift-status, og bliver derefter Jev-vurderet.
-
-` +
-      `Permanent lukkede forretninger afvises automatisk. Intet sendes.`
-    )) return;
+    if (!window.confirm(`Slå ${mangler} forretninger op hos Google?\n\nKoster ca. ${pris}. De får website, anmeldelsestal og drift-status, og bliver derefter Jev-vurderet.\n\nPermanent lukkede forretninger afvises automatisk. Intet sendes.`)) return;
     setEnrichBusy(true);
     setEnrichMsg("Slår op…");
     try {
@@ -449,10 +527,6 @@ Koster ca. ${pris}. ` +
     }
   }, [enrichBusy, load]);
 
-  // "Hent følgertal" (2026-09-20): Facebook-følgertal via Apify, bag pris-gate
-  // (ENABLE_SOCIAL_STATS=1 + APIFY_TOKEN, ellers svarer ruten bare med en
-  // forklaring — intet forbrug uden Lucas' eget klik). $0.012/side ≈ 0,084 kr
-  // (kurs ~7); prisestimatet er på antal AFVENTENDE kladder vist lige nu.
   const [socialBusy, setSocialBusy] = useState(false);
   const [socialMsg, setSocialMsg] = useState("");
   const fetchFollowers = useCallback(async () => {
@@ -477,132 +551,7 @@ Koster ca. ${pris}. ` +
     }
   }, [socialBusy, load]);
 
-  // Søg + branche-filter: 490 afventende udkast er umulige at navigere uden.
-  const [q, setQ] = useState("");
-  const [branchFilter, setBranchFilter] = useState("all");
-  // A/B/C-filter (2026-09-20): gælder i alle faner, ikke kun Afventer — Lucas
-  // vil kunne se "kun A" i Godkendt/Alle også. "best" (2026-09-20): kun A-kladder
-  // uden "send ikke"-flag — Lucas' egen genvej til "hvad kan jeg sende lige nu".
-  // "ok" er standard (Lucas 2026-09-21: "fjern dem fra godkendelse, så jeg ikke
-  // kan se dem der er 30 og dårlige"). Den skjuler karakter C og alt med
-  // "send ikke"-flag, men beholder "?" — en uvurderet kladde er ukendt, ikke dårlig.
-  const [gradeFilter, setGradeFilter] = useState<"ok" | "all" | "best" | "A" | "B" | "C">("ok");
-  const branches = useMemo(
-    () => Array.from(new Set(drafts.map((d) => d.branch).filter(Boolean))).sort((a, b) => a.localeCompare(b, "da")),
-    [drafts]
-  );
-
-  const visible = useMemo(() => {
-    let base: QueueDraft[];
-    if (filter === "pending") {
-      base = drafts.filter((d) => d.status === "pending" && !d.history?.seenBefore);
-      if (pendingSort === "jev") base = [...base].sort((a, b) => jevPriority(b) - jevPriority(a));
-    }
-    else if (filter === "seen") {
-      // Varmest øverst; døde (svarede nej) nederst. Sekundært: kortest tid
-      // siden kontakt først.
-      const rank: Record<string, number> = { varm: 0, lun: 1, kold: 2, "død": 3 };
-      base = drafts
-        .filter((d) => d.status === "pending" && d.history?.seenBefore)
-        .sort((a, b) =>
-          (rank[a.history?.warmth ?? "kold"] - rank[b.history?.warmth ?? "kold"]) ||
-          ((a.history?.daysSince ?? 9999) - (b.history?.daysSince ?? 9999)));
-    }
-    else if (filter === "approved") base = drafts.filter((d) => d.status === "approved" || d.status === "edited");
-    else if (filter === "decided") base = drafts.filter((d) => d.status !== "pending");
-    else base = drafts;
-    if (branchFilter !== "all") base = base.filter((d) => d.branch === branchFilter);
-    if (gradeFilter === "best") {
-      base = base
-        .filter((d) => (d.jev?.grade ?? "?") === "A" && !(d.jev?.flags ?? []).includes("send ikke"))
-        .sort((a, b) => jevPriority(b) - jevPriority(a));
-    } else if (gradeFilter === "ok") {
-      base = base.filter((d) => (d.jev?.grade ?? "?") !== "C" && !(d.jev?.flags ?? []).includes("send ikke"));
-    } else if (gradeFilter !== "all") {
-      base = base.filter((d) => (d.jev?.grade ?? "?") === gradeFilter);
-    }
-    const needle = q.trim().toLowerCase();
-    if (needle) base = base.filter((d) => `${d.name} ${d.city} ${d.branch} ${d.subject}`.toLowerCase().includes(needle));
-    return base;
-  }, [drafts, filter, branchFilter, gradeFilter, q, pendingSort]);
-
-  // Delt med Header (visiblePending) og "Hent følgertal"-prisestimatet.
-  const pendingShownCount = useMemo(() => visible.filter((d) => d.status === "pending").length, [visible]);
-
-  // Render i hold: 490 fulde brev-kort på én gang gjorde siden mærkbart tung
-  // (342 KB tekst i DOM'en). Tastatur-nav folder selv flere ud ved list-enden;
-  // "Vælg alle" arbejder stadig på HELE listen, ikke kun de viste.
-  const LIST_PAGE = 30;
-  const [shownCount, setShownCount] = useState(LIST_PAGE);
-  const changeFilter = useCallback((f: Filter) => {
-    setFilter(f);
-    setShownCount(LIST_PAGE);
-  }, []);
-  const shownList = useMemo(() => visible.slice(0, shownCount), [visible, shownCount]);
-
-  // ---- shared action (used by buttons AND keyboard triage) ----------------
-  const actOn = useCallback(
-    async (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }): Promise<{ ok: boolean; violations?: string[] }> => {
-      const res = await fetch("/api/approve/queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { ok: false, violations: Array.isArray(data.violations) ? data.violations : [data.error ?? "Ukendt fejl"] };
-      }
-      patchLocal(data.draft as QueueDraft);
-      return { ok: true };
-    },
-    [patchLocal]
-  );
-
-  // ---- keyboard triage: j/k move, a approve, r skip, e edit ---------------
-  const [focusIdx, setFocusIdx] = useState(0);
-  // (No clamp effect: the keyboard handler clamps on the next move, and an
-  // out-of-range index simply highlights nothing until then.)
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const el = document.activeElement;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
-      if (document.querySelector(".cc-palette")) return;
-      const cur = visible[focusIdx];
-      const k = e.key.toLowerCase();
-      if (k === "j" || e.key === "ArrowDown") {
-        e.preventDefault();
-        const next = Math.min(focusIdx + 1, visible.length - 1);
-        if (next >= shownCount) setShownCount((c) => c + LIST_PAGE);
-        setFocusIdx(next);
-      }
-      else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(i - 1, 0)); }
-      else if (cur && cur.status === "pending" && k === "a") { e.preventDefault(); actOn(cur.id, "approve"); }
-      else if (cur && cur.status === "pending" && k === "r") { e.preventDefault(); actOn(cur.id, "reject"); }
-      else if (cur && cur.status === "pending" && k === "e") {
-        e.preventDefault();
-        document.getElementById(`draft-body-${cur.id}`)?.focus();
-      }
-      else if (cur && cur.status === "pending" && (e.key === " " || k === "x")) {
-        // space/x: vaelg/fravaelg fokuseret udkast til batch-godkend
-        e.preventDefault();
-        setSelected((prev) => {
-          const next = new Set(prev);
-          if (next.has(cur.id)) next.delete(cur.id);
-          else next.add(cur.id);
-          return next;
-        });
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [visible, focusIdx, actOn, shownCount]);
-
-  // ---- bulk-approve all currently-pending "safe" drafts -------------------
-  // Council-fund (wild card): bulk følger det AKTIVE filter — et søge-/branche-
-  // filter er dermed også et sikkerhedshegn, ikke kun navigation. Confirm-
-  // dialogen viser branche-miks så en skæv batch (fx 100% restauranter) ses
-  // FØR man godkender i bulk, ikke efter.
+  // ---- bulk: godkend/afvis (uændret) --------------------------------------
   const [bulkBusy, setBulkBusy] = useState(false);
   const bulkApprove = useCallback(async () => {
     const pendings = visible.filter((d) => d.status === "pending");
@@ -615,7 +564,6 @@ Koster ca. ${pris}. ` +
     if (!window.confirm(`Godkend ${pendings.length} afventende udkast${scopeNote}?\n\nBranche-miks: ${mixLine}.\n\nDe markeres til afsendelse — intet sendes.`)) return;
     setBulkBusy(true);
     try {
-      // Én bulk-request i stedet for ét POST pr. draft (490 requests = minutter).
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -632,27 +580,21 @@ Koster ca. ${pris}. ` +
     }
   }, [visible, counts.pending, load]);
 
-  // ---- approve a hand-picked subset (checkboxes on pending cards) ----------
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }, []);
 
-  // Only ids that are still pending count — a draft decided via its own
-  // buttons (or keyboard) simply falls out of the selection.
   const selectedPending = useMemo(
     () => drafts.filter((d) => d.status === "pending" && selected.has(d.id)),
     [drafts, selected]
   );
-
   const selectAllVisible = useCallback(() => {
     setSelected(new Set(visible.filter((d) => d.status === "pending").map((d) => d.id)));
   }, [visible]);
-
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   const [selBusy, setSelBusy] = useState(false);
@@ -679,7 +621,6 @@ Koster ca. ${pris}. ` +
     }
   }, [selectedPending, load]);
 
-  // Bulk-afvis de valgte (symmetri med "Godkend valgte" — council-fund).
   const [rejBusy, setRejBusy] = useState(false);
   const rejectSelected = useCallback(async () => {
     const targets = selectedPending;
@@ -703,13 +644,9 @@ Koster ca. ${pris}. ` +
     }
   }, [selectedPending, load]);
 
-  // Ryd bunden (Lucas 2026-09-20: "slet dem der ikke er væsentlige for os").
-  // Kun afventende med karakter C — altså hvor BÅDE forretning og kladde er
-  // vurderet og resultatet er dårligt. "?" røres aldrig: en uvurderet kladde
-  // er ukendt, ikke dårlig. Afvist, ikke slettet — reversibelt.
   const gradeCPending = useMemo(
     () => drafts.filter((d) => d.status === "pending" && d.jev?.grade === "C"),
-    [drafts],
+    [drafts]
   );
   const rejectGradeC = useCallback(async () => {
     const targets = gradeCPending;
@@ -733,12 +670,6 @@ Koster ca. ${pris}. ` +
     }
   }, [gradeCPending, load]);
 
-  // Afvis ALLE "Set før"-kladder i ét klik (Lucas 2026-09-22: "så jeg kan slette
-  // alle fra set før ... og sørger for de ikke kommer tilbage"). Bruger den
-  // eksisterende reject-seen-action: afviser alle afventende kladder hvor
-  // forretningen allerede er kontaktet før (Sheets ELLER køens egne sendte).
-  // Rejected = reversibelt: kladden blokkeres 14 dage i motoren, og forretningen
-  // er spærret for re-ingest så længe den står som kontaktet. Intet sendes.
   const [seenBusy, setSeenBusy] = useState(false);
   const [seenMsg, setSeenMsg] = useState("");
   const rejectSeenAll = useCallback(async () => {
@@ -762,1180 +693,122 @@ Koster ca. ${pris}. ` +
     }
   }, [seenBusy, counts.seen, load]);
 
+  const shownList = visible; // InboxList klipper selv til shownCount
+  const selectedIndex = selectedDraft ? visible.findIndex((d) => d.id === selectedDraft.id) : -1;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <Header
-        counts={counts}
-        filter={filter}
-        setFilter={changeFilter}
-        onRefresh={load}
+    <div className="inbox-page">
+      <InboxTopBar
+        pending={counts.pending}
+        approved={counts.approved}
+        approvedLucas={counts.approvedLucas}
+        approvedCharlie={counts.approvedCharlie}
+        cap={cap}
+        pause={pauseInfo}
+        sendBusy={sendBusy}
+        resetBusy={resetBusy}
+        sendProg={sendProg}
+        sendMsg={sendMsg}
         loading={loading}
-        onBulkApprove={bulkApprove}
-        bulkBusy={bulkBusy}
-        selectedCount={selectedPending.length}
-        selBusy={selBusy}
-        onApproveSelected={approveSelected}
-        onSelectAll={selectAllVisible}
-        onClearSelection={clearSelection}
-        onRejectSelected={rejectSelected}
-        rejBusy={rejBusy}
-        visiblePending={pendingShownCount}
+        onRefresh={load}
+        onSend={() => sendApproved()}
+        onSendLucas={() => sendApproved("lucas")}
+        onSendCharlie={() => sendApproved("charlie")}
+        onReset={resetApproved}
       />
 
-      {/* Prioritering af Afventer (2026-09-20): Jev-rangering er standard, toggle falder tilbage til nyeste først. */}
-      <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={runJevNow}
-            disabled={jevRunBusy}
-            title="Kør en Jev-vurdering nu i stedet for at vente på nat-cronnen"
-            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: jevRunBusy ? 0.6 : 1 }}
-          >
-            {jevRunBusy ? "Vurderer…" : "Vurdér kladder nu"}
-          </button>
-          {jevRunMsg && !jevRunBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{jevRunMsg}</span>}
-          <button
-            type="button"
-            onClick={enrichQueue}
-            disabled={enrichBusy}
-            title="Slå forretningerne op hos Google (website, anmeldelser, drift-status) så de kan vurderes. Koster Places-kald — du får prisen før der køres."
-            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: enrichBusy ? 0.6 : 1 }}
-          >
-            {enrichBusy ? "Slår op…" : "Hent forretningsdata"}
-          </button>
-          {enrichMsg && !enrichBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{enrichMsg}</span>}
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={fetchFollowers}
-            disabled={socialBusy}
-            title="Facebook-følgertal for afventende kladder med et Facebook-link (Apify, $0,012/side — kræver ENABLE_SOCIAL_STATS)"
-            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: socialBusy ? 0.6 : 1 }}
-          >
-            {socialBusy ? "Henter…" : `Hent følgertal (ca. ${Math.ceil(pendingShownCount * 0.012 * 7)} kr)`}
-          </button>
-          {socialMsg && !socialBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{socialMsg}</span>}
-        </div>
-
-        {filter === "seen" && counts.seen > 0 && (
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={rejectSeenAll}
-              disabled={seenBusy}
-              title="Afvis alle kladder hvor forretningen allerede er kontaktet før — de er ude af køen og kommer ikke tilbage"
-              style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, opacity: seenBusy ? 0.6 : 1 }}
-            >
-              {seenBusy ? "Afviser…" : `Afvis alle ${counts.seen} fra "Set før"`}
-            </button>
-            {seenMsg && !seenBusy && <span className="cc-dim" style={{ fontSize: 12 }}>{seenMsg}</span>}
-          </div>
-        )}
-
-        {filter === "pending" && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sortering</span>
-            <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-              {([["jev", "Jev-prioritet"], ["newest", "Nyeste først"]] as const).map(([key, label]) => {
-                const active = pendingSort === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPendingSort(key)}
-                    style={{
-                      border: "none",
-                      cursor: "pointer",
-                      padding: "5px 13px",
-                      borderRadius: 6,
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      fontFamily: "inherit",
-                      color: active ? "var(--text)" : "var(--text-muted)",
-                      background: active ? "var(--surface)" : "transparent",
-                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* A/B/C-filter (2026-09-20): så Lucas kan sende de bedste først. */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Karakter</span>
-          <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-            {(["best", "ok", "all", "A", "B", "C"] as const).map((key) => {
-              const active = gradeFilter === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setGradeFilter(key)}
-                  style={{
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "5px 13px",
-                    borderRadius: 6,
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    fontFamily: "inherit",
-                    color: active ? "var(--text)" : "var(--text-muted)",
-                    background: active ? "var(--surface)" : "transparent",
-                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
-                  }}
-                >
-                  {key === "best" ? "Bedste" : key === "ok" ? "Skjul dårlige" : key === "all" ? "Alle" : key}
-                </button>
-              );
-            })}
-          </div>
-          {labelStat && (labelStat.god + labelStat.daarlig) > 0 && (
-            <span
-              title="Dine God/Dårlig-domme bruges til at kalibrere attraktivitets-formlen. Under 25 i hver gruppe er målingen for støjende til at ændre vægte på."
-              style={{ fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}
-            >
-              {labelStat.god} god · {labelStat.daarlig} dårlig
-              {labelStat.nok
-                ? " · nok til at måle"
-                : ` · mangler ${Math.max(0, 25 - labelStat.god)} god / ${Math.max(0, 25 - labelStat.daarlig)} dårlig`}
-            </span>
-          )}
-          {gradeCPending.length > 0 && (
-            <button
-              type="button"
-              onClick={rejectGradeC}
-              disabled={rejBusy}
-              className="cc-btn"
-              style={{ fontSize: 12.5, color: "var(--red)", borderColor: "var(--red)" }}
-            >
-              {rejBusy ? "Afviser…" : `Afvis alle C (${gradeCPending.length})`}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Søg/filtrér i køen — vises kun når der faktisk er noget at lede i. */}
-      {drafts.length > 10 && (
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setShownCount(LIST_PAGE); }}
-            placeholder="Søg navn, by eller emne…"
-            aria-label="Søg i udkast"
-            style={{ flex: "1 1 220px", minWidth: 0, maxWidth: 340, border: "1px solid var(--border)", borderRadius: 9, padding: "8px 12px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
-          />
-          {branches.length > 1 && (
-            <select
-              value={branchFilter}
-              onChange={(e) => { setBranchFilter(e.target.value); setShownCount(LIST_PAGE); }}
-              aria-label="Filtrér på branche"
-              style={{ border: "1px solid var(--border)", borderRadius: 9, padding: "8px 10px", fontSize: 13, background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
-            >
-              <option value="all">Alle brancher</option>
-              {branches.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-          )}
-          {(q.trim() || branchFilter !== "all") && (
-            <span className="cc-dim" style={{ fontSize: 12.5 }}>{visible.length} match</span>
-          )}
-        </div>
-      )}
-
-      {/* Send step — the missing piece. Approved = ready; this actually sends. */}
-      {counts.approved > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 18px", borderRadius: 12, background: "var(--amber-dim)", border: "1px solid var(--amber)" }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{counts.approved} godkendt og klar til afsendelse{counts.approvedCharlie > 0 ? ` · Lucas ${counts.approvedLucas} · Charlie ${counts.approvedCharlie}` : ""}</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
-              Godkendt = markeret. Tryk Send for at sende <strong>rigtige mails</strong> til virksomhederne. Pause/halt-flag + kontaktet-tjek blokerer automatisk.
-              {sendMsg && !sendProg && <> · <span style={{ color: "var(--text)" }}>{sendMsg}</span></>}
-            </div>
-            {sendProg && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ height: 7, borderRadius: 99, background: "var(--bg-2)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${sendProg.total ? Math.round((sendProg.processed / sendProg.total) * 100) : 0}%`, background: "var(--amber)", transition: "width .3s ease" }} />
-                </div>
-                <div style={{ display: "flex", gap: 10, fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                  <span style={{ color: "var(--text)", fontWeight: 600 }}>{sendProg.line}</span>
-                  <span>· {sendProg.sent} sendt{sendProg.failed ? ` · ${sendProg.failed} fejlede` : ""}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button onClick={() => sendApproved()} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: sendBusy ? "var(--bg-2)" : "var(--amber)", color: sendBusy ? "var(--amber)" : "white" }}>
-              {sendBusy ? "Sender…" : `Send alle (${counts.approved})`}
-            </button>
-            {counts.approvedLucas > 0 && counts.approvedCharlie > 0 && (
-              <>
-                <button onClick={() => sendApproved("lucas")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--amber)", color: "var(--text)" }}>
-                  Kun Lucas ({counts.approvedLucas})
-                </button>
-                <button onClick={() => sendApproved("charlie")} disabled={sendBusy || resetBusy} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--amber)", color: "var(--text)" }}>
-                  Kun Charlie ({counts.approvedCharlie})
-                </button>
-              </>
-            )}
-            <button onClick={resetApproved} disabled={sendBusy || resetBusy} title="Flyt alle godkendte tilbage til Afventer — der sendes intet" style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              {resetBusy ? "Nulstiller…" : "→ Afventer"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Lingering send confirmation (the approved banner disappears once count hits 0). */}
-      {sendMsg && counts.approved === 0 && (
-        <div style={{ padding: "10px 16px", borderRadius: 10, background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: 13, color: "var(--text-muted)" }}>
-          ✓ {sendMsg}
-        </div>
+      {tab !== "followups" && (
+        <InboxFilterBar
+          tab={tab}
+          gradeFilter={gradeFilter}
+          setGradeFilter={setGradeFilter}
+          pendingSort={pendingSort}
+          setPendingSort={setPendingSort}
+          q={q}
+          setQ={(v) => { setQ(v); setShownCount(LIST_PAGE); }}
+          branchFilter={branchFilter}
+          setBranchFilter={(v) => { setBranchFilter(v); setShownCount(LIST_PAGE); }}
+          branches={branches}
+          showSearch={drafts.length > 10}
+          seenOnly={seenOnly}
+          setSeenOnly={(v) => { setSeenOnly(v); setShownCount(LIST_PAGE); }}
+          seenCount={counts.seen}
+          labelStat={labelStat}
+          selection={tab === "pending" ? {
+            selectedCount: selectedPending.length,
+            visibleCount: visible.filter((d) => d.status === "pending").length,
+            totalPendingCount: counts.pending,
+            onSelectAll: selectAllVisible,
+            onClear: clearSelection,
+            onApproveSelected: approveSelected,
+            onRejectSelected: rejectSelected,
+            onBulkApprove: bulkApprove,
+            selBusy, rejBusy, bulkBusy,
+          } : null}
+          tools={tab === "pending" ? {
+            jevRunBusy, jevRunMsg, onRunJev: runJevNow,
+            enrichBusy, enrichMsg, onEnrich: enrichQueue,
+            socialBusy, socialMsg, onFetchFollowers: fetchFollowers,
+            followerCostKr: Math.ceil(visible.length * 0.012 * 7),
+            gradeCCount: gradeCPending.length, onRejectGradeC: rejectGradeC,
+            seenBusy, seenMsg, onRejectSeenAll: rejectSeenAll,
+          } : null}
+        />
       )}
 
       {loading && drafts.length === 0 ? (
-        // Skeleton only on the first load — a manual refresh keeps the list
-        // visible instead of flashing back to shimmer.
-        <div style={{ display: "grid", gap: 18 }}>
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="cc-skel" style={{ height: 180, borderRadius: 14 }} />
-          ))}
-        </div>
+        <div className="cc-skel" style={{ flex: 1, borderRadius: 14 }} />
       ) : error ? (
-        // A failed fetch must not masquerade as an empty queue — show the error
-        // with a retry instead of "Køen er tom".
         <WarnBanner
           role="alert"
-          action={
-            <button onClick={load} disabled={loading} style={{ ...btnBase, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", opacity: loading ? 0.6 : 1 }}>
-              {loading ? "Henter…" : "Prøv igen"}
-            </button>
-          }
+          action={<button type="button" className="inbox-btn" onClick={load} disabled={loading}>{loading ? "Henter…" : "Prøv igen"}</button>}
         >
           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>{error}</div>
-          <div style={{ fontSize: 12.5, marginTop: 2 }}>
-            Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.
-          </div>
+          <div style={{ fontSize: 12.5, marginTop: 2 }}>Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.</div>
         </WarnBanner>
-      ) : visible.length === 0 ? (
-        <EmptyState filter={filter} total={drafts.length} />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {shownList.map((d, i) => (
-            <DraftLetter
-              key={d.id}
-              draft={d}
-              onAct={actOn}
-              label={labels[d.id] ?? null}
-              onLabel={setLabel}
-              focused={i === focusIdx}
-              onFocusRequest={() => setFocusIdx(i)}
-              selected={selected.has(d.id)}
-              onToggleSelect={() => toggleSelect(d.id)}
-            />
-          ))}
-          {visible.length > shownList.length && (
-            <button
-              onClick={() => setShownCount((c) => c + LIST_PAGE)}
-              style={{ ...btnGhost, alignSelf: "center", padding: "10px 22px", fontSize: 13 }}
-            >
-              Vis {Math.min(LIST_PAGE, visible.length - shownList.length)} flere ({visible.length - shownList.length} tilbage)
-            </button>
-          )}
+        <div className="inbox-split">
+          <div className="inbox-listpane">
+            {/* Status-fanerne ligger her — en kompakt segmented control OVER
+                listen, ikke en side-fane-bjælke i toppen af siden (Lucas
+                22/9: de rigtige side-faner Godkend/Svar/Henvendelser lander
+                senere, håndteret af skallen efter merge). */}
+            <InboxTabs active={tab} counts={tabCounts} onChange={setTab} />
+            <div className="inbox-listscroll">
+              <InboxList
+                drafts={shownList}
+                selectedId={selectedId}
+                onOpen={openDraft}
+                showCheckbox={tab === "pending"}
+                selected={selected}
+                onToggleCheck={toggleSelect}
+                shownCount={shownCount}
+                onShowMore={() => setShownCount((c) => c + LIST_PAGE)}
+                tab={tab}
+              />
+            </div>
+          </div>
+          <div className="inbox-detailpane" data-open={selectedDraft != null}>
+            {selectedDraft ? (
+              <InboxDetail
+                key={selectedDraft.id}
+                draft={selectedDraft}
+                label={labels[selectedDraft.id] ?? null}
+                onLabel={setLabel}
+                senders={senders}
+                onClose={closeDraft}
+                onPrev={() => { const prev = visible[selectedIndex - 1]; if (prev) setSelectedId(prev.id, { push: false }); }}
+                onNext={() => { const next = visible[selectedIndex + 1]; if (next) setSelectedId(next.id, { push: false }); }}
+                canPrev={selectedIndex > 0}
+                canNext={selectedIndex >= 0 && selectedIndex < visible.length - 1}
+                onAct={actOn}
+              />
+            ) : (
+              <div className="inbox-detail-empty">Vælg en kladde i listen.</div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
-}
-
-function Header({
-  counts,
-  filter,
-  setFilter,
-  onRefresh,
-  loading,
-  onBulkApprove,
-  bulkBusy,
-  selectedCount,
-  selBusy,
-  onApproveSelected,
-  onSelectAll,
-  onClearSelection,
-  onRejectSelected,
-  rejBusy,
-  visiblePending,
-}: {
-  counts: { pending: number; seen: number; approved: number; decided: number; all: number };
-  filter: Filter;
-  setFilter: (f: Filter) => void;
-  onRefresh: () => void;
-  loading: boolean;
-  onBulkApprove: () => void;
-  bulkBusy: boolean;
-  selectedCount: number;
-  selBusy: boolean;
-  onApproveSelected: () => void;
-  onSelectAll: () => void;
-  onClearSelection: () => void;
-  onRejectSelected: () => void;
-  rejBusy: boolean;
-  visiblePending: number;
-}) {
-  const tabs: { key: Filter; label: string; n: number }[] = [
-    { key: "pending", label: "Afventer", n: counts.pending },
-    { key: "approved", label: "Godkendt", n: counts.approved },
-    { key: "seen", label: "⚠ Set før", n: counts.seen },
-    { key: "decided", label: "Besluttet", n: counts.decided },
-    { key: "all", label: "Alle", n: counts.all },
-  ];
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-      <div>
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 27,
-            fontWeight: 700,
-            color: "var(--text)",
-            letterSpacing: "-0.03em",
-            lineHeight: 1,
-            margin: 0,
-          }}
-        >
-          Til godkendelse
-        </h1>
-        <p style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)", maxWidth: "62ch" }}>
-          Personlige udkast fra motoren. Læs hver som et brev, ret hvis nødvendigt, godkend de gode.
-          Intet sendes herfra: godkend markerer kun til afsendelse.
-        </p>
-
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
-        {counts.pending > 0 && (
-          <button
-            onClick={onSelectAll}
-            title={visiblePending < counts.pending
-              ? `Sæt kryds ved de ${visiblePending} afventende der matcher filteret (ikke alle ${counts.pending})`
-              : "Sæt kryds ved alle afventende udkast i listen"}
-            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
-          >
-            {visiblePending < counts.pending ? `Vælg filtrerede (${visiblePending})` : "Vælg alle"}
-          </button>
-        )}
-        {selectedCount > 0 && (
-          <button
-            onClick={onClearSelection}
-            title="Fjern alle kryds"
-            style={{ ...btnGhost, padding: "7px 9px", fontSize: 12 }}
-          >
-            Ryd valg
-          </button>
-        )}
-        {selectedCount > 0 && (
-          <button
-            onClick={onRejectSelected}
-            disabled={rejBusy}
-            title="Afvis de udkast du har sat kryds ved — lead'en blokeres 14 dage"
-            style={{ ...btnGhost, padding: "7px 13px", fontSize: 12.5, color: "var(--red)", opacity: rejBusy ? 0.6 : 1 }}
-          >
-            {rejBusy ? "Afviser…" : `Afvis valgte (${selectedCount})`}
-          </button>
-        )}
-        {selectedCount > 0 && (
-          <button
-            onClick={onApproveSelected}
-            disabled={selBusy}
-            title="Godkend kun de udkast du har sat kryds ved"
-            style={{ ...btnBase, background: selBusy ? "var(--bg-2)" : "var(--text)", color: selBusy ? "var(--text-muted)" : "white", padding: "7px 13px", fontSize: 12.5 }}
-          >
-            {selBusy ? "Godkender…" : `Godkend valgte (${selectedCount})`}
-          </button>
-        )}
-        {visiblePending > 0 && (
-          <button
-            onClick={onBulkApprove}
-            disabled={bulkBusy}
-            title={visiblePending < counts.pending
-              ? `Godkend de ${visiblePending} afventende der matcher filteret (${counts.pending - visiblePending} udenfor røres ikke)`
-              : "Godkend alle afventende udkast"}
-            style={{
-              ...btnBase,
-              // Én mørk primær ad gangen: har du markeret udkast, er "Godkend valgte"
-              // den primære handling, og bulk-knappen træder tilbage.
-              background: bulkBusy ? "var(--bg-2)" : selectedCount > 0 ? "var(--surface)" : "var(--text)",
-              color: bulkBusy ? "var(--text-muted)" : selectedCount > 0 ? "var(--text)" : "white",
-              border: selectedCount > 0 ? "1px solid var(--border)" : btnBase.border,
-              padding: "7px 13px",
-              fontSize: 12.5,
-            }}
-          >
-            {bulkBusy ? "Godkender…" : visiblePending < counts.pending ? `Godkend filtrerede (${visiblePending})` : `Godkend alle (${visiblePending})`}
-          </button>
-        )}
-        <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 9, padding: 3, maxWidth: "100%", overflowX: "auto" }}>
-          {tabs.map((t) => {
-            const active = filter === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setFilter(t.key)}
-                style={{
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "6px 12px",
-                  borderRadius: 7,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  fontFamily: "inherit",
-                  color: active ? "var(--text)" : "var(--text-muted)",
-                  background: active ? "var(--surface)" : "transparent",
-                  boxShadow: active ? "0 1px 2px oklch(0% 0 0 / 0.08)" : "none",
-                  transition: "color 120ms ease",
-                }}
-              >
-                {t.label}
-                <span style={{ marginLeft: 6, color: "var(--text-dim)", fontWeight: 500 }}>{t.n}</span>
-              </button>
-            );
-          })}
-        </div>
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          title="Genindlæs køen"
-          style={{
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            color: "var(--text-muted)",
-            cursor: loading ? "default" : "pointer",
-            padding: "7px 11px",
-            borderRadius: 8,
-            fontSize: 12.5,
-            fontWeight: 600,
-            fontFamily: "inherit",
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? "…" : "Opdatér"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ filter, total }: { filter: Filter; total: number }) {
-  const emptyBecauseFilter = total > 0;
-  return (
-    <div
-      style={{
-        border: "1px dashed var(--border-light)",
-        borderRadius: 14,
-        padding: "44px 32px",
-        textAlign: "center",
-        background: "var(--bg-2)",
-      }}
-    >
-      <p style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text)", margin: 0 }}>
-        {emptyBecauseFilter ? "Intet her endnu" : "Køen er tom"}
-      </p>
-      <p style={{ marginTop: 8, fontSize: 13.5, color: "var(--text-muted)" }}>
-        {emptyBecauseFilter
-          ? filter === "pending"
-            ? "Alle udkast er besluttet. Godt arbejde."
-            : "Ingen besluttede udkast endnu."
-          : "Kør motoren for at fylde den med dagens personlige udkast:"}
-      </p>
-      {!emptyBecauseFilter && (
-        <code
-          style={{
-            display: "inline-block",
-            marginTop: 12,
-            padding: "7px 12px",
-            borderRadius: 8,
-            background: "var(--bg-3)",
-            border: "1px solid var(--border)",
-            fontSize: 12.5,
-            color: "var(--text)",
-          }}
-        >
-          node .send_queue/daily_engine.mjs --limit=12
-        </code>
-      )}
-    </div>
-  );
-}
-
-function DraftLetter({
-  draft,
-  onAct,
-  focused,
-  onFocusRequest,
-  selected,
-  onToggleSelect,
-  label,
-  onLabel,
-}: {
-  draft: QueueDraft;
-  label: "god" | "daarlig" | null;
-  onLabel: (id: string, value: "god" | "daarlig" | null) => void;
-  onAct: (id: string, action: "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender", payload?: { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" }) => Promise<{ ok: boolean; violations?: string[] }>;
-  focused: boolean;
-  onFocusRequest: () => void;
-  selected: boolean;
-  onToggleSelect: () => void;
-}) {
-  const [subject, setSubject] = useState(draft.subject);
-  // 2026-07-16: body redigeres UDEN signatur. Signaturen er en låst blok under
-  // feltet og påføres først ved afsendelse (send-ruten re-signer altid). Det
-  // gør det STRUKTURELT umuligt at stable eller ødelægge signaturen i en
-  // redigering — hele fejlklassen fra toggle-bug'en er væk.
-  const strippedOriginal = useMemo(() => stripSignature(draft.body), [draft.body]);
-  const [body, setBody] = useState(strippedOriginal);
-  const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
-  const [sender, setSender] = useState<"lucas" | "charlie">(draft.sender ?? "lucas");
-
-  // Per-lead afsender-valg. Persists immediately; the send route routes the mail
-  // to the matching Gmail account + re-signs the body at send time. Body røres
-  // ikke længere ved toggle — signatur-blokken nedenfor følger `sender`-state.
-  async function chooseSender(next: "lucas" | "charlie") {
-    if (next === sender) return;
-    setSender(next);
-    await onAct(draft.id, "set-sender", { sender: next });
-  }
-  const [busy, setBusy] = useState<null | "approve" | "edit" | "reject" | "unapprove" | "set-demos">(null);
-  const [violations, setViolations] = useState<string[]>([]);
-
-  // Lucas can remove a draft from the "godkendt" list (e.g. "No Scandinavia"
-  // that he approved earlier and then regretted). This is the un-approve flow.
-  // "Sent" drafts are NOT removable from here — we can't un-send a mail.
-  const isRemovable =
-    draft.status === "approved" || draft.status === "edited";
-
-  async function unapprove() {
-    if (
-      !window.confirm(
-        `Fjern "${draft.name}" fra godkendt-listen?\n\nDen flyttes til afviste, og lead'en bliver markeret 'skip' i Sheets så motoren ikke vælger den igen. Den blokeres også i 14 dage på queue-niveau som ekstra sikkerhed.`,
-      )
-    ) return;
-    setBusy("unapprove");
-    setViolations([]);
-    try {
-      const r = await onAct(draft.id, "unapprove");
-      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    } catch {
-      setViolations(["Netværksfejl. Prøv igen."]);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const dirty = subject !== draft.subject || body !== strippedOriginal;
-
-  // U-gemte rettelser må ikke tabes stille ved reload/luk-fane (council-fund).
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
-  const demosDirty = JSON.stringify(demos.map((d) => d.url)) !== JSON.stringify(draft.demoPair.map((d) => d.url));
-
-  // Swap one demo slot: pick from the catalog, and rewrite that URL inside the body
-  // so the letter stays in sync. Lucas saves with "Gem demoer".
-  function changeDemo(i: number, url: string) {
-    const entry = DEMO_CATALOG.find((d) => d.url === url);
-    if (!entry) return;
-    const old = demos[i];
-    setDemos((prev) => prev.map((d, j) => (j === i ? { label: entry.label, url: entry.url } : d)));
-    if (old?.url && old.url !== entry.url) setBody((b) => b.split(old.url).join(entry.url));
-  }
-
-  async function saveDemos() {
-    setBusy("set-demos");
-    setViolations([]);
-    try {
-      const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
-      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    } catch {
-      setViolations(["Netværksfejl. Prøv igen."]);
-    } finally {
-      setBusy(null);
-    }
-  }
-  const decided = draft.status !== "pending";
-  const meta = STATUS_META[draft.status];
-  const jevFlags = draft.jev?.flags ?? [];
-  const sendIkke = jevFlags.includes("send ikke");
-
-  const act = useCallback(
-    async (action: "approve" | "edit" | "reject") => {
-      setBusy(action);
-      setViolations([]);
-      try {
-        const r = await onAct(draft.id, action, action === "edit" ? { subject, body } : undefined);
-        if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-      } catch {
-        setViolations(["Netværksfejl. Prøv igen."]);
-      } finally {
-        setBusy(null);
-      }
-    },
-    [draft.id, subject, body, onAct]
-  );
-
-  // ÉN smart godkend-knap (2026-07-16, council-fund): før krævede en rettelse
-  // to klik ("Gem rettelse + godkend" mens "Godkend" bare blev grå), og et
-  // demo-skift uden "Gem demoer" blev tabt stille ved godkendelse. Nu gemmer
-  // knappen selv alt der er dirty (demoer → rettelse) og godkender i ét klik.
-  const approveSmart = useCallback(async () => {
-    setBusy("approve");
-    setViolations([]);
-    try {
-      if (demosDirty) {
-        const r = await onAct(draft.id, "set-demos", { demoPair: demos, body });
-        if (!r.ok) { setViolations(r.violations ?? ["Ukendt fejl"]); return; }
-      }
-      const r = dirty
-        ? await onAct(draft.id, "edit", { subject, body })
-        : await onAct(draft.id, "approve");
-      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
-    } catch {
-      setViolations(["Netværksfejl. Prøv igen."]);
-    } finally {
-      setBusy(null);
-    }
-  }, [draft.id, subject, body, demos, dirty, demosDirty, onAct]);
-
-  // Nøglefakta-linje + følgertal (2026-09-20): følgertal er ét fakta mere i
-  // samme linje, kun sat efter et "Hent følgertal"-klik — aldrig fabrikeret.
-  const facts = [...(draft.jev?.facts ?? []), ...(draft.jev?.followers ? [draft.jev.followers] : [])];
-
-  return (
-    <article
-      onMouseEnter={onFocusRequest}
-      style={{
-        background: "var(--surface)",
-        // Ingen `border`-shorthand sammen med borderLeft: React advarer om
-        // styling-bugs når de blandes under rerender.
-        borderTop: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
-        borderRight: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
-        borderBottom: focused ? "1px solid var(--accent)" : "1px solid var(--border)",
-        borderLeft: sendIkke ? "4px solid var(--red)" : focused ? "1px solid var(--accent)" : "1px solid var(--border)",
-        boxShadow: focused ? "0 0 0 3px var(--accent-soft)" : "none",
-        borderRadius: 14,
-        padding: "22px 24px",
-        opacity: draft.status === "rejected" ? 0.55 : 1,
-        transition: "opacity 200ms ease, box-shadow 140ms ease, border-color 140ms ease",
-      }}
-    >
-      {/* identity row */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        {draft.status === "pending" && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggleSelect}
-            aria-label={`Vælg ${draft.name}`}
-            title="Vælg til 'Godkend valgte'"
-            style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "var(--green)" }}
-          />
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 19,
-              fontWeight: 700,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-              margin: 0,
-            }}
-          >
-            {draft.name}
-            {draft.history?.seenBefore && draft.status === "pending" && (() => {
-              const h = draft.history;
-              const w = WARMTH_META[h.warmth ?? ""] ?? null;
-              const days = h.daysSince != null
-                ? h.daysSince === 0 ? "i dag" : h.daysSince === 1 ? "i går" : `${h.daysSince} dage siden`
-                : null;
-              const parts = [
-                h.reason,
-                h.lastContactAt ? `sidst ${h.lastContactAt}${days ? ` (${days})` : ""}` : null,
-                h.replied === "aldrig" ? "aldrig svaret" : null,
-              ].filter(Boolean);
-              return (
-                <span>
-                  <span
-                    title={`Denne forretning findes i kontakt-historikken: ${parts.join(" · ")}. Godkend kun hvis du er sikker på det ikke er en for tidlig gensending.`}
-                    style={{
-                      display: "inline-block",
-                      maxWidth: "100%",
-                      marginLeft: 8,
-                      padding: "2px 8px",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      verticalAlign: "middle",
-                      borderRadius: 999,
-                      color: "var(--red)",
-                      background: "var(--red-dim)",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    ⚠ set før · {parts.join(" · ")}
-                  </span>
-                  {w && (
-                    <span
-                      title="Varme: svar + hvor længe siden sidste kontakt. 'Attraktiv' står i kvalifikations-linjen nedenunder."
-                      style={{
-                        marginLeft: 6,
-                        padding: "2px 8px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        verticalAlign: "middle",
-                        borderRadius: 999,
-                        color: w.fg,
-                        background: w.bg,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {w.label}
-                    </span>
-                  )}
-                </span>
-              );
-            })()}
-          </h2>
-          <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--text-muted)" }}>
-            {[draft.branch, draft.city].filter(Boolean).join(" · ")}
-            {draft.professionalism ? (
-              <span style={{ color: "var(--text-dim)" }}> — {draft.professionalism}</span>
-            ) : null}
-          </p>
-          {draft.jev && (
-            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                Lead {draft.jev.lead ?? "–"}/100 · Kladde {draft.jev.draft ?? "–"}/100
-              </span>
-              {jevFlags.filter((f) => f !== "send ikke").map((f) => (
-                <span
-                  key={f}
-                  style={{
-                    padding: "1px 7px",
-                    fontSize: 10.5,
-                    fontWeight: 600,
-                    borderRadius: 999,
-                    color: "var(--red)",
-                    background: "var(--red-dim)",
-                  }}
-                >
-                  {f}
-                </span>
-              ))}
-            </div>
-          )}
-          {sendIkke && (
-            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "var(--red)" }}>
-              Send ikke — {jevFlags.filter((f) => f !== "send ikke").join(", ") || "lav kvalitet"}
-            </div>
-          )}
-        </div>
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-          {(() => {
-            const g = draft.jev?.grade ?? "?";
-            const gm = GRADE_META[g] ?? GRADE_META["?"];
-            const p = draft.jev?.priority;
-            // Tallet vises KUN når begge halvdele er vurderet. Ellers så en
-            // kladde-only-score ud som en samlet rating ("B 100" gav ingen mening).
-            const complete = draft.jev?.lead != null && draft.jev?.draft != null;
-            return (
-              <span
-                title={complete
-                  ? `Prioritet: ${p}/100 (kladde-kvalitet vejer tungest, lead-attraktivitet sekundært)`
-                  : "Forretningen er ikke vurderet endnu — karakteren kan derfor ikke blive A, og der vises intet samlet tal"}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: gm.fg,
-                  background: gm.bg,
-                  border: `1.5px solid ${gm.border}`,
-                  padding: "3px 9px",
-                  borderRadius: 8,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {g}
-                {complete && p != null
-                  ? <span style={{ fontWeight: 600, fontSize: 11, marginLeft: 5, opacity: 0.85 }}>{p}</span>
-                  : <span style={{ fontWeight: 600, fontSize: 10, marginLeft: 5, opacity: 0.7 }}>kun kladde</span>}
-              </span>
-            );
-          })()}
-          <span
-            style={{
-              fontSize: 11.5,
-              fontWeight: 600,
-              color: meta.fg,
-              background: meta.bg,
-              padding: "4px 10px",
-              borderRadius: 999,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {meta.label}
-          </span>
-          {/* Lucas' egen dom (2026-09-21). Ændrer INTET ved kladden — den er
-              træningsdata til næste kalibrering af attraktivitets-formlen.
-              Tre runder med at gætte spørgsmål gav ét brugbart signal; én
-              runde med at måle mod hans markeringer fordoblede træfsikkerheden. */}
-          <div style={{ display: "flex", gap: 4 }}>
-            {([["god", "God kunde", "var(--green)"], ["daarlig", "Dårlig", "var(--red)"]] as const).map(([v, t, farve]) => {
-              const aktiv = label === v;
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  title={`${t} — kun til kalibrering, ændrer ikke kladden`}
-                  onClick={(e) => { e.stopPropagation(); onLabel(draft.id, aktiv ? null : v); }}
-                  style={{
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: "inherit",
-                    lineHeight: 1.6,
-                    padding: "2px 8px",
-                    borderRadius: 7,
-                    color: aktiv ? "var(--surface)" : farve,
-                    background: aktiv ? farve : "transparent",
-                    border: `1px solid ${farve}`,
-                  }}
-                >
-                  {v === "god" ? "God" : "Dårlig"}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Nøglefakta + forretningslinks (2026-09-20): hvor stor/seriøs er virksomheden,
-          og direkte links til at tjekke den — uden at trigge kortets egen klik-handler. */}
-      {(facts.length > 0 || (draft.jev?.links?.length ?? 0) > 0) && (
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-          {facts.length > 0 && (
-            <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)" }}>
-              {facts.join(" · ")}
-            </p>
-          )}
-          {(draft.jev?.links?.length ?? 0) > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {draft.jev!.links!.map((l) => (
-                <a
-                  key={l.kind}
-                  href={l.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "var(--text-muted)",
-                    background: "var(--bg-3)",
-                    padding: "3px 9px",
-                    borderRadius: 999,
-                    textDecoration: "none",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <span aria-hidden="true">
-                    {l.kind === "web" ? "🌐" : l.kind === "maps" ? "📍" : l.kind === "facebook" ? "📘" : l.kind === "instagram" ? "📷" : "✉️"}
-                  </span>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* afsender — hvem mailen sendes fra (Lucas/Charlie). Read-only når sendt. */}
-      {draft.status === "sent" ? (
-        <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)" }}>
-          Sendt som <strong style={{ color: "var(--text)" }}>{(draft.sentBy ?? draft.sender ?? "lucas") === "charlie" ? "Charlie" : "Lucas"}</strong>
-        </div>
-      ) : (
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Afsender</span>
-          <div style={{ display: "flex", background: "var(--bg-3)", borderRadius: 8, padding: 3 }}>
-            {(["lucas", "charlie"] as const).map((s) => {
-              const active = sender === s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => chooseSender(s)}
-                  style={{
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "5px 13px",
-                    borderRadius: 6,
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    fontFamily: "inherit",
-                    color: active ? "var(--text)" : "var(--text-muted)",
-                    background: active ? "var(--surface)" : "transparent",
-                    boxShadow: active ? "0 1px 2px oklch(0% 0 0 / 0.08)" : "none",
-                  }}
-                >
-                  {s === "lucas" ? "Lucas" : "Charlie"}
-                </button>
-              );
-            })}
-          </div>
-          <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-            Konto + underskrift sættes automatisk ved afsendelse.
-          </span>
-        </div>
-      )}
-
-      {/* hooks */}
-      {draft.hooks.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-          {draft.hooks.map((h, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: 12,
-                color: "var(--text-muted)",
-                background: "var(--bg-3)",
-                border: "1px solid var(--border)",
-                padding: "3px 9px",
-                borderRadius: 7,
-                maxWidth: "46ch",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-              title={h}
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* the letter */}
-      <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-        <Field label="Emne">
-          <input
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            disabled={decided}
-            style={inputStyle(decided)}
-          />
-        </Field>
-        <Field label="Besked">
-          <textarea
-            id={`draft-body-${draft.id}`}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            disabled={decided}
-            rows={Math.min(16, Math.max(7, body.split("\n").length + 1))}
-            style={{
-              ...inputStyle(decided),
-              resize: "vertical",
-              lineHeight: 1.6,
-              fontSize: 13.5,
-              maxWidth: "70ch",
-            }}
-          />
-        </Field>
-
-        {/* LÅST signatur-blok (2026-07-16): signaturen er ikke længere en del af
-            det redigérbare body-felt — den påføres ved afsendelse og følger
-            afsender-valget live. Kan ikke redigeres/slettes/stables herfra. */}
-        <div
-          style={{
-            padding: "8px 12px",
-            background: "var(--bg-2)",
-            border: "1px dashed var(--border)",
-            borderRadius: 8,
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            maxWidth: "70ch",
-          }}
-        >
-          <div style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-            Officiel Kinly-signatur tilføjes automatisk ved afsendelse ({sender === "lucas" ? "Lucas Buur <lucas@kinly.dk>" : "Charlie Nielsen <charlie@kinly.dk>"} + Kinly-logo i HTML)
-          </div>
-          <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap", color: "var(--text)", lineHeight: 1.5 }}>
-            {previewSignature("", sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE).trim()}
-          </pre>
-        </div>
-      </div>
-
-      {/* demos — read-only once decided, editable picker while pending */}
-      {decided ? (
-        draft.demoPair.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
-            {draft.demoPair.map((d, i) => (
-              <a key={i} href={d.url} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 12.5, color: "var(--text)", background: "var(--bg-2)", border: "1px solid var(--border)", padding: "7px 12px", borderRadius: 9, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                <span style={{ color: "var(--text-dim)", fontSize: 11 }}>{d.label}</span>
-                <span style={{ color: "var(--green)", fontWeight: 600 }}>{prettyUrl(d.url)} ↗</span>
-              </a>
-            ))}
-          </div>
-        )
-      ) : (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            Demoer i mailen — vælg de to du vil sende
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-            {demos.map((d, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 190 }}>
-                <select value={d.url} onChange={(e) => changeDemo(i, e.target.value)} style={{ ...inputStyle(false), padding: "8px 9px", cursor: "pointer" }}>
-                  {CATALOG_GROUPS.map(([branch, items]) => (
-                    <optgroup key={branch} label={branch}>
-                      {items.map((it) => <option key={it.url} value={it.url}>{it.label}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-                <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, color: "var(--green)", fontWeight: 600, textDecoration: "none" }}>{prettyUrl(d.url)} ↗</a>
-              </div>
-            ))}
-          </div>
-          {demosDirty && (
-            <button onClick={saveDemos} disabled={busy !== null} style={{ ...btnSecondary, marginTop: 12, padding: "8px 14px", fontSize: 12.5 }}>
-              {busy === "set-demos" ? "Gemmer…" : "Gem demoer"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* violations */}
-      {violations.length > 0 && (
-        <div
-          style={{
-            marginTop: 14,
-            padding: "10px 12px",
-            borderRadius: 9,
-            background: "var(--amber-dim)",
-            border: "1px solid var(--amber)",
-            fontSize: 12.5,
-            color: "var(--text)",
-          }}
-        >
-          <strong style={{ color: "var(--amber)" }}>Bryder stemme-guiden:</strong>{" "}
-          {violations.join(" · ")}
-        </div>
-      )}
-
-      {/* actions */}
-      {!decided && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
-          <button onClick={approveSmart} disabled={busy !== null} style={btnPrimary(busy === "approve")}>
-            {busy === "approve" ? "Godkender…" : dirty || demosDirty ? "Gem + godkend" : "Godkend"}
-          </button>
-          <button onClick={() => act("reject")} disabled={busy !== null} style={btnGhost}>
-            {busy === "reject" ? "Afviser…" : "Afvis"}
-          </button>
-          {(dirty || demosDirty) && (
-            <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-              U-gemte ændringer — “Gem + godkend” gemmer det hele
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* unapprove — only for already-approved/edited drafts (not pending, not sent, not rejected) */}
-      {isRemovable && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
-          <button onClick={unapprove} disabled={busy !== null} style={btnGhost} title="Fjern fra godkendt-listen — lead'en blokeres i 14 dage">
-            {busy === "unapprove" ? "Fjerner…" : "Fjern fra godkendt"}
-          </button>
-          <span style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-            Markeres som afvist + lead&apos;en blokeres i 14 dage så motoren ikke re-vælger.
-          </span>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function inputStyle(disabled: boolean): React.CSSProperties {
-  return {
-    width: "100%",
-    border: "1px solid var(--border)",
-    borderRadius: 9,
-    padding: "9px 11px",
-    fontFamily: "inherit",
-    fontSize: 13.5,
-    color: "var(--text)",
-    background: disabled ? "var(--bg-2)" : "var(--bg-2)",
-    outline: "none",
-    opacity: disabled ? 0.85 : 1,
-  };
-}
-
-const btnBase: React.CSSProperties = {
-  border: "none",
-  borderRadius: 9,
-  padding: "9px 16px",
-  fontSize: 13,
-  fontWeight: 600,
-  fontFamily: "inherit",
-  cursor: "pointer",
-};
-
-function btnPrimary(disabled: boolean): React.CSSProperties {
-  return {
-    ...btnBase,
-    background: disabled ? "var(--bg-2)" : "var(--text)",
-    color: disabled ? "var(--text-muted)" : "white",
-    cursor: disabled ? "default" : "pointer",
-  };
-}
-
-const btnSecondary: React.CSSProperties = {
-  ...btnBase,
-  background: "var(--blue)",
-  color: "white",
-};
-
-const btnGhost: React.CSSProperties = {
-  ...btnBase,
-  background: "transparent",
-  color: "var(--text-muted)",
-  padding: "9px 12px",
-};
-
-function prettyUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }
