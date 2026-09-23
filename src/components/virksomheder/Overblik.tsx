@@ -13,7 +13,9 @@ import { safeHref } from "@/lib/safe-href";
 // page.tsx (server component) i stedet for at importeres her.
 import type { CustomerOverview } from "@/lib/hq/overview";
 import type { CmsUsage } from "@/lib/hq/cms-usage";
+import type { OnboardingTaskRow } from "@/lib/hq/onboarding";
 import type { InvoiceLine } from "@/lib/invoices";
+import "./make-customer.css";
 
 type Plan = CustomerOverview["money"]["plan"];
 type Site = CustomerOverview["site"];
@@ -50,6 +52,15 @@ async function patchProfil(companyId: string, body: Record<string, unknown>) {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
+}
+
+async function patchOpstart(companyId: string, taskId: string, done: boolean) {
+  const res = await fetch(`/api/virksomheder/${companyId}/opstart/${taskId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ done }),
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
 }
@@ -431,6 +442,42 @@ function WorkCard({ items }: { items: CustomerOverview["lastWork"] }) {
   );
 }
 
+function OpstartCard({ companyId, items, onSaved }: { companyId: string; items: OnboardingTaskRow[]; onSaved: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const done = items.filter((t) => t.done).length;
+
+  async function toggle(t: OnboardingTaskRow) {
+    setBusy(t.id);
+    try {
+      await patchOpstart(companyId, t.id, !t.done);
+      onSaved();
+    } catch {
+      // stille fejl — checkboksen forbliver klikbar, prøv igen
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="virk-section-title">
+        <span>Opstart</span>
+        <span className="cc-dim cc-mono" style={{ fontSize: 12 }}>{done}/{items.length}</span>
+      </div>
+      <ul className="mkk-checklist">
+        {items.map((t) => (
+          <li key={t.id}>
+            <label className="mkk-check">
+              <input type="checkbox" checked={t.done} disabled={busy === t.id} onChange={() => toggle(t)} />
+              <span data-done={t.done}>{t.title}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function MissingPills({ missing, onOpen }: { missing: string[]; onOpen: (key: string) => void }) {
   return (
     <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -449,12 +496,13 @@ function MissingPills({ missing, onOpen }: { missing: string[]; onOpen: (key: st
 }
 
 export default function Overblik({
-  companyId, overview, cms, servicesCatalog,
+  companyId, overview, cms, servicesCatalog, onboarding,
 }: {
   companyId: string;
   overview: CustomerOverview;
   cms: CmsUsage | null;
   servicesCatalog: Record<string, string>;
+  onboarding: OnboardingTaskRow[];
 }) {
   const router = useRouter();
   const [editingAftale, setEditingAftale] = useState(false);
@@ -465,9 +513,13 @@ export default function Overblik({
     if (key === "domæne") setEditingSite(true);
   }
 
+  const showOpstart = onboarding.length > 0 && onboarding.some((t) => !t.done);
+
   return (
     <div className="ov-grid">
       <AttentionStrip items={overview.attention} />
+
+      {showOpstart && <OpstartCard companyId={companyId} items={onboarding} onSaved={() => router.refresh()} />}
 
       <div className="ov-row">
         <ContactCard mails={overview.lastMails} />

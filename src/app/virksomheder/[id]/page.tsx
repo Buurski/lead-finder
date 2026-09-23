@@ -12,6 +12,7 @@ import { unbilledWork } from "@/lib/hq/billing";
 import { loadOverview } from "@/lib/hq/overview-load";
 import { SERVICES } from "@/lib/hq/overview";
 import { cmsUsageFor } from "@/lib/hq/cms-usage";
+import { getOnboardingChecklist } from "@/lib/hq/onboarding";
 import { copenhagenNow } from "@/lib/settings";
 import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
@@ -19,6 +20,7 @@ import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/li
 import DealsSection from "@/components/virksomheder/DealsSection";
 import Timeline from "@/components/virksomheder/Timeline";
 import MergePanel from "@/components/virksomheder/MergePanel";
+import MakeCustomerButton from "@/components/virksomheder/MakeCustomerButton";
 import NoteCard from "@/components/virksomheder/NoteCard";
 import HermesAskButton from "@/components/virksomheder/HermesAskButton";
 import UnbilledWork from "@/components/virksomheder/UnbilledWork";
@@ -105,6 +107,8 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   // Kun aftaler der er landet — tilbud og tabte tæller ikke som månedlig indtægt.
   const LIVE = new Set(["aftalt", "i_gang", "leveret", "betalt"]);
   const mrrSum = dossier.deals.filter((d) => LIVE.has(normalizeStage(d.stage))).reduce((sum, d) => sum + (d.mrrDkk ?? 0), 0);
+  // "Gør til kunde": en vundet aftale uden kundenummer endnu (bølge 3).
+  const canMakeCustomer = c.clientNo === null && dossier.deals.some((d) => LIVE.has(normalizeStage(d.stage)));
   const timelineActivities = dossier.activities.map((a) => ({
     id: a.id,
     type: a.type,
@@ -130,9 +134,10 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   // Sekventielt (ikke Promise.all) — lokal pglite tåler kun 1 samtidig forbindelse (fælles-regel #23).
   const overview = await loadOverview(db, dossier);
   const cms = await cmsUsageFor(c, dossier.site?.cmsUrl);
+  const onboarding = c.clientNo !== null ? await getOnboardingChecklist(db, c.id) : [];
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} /> },
+    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} /> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
     {
       key: "aftaler",
@@ -265,6 +270,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         }
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+            {canMakeCustomer && <MakeCustomerButton companyId={c.id} companyName={c.name} />}
             <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} />
             <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
             <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo, rowNo: c.rowNo }} />

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { company } from "@/lib/db/schema";
 import { getHqSummary } from "@/lib/hq/summary";
 import { listPipeline, DEAL_STAGES, STAGE_LABEL } from "@/lib/hq/deals";
 import { copenhagenNow } from "@/lib/settings";
@@ -34,6 +36,13 @@ export default async function PipelinePage({
 
   const db = getDb();
   const [summary, allCards] = await Promise.all([getHqSummary(db, today), listPipeline(db)]);
+
+  // Til "Gør til kunde": hvilke af de viste virksomheder har allerede et kundenummer.
+  const companyIds = [...new Set(allCards.map((c) => c.companyId))];
+  const companyRows = companyIds.length
+    ? await db.select({ id: company.id, clientNo: company.clientNo }).from(company).where(inArray(company.id, companyIds))
+    : [];
+  const customerByCompany = Object.fromEntries(companyRows.map((r) => [r.id, r.clientNo !== null]));
 
   let cards = allCards;
   if (owner) cards = cards.filter((c) => c.owner === owner);
@@ -85,6 +94,7 @@ export default async function PipelinePage({
         today={today}
         owner={owner}
         actionOnly={actionOnly}
+        customerByCompany={customerByCompany}
       />
     </div>
   );
