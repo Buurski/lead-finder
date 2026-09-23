@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
       { source: "/clients", destination: "/virksomheder", permanent: false },
       { source: "/clients/:id", destination: "/virksomheder/c/:id", permanent: false },
       { source: "/crm", destination: "/", permanent: false },
+      // /goals var en stale intern 90-dages roadmap (juni 2026, ikke i nav,
+      // blandede forældede mål med priser) — siden er slettet (w3-inbox QA-fund #11).
+      { source: "/goals", destination: "/", permanent: false },
+      // /admin/migrering var engangsværktøjet til Sheets→Postgres-flytningen,
+      // færdig 22/9 — siden + ruten + src/lib/pg/migrate.ts er slettet (QA-fund #12).
+      { source: "/admin/migrering", destination: "/", permanent: false },
     ];
   },
 };
