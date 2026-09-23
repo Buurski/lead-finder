@@ -3,15 +3,17 @@ import RepliesClient from "./RepliesClient";
 
 export const metadata = { title: "Svar · Command Center" };
 
+export const dynamic = "force-dynamic";
+
 export default function RepliesPage() {
   return (
     <div className="cc-fade">
       <PageHeader
         icon="Mail"
         title="Svar"
-        subtitle="Indbakke-triage: indkommende svar, for-klassificeret med et foreslået svar. Read-only."
+        subtitle="Svar fra leads med et forslag til svar. Send direkte herfra eller via Gmail."
       />
-      <RepliesClient />
+      <RepliesClient canSend={process.env.LIVE_SEND_ARMED === "1"} />
     </div>
   );
 }

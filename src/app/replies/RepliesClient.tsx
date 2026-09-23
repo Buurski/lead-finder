@@ -150,8 +150,10 @@ function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: (
   );
 }
 
-function QaSendButton({ item }: { item: InboxItem }) {
-  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+function ReplyComposer({ item, onSent }: { item: InboxItem; onSent: () => void }) {
+  const [text, setText] = useState(item.suggestedReply ?? "");
+  const [sender, setSender] = useState<"lucas" | "charlie">(item.account === "charlie" ? "charlie" : "lucas");
+  const [state, setState] = useState<"idle" | "confirm" | "sending" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
   async function send() {
     setState("sending"); setMsg("");
@@ -159,57 +161,50 @@ function QaSendButton({ item }: { item: InboxItem }) {
       const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId!)}/send-reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reply: item.suggestedReply, subject: item.subject, leadName: item.fromName, mode: "qa" }),
+        body: JSON.stringify({ reply: text, subject: item.subject, toEmail: item.from, sender, confirm: true, replyDate: item.date }),
       });
-      const d = await res.json();
-      if (d.sent) { setState("done"); setMsg("QA-kopi sendt til buur.aigro."); }
-      else if (d.wouldSendTo) { setState("done"); setMsg("Ingen mail-creds — ville sende QA-kopi til buur.aigro."); }
-      else { setState("error"); setMsg(d.error ?? "Kunne ikke sende."); }
-    } catch (e) { setState("error"); setMsg(String(e)); }
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.sent) { setState("error"); setMsg(d.message ?? "Kunne ikke sende."); return; }
+      setState("done");
+      setMsg(d.recorded ? `Sendt til ${item.from} og registreret.` : `Sendt til ${item.from}. Markér det som besvaret nedenfor.`);
+      if (d.recorded) setTimeout(onSent, 1200);
+    } catch {
+      setState("error"); setMsg("Netværksfejl — tjek Sendt-mappen før du prøver igen.");
+    }
   }
+  const locked = state === "sending" || state === "done";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <button className="cc-btn" onClick={send} disabled={state === "sending" || state === "done"}>
-        <Icon name="Mail" style={{ width: 14, height: 14 }} />
-        {state === "sending" ? "Sender…" : state === "done" ? "Sendt ✓" : "Send QA-kopi til mig"}
-      </button>
-      {msg && <span className="cc-dim" style={{ fontSize: 12, color: state === "error" ? "var(--red)" : "var(--text-dim)" }}>{msg}</span>}
+    <div style={{ display: "grid", gap: 8 }}>
+      <label className="cc-kicker" htmlFor={`svar-${item.id}`}>Dit svar</label>
+      <textarea id={`svar-${item.id}`} className="cc-input" rows={7} value={text} onChange={(e) => { setText(e.target.value); if (state === "confirm") setState("idle"); }}
+        disabled={locked} style={{ lineHeight: 1.55, resize: "vertical" }} placeholder="Skriv svaret her…" />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", gap: 10, alignItems: "center" }} disabled={locked}>
+          <legend className="cc-dim" style={{ fontSize: 12.5, float: "left", marginRight: 6 }}>Fra</legend>
+          {(["lucas", "charlie"] as const).map((o) => (
+            <label key={o} style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 13 }}>
+              <input type="radio" name={`fra-${item.id}`} checked={sender === o} onChange={() => setSender(o)} />
+              {o === "lucas" ? "Lucas" : "Charlie"}
+            </label>
+          ))}
+        </fieldset>
+        {state === "confirm" ? (
+          <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="cc-btn cc-btn-accent" onClick={send}>Ja, send til {item.from}</button>
+            <button className="cc-btn" onClick={() => setState("idle")}>Fortryd</button>
+          </span>
+        ) : (
+          <button className="cc-btn cc-btn-accent" onClick={() => setState("confirm")} disabled={locked || !text.trim()}>
+            <Icon name="Mail" style={{ width: 14, height: 14 }} /> {state === "sending" ? "Sender…" : state === "done" ? "Sendt" : "Send svar"}
+          </button>
+        )}
+      </div>
+      {msg && <p role="status" style={{ margin: 0, fontSize: 12.5, color: state === "error" ? "var(--red)" : "var(--text-muted)" }}>{msg}</p>}
     </div>
   );
 }
 
-function LiveSendButton({ item }: { item: InboxItem }) {
-  const [state, setState] = useState<"idle" | "confirm" | "sending" | "done" | "blocked" | "error">("idle");
-  const [msg, setMsg] = useState("");
-  async function doSend() {
-    setState("sending"); setMsg("");
-    try {
-      const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId!)}/send-reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reply: item.suggestedReply, subject: `Re: ${item.subject}`, leadName: item.fromName, toEmail: item.from, mode: "live", confirm: true }),
-      });
-      const d = await res.json();
-      if (d.sent) { setState("done"); setMsg(`Sendt til ${item.from}.`); }
-      else if (d.needsArm) { setState("blocked"); setMsg(d.message ?? "Live-send er ikke armed."); }
-      else { setState("error"); setMsg(d.message ?? d.error ?? "Kunne ikke sende."); }
-    } catch (e) { setState("error"); setMsg(String(e)); }
-  }
-  if (state === "idle") return (
-    <button className="cc-btn" onClick={() => setState("confirm")} style={{ borderColor: "var(--amber)", color: "var(--amber)" }}>
-      <Icon name="Mail" style={{ width: 14, height: 14 }} /> Send til kunden…
-    </button>
-  );
-  if (state === "confirm") return (
-    <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-      <button className="cc-btn cc-btn-accent" onClick={doSend} style={{ background: "var(--amber)", borderColor: "var(--amber)" }}>Bekræft send til {item.from}</button>
-      <button className="cc-btn" onClick={() => setState("idle")}>Fortryd</button>
-    </span>
-  );
-  return <span className="cc-dim" style={{ fontSize: 12.5, color: state === "error" ? "var(--red)" : state === "done" ? "var(--accent-ink)" : "var(--text-muted)" }}>{state === "sending" ? "Sender…" : msg}</span>;
-}
-
-function ItemCard({ item, armed, onAnswered }: { item: InboxItem; armed: boolean; onAnswered: (id: string) => void }) {
+function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boolean; onAnswered: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const tone = catTone(item.category);
   return (
@@ -250,7 +245,9 @@ function ItemCard({ item, armed, onAnswered }: { item: InboxItem; armed: boolean
             <div className="cc-kicker" style={{ marginBottom: 6 }}>Besked</div>
             <p className="cc-muted" style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
           </div>
-          {item.suggestedReply && (
+          {canSend && item.leadId && item.from ? (
+            <ReplyComposer item={item} onSent={() => onAnswered(item.id)} />
+          ) : item.suggestedReply && (
             <div>
               <div className="cc-kicker" style={{ marginBottom: 6 }}>Foreslået svar</div>
               <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap", padding: "12px 14px", background: "var(--surface-2)", borderRadius: 10 }}>{item.suggestedReply}</p>
@@ -265,15 +262,9 @@ function ItemCard({ item, armed, onAnswered }: { item: InboxItem; armed: boolean
             )}
             {item.leadId && <MarkAnsweredForm item={item} onAnswered={() => onAnswered(item.id)} />}
           </div>
-          {(item.leadId && item.suggestedReply) && (
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <QaSendButton item={item} />
-              {armed && <LiveSendButton item={item} />}
-            </div>
-          )}
           <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
-            Selve mailen sender du fra Gmail. &quot;Markér som besvaret&quot; opdaterer CRM&apos;et — status, tidslinje og opfølgning i ét klik.
+            {canSend ? "Send svar herfra, eller åbn i Gmail og markér som besvaret bagefter." : "Selve mailen sender du fra Gmail. \"Markér som besvaret\" opdaterer CRM'et — status, tidslinje og opfølgning i ét klik."}
           </div>
         </div>
       )}
@@ -329,13 +320,12 @@ function ScanNowButton({ onDone }: { onDone: () => void }) {
   );
 }
 
-export default function RepliesClient() {
+export default function RepliesClient({ canSend = false }: { canSend?: boolean }) {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [digest, setDigest] = useState<Digest | null>(null);
   const [source, setSource] = useState<string>("");
   const [ageMin, setAgeMin] = useState<number | null>(null);
   const [err, setErr] = useState("");
-  const [armed, setArmed] = useState(false);
   const [showNoise, setShowNoise] = useState(false);
 
   function load() {
@@ -413,30 +403,18 @@ export default function RepliesClient() {
         <button className="cc-btn kinly-quiet-action" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
       </div>
 
-      <div className="cc-card cc-card-pad" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderColor: armed ? "var(--amber)" : "var(--border)" }}>
-        <Icon name="ShieldCheck" style={{ width: 18, height: 18, color: armed ? "var(--amber)" : "var(--text-dim)" }} />
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>Live-send til kunden</div>
-          <div className="cc-dim" style={{ fontSize: 12 }}>{armed ? "Armed — hvert svar kræver stadig bekræftelse. Kun for lead-matchede svar." : "Slået fra. QA-kopier går kun til buur.aigro."}</div>
-        </div>
-        <button role="switch" aria-checked={armed} aria-label="Arm live-send" onClick={() => setArmed((v) => !v)}
-          style={{ width: 46, height: 27, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: armed ? "var(--amber)" : "var(--border-strong)", transition: "background 160ms ease", flexShrink: 0 }}>
-          <span style={{ position: "absolute", top: 3, left: armed ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left 160ms cubic-bezier(0.22,1,0.36,1)" }} />
-        </button>
-      </div>
-
       {items.length === 0 ? (
         <div className="cc-card"><div className="cc-empty"><Icon name="Inbox" /><div>Ingen svar at triagere lige nu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Morgen-scanneren fylder de vigtige svar ind her.</div></div></div>
       ) : (
         <>
-          {needs.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} />)}
+          {needs.map((it) => <ItemCard key={it.id} item={it} canSend={canSend} onAnswered={markAnswered} />)}
           {noise.length > 0 && (
             <>
               <button className="cc-btn" style={{ justifySelf: "start" }} onClick={() => setShowNoise((v) => !v)}>
                 <Icon name="ChevronRight" style={{ width: 14, height: 14, transform: showNoise ? "rotate(90deg)" : "none" }} />
                 {showNoise ? "Skjul" : `Vis resten (${noise.length})`}
               </button>
-              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} />)}
+              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} canSend={canSend} onAnswered={markAnswered} />)}
             </>
           )}
         </>

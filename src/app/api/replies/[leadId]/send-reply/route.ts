@@ -1,109 +1,98 @@
 import { NextResponse } from "next/server";
 import { validateDraft } from "@/lib/draft";
 import { applySignature, applySignatureHtml, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
+import { assertWriteRequest } from "@/lib/cc-auth";
+import { currentUser } from "@/lib/current-user";
+import { getDb } from "@/lib/db/client";
+import { recordReplyOutcome, type ReplyOutcome } from "@/lib/hq/reply-outcome";
+import { markReplyHandled } from "@/lib/inbox-digest";
 
-// POST /api/replies/[id]/send-reply — QA-only reply send.
+// POST /api/replies/[leadId]/send-reply — send et svar til leadet direkte fra CRM'et.
 //
-// Hard rule (matches the build guardrails): this route can send a reply ONLY as
-// a QA copy to Lucas's own inbox (buur.aigro@gmail.com). It never mails a lead
-// and never flips the lead's Sheets status during the unattended build. Sending
-// the real reply to the customer + registerReplyOutcome is the operator's
-// explicit, separately-armed action ("live" mode here returns 412 on purpose).
+// Sikkerhed (Lucas 23/9: "det ville være lækkert at kunne"): kun når LIVE_SEND_ARMED=1
+// i miljøet, kun med confirm:true fra UI'ets bekræft-trin, kun bag write-vagten. Efter
+// afsendelse registreres svaret som besvaret (tidslinje, kolde mails stoppes, klokken).
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const QA_RECIPIENT = "buur.aigro@gmail.com";
+const OUTCOMES: ReplyOutcome[] = ["interesseret", "ikke-interesseret", "ring-op", "kunde-spoergsmaal", "andet"];
+const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
 interface Body {
   reply?: string;
   subject?: string;
-  leadName?: string;
-  toEmail?: string; // customer recipient — only used (and only sent) in armed live mode
-  sender?: SenderId; // hvem signerer (Kinly-kort) — default lucas
-  mode?: "qa" | "live";
+  toEmail?: string;
+  sender?: SenderId;
   confirm?: boolean;
+  outcome?: ReplyOutcome;
+  replyDate?: string;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ leadId: string }> }) {
-  const { leadId: id } = await params;
-  let body: Body;
   try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
+    await assertWriteRequest(req);
+  } catch (err) {
+    return NextResponse.json({ ok: false, message: (err as Error).message }, { status: 403 });
   }
+  const { leadId } = await params;
+  const body = (await req.json().catch(() => null)) as Body | null;
+  if (!body) return NextResponse.json({ ok: false, message: "ugyldig forespørgsel" }, { status: 400 });
+
+  if (process.env.LIVE_SEND_ARMED !== "1") {
+    return NextResponse.json({ ok: false, needsArm: true, message: "Afsendelse fra CRM'et er slået fra. Brug \"Åbn i Gmail\"." }, { status: 412 });
+  }
+  if (body.confirm !== true) return NextResponse.json({ ok: false, message: "Bekræft svaret før det sendes." }, { status: 412 });
 
   const reply = (body.reply ?? "").trim();
-  if (!reply) return NextResponse.json({ error: "reply text required" }, { status: 400 });
+  if (!reply) return NextResponse.json({ ok: false, message: "Svaret er tomt." }, { status: 400 });
+  if (reply.length > 5000) return NextResponse.json({ ok: false, message: "Svaret er for langt." }, { status: 400 });
+  // Stemme-reglerne gælder også svar — men et svar må gerne nævne en pris, når kunden spørger.
+  const errors = validateDraft(reply).errors.filter((e) => !e.startsWith("pris/penge"));
+  if (errors.length) return NextResponse.json({ ok: false, message: `Ret svaret: ${errors.join("; ")}` }, { status: 422 });
 
-  // Voice rules apply to outgoing replies too.
-  const check = validateDraft(reply);
-  if (!check.ok) {
-    return NextResponse.json({ error: "voice-guide violation", violations: check.errors }, { status: 422 });
-  }
+  const to = (body.toEmail ?? "").trim();
+  if (!EMAIL.test(to)) return NextResponse.json({ ok: false, message: "Ingen gyldig modtager-mail." }, { status: 400 });
+  const senderId: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
+  if (!isSenderAvailable(senderId)) return NextResponse.json({ ok: false, message: `${senderId === "charlie" ? "Charlies" : "Lucas'"} mailkonto er ikke forbundet.` }, { status: 400 });
+  const subject = (body.subject ?? "").trim().slice(0, 200) || "Re: din henvendelse";
 
-  // Live send (to the customer) is armed two ways so it's never a silent failure:
-  //  1. The operator must set LIVE_SEND_ARMED=1 in the environment, AND
-  //  2. each send must arrive with confirm:true (the UI's per-send confirm).
-  // Until LIVE_SEND_ARMED is set we return a CLEAR, structured 412 the UI shows
-  // as "armed but disabled" — not a silent error.
-  if (body.mode === "live") {
-    const armed = process.env.LIVE_SEND_ARMED === "1";
-    if (!armed) {
-      return NextResponse.json(
-        {
-          ok: false,
-          needsArm: true,
-          to: body.toEmail || null,
-          message:
-            "Live-send til kunden er slået FRA. Sæt LIVE_SEND_ARMED=1 i miljøet for at låse op — så sender du selv med bekræftelse pr. svar. (Ingen stille fejl: dette er en bevidst spærre.)",
-        },
-        { status: 412 },
-      );
-    }
-    if (body.confirm !== true) {
-      return NextResponse.json({ ok: false, needsConfirm: true, message: "Bekræft dette ene svar før det sendes." }, { status: 412 });
-    }
-    const to = (body.toEmail || "").trim();
-    if (!to) return NextResponse.json({ ok: false, message: "Ingen modtager-email på dette svar." }, { status: 400 });
-    const senderId: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
-    if (!isSenderAvailable(senderId)) {
-      return NextResponse.json({ ok: false, message: `Ingen mail-creds for ${senderId}.` }, { status: 200 });
-    }
-    try {
-      const t = getTransporter(senderId);
-      await t.sendMail({
-        from: formatFrom(senderId),
-        to,
-        subject: body.subject || `Re: ${body.leadName ?? id}`,
-        text: applySignature(reply, senderId),
-        html: applySignatureHtml(reply, senderId),
-      });
-      return NextResponse.json({ ok: true, sent: true, mode: "live", to });
-    } catch (err) {
-      return NextResponse.json({ ok: false, message: String(err) }, { status: 200 });
-    }
-  }
-
-  const qaSender: SenderId = body.sender === "charlie" ? "charlie" : "lucas";
-  if (!isSenderAvailable(qaSender)) {
-    return NextResponse.json(
-      { ok: false, sent: false, wouldSendTo: QA_RECIPIENT, note: "ingen mail-creds — QA send skipped (dry)" },
-      { status: 200 }
-    );
-  }
+  // Dobbeltklik/to faner: samme svar til samme modtager sendes højst én gang pr. 10 min.
+  const { store } = await import("@/lib/store");
+  const dedupKey = `reply-sent/${leadId}/${await sha256(`${to}|${reply}`)}`;
+  const prev = await store.get<{ at: number }>(dedupKey);
+  if (prev && Date.now() - prev.at < 600_000) return NextResponse.json({ ok: false, message: "Det svar er allerede sendt." }, { status: 409 });
+  await store.put(dedupKey, { at: Date.now() });
 
   try {
-    const transporter = getTransporter(qaSender);
-    await transporter.sendMail({
-      from: formatFrom(qaSender),
-      to: QA_RECIPIENT, // hard-locked — never the lead
-      subject: `[QA-SVAR] ${body.subject ?? `Svar til ${body.leadName ?? id}`}`,
-      text: `QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${applySignature(reply, qaSender)}`,
-      html: applySignatureHtml(`QA-kopi af et foreslået svar (lead ${id}). Dette gik IKKE til kunden.\n\n---\n\n${reply}`, qaSender),
+    await getTransporter(senderId).sendMail({
+      from: formatFrom(senderId),
+      to,
+      subject: /^re:/i.test(subject) ? subject : `Re: ${subject}`,
+      text: applySignature(reply, senderId),
+      html: applySignatureHtml(reply, senderId),
     });
-    return NextResponse.json({ ok: true, sent: true, to: QA_RECIPIENT, mode: "qa" });
   } catch (err) {
-    return NextResponse.json({ ok: false, sent: false, error: String(err) }, { status: 200 });
+    await store.delete(dedupKey).catch(() => {});
+    return NextResponse.json({ ok: false, message: `Mailen kunne ikke sendes: ${String(err).slice(0, 160)}` }, { status: 502 });
   }
+
+  // Mailen er sendt — resten er bogføring og må aldrig få UI'et til at tro, at den fejlede.
+  let recorded = true;
+  try {
+    const actor = (await currentUser()) ?? senderId;
+    const outcome = body.outcome && OUTCOMES.includes(body.outcome) ? body.outcome : "andet";
+    const note = `svar sendt fra CRM: ${reply.replace(/\s+/g, " ").slice(0, 140)}`;
+    await recordReplyOutcome(getDb(), { leadId, outcome, note, owner: senderId, actor });
+    const upTo = body.replyDate && !Number.isNaN(Date.parse(body.replyDate)) ? new Date(body.replyDate).toISOString() : undefined;
+    await markReplyHandled(leadId, upTo);
+  } catch (err) {
+    recorded = false;
+    console.error(JSON.stringify({ evt: "reply.record.failed", leadId, error: String(err).slice(0, 200) }));
+  }
+  return NextResponse.json({ ok: true, sent: true, to, recorded });
+}
+
+async function sha256(t: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 24);
 }
