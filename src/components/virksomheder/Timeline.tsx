@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
+import UpdateEditor, { type CustomerUpdateDTO } from "@/components/kundeopdateringer/UpdateEditor";
 
 export interface TimelineActivity {
   id: string;
@@ -20,6 +21,8 @@ const TYPE_ICON: Record<string, string> = {
   fase: "Workflow",
   deploy: "Server",
   checkin: "CircleDot",
+  faktura: "Receipt",
+  kundeopdatering: "Mail",
 };
 
 const LOG_TYPES: { key: "note" | "opkald" | "moede" | "arbejde"; label: string }[] = [
@@ -78,8 +81,15 @@ export default function Timeline({ companyId, activities }: { companyId: string;
   const [type, setType] = useState<(typeof LOG_TYPES)[number]["key"]>("note");
   const [text, setText] = useState("");
   const [amount, setAmount] = useState("");
+  const [kundeSynlig, setKundeSynlig] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  // "Lav kundeopdatering" — samler kunde-synligt arbejde til én kladde og
+  // viser den inline (samme editor som /kundeopdateringer bruger).
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateErr, setUpdateErr] = useState("");
+  const [createdUpdate, setCreatedUpdate] = useState<CustomerUpdateDTO | null>(null);
 
   async function log() {
     const summary = text.trim();
@@ -100,10 +110,15 @@ export default function Timeline({ companyId, activities }: { companyId: string;
       const res = await fetch(`/api/virksomheder/${companyId}/activity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, summary, billableDkk: type === "arbejde" && amount ? Number(amount) : undefined }),
+        body: JSON.stringify({
+          type,
+          summary,
+          billableDkk: type === "arbejde" && amount ? Number(amount) : undefined,
+          kundeSynlig: type === "arbejde" ? kundeSynlig : undefined,
+        }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke logges");
-      setText(""); setAmount("");
+      setText(""); setAmount(""); setKundeSynlig(false);
       setOptimistic((prev) => prev.filter((x) => x.id !== tempId));
       router.refresh();
     } catch (e) {
@@ -111,6 +126,22 @@ export default function Timeline({ companyId, activities }: { companyId: string;
       setErr(e instanceof Error ? e.message : "kunne ikke logges");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function makeUpdate() {
+    setUpdateBusy(true);
+    setUpdateErr("");
+    try {
+      const res = await fetch(`/api/virksomheder/${companyId}/kundeopdatering`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "kunne ikke lave kladden");
+      setCreatedUpdate(data.update as CustomerUpdateDTO);
+      router.refresh();
+    } catch (e) {
+      setUpdateErr(e instanceof Error ? e.message : "kunne ikke lave kladden");
+    } finally {
+      setUpdateBusy(false);
     }
   }
 
@@ -134,6 +165,12 @@ export default function Timeline({ companyId, activities }: { companyId: string;
           rows={2}
           style={{ borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-2)", padding: "8px 10px", fontSize: 13.5, color: "var(--text)", resize: "vertical" }}
         />
+        {type === "arbejde" && (
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-muted)" }}>
+            <input type="checkbox" checked={kundeSynlig} onChange={(e) => setKundeSynlig(e.target.checked)} />
+            Kunden må se det (kommer med i næste kundeopdatering)
+          </label>
+        )}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {type === "arbejde" && (
             <input
@@ -149,8 +186,19 @@ export default function Timeline({ companyId, activities }: { companyId: string;
           <button className="cc-btn cc-btn-accent virk-btn-press" onClick={log} disabled={busy} style={{ marginLeft: type === "arbejde" ? 0 : "auto" }}>
             {busy ? "Logger…" : "Log"}
           </button>
+          {!createdUpdate && (
+            <button className="cc-btn virk-btn-press" onClick={makeUpdate} disabled={updateBusy}>
+              {updateBusy ? "Laver…" : "Lav kundeopdatering"}
+            </button>
+          )}
         </div>
         {err && <span style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
+        {updateErr && <span style={{ fontSize: 12, color: "var(--red)" }}>{updateErr}</span>}
+        {createdUpdate && (
+          <div className="virk-deal" style={{ gap: 8 }}>
+            <UpdateEditor update={createdUpdate} onChange={setCreatedUpdate} />
+          </div>
+        )}
       </div>
 
       {list.length === 0 ? (

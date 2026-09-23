@@ -7,6 +7,7 @@ import { getDossier } from "@/lib/hq/dossier";
 import { loadCustomerNotes } from "@/lib/hq/notes";
 import { normalizeStage } from "@/lib/hq/deals";
 import { getFollowUpOverview } from "@/lib/hq/followup-overview";
+import { unbilledWork } from "@/lib/hq/billing";
 import { copenhagenNow } from "@/lib/settings";
 import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
@@ -16,6 +17,7 @@ import Timeline from "@/components/virksomheder/Timeline";
 import MergePanel from "@/components/virksomheder/MergePanel";
 import NoteCard from "@/components/virksomheder/NoteCard";
 import HermesAskButton from "@/components/virksomheder/HermesAskButton";
+import UnbilledWork from "@/components/virksomheder/UnbilledWork";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -109,6 +111,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const today = copenhagenNow().date;
   const openInvoices = dossier.invoices.filter((i) => i.status !== "betalt" && i.status !== "kladde");
   const followUps = await getFollowUpOverview(c.rowNo, c.maxTouches);
+  const unbilled = await unbilledWork(db, id);
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -191,6 +194,8 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
               </div>
             )}
           </div>
+
+          <UnbilledWork companyId={c.id} items={unbilled} />
 
           <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div className="virk-section-title"><span>Site</span></div>

@@ -74,6 +74,7 @@ export const SECTIONS: Section[] = [
       { href: "/replies", label: "Svar" },
       { href: "/previews", label: "Henvendelser" },
       { href: "/messenger", label: "Messenger" },
+      { href: "/kundeopdateringer", label: "Kundeopdateringer" },
     ],
   },
   {
