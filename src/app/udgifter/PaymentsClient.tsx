@@ -86,7 +86,7 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
   const sorted = [...payments].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", boxShadow: "0 8px 24px rgba(74,124,89,.12)" }}>
+    <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
         <Icon name="ArrowUpRight" style={{ width: 17, height: 17, color: "var(--kinly-signal)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Overførsler</h2>
@@ -113,7 +113,7 @@ export default function PaymentsClient({ owedPerMonth, dueDay }: { owedPerMonth:
       })()}
 
       {/* Løbende status: hvad skyldes der NU (siden seneste registrerede overførsel) */}
-      <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: balance > 0 ? "linear-gradient(135deg, var(--amber-dim), var(--surface))" : "var(--accent-soft)", border: balance > 0 ? "1px solid color-mix(in srgb, var(--amber) 35%, transparent)" : "none" }}>
+      <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: balance > 0 ? "var(--amber-dim)" : "var(--accent-soft)", border: balance > 0 ? "1px solid color-mix(in srgb, var(--amber) 35%, transparent)" : "none" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
           <div>
             <div className="cc-dim" style={{ fontSize: 12 }}>

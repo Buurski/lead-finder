@@ -105,6 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ number:
     }
     delete inv.sendingAt;
     inv.pdfUrl = pdfUrl;
+    inv.sentTo = body.to;
     await saveInvoice(inv);
 
     // System-hændelse i CRM-loggen (per-dag-dedup).

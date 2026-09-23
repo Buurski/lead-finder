@@ -1,0 +1,69 @@
+/* okonomi.css — delte styles for /fakturaer, /okonomi, /udgifter, /indsigter.
+   Genbruger tokens fra globals.css (ikke redigeret her). Bevægelse: kun
+   opacity/transform, 120-150ms ease-out; prefers-reduced-motion nulstiller. */
+
+/* ---- 3-talsstrip (Udestående · Forfaldent · Betalt i år) ---- */
+.oko-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.oko-stats-cell { background: var(--surface); padding: 16px 20px; display: grid; gap: 4px; min-width: 0; }
+.oko-stats-label { font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
+.oko-stats-value { font-family: var(--font-display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.oko-stats-value[data-tone="risk"] { color: var(--red); }
+.oko-stats-value[data-tone="success"] { color: var(--green); }
+
+/* ---- faktura-rækker ---- */
+.oko-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 4px; border-top: 1px solid var(--border);
+  transition: background 140ms ease;
+}
+.oko-row:hover { background: var(--surface-2); }
+.oko-row-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+
+.oko-num { font-variant-numeric: tabular-nums; }
+
+.oko-pill {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+  border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+
+/* ---- dialog (send / rykker / ny faktura preview) ---- */
+.oko-dialog-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: oklch(24% 0.02 70 / 0.32);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.oko-dialog {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px; width: min(480px, 100%); max-height: 88vh; overflow-y: auto;
+  display: grid; gap: 14px;
+  animation: oko-dialog-in 150ms ease-out both;
+}
+@keyframes oko-dialog-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+.oko-field { display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.oko-field-hint { font-weight: 400; font-size: 11.5px; color: var(--text-dim); }
+
+/* ---- ny-faktura-form ---- */
+.oko-form-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.oko-line-row { display: flex; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .oko-dialog { animation: none; }
+  .oko-row { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .oko-stats { grid-template-columns: 1fr; }
+  .oko-stats-cell { border-bottom: 1px solid var(--border); }
+}

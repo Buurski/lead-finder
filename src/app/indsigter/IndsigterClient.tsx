@@ -78,6 +78,8 @@ export default function IndsigterClient({
   const arr = mrrRunRate(clients) * 12;
   const splitMax = Math.max(engangsYtd, arr, 1);
 
+  // Ingen kilde-data endnu (alle deals uden "source" sat) — vis ikke en fordeling af ét bogstav.
+  const hasSourceData = !segSource.every((s) => s.key === "ukendt");
   const maxSeg = Math.max(...segSource.map((s) => s.value), 1);
   const decMax = Math.max(Math.abs(dec.volumeEffect), Math.abs(dec.valueEffect), 1);
   const salesEmpty = monthly.every((m) => m.revenue === 0 && m.wonCount === 0);
@@ -184,16 +186,18 @@ export default function IndsigterClient({
           <h2 style={H2}>Fordelinger</h2>
           <p style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Hvor omsætningen kommer fra — kanal og indtægtstype.</p>
         </div>
-        <div>
-          <SectionLabel>Omsætning pr. kilde</SectionLabel>
-          <div style={{ display: "grid", gap: 9, marginTop: 8 }}>
-            {segSource.every((s) => s.value === 0) ? (
-              <p style={{ fontSize: 12.5, color: DIM }}>Ingen vundet omsætning at fordele endnu — vind den første deal, så tegnes fordelingen her.</p>
-            ) : segSource.map((s) => (
-              <BarRow key={s.key} label={<span style={{ textTransform: "capitalize" }}>{s.key}</span>} frac={s.value / maxSeg} value={dkk(s.value)} tip={`${s.key}: ${dkk(s.value)} · win rate ${pct(s.win.rate)}`} />
-            ))}
+        {hasSourceData && (
+          <div>
+            <SectionLabel>Omsætning pr. kilde</SectionLabel>
+            <div style={{ display: "grid", gap: 9, marginTop: 8 }}>
+              {segSource.every((s) => s.value === 0) ? (
+                <p style={{ fontSize: 12.5, color: DIM }}>Ingen vundet omsætning at fordele endnu — vind den første deal, så tegnes fordelingen her.</p>
+              ) : segSource.map((s) => (
+                <BarRow key={s.key} label={<span style={{ textTransform: "capitalize" }}>{s.key}</span>} frac={s.value / maxSeg} value={dkk(s.value)} tip={`${s.key}: ${dkk(s.value)} · win rate ${pct(s.win.rate)}`} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
           <SectionLabel>Engangs vs. recurring</SectionLabel>
           <div style={{ display: "grid", gap: 9, marginTop: 8 }}>
