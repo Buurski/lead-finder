@@ -69,6 +69,11 @@ test("KT VVS ApS matcher 'ktvvs'-agtig søgning uden accent-problemer", async ()
   assert.equal(groups.find((g) => g.label === "Virksomheder")?.items[0].id, ktId);
 });
 
+test("'ktvvs' uden mellemrum finder 'KT VVS ApS'", async () => {
+  const groups = await searchAll(db, "ktvvs");
+  assert.equal(groups.find((g) => g.label === "Virksomheder")?.items[0].id, ktId);
+});
+
 test("arkiverede virksomheder vises ikke", async () => {
   await db.update(company).set({ archived: true }).where(eq(company.id, ktId));
   const groups = await searchAll(db, "kt vvs");

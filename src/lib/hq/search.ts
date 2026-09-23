@@ -30,12 +30,16 @@ export async function searchAll(db: Db, q: string, limit = 5): Promise<SearchGro
   const term = q.trim();
   if (!term) return [];
   const pattern = `%${escapeLike(term)}%`;
+  const compact = term.toLowerCase().replace(/[^a-z0-9æøå]/g, "");
   const live = eq(company.archived, false);
 
   const companies = await db
     .select({ id: company.id, name: company.name, city: company.city, lifecycle: company.lifecycle, clientNo: company.clientNo })
     .from(company)
-    .where(and(live, ilike(company.name, pattern)))
+    // Også uden mellemrum/tegn: "ktvvs" skal finde "KT VVS".
+    .where(and(live, compact.length >= 3
+      ? or(ilike(company.name, pattern), sql`regexp_replace(lower(${company.name}), '[^a-z0-9æøå]', '', 'g') like ${`%${compact}%`}`)
+      : ilike(company.name, pattern)))
     // Kunder (clientNo sat) først, herefter alfabetisk.
     .orderBy(sql`${company.clientNo} is null`, company.name)
     .limit(limit);
