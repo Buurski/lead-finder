@@ -6,28 +6,45 @@ import { ANGLE_LABEL, DEFAULT_TOUCHES, GAP_DAYS, MAX_TOUCHES, nextAngle, type An
 
 export const dynamic = "force-dynamic";
 
-// GET /api/approve/sequence?leadId=<rowNo> — read-only oversigt til Indbakkens
-// "sekvens"-sektion (spec §11): hvor mange mails er sendt til leadet, hvornår,
-// og næste planlagte trin + vinkel. Bruger kun eksisterende tabeller/logik fra
-// src/lib/hq/sequence.ts (nextAngle/GAP_DAYS) — ingen ny forretningslogik.
+const NOT_FOUND = {
+  ok: true, found: false, sentCount: 0, history: [], maxTouches: DEFAULT_TOUCHES,
+  nextStep: null, nextAngle: null, nextAngleLabel: null, nextDueAt: null,
+  pendingDraft: false, stopped: false, stoppedReason: null,
+} as const;
+
+// GET /api/approve/sequence?leadId=<rowNo|placeId> — read-only oversigt til
+// Indbakkens "sekvens"-sektion (spec §11): hvor mange mails er sendt til
+// leadet, hvornår, og næste planlagte trin + vinkel. Bruger kun eksisterende
+// tabeller/logik fra src/lib/hq/sequence.ts (nextAngle/GAP_DAYS) — ingen ny
+// forretningslogik. leadId kan være det numeriske Sheets-rækkenummer (den
+// normale kladde) ELLER en Google Place-ID-streng (kladder fra
+// ingest-leadgen, før leadet er matchet til en company-række) — slå op på
+// det id der faktisk findes.
 export async function GET(req: Request) {
   const leadId = new URL(req.url).searchParams.get("leadId");
-  const rowNo = Number(leadId);
-  if (!leadId || !Number.isFinite(rowNo) || rowNo <= 0) {
+  if (!leadId) {
     return NextResponse.json({ ok: false, error: "ugyldigt leadId" }, { status: 400 });
   }
   if (!pgEnabled()) {
     // Sekvens-historik ligger kun i Postgres (outreach-tabellen) — ingen data uden pg.
     return NextResponse.json({
-      ok: true, sentCount: 0, history: [], maxTouches: DEFAULT_TOUCHES,
+      ok: true, found: true, sentCount: 0, history: [], maxTouches: DEFAULT_TOUCHES,
       nextStep: null, nextAngle: null, nextAngleLabel: null, nextDueAt: null,
       stopped: false, stoppedReason: null,
     });
   }
   try {
     const db = getDb();
-    const [c] = await db.select({ website: company.website, maxTouches: company.maxTouches })
-      .from(company).where(eq(company.rowNo, rowNo));
+    const isNumeric = /^\d+$/.test(leadId);
+    const [c] = isNumeric
+      ? await db.select({ rowNo: company.rowNo, website: company.website, maxTouches: company.maxTouches })
+          .from(company).where(eq(company.rowNo, Number(leadId)))
+      : await db.select({ rowNo: company.rowNo, website: company.website, maxTouches: company.maxTouches })
+          .from(company).where(eq(company.placeId, leadId));
+    if (!c) {
+      return NextResponse.json(NOT_FOUND);
+    }
+    const rowNo = c.rowNo;
     const rows = await db.select({
       step: outreach.step, angle: outreach.angle, status: outreach.status,
       updatedAt: outreach.updatedAt, draft: outreach.draft,
@@ -65,6 +82,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      found: true,
       sentCount: sent.length,
       history: sent.map((r) => ({ step: r.step, sentAt: r.updatedAt, angle: r.angle })),
       maxTouches,
