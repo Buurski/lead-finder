@@ -3,13 +3,14 @@
 // (tasks.ts/summary.ts's definitioner, overview.ts's kundeattention) — ingen
 // ny forretningslogik, ingen skrivning.
 import "server-only";
-import { and, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { company, invoice, outreach } from "../db/schema.ts";
 import { isOverdue, type InvoiceStatus } from "../invoices.ts";
 import { readPreviewRequests } from "../preview-queue.ts";
 import { listMyDay, type Owner } from "./tasks.ts";
 import { getDossier } from "./dossier.ts";
+import { unhandledReplyWhere } from "./summary.ts";
 import { loadOverview } from "./overview-load.ts";
 
 export type AttentionLevel = "haster" | "obs";
@@ -60,12 +61,11 @@ export async function getAttention(
   // "replies": leadRows + emailStatus=replied + leadStatus new/called). Én
   // samlet linje ligesom kladder/previews nedenfor — kan sagtens være 50-100+
   // leads i praksis, så hver skal ikke stjæle en plads i de ~30 punkter.
-  const leadRows = and(gt(company.rowNo, 0), eq(company.archived, false));
   const n = sql<number>`count(*)::int`;
   const [{ n: repliesN }] = await db
     .select({ n })
     .from(company)
-    .where(and(leadRows, eq(company.emailStatus, "replied"), inArray(company.leadStatus, ["new", "called"])));
+    .where(unhandledReplyWhere());
   if (repliesN > 0) {
     items.push({ level: "haster", kind: "svar", text: `${repliesN} svar venter — ikke behandlet`, href: "/replies" });
   }

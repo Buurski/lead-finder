@@ -8,6 +8,20 @@ import { activity, company, invoice, outreach, subscriptionPlan } from "../db/sc
 import { invoiceTotal, isOverdue, type Invoice, type Subscription } from "../invoices.ts";
 import { listMyDay, type MyDayItem } from "./tasks.ts";
 
+/** Et svar der stadig venter på os: lead har svaret, er ikke flyttet videre, og vores seneste
+ * mail er under 45 dage gammel. Ældre (fx maj-bølgen) er besvaret i Gmail for længst og må
+ * ikke stå som "haster" for evigt (23/9: 55 af 64 var fra maj). Én definition — HQ + klokke. */
+export const UNHANDLED_REPLY_DAYS = 45;
+export function unhandledReplyWhere() {
+  return and(
+    gt(company.rowNo, 0),
+    eq(company.archived, false),
+    eq(company.emailStatus, "replied"),
+    inArray(company.leadStatus, ["new", "called"]),
+    sql`greatest(nullif(${company.emailSentAt}, ''), nullif(${company.followupSentAt}, ''))::timestamptz > now() - make_interval(days => ${UNHANDLED_REPLY_DAYS})`,
+  );
+}
+
 export const FUNNEL = ["ny", "kontaktet", "svaret", "interesseret", "kunde"] as const;
 export type FunnelStage = (typeof FUNNEL)[number];
 
@@ -65,7 +79,7 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
   const [[drafts], [replies], funnelRows, invRows, subRows, items] = await Promise.all([
     db.select({ n }).from(outreach).where(inArray(outreach.status, OPEN_DRAFT)),
     // Ubehandlet svar: der er svaret, men ingen har flyttet leadet videre endnu.
-    db.select({ n }).from(company).where(and(leadRows, eq(company.emailStatus, "replied"), inArray(company.leadStatus, ["new", "called"]))),
+    db.select({ n }).from(company).where(unhandledReplyWhere()),
     db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle),
     db.select({ data: invoice.data }).from(invoice).where(inArray(invoice.status, UNPAID)),
     db.select({ data: subscriptionPlan.data }).from(subscriptionPlan),

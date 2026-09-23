@@ -22,11 +22,12 @@ test("stepState: forfalden, snart (i dag/i morgen), ok, mangler", () => {
 
 test("HQ-tal læses korrekt fra Postgres", async () => {
   const [vida] = await db.insert(company).values([
-    { rowNo: 2, name: "Svaret Ubehandlet", lifecycle: "svaret", emailStatus: "replied", leadStatus: "new" },
+    { rowNo: 2, name: "Svaret Ubehandlet", lifecycle: "svaret", emailStatus: "replied", leadStatus: "new", emailSentAt: new Date(Date.now() - 3 * 86_400_000).toISOString() },
+    { rowNo: 40, name: "Svaret i maj", lifecycle: "svaret", emailStatus: "replied", leadStatus: "new", emailSentAt: "2026-05-12T09:00:00Z" },
     { rowNo: 3, name: "Svaret Behandlet", lifecycle: "interesseret", emailStatus: "replied", leadStatus: "interested" },
     { rowNo: 4, name: "Arkiveret", lifecycle: "ny", archived: true },
     { rowNo: -1, clientNo: 2, name: "VIDA Skønhedsklinik", lifecycle: "kunde" },
-  ]).returning().then((r) => [r[3]]);
+  ]).returning().then((r) => [r[4]]);
   await db.insert(deal).values([
     { companyId: vida.id, title: "Nyhedsbrev", stage: "i_gang", nextStep: "Send udkast", nextStepDue: "2026-09-20", owner: "lucas" },
     { companyId: vida.id, title: "Hjemmesidepas", stage: "betalt" }, // lukket → ingen næste skridt

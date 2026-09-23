@@ -17,7 +17,7 @@ beforeEach(async () => {
 
 test("getAttention samler tasks, svar, kunder og fakturaer og sorterer haster først", async () => {
   // Lead med ubehandlet svar.
-  await db.insert(company).values({ rowNo: 2, name: "Salon Artec", emailStatus: "replied", leadStatus: "new" });
+  await db.insert(company).values({ rowNo: 2, name: "Salon Artec", emailStatus: "replied", leadStatus: "new", emailSentAt: new Date(Date.now() - 3 * 86_400_000).toISOString() });
 
   // Kunde med forfalden faktura (rowNo negativ = ingen lead-række, kun kunde).
   const [vida] = await db.insert(company).values({ rowNo: -1, clientNo: 5, name: "VIDA" }).returning();
