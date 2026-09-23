@@ -256,7 +256,7 @@ export default function LeadgenPanel() {
       {state === "loading" ? (
         <div style={{ display: "grid", gap: 10 }}>{[0, 1, 2].map((i) => <div key={i} className="cc-skel" style={{ height: 56 }} />)}</div>
       ) : leads.length === 0 ? (
-        <div className="cc-card"><div className="cc-empty"><Icon name="Search" /><div>Ingen kontaktbare leads endnu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Kør en Places-scrape ovenfor, eller lad den daglige Cowork-task fylde nye leads ind — de dukker op her så snart de er i Sheets.</div></div></div>
+        <div className="cc-card cc-card-pad"><span className="cc-dim" style={{ fontSize: 13 }}>Ingen kontaktbare leads endnu. Kør en Places-scrape ovenfor, eller vent på den daglige scrape.</span></div>
       ) : (
         (() => {
           const shown = leads.filter(matchesFilters);

@@ -12,8 +12,8 @@ export interface NavItem {
 }
 
 // The 7 rail icons (desktop) — same list opens as the top group of the
-// mobile "Mere"-sheet. "Agenter" points at /hermes midlertidigt (fase 3
-// samler /hermes + /drift under /agenter).
+// mobile "Mere"-sheet. "Agenter" samler Hermes + Drift + agent-sessioner
+// under /agenter (fase 2).
 export const NAV_PRIMARY: NavItem[] = [
   { href: "/", label: "HQ", icon: "Home", hint: "Dagens overblik" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
@@ -21,7 +21,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
-  { href: "/hermes", label: "Agenter", icon: "Sparkles", hint: "Hermes og sessioner" },
+  { href: "/agenter", label: "Agenter", icon: "Sparkles", hint: "Hermes og sessioner" },
 ];
 
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
@@ -86,8 +86,9 @@ export const SECTIONS: Section[] = [
     ],
   },
   {
-    root: "/hermes",
+    root: "/agenter",
     tabs: [
+      { href: "/agenter", label: "Oversigt" },
       { href: "/hermes", label: "Hermes" },
       { href: "/drift", label: "Drift" },
     ],

@@ -280,14 +280,14 @@ export default function RepliesClient() {
   if (state === "error") {
     const notConfigured = /imap not configured|not configured|gmail/i.test(err);
     return (
-      <div className="cc-card cc-card-pad" role="alert" style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap" }}>
-        <Icon name={notConfigured ? "Mail" : "Activity"} style={{ width: 18, height: 18, color: "var(--amber)" }} />
-        <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{notConfigured ? "Gmail er ikke sat op endnu" : "Kunne ikke nå indbakken"}</div>
-          <div className="cc-dim" style={{ fontSize: 12.5 }}>{notConfigured ? "Sæt GMAIL_USER + GMAIL_APP_PASSWORD i miljøet, så scanner jeg indbakken for svar. Intet blev rørt." : `${err} — read-only, intet blev rørt.`}</div>
-        </div>
+      <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap" }}>
+        {notConfigured ? (
+          <span className="cc-chip">Gmail ikke forbundet</span>
+        ) : (
+          <span className="cc-dim" style={{ fontSize: 13 }}>Kunne ikke nå indbakken — intet blev rørt.</span>
+        )}
         {!notConfigured && (
-          <button className="cc-btn" onClick={load}>
+          <button className="cc-btn" onClick={load} style={{ marginLeft: "auto" }}>
             <Icon name="Activity" style={{ width: 14, height: 14 }} /> Prøv igen
           </button>
         )}

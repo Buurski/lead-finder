@@ -31,9 +31,8 @@ interface SeoResult {
 export default function SeoClient({ clients, ok }: { clients: ClientRow[]; ok: boolean }) {
   if (!ok) {
     return (
-      <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center" }}>
-        <Icon name="Activity" style={{ width: 18, height: 18, color: "var(--amber)" }} />
-        <span className="cc-muted" style={{ fontSize: 13.5 }}>Kunne ikke nå Sheets — klientlisten er tom her.</span>
+      <div className="cc-card cc-card-pad">
+        <span className="cc-dim" style={{ fontSize: 13.5 }}>Kunne ikke hente klientlisten lige nu.</span>
       </div>
     );
   }

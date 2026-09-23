@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
       { source: "/leads", destination: "/pipeline", permanent: false },
       { source: "/clients", destination: "/virksomheder", permanent: false },
       { source: "/clients/:id", destination: "/virksomheder/c/:id", permanent: false },
+      { source: "/crm", destination: "/", permanent: false },
     ];
   },
 };

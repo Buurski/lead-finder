@@ -80,7 +80,7 @@ export default async function AgentCard() {
 
       <div className="hq-agent-actions">
         <AskHermesButton />
-        <Link href="/hermes" className="hq-agent-link cc-focus">
+        <Link href="/agenter" className="hq-agent-link cc-focus">
           Se agenter
         </Link>
       </div>

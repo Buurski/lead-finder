@@ -29,7 +29,7 @@ export default async function IndsigterPage() {
         title="Indsigter"
         subtitle={sheetsOk
           ? `Omsætning, konvertering & vækst · afledt af ${clients.length} klient-rækker + ${snapshots.length} snapshots`
-          : "Kunne ikke nå Google Sheets — prøv at genindlæse."}
+          : "Kunne ikke hente tallene — prøv at genindlæse."}
       />
 
       {!sheetsOk ? <SheetsFallback /> : (
