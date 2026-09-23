@@ -15,7 +15,7 @@ beforeEach(async () => {
 
 async function ktvvs() {
   const [lead] = await db.insert(company).values({ rowNo: 18, name: "KT VVS ApS", city: "Herning", email: "kt@ktvvs.dk", website: "ktvvs.dk", leadStatus: "called", lifecycle: "kontaktet", reviewsCount: 40 }).returning();
-  const [client] = await db.insert(company).values({ rowNo: -1, clientNo: 3, name: "KT VVS", phone: "12345678", lifecycle: "kunde", briefFilled: true }).returning();
+  const [client] = await db.insert(company).values({ rowNo: -1, clientNo: 3, name: "KT VVS", phone: "12345678", lifecycle: "kunde", briefFilled: true, services: ["hjemmeside", "hosting"] }).returning();
   await db.insert(deal).values({ companyId: client.id, isPrimary: true, title: "Hjemmeside", stage: "live", monthlyFeeRaw: "299" });
   await db.insert(site).values({ companyId: client.id, status: "live" });
   const inv = { number: "004", clientName: "KT VVS", recipient: { name: "KT VVS" }, issueDate: "2026-08-01", dueDate: "2026-08-15", lines: [{ description: "Site", amount: 4997 }], vatRate: 0, status: "betalt", payerType: "cvr" };
@@ -28,6 +28,7 @@ test("KT VVS: kunden flettes ind i lead-rækken — ét firma med kundenummer, d
   await mergeCompanies(db, lead.id, client.id, "lucas");
 
   const [kept] = await db.select().from(company).where(eq(company.id, lead.id));
+  assert.deepEqual(kept.services, ["hjemmeside", "hosting"]); // services følger med (23/9: gik tabt)
   assert.equal(kept.clientNo, 3);
   assert.equal(kept.lifecycle, "kunde");
   assert.equal(kept.phone, "12345678"); // udfyldt fra kunden

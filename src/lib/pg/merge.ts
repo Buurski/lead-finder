@@ -58,6 +58,7 @@ export async function mergeCompanies(db: Db, keepId: string, dropId: string, act
     patch.reviewsCount = Math.max(keep.reviewsCount, drop.reviewsCount);
     patch.score = Math.max(keep.score, drop.score);
     patch.briefFilled = keep.briefFilled || drop.briefFilled;
+    patch.services = [...new Set([...(keep.services ?? []), ...(drop.services ?? [])])];
     patch.lifecycle = (RANK[drop.lifecycle] ?? 0) > (RANK[keep.lifecycle] ?? 0) ? drop.lifecycle : keep.lifecycle;
 
     // 4. Arkivér drop FØR keep får dens unikke nøgler (client_no, place_id).
