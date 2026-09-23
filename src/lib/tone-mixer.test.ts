@@ -17,3 +17,15 @@ test("Charlie får aldrig Lucas' salgselev-historie; skift frem og tilbage er ta
   assert.equal(LUCAS_ONLY.test(adaptToSender(midBreak, "charlie")), false);
   assert.equal(LUCAS_ONLY.test("Jeg står selv for både kode og\nkontakt."), true);
 });
+
+test("adaptToSender: gammel salgselev-præsentation (før 23/9) bliver den nye professionelle — også med linjeskift", async () => {
+  const { adaptToSender, DISCLOSURES, LUCAS_ONLY } = await import("./tone-mixer.ts");
+  const legacy = "Hej,\n\nJeg arbejder med min sidevirksomhed Kinly ved siden af min\nsalgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.\n\nMvh";
+  const lucas = adaptToSender(legacy, "lucas");
+  assert.ok(lucas.includes(DISCLOSURES.lucas[0]));
+  assert.ok(!/salgselev/i.test(lucas));
+  const charlie = adaptToSender(legacy, "charlie");
+  assert.ok(charlie.includes(DISCLOSURES.charlie[0]));
+  assert.ok(!LUCAS_ONLY.test(charlie));
+  assert.equal(adaptToSender(charlie, "lucas"), lucas);
+});

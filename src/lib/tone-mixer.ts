@@ -235,8 +235,24 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
 }
 
 // Samme index = samme plads i mailen, så en kladde kan skifte afsender (adaptToSender).
-// "salgselev" er Lucas' historie og må ALDRIG stå i en mail fra Charlie (about_charlie.md).
+// 23/9 (Lucas): præsentationen skal være professionel som kinly.dk — Kinly som
+// firma med rigtige kunder, ikke "sidevirksomhed ved siden af salgselevpladsen".
 export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
+  lucas: [
+    `Jeg hedder Lucas og er medstifter af Kinly. Vi laver hjemmesider til lokale virksomheder, blandt andet VIDA Klinik, Ikast AutoService og Jernbanecaféen.`,
+    `Jeg er Lucas fra Kinly i Herning. Vi bygger hjemmesider, der gør det nemt for nye kunder at finde jer og tage kontakt, og vi har blandt andet lavet sider for VIDA Klinik og Ikast AutoService.`,
+    `Mit navn er Lucas, og jeg er medstifter af Kinly. Vi hjælper lokale virksomheder med hjemmesider, der giver flere henvendelser, og det er os selv, der bygger og følger op.`,
+  ],
+  charlie: [
+    `Jeg hedder Charlie og er medstifter af Kinly. Vi laver hjemmesider til lokale virksomheder, blandt andet VIDA Klinik, Ikast AutoService og Jernbanecaféen.`,
+    `Jeg er Charlie fra Kinly i Herning. Vi bygger hjemmesider, der gør det nemt for nye kunder at finde jer og tage kontakt, og vi har blandt andet lavet sider for VIDA Klinik og Ikast AutoService.`,
+    `Mit navn er Charlie, og jeg er medstifter af Kinly. Vi hjælper lokale virksomheder med hjemmesider, der giver flere henvendelser, og det er os selv, der bygger og følger op.`,
+  ],
+};
+
+// Præsentationer fra før 23/9 — ligger stadig i ventende kladder. adaptToSender
+// oversætter dem til den nye tekst for den valgte afsender (samme plads).
+const LEGACY_DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
   lucas: [
     `Jeg arbejder med min sidevirksomhed Kinly ved siden af min salgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.`,
     `Ved siden af min salgselevplads driver jeg Kinly, hvor jeg bygger hjemmesider til lokale virksomheder. Jeg går meget op i, at siden ikke bare ser godt ud, men faktisk gør det lettere for nye kunder at finde jer.`,
@@ -249,27 +265,26 @@ export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
   ],
 };
 
-/** Skift præsentationen i en færdig kladde til den nye afsenders (samme plads). */
+/** Skift præsentationen i en færdig kladde til den valgte afsenders (samme plads).
+ *  Oversætter også gamle præsentationer (før 23/9) — begge afsenderes. */
 export function adaptToSender(body: string, sender: "lucas" | "charlie"): string {
-  const from = sender === "charlie" ? DISCLOSURES.lucas : DISCLOSURES.charlie;
-  // Sætning for sætning: kladder kan have præsentationen brudt over flere linjer.
-  const sentences = (t: string) => t.match(/[^.!?]+[.!?]/g)?.map((x) => x.trim()) ?? [];
+  const other = sender === "charlie" ? "lucas" : "charlie";
+  const sources = [DISCLOSURES[other], LEGACY_DISCLOSURES.lucas, LEGACY_DISCLOSURES.charlie];
+  // Hele præsentationen erstattes som én blok, uanset linjeskift/mellemrum inde i
+  // den (kladder kan have den brudt over flere linjer — Sol 23/9).
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let out = body;
-  from.forEach((line, i) => {
-    const a = sentences(line);
-    const b = sentences(DISCLOSURES[sender][i]);
-    // Mellemrum/linjeskift inde i en sætning må ikke få den til at glippe (Sol 23/9).
-    a.forEach((x, j) => {
-      if (!b[j]) return;
-      const re = new RegExp(x.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+"), "g");
-      out = out.replace(re, b[j]);
+  for (const list of sources) {
+    list.forEach((line, i) => {
+      const re = new RegExp(line.trim().split(/\s+/).map(esc).join("\\s+"), "g");
+      out = out.replace(re, DISCLOSURES[sender][i]);
     });
-  });
+  }
   return out;
 }
 
 /** Lucas' personlige detaljer i en mail der sendes fra Charlie (inkl. hans præsentation, uanset linjeskift). */
-export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger/i;
+export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger|Jeg\s+hedder\s+Lucas|Jeg\s+er\s+Lucas|Mit\s+navn\s+er\s+Lucas/i;
 
 export function mixForLead(lead: MixLead, sender: "lucas" | "charlie" = "lucas"): ToneMix {
   const seed = lead.name;
