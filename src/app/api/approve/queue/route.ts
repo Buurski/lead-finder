@@ -4,6 +4,7 @@ import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
 import { getLeads } from "@/lib/sheets";
+import { matchLead } from "@/lib/leads/match";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 import { buildContactIndex } from "@/lib/leads/contact-history";
 import { loadShadow, type JevShadowRecord } from "@/lib/leads/jev-shadow";
@@ -40,8 +41,10 @@ export async function GET() {
 
   let historyOk = false;
   let index: ReturnType<typeof buildContactIndex> | null = null;
+  let leads: Awaited<ReturnType<typeof getLeads>> = [];
   try {
-    index = buildContactIndex(await getLeadsCached(), new Date(), drafts);
+    leads = await getLeadsCached();
+    index = buildContactIndex(leads, new Date(), drafts);
     historyOk = true;
   } catch {
     // Sheets nede — badge degraderet, køen leveres alligevel.
@@ -103,7 +106,11 @@ export async function GET() {
         followers: followerBucket(socialByLead.get(d.leadId)),
       },
     };
-    return rec ? { ...withJev, history: { seenBefore: true, ...rec } } : withJev;
+    // Modtageren præcis som send-ruten vælger den (kladdens egen adresse vinder,
+    // ellers leadets) — så "Mangler mail" i UI'et er sandt, ikke et gæt.
+    const to = (d.recipientEmail || "").trim() || (matchLead(leads, d)?.email || "").trim();
+    const withTo = { ...withJev, to: hasUsableEmail(to) ? to : "" };
+    return rec ? { ...withTo, history: { seenBefore: true, ...rec } } : withTo;
   });
 
   // no-store: mailadresser + kladdetekst må ikke ligge i en mobil-browsers HTTP-cache.
@@ -126,12 +133,14 @@ interface ActionBody {
     | "set-sender"
     | "reset-approved"
     | "cleanup-no-email"
-    | "reject-seen";
+    | "reject-seen"
+    | "set-recipient";
   ids?: string[];
   subject?: string;
   body?: string;
   demoPair?: Demo[];
   sender?: "lucas" | "charlie";
+  recipientEmail?: string;
 }
 
 // POST /api/approve/queue — approve | edit | reject a draft.
@@ -351,6 +360,18 @@ export async function POST(req: Request) {
     const updated = await updateDraft(id, { demoPair: pair, body: payload.body });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
+  }
+
+  if (action === "set-recipient") {
+    const blocked = await finalBlock();
+    if (blocked) return blocked;
+    const email = (payload.recipientEmail || "").trim().toLowerCase();
+    if (!hasUsableEmail(email)) {
+      return NextResponse.json({ error: "Ugyldig eller blokeret mailadresse" }, { status: 400 });
+    }
+    const updated = await updateDraft(id, { recipientEmail: email });
+    if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
+    return NextResponse.json({ draft: { ...updated, to: email } });
   }
 
   if (action === "set-sender") {

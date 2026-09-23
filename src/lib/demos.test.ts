@@ -49,3 +49,16 @@ test("dødt demo-link stopper kladden", async () => {
   const r = validateDraft("Se fx https://vestfjends.vercel.app/ her");
   assert.equal(r.ok, false);
 });
+
+test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async () => {
+  const { suggestMailLinks, MAIL_LINKS } = await import("./demos.ts");
+  const known = new Set(MAIL_LINKS.map((l) => l.url));
+  const cafe = suggestMailLinks("café", "Kagehuset");
+  assert.ok(cafe.length > 0 && cafe.length <= 5);
+  assert.equal(cafe[0].url, "https://kinly.dk/case/jernbanecafeen/");
+  assert.ok(cafe.every((l) => known.has(l.url)));
+  assert.ok(cafe.some((l) => l.url === "https://kinly.dk/hjemmeside-til-restaurant-cafe/"));
+  const klinik = suggestMailLinks("skønhedsklinik", "Frederiksberg Skønhedsklinik");
+  assert.equal(klinik[0].url, "https://kinly.dk/case/vida-klinik/");
+  assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
+});

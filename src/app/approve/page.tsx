@@ -104,7 +104,9 @@ function InboxApp() {
   }, [drafts]);
 
   const patchLocal = useCallback((d: QueueDraft) => {
-    setDrafts((prev) => prev.map((x) => (x.id === d.id ? d : x)));
+    // Flet — POST-svaret mangler GET-berigelsen (Jev, historik, modtager); en
+    // ren udskiftning fik badges til at forsvinde efter hver handling.
+    setDrafts((prev) => prev.map((x) => (x.id === d.id ? { ...x, ...d } : x)));
   }, []);
 
   // ---- URL-state (?id=<draftId>) — link + tilbage-knap -------------------
@@ -250,7 +252,7 @@ function InboxApp() {
       const res = await fetch("/api/approve/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender") && payload ? { id, action, ...payload } : { id, action }),
+        body: JSON.stringify((action === "edit" || action === "set-demos" || action === "set-sender" || action === "set-recipient") && payload ? { id, action, ...payload } : { id, action }),
       });
       const data = await res.json();
       if (!res.ok) {

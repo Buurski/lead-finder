@@ -54,11 +54,14 @@ export default function InboxRow({
           </span>
           <span className="inbox-row-meta">{[draft.branch, draft.city].filter(Boolean).join(" · ")}</span>
           <span className="inbox-row-subject" style={stopped ? { color: "var(--red)" } : undefined}>{subjectLine}</span>
-          {contacted && (
+          {(contacted || (draft.status !== "sent" && draft.to === "")) && (
             <span className="inbox-row-bottom">
-              <span className="inbox-row-contacted">
-                kontaktet før{draft.history?.lastContactAt ? ` · sidst ${draft.history.lastContactAt}` : ""}
-              </span>
+              {draft.status !== "sent" && draft.to === "" && <span className="inbox-row-contacted" style={{ color: "var(--red)" }}>mangler mail</span>}
+              {contacted && (
+                <span className="inbox-row-contacted">
+                  kontaktet før{draft.history?.lastContactAt ? ` · sidst ${draft.history.lastContactAt}` : ""}
+                </span>
+              )}
             </span>
           )}
         </span>

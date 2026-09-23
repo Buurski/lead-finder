@@ -288,3 +288,4 @@
     transition: none !important;
   }
 }
+.inbox-democard[data-active="true"] { border-color: var(--text); }

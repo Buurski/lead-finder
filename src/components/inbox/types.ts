@@ -51,6 +51,8 @@ export interface QueueDraft {
   step?: number;
   angle?: "gratis_udkast" | "seo_tjek" | "eksempel" | "sidste";
   stoppedReason?: string;
+  /** Modtageren send-ruten vil bruge ("" = mangler mail). Sat af GET /api/approve/queue. */
+  to?: string;
 }
 
 // De 5 faner i det nye mail-app-layout. Opfølgnings-trin/vinkel-tekst
@@ -109,6 +111,6 @@ export function prettyUrl(url: string): string {
   }
 }
 
-export type ActAction = "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender";
-export type ActPayload = { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie" };
+export type ActAction = "approve" | "edit" | "reject" | "unapprove" | "set-demos" | "set-sender" | "set-recipient";
+export type ActPayload = { subject?: string; body?: string; demoPair?: Demo[]; sender?: "lucas" | "charlie"; recipientEmail?: string };
 export type ActFn = (id: string, action: ActAction, payload?: ActPayload) => Promise<{ ok: boolean; violations?: string[] }>;

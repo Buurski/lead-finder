@@ -141,3 +141,53 @@ export function verticalPageFor(branch: string): string | null {
   if (CRAFT_UTIL.test(t)) return "https://kinly.dk/hjemmeside-til-vvs/";
   return null;
 }
+
+// ---- Links i kolde mails (Lucas 23/9) ----------------------------------------
+// Valgbare links i godkendelsen: kinly.dk-cases (rigtige kunder) først, så
+// kinly.dk-branchesider, så levende demoer. Kun sider der svarer 200 (tjekket
+// 23/9) — døde demoer (vestfjends) og kundernes egne domæner er med vilje ude.
+export interface MailLink extends Demo {
+  group: "Kinly-cases" | "Kinly-branchesider" | "Demoer";
+}
+
+export const MAIL_LINKS: MailLink[] = [
+  { group: "Kinly-cases", ...D.vidaCase },
+  { group: "Kinly-cases", ...D.ikastCase },
+  { group: "Kinly-cases", ...D.jernbanecafeenCase },
+  { group: "Kinly-cases", ...D.lejEnKokCase },
+  { group: "Kinly-cases", label: "Alle projekter på kinly.dk", url: "https://kinly.dk/projekter/" },
+  { group: "Kinly-branchesider", label: "Hjemmeside til skønhedsklinik", url: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
+  { group: "Kinly-branchesider", label: "Hjemmeside til frisør", url: "https://kinly.dk/hjemmeside-til-frisoer/" },
+  { group: "Kinly-branchesider", label: "Hjemmeside til restaurant/café", url: "https://kinly.dk/hjemmeside-til-restaurant-cafe/" },
+  { group: "Kinly-branchesider", label: "Hjemmeside til VVS", url: "https://kinly.dk/hjemmeside-til-vvs/" },
+  { group: "Kinly-branchesider", label: "Hjemmeside til automekaniker", url: "https://kinly.dk/hjemmeside-til-automekaniker/" },
+  { group: "Demoer", ...D.underKlippen },
+  { group: "Demoer", ...D.zaytoon },
+  { group: "Demoer", ...D.salonArtec },
+  { group: "Demoer", ...D.streetcut },
+  { group: "Demoer", ...D.ktvvs },
+  { group: "Demoer", ...D.denlillemaler },
+  { group: "Demoer", ...D.buurfoto },
+  { group: "Demoer", ...D.midtadvokaterne },
+];
+
+/** De bedste links til netop denne virksomhed, bedst først (max n): branchens
+ *  demo-par, branchesiden, en passende case, og projektoversigten som fallback. */
+export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[] {
+  const byUrl = new Map(MAIL_LINKS.map((l) => [l.url, l]));
+  const t = `${name} ${branch}`.toLowerCase();
+  const urls: string[] = [...pickDemos(branch, name).map((d) => d.url)];
+  const vertical = verticalPageFor(`${branch} ${name}`);
+  if (vertical) urls.push(vertical);
+  if (FOOD.test(t) || FOOD_INTL.test(t)) urls.push(DEMO_SITES.jernbanecafeenCase, DEMO_SITES.lejEnKokCase);
+  else if (CLINIC.test(t) || BEAUTY.test(t) || BARBER.test(t)) urls.push(DEMO_SITES.vidaCase);
+  else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
+  urls.push("https://kinly.dk/projekter/");
+  const out: MailLink[] = [];
+  for (const u of urls) {
+    const l = byUrl.get(u);
+    if (l && !out.includes(l)) out.push(l);
+    if (out.length >= n) break;
+  }
+  return out;
+}

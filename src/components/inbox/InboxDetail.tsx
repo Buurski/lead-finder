@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DEMO_CATALOG } from "@/lib/demos";
+import { MAIL_LINKS, suggestMailLinks } from "@/lib/demos";
 import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import Icon from "@/components/shell/Icon";
 import { GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
@@ -15,12 +15,13 @@ const PREVIEW_CHARLIE_PHONE = "+45 42 25 32 62";
 
 const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
   const m = new Map<string, { label: string; url: string }[]>();
-  for (const d of DEMO_CATALOG) {
-    if (!m.has(d.branch)) m.set(d.branch, []);
-    m.get(d.branch)!.push({ label: d.label, url: d.url });
+  for (const d of MAIL_LINKS) {
+    if (!m.has(d.group)) m.set(d.group, []);
+    m.get(d.group)!.push({ label: d.label, url: d.url });
   }
   return [...m.entries()];
 })();
+const KNOWN_URLS = new Set(MAIL_LINKS.map((l) => l.url));
 
 export default function InboxDetail({
   draft,
@@ -54,7 +55,10 @@ export default function InboxDetail({
   const [body, setBody] = useState(strippedOriginal);
   const [demos, setDemos] = useState<Demo[]>(draft.demoPair);
   const [sender, setSender] = useState<"lucas" | "charlie">(draft.sender ?? "lucas");
-  const [busy, setBusy] = useState<null | "approve" | "reject" | "set-demos" | "unapprove">(null);
+  const [busy, setBusy] = useState<null | "approve" | "reject" | "set-demos" | "unapprove" | "set-recipient">(null);
+  const [to, setTo] = useState(draft.to ?? "");
+  const [activeSlot, setActiveSlot] = useState(0);
+  const suggestions = useMemo(() => suggestMailLinks(draft.branch, draft.name), [draft.branch, draft.name]);
   const [violations, setViolations] = useState<string[]>([]);
 
   // Lokal edit-state nulstilles automatisk ved kladde-skift: parent
@@ -78,9 +82,22 @@ export default function InboxDetail({
     await onAct(draft.id, "set-sender", { sender: next });
   }
 
+  async function saveRecipient() {
+    if (to.trim() === (draft.to ?? "")) return;
+    setBusy("set-recipient");
+    setViolations([]);
+    try {
+      const r = await onAct(draft.id, "set-recipient", { recipientEmail: to.trim() });
+      if (!r.ok) setViolations(r.violations ?? ["Ukendt fejl"]);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function changeDemo(i: number, url: string) {
-    const entry = DEMO_CATALOG.find((d) => d.url === url);
+    const entry = MAIL_LINKS.find((d) => d.url === url);
     if (!entry) return;
+    if (i < 0 || i >= demos.length) { setDemos((prev) => [...prev, { label: entry.label, url: entry.url }]); return; }
     const old = demos[i];
     setDemos((prev) => prev.map((d, j) => (j === i ? { label: entry.label, url: entry.url } : d)));
     if (old?.url && old.url !== entry.url) setBody((b) => b.split(old.url).join(entry.url));
@@ -259,6 +276,24 @@ export default function InboxDetail({
 
         <div className="inbox-paper">
           <div className="inbox-paper-field">
+            <label htmlFor={`inbox-to-${draft.id}`}>Til</label>
+            {draft.status === "sent" ? (
+              <input id={`inbox-to-${draft.id}`} value={draft.to || "—"} disabled />
+            ) : (
+              <input
+                id={`inbox-to-${draft.id}`}
+                type="email"
+                value={to}
+                placeholder="Mangler mail — skriv modtagerens adresse"
+                onChange={(e) => setTo(e.target.value)}
+                onBlur={saveRecipient}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveRecipient(); } }}
+                aria-invalid={!to.trim()}
+                style={!to.trim() ? { boxShadow: "inset 0 0 0 1.5px var(--red)" } : undefined}
+              />
+            )}
+          </div>
+          <div className="inbox-paper-field">
             <label htmlFor={`inbox-subject-${draft.id}`}>Emne</label>
             <input id={`inbox-subject-${draft.id}`} value={subject} onChange={(e) => setSubject(e.target.value)} disabled={decided} />
           </div>
@@ -267,7 +302,7 @@ export default function InboxDetail({
             <textarea id={`inbox-body-${draft.id}`} value={body} onChange={(e) => setBody(e.target.value)} disabled={decided} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} />
           </div>
           <div className="inbox-signature">
-            <div className="kicker">Officiel Kinly-signatur tilføjes automatisk ved afsendelse ({sender === "lucas" ? "Lucas Buur <lucas@kinly.dk>" : "Charlie Nielsen <charlie@kinly.dk>"})</div>
+            <div className="kicker">Signatur tilføjes automatisk ved afsendelse ({sender === "lucas" ? "fra lucas@kinly.dk" : "fra Charlies konto"})</div>
             <pre>{previewSignature("", sender, PREVIEW_LUCAS_PHONE, PREVIEW_CHARLIE_PHONE).trim()}</pre>
           </div>
         </div>
@@ -276,12 +311,13 @@ export default function InboxDetail({
           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>Demoer i mailen</div>
           <div className="inbox-cardrow">
             {(decided ? draft.demoPair : demos).map((d, i) => (
-              <div key={i} className="inbox-democard">
+              <div key={i} className="inbox-democard" data-active={!decided && i === activeSlot ? "true" : undefined} onFocusCapture={() => setActiveSlot(i)} onClick={() => setActiveSlot(i)}>
                 {decided ? (
                   <a href={d.url} target="_blank" rel="noopener noreferrer">{d.label} — {prettyUrl(d.url)} ↗</a>
                 ) : (
                   <>
                     <select value={d.url} onChange={(e) => changeDemo(i, e.target.value)}>
+                      {!KNOWN_URLS.has(d.url) && <option value={d.url}>Nuværende: {d.label} (findes ikke længere i listen)</option>}
                       {CATALOG_GROUPS.map(([branch, items]) => (
                         <optgroup key={branch} label={branch}>
                           {items.map((it) => <option key={it.url} value={it.url}>{it.label}</option>)}
@@ -294,6 +330,21 @@ export default function InboxDetail({
               </div>
             ))}
           </div>
+          {!decided && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 6 }}>Forslag til {draft.name} — klik for at sætte ind som link {activeSlot + 1}:</div>
+              <div className="inbox-cardrow">
+                {suggestions.map((l) => {
+                  const used = demos.some((d) => d.url === l.url);
+                  return (
+                    <button key={l.url} type="button" className="inbox-chip" data-active={used} disabled={used} onClick={() => changeDemo(Math.min(activeSlot, demos.length - 1), l.url)} title={l.url}>
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {!decided && demosDirty && (
             <button type="button" className="inbox-btn" onClick={saveDemos} disabled={busy !== null} style={{ marginTop: 10 }}>
               {busy === "set-demos" ? "Gemmer…" : "Gem demoer"}
