@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   if (!q) return NextResponse.json([]);
   const pattern = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
   const rows = await getDb()
-    .select({ id: company.id, name: company.name, city: company.city, lifecycle: company.lifecycle, clientNo: company.clientNo })
+    .select({ id: company.id, name: company.name, city: company.city, lifecycle: company.lifecycle, clientNo: company.clientNo, rowNo: company.rowNo })
     .from(company)
     .where(and(eq(company.archived, false), ilike(company.name, pattern), UUID.test(exclude) ? ne(company.id, exclude) : undefined))
     .limit(8);

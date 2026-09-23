@@ -8,6 +8,7 @@ import Bell from "./Bell";
 import Icon from "./Icon";
 import CommandPalette from "./CommandPalette";
 import HermesDock from "./HermesDock";
+import QuickActions from "./QuickActions";
 
 interface Counts {
   queue?: number;
@@ -85,10 +86,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className="cc-search-kbd">⌘K</span>
             </button>
             <Bell counts={counts} />
-            <button className="cc-btn-new cc-focus" onClick={() => setPaletteOpen(true)} aria-label="Opret nyt">
-              <Icon name="Plus" style={{ width: 16, height: 16 }} />
-              <span>Ny</span>
-            </button>
+            <QuickActions />
           </div>
         </header>
         <SectionTabs />
