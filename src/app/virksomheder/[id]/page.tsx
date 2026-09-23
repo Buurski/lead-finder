@@ -37,6 +37,12 @@ const INVOICE_STATUS_STYLE: Record<InvoiceStatus, { background: string; color: s
   rykket: { background: "var(--red-dim)", color: "var(--red)" },
 };
 
+// Gamle Sheets-felter indeholder pladsholdere som "none" — de er ikke data.
+function real(v: string | null | undefined): string {
+  const t = (v ?? "").trim();
+  return /^(none|null|undefined|-|n\/a)$/i.test(t) ? "" : t;
+}
+
 function websiteHref(w: string): string {
   return /^https?:\/\//i.test(w) ? w : `https://${w}`;
 }
@@ -154,7 +160,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
                 {dossier.contacts.map((ct) => (
                   <div key={ct.id} style={{ fontSize: 13 }}>
                     <div style={{ fontWeight: 600 }}>{ct.name || ct.clientName || "(uden navn)"}{ct.role ? ` · ${ct.role}` : ""}</div>
-                    <div className="cc-dim" style={{ fontSize: 12 }}>{[ct.email, ct.phone].filter(Boolean).join(" · ") || "–"}</div>
+                    <div className="cc-dim" style={{ fontSize: 12 }}>{[real(ct.email), real(ct.phone)].filter(Boolean).join(" · ") || "–"}</div>
                   </div>
                 ))}
               </div>
@@ -256,8 +262,8 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             <span className="virk-header-links">
               {c.website && <a href={websiteHref(c.website)} target="_blank" rel="noreferrer">{c.website}</a>}
               {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
-              {c.phone && <a href={`tel:${c.phone}`}>{c.phone}</a>}
-              {!c.website && !c.email && !c.phone && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
+              {real(c.phone) && <a href={`tel:${real(c.phone)}`}>{real(c.phone)}</a>}
+              {!c.website && !c.email && !real(c.phone) && <span className="cc-dim">Ingen kontaktoplysninger endnu.</span>}
             </span>
           </span>
         }
