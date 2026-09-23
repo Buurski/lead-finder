@@ -452,7 +452,7 @@ export async function POST(req: Request) {
           }
 
           // 8. Lucas' personlige historie må aldrig gå ud fra Charlies konto (about_charlie.md).
-          if (transportFor(fresh.sender).id === "charlie" && LUCAS_ONLY.test(fresh.body)) {
+          if (transportFor(fresh.sender).id === "charlie" && LUCAS_ONLY.test(finalText)) {
             const reason = "Lucas' præsentation står i en mail fra Charlie — skift afsender igen eller ret teksten";
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
