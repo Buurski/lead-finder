@@ -98,13 +98,19 @@ export default function HermesDock() {
   const [error, setError] = useState<string | null>(null);
   const [retryText, setRetryText] = useState<string | null>(null);
   const [chipLabel, setChipLabel] = useState("Kender siden");
+  // companyId fra et "hermes:open"-event, tagget med sin sides pathname — gælder
+  // kun så længe man bliver på den side (sammenlignes mod pathname ved brug,
+  // så den udløber ved navigation uden en ekstra effect/ref-reset).
+  const [companyOverride, setCompanyOverride] = useState<{ id: string; path: string } | null>(null);
 
   const openRef = useRef(open);
   const startRef = useRef<number | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const companyId = useMemo(() => pathname.match(COMPANY_RE)?.[1] ?? null, [pathname]);
+  const pathCompanyId = useMemo(() => pathname.match(COMPANY_RE)?.[1] ?? null, [pathname]);
+  const eventCompanyId = companyOverride?.path === pathname ? companyOverride.id : null;
+  const companyId = eventCompanyId ?? pathCompanyId;
   const pageKind = useMemo(() => {
     if (companyId) return "kunde";
     if (pathname.startsWith("/approve")) return "approve";
@@ -130,17 +136,18 @@ export default function HermesDock() {
   }, []);
 
   // Ekstern åbning, fx en knap andetsteds i UI'et: window.dispatchEvent(new
-  // CustomEvent("hermes:open", { detail: { prefill: "…" } })).
+  // CustomEvent("hermes:open", { detail: { prompt: "…", companyId: "…" } })).
   useEffect(() => {
     function onHermesOpen(e: Event) {
-      const detail = (e as CustomEvent<{ prefill?: string }>).detail;
+      const detail = (e as CustomEvent<{ prompt?: string; companyId?: string }>).detail;
       setOpen(true);
       setBadge(false);
-      if (detail?.prefill) setInput(detail.prefill);
+      if (detail?.prompt) setInput(detail.prompt);
+      if (detail?.companyId) setCompanyOverride({ id: detail.companyId, path: pathname });
     }
     window.addEventListener("hermes:open", onHermesOpen);
     return () => window.removeEventListener("hermes:open", onHermesOpen);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     openRef.current = open;
