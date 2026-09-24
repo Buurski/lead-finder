@@ -35,7 +35,7 @@
     },
     {
       "path": "/api/cron/jev-rescore",
-      "schedule": "30 3 * * *"
+      "schedule": "30 3,13 * * *"
     },
     {
       "path": "/api/cron/kv-crm-bridge",
