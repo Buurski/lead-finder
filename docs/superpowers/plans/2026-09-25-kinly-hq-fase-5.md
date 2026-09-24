@@ -35,7 +35,8 @@
 
 1. **"Send svar direkte" fjernes** (route + UI + `LIVE_SEND_ARMED`). Main's "Åbn i Gmail" svarer i den rigtige tråd med korrekte headers og DMARC; en sikker direkte-send kræver modtager-binding, trådheaders og atomisk reservation = ny send-vej at vedligeholde for et behov der allerede er dækket. Kan genopbygges senere hvis Lucas savner den.
 2. **Migrationer gen-genereres trinvis med drizzle-kit** (0008 task, 0009 relation, 0010 seo), så hver har snapshot og journal — Hermes kan så køre `db:generate` for blog som 0011 uden at genskabe vores tabeller.
-3. **Send-status `sending`** før SMTP (ikke FINAL): SMTP ok → `sent`; SMTP-fejl → `approved`; bogføring fejler efter SMTP → bliver `sending` (sendes aldrig igen, tæller i send-ledgeren, opgave "afstem" oprettes). Alternativet "sent før SMTP" gør fejlede mails permanent "sendt" pga. FINAL-guarden.
+3. **Send-status `sending`** (revideret efter Sol R1): atomisk betinget UPDATE `approved|edited → sending` med modtageren låst i kladden (`reserveForSend`, null ⇒ intet SMTP). `sending` er FINAL for hel-kø-skrivninger (kan hverken overskrives eller slettes af forældede snapshots); kun `finishSend` (betinget `status='sending'`) flytter den: SMTP ok → `sent`; SMTP-fejl hvor serveren med sikkerhed ikke tog mailen (EAUTH/EDNS/ECONNECTION/EENVELOPE/ETLS, eller responseCode ≥400) → `approved`; tvetydig fejl (timeout/socket) eller bogføringsfejl efter SMTP → bliver `sending` + opgave "afstem – tjek Gmail Sendt". `sending` tæller som sendt i alle ledgers (`countsAsSent`) og holder sekvenstrinnet.
+9. **`?force=1` fjernes** fra send-rutens GET og POST (Sol R1 F3) — intet flag må kunne gen-sende en sendt kladde.
 4. **Atomisk send-lås** via `counter`-tabellen (INSERT … ON CONFLICT DO UPDATE … WHERE udløbet RETURNING) når pg er slået til; KV-fallback lokalt.
 5. **ICS-token** = tilfældigt token i KV (`ics-token/<user>`), roterbart fra `/settings`. Ingen ny migration (holder blog på 0011).
 6. **`/profil` slettes**; kalenderlink + rotér-knap flyttes til main's `/settings`.
@@ -70,10 +71,14 @@
 - [ ] Genindsæt `seoSnapshot` → `npx drizzle-kit generate --name seo_snapshot` → 0010.
 - [ ] `git diff src/lib/db/schema.ts` = kun check+indeks-tilføjelsen. `npx drizzle-kit generate` igen → "No schema changes".
 - [ ] Journal: 11 rækker, `when` stigende og > 1790203964527.
-- [ ] Kør migrationer mod frisk PGlite-kopi af Neon (`scripts/dev-db-snapshot.mjs`) → alle 3 nye tabeller/kolonner findes; eksisterende data uændret (count company/outreach før=efter).
+- [x] Kør migrationer mod frisk PGlite-kopi af Neon (`scripts/dev-db-snapshot.mjs`, rettet så seedede app_user-rækker erstattes — Sol R1 F4) → 11 migrationer, company 1428 / outreach 770 kopieret.
 - [ ] Commit.
 
-### Task 1.3: Send-vej — `sending`-status + atomisk lås (orkestrator koder, TDD)
+### Task 1.3: Send-vej — reservation + atomisk lås (orkestrator koder) — BYGGET (`843a7f9`)
+
+Implementeret: `src/lib/draft-status.ts` (`countsAsSent`), `src/lib/send-safety.ts` (`acquireSendLock`/`releaseSendLock`/`sendLockHeld` via CAS i `counter`, `failedBeforeAccept`), `reserveForSend`/`finishSend` i `src/lib/queue.ts` + `src/lib/pg/queue.ts`, FINAL udvidet med `sending`, send-rutens SMTP-blok, `countsAsSent` i followup-gate, contact-history, suppress, followup-overview, ingest-leadgen, company-draft, approve/sequence; `sequence.ts` OPEN inkl. `sending`. Tests: `src/lib/send-safety.test.ts` (5: samtidig lås én vinder/udløb/release-kun-egen, SMTP-klassifikation, reservation kun approved/edited + én vinder + manglende række, sending beskyttet mod stale write/delete, finishSend-transitioner). Begrænsning: send-rutens SSE-løkke har ingen rute-test (kræver mocking af Sheets/transport) — dækkes af lib-tests + E2E-testmail.
+
+Oprindelige delskridt:
 
 **Files:** `src/lib/queue.ts` (DraftStatus + `"sending"`), `src/app/api/approve/send/route.ts`, create `src/lib/send-lock.ts` + `src/lib/send-lock.test.ts`, `src/lib/send-status.test.ts` (eller udvid eksisterende approve-send-test).
 
@@ -104,7 +109,7 @@
 - [ ] `git log HEAD..origin/main` = tom (ellers merge igen). Push feature; `git push origin feat/crm-hq-2026-09-22:main` (fast-forward).
 - [ ] Vercel: fjern `LIVE_SEND_ARMED`. Charlie-env → sensitive (pull til fil i scratchpad, rm, add `--sensitive`, slet fil).
 - [ ] Live: login-side 200, beskyttet side uden login → 302/401, `/api/health` 200, `/api/hermes/status` ok, `/api/kalender/lucas` uden token 404, en cron-rute uden secret 401.
-- [ ] E2E-testmail: én kladde til `buur.aigro@gmail.com` gennem godkend → send (lokal kørsel mod PGlite med rigtige SMTP-creds fra `~/.kinly/lucas-app-password`) → "Vis original": SPF/DKIM/DMARC pass, From lucas@kinly.dk, ren tekst-signatur.
+- [ ] E2E-testmail (Sol R1 F5): i en SEPARAT PGlite-kopi sættes alle andre kladder `approved|edited → rejected` (kun kopien), én kladde med `recipientEmail=buur.aigro@gmail.com` indsættes som approved; kør `POST /api/approve/send?ids=<id>` mod lokal `next start` med SMTP-creds fra `~/.kinly/lucas-app-password`; assert før kald: `select count(*) from outreach where status in ('approved','edited')` = 1 og dens modtager = buur.aigro. → "Vis original": SPF/DKIM/DMARC pass, From lucas@kinly.dk, ren tekst-signatur; kopien ender med status `sent`.
 
 ### Task 1.7: Overdragelse + dokumentation
 
@@ -131,3 +136,19 @@ Hermes default integrerer blog-grenen som 0011+ på ny main; Claude reviewer (So
 ## BØLGE 5 — Ud af boksen (G) — kun det der giver penge
 
 Kandidater: "Lovet kunden"-liste, ugentlig Sendt-mappe↔CRM-afstemning, nav-diæt for Charlie, cron-fejl-alarm. Fjern: `/drift` som nav-post, uafprøvede signal-jobs.
+
+## Sol R1 (plan-review) — dispositioner
+
+| Fund | Disposition |
+|---|---|
+| F1 sending ikke beskyttet / updateDraft ikke atomisk | Accepteret — betinget UPDATE-reservation, `sending` i FINAL, kun `finishSend` flytter den |
+| F2 tvetydige SMTP-fejl | Accepteret — `failedBeforeAccept`; ellers bliv i `sending` + afstem-opgave |
+| F3 `?force=1` | Accepteret — fjernet fra GET og POST |
+| F4 snapshot-seed-kollision | Accepteret — `delete from app_user` før kopiering |
+| F5 lokal send kan ramme rigtige modtagere | Accepteret — isoleret kopi, alle andre approved→rejected, `?ids=`, pre-assert |
+| F6 sekvens ser ikke `sending` | Accepteret — OPEN inkl. `sending`; `countsAsSent` i sekvens-visning |
+| F7 manglende række / modtager før SMTP | Accepteret — reservation returnerer null ⇒ intet SMTP; modtager skrives i reservationen |
+
+## Inspektionsfokus (Codex Sol, frisk session, base `pre-merge-main-2026-09-25` = nuværende prod)
+
+Prioritér: `src/app/api/approve/send/route.ts`, `src/lib/send-safety.ts`, `src/lib/queue.ts`, `src/lib/pg/queue.ts`, `src/lib/draft-status.ts` + kaldere, `src/proxy.ts`, `src/app/api/kalender/[user]/route.ts`, `src/lib/hq/calendar.ts`, `src/app/settings/CalendarCard.tsx`, `drizzle/0008-0010` + journal/snapshots, `src/app/replies/*` (direkte send fjernet), `src/app/api/approve/regenerate/route.ts` (ingen hardcodet Basic), `src/lib/senders.ts` (From = afsenderkonto). Resten af feature-diffen (kunder/opgaver/SEO-UI) er sekundær.
