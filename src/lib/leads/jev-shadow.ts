@@ -106,7 +106,9 @@ export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: numbe
   // 1.015 af 1.291 leads aldrig blev vurderet.
   const needsJudging = (id: string) => {
     const r = byId.get(id);
-    return !r || r.judgment?.lignerKunde === undefined;
+    // En fejl-post (fetch/thin-page) har aldrig lignerKunde — den må ikke holde
+    // prioritet for evigt (Codex 25/9); den genprøves i normal ældst-først-orden.
+    return !r || (!r.error && r.judgment?.lignerKunde === undefined);
   };
   const rank = (l: Lead) => (firstIds?.has(l.id) && needsJudging(l.id) ? 0 : 1);
   const sorted = [...eligible].sort((a, b) => {

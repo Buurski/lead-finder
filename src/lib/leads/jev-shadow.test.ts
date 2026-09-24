@@ -117,4 +117,7 @@ test("pickBatch: leads med en ventende kladde kommer først", () => {
   const current = existing.map((r) => (r.leadId === "4" ? { ...r, judgment: { lignerKunde: 0.7 } } : r)) as JevShadowRecord[];
   const covered = pickBatch(leads, current, 2, new Set(["4"])).map((l) => l.id);
   assert.deepEqual(covered, ["3", "1"], "dækket kladde-lead: normal rækkefølge");
+  // Fejl-post (ingen dom) springer heller ikke over — ellers sulter den resten.
+  const failed = existing.map((r) => (r.leadId === "4" ? { ...r, error: "fetch" } : r)) as JevShadowRecord[];
+  assert.deepEqual(pickBatch(leads, failed, 2, new Set(["4"])).map((l) => l.id), ["3", "1"], "fejlet kladde-lead: normal rækkefølge");
 });
