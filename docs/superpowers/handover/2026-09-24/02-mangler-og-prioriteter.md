@@ -82,10 +82,16 @@ Flowet: formular/"ja tak"-svar → preview-kø (KV) → Hermes `kinly-preview-in
 
 0. **Blog-boardet i HQ** er et hovedspor (Lucas 24/9): pipeline med træk mellem stadier, manuelle idéer som Hermes bearbejder, idé-signaler fra CRM-cron, rating på alt, billeder A/B, udgiver-cron. Plan og status: 06.
 
-1. /blog giver 404; teknisk fundament klar på gren `agent/0924-1746-kinly-site`, men `/blog/` skal ikke indekseres før ≥1 rigtigt opslag er publiceret. Lucas skal svare på "SKAL TJEKKES" i bunden af `KnowledgeOS/drafts/blog/*.md` + sætte `BLOG_PUBLISH_LIVE=1`.
+1. /blog: den gren der skal merges er `agent/0924-blog-kinly-site` @ `85f598f` (godkendt, noindex når tom, kun udgivne opslag, tomt sitemap). **Én rettelse før merge (Claude-tjek 25/9):** "Blog" står i topmenu (`content/site.ts:78`) og footer (`:105`) selvom der er 0 rigtige opslag → vis kun linket når `publishedPosts.length > 0`. Status/gates: `KnowledgeOS/wiki/kinly/blog-handoff-2026-09-25-b4-fix.md`. Tidligere note:, men `/blog/` skal ikke indekseres før ≥1 rigtigt opslag er publiceret. Lucas skal svare på "SKAL TJEKKES" i bunden af `KnowledgeOS/drafts/blog/*.md` + sætte `BLOG_PUBLISH_LIVE=1`.
 2. Stop `agent-blog-cyklus` (mandag 08:00) indtil /blog er live — ellers kladde #4 oven på 3 uudgivne (bed Hermes marketing om det).
 3. Forsidens pris-forenkling (live) fjernede upsell-linjen og "ikke inkluderet"-listen → Lucas bekræfter bevidst, ellers genindsæt upsell-linjen.
 4. Mål konvertering, ikke positioner: 16 besøg / 0 kontaktklik / 0 formularer på 28 dage. Hver kanal (blog-opslag, seo-tjek, kold mail) skal have sin egen indgangs-sti (UTM/ref) så HQ kan vise henvendelser pr. kilde.
+
+## H. Kunde-synlighed (Lucas 25/9 — se 07)
+
+1. HQ: "Bliver fundet"-kort pr. kunde med GSC (visninger/klik/top-søgninger) + GEO fra Hermes. Start med Ikast.
+2. kinly.dk/projekter: ens kunde-kort med mockups + ét verificeret resultat (efter audit; KT VVS først efter sanering).
+3. Forsiden: "Resultater"-stribe KUN med stærke, verificerede kunde-tal og kundens accept.
 
 ## G. Ud af boksen (ingen har bedt om det — vurdér, byg kun det der giver penge)
 

@@ -9,7 +9,9 @@
 5. `03-hermes-og-idéen.md` — hvad Hermes-profilerne (default, cofounder, marketing) har lavet, idéen bag, og hvad de mangler
 6. `04-arbejdsmetode-og-skills.md` — skills, modeller, councils, verifikation
 7. `06-blog-pipeline.md` — blog-board i HQ (Hermes' spec + Lucas' tilføjelser: manuelle idéer → Hermes bearbejder, idé-signaler fra CRM, rating, billeder, udgiver-cron) + koordinering med Hermes
-8. `raa/` — rå rapporter (Codex Sol-strategi, council-linser, Hermes' egne handovers). Læs når et punkt i 02 henviser dertil.
+8. `07-seo-data-og-kunde-synlighed.md` — SEO-data (GSC/GEO) på kundeprofilen, kunde-kort på kinly.dk/projekter, resultater på forsiden (kun verificerede tal)
+9. Hermes marketings blog-handoff (SHA'er, gates, A/B-fix): `KnowledgeOS/wiki/kinly/blog-handoff-2026-09-25-b4-fix.md`
+10. `raa/` — rå rapporter (Codex Sol-strategi, council-linser, Hermes' egne handovers). Læs når et punkt i 02 henviser dertil.
 
 Uden for mappen, når relevant: spec `docs/superpowers/specs/2026-09-22-kinly-crm-hq-design.md` (feature) og `…/2026-09-23-personligt-hq-design.md` (main), vault `KnowledgeOS/wiki/os/kinly-hq-status-2026-09-23.md`, `wiki/os/ideal-kunde-icp-v2-2026-09-24.md`, `wiki/os/lead-system-analyse-2026-09-24.md`, `wiki/kinly/blog-plan-2026-09-24.md`.
 
