@@ -209,6 +209,33 @@ test("agenten kan ikke trække et kort ud af Publicer — aftalen aflyses kun af
   assert.equal(aflyst.publishRequestedAt, null);
 });
 
+test("move uden stage og update uden felter afvises — ingen tavse no-ops", async () => {
+  const created = await (await post({ actor: "hermes", action: "create", title: "Må ikke røres i tavshed" })).json();
+  const id = created.post.id;
+
+  const udenStage = await post({ actor: "hermes", action: "move", id });
+  assert.equal(udenStage.status, 400);
+  assert.equal((await udenStage.json()).error, "stage mangler");
+
+  for (const payload of [
+    { actor: "hermes", action: "update", id, fields: {} },
+    { actor: "hermes", action: "update", id },
+  ]) {
+    const res = await post(payload);
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "ingen felter at rette");
+  }
+
+  const liste = await post({ actor: "hermes", action: "update", id, fields: [] });
+  assert.equal(liste.status, 400);
+  assert.equal((await liste.json()).error, "fields skal være et objekt");
+
+  // Ingen af afvisningerne nåede at skrive: updatedAt står stille, og kortet ligger stadig i Idéer.
+  const [after] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  assert.equal(after.stage, "ide");
+  assert.equal(after.updatedAt.toISOString(), created.post.updatedAt);
+});
+
 test("published kræver url-bevis fra kinly.dk/blog og stage Publicer", async () => {
   const created = await (await post({ actor: "hermes", action: "create", title: "Klar til live" })).json();
   const id = created.post.id;

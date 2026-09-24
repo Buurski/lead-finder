@@ -292,6 +292,38 @@ test("unique-violation på slug (23505) bliver en BlogInputError, ikke en rå 50
   await assert.rejects(updatePost(doedDb, "00000000-0000-0000-0000-000000000001", { slug: "rigtig-fejl" }, "hermes"), /forbindelsen røg/);
 });
 
+test("kapløbet om slug'en: det rigtige indeks siger nej, og createPost svarer med en BlogInputError", async () => {
+  // Ægte fejl fra databasen (ingen håndlavet objekt): drizzle pakker den i en
+  // DrizzleQueryError, hvor 23505 + indeksnavnet står på `cause`. Testen holder
+  // de syntetiske fejl ovenfor fast til virkeligheden — driver PGlite/drizzle
+  // om på formen, fejler den her.
+  await db.insert(blogPost).values({ title: "Optaget", slug: "kaplob-om-slug", createdBy: "lucas", updatedBy: "lucas" });
+  const aegte = await db
+    .insert(blogPost)
+    .values({ title: "Dubleret", slug: "kaplob-om-slug", createdBy: "lucas", updatedBy: "lucas" })
+    .then(() => null)
+    .catch((e: unknown) => e);
+  assert.ok(aegte instanceof Error);
+  assert.equal((aegte as { code?: unknown }).code, undefined, "koden står ikke på den yderste fejl");
+  assert.equal(isSlugConflict(aegte), true);
+
+  // Kapløbs-stien uden at snyde: sammenstøds-tjekket ser tomt ud (som for det
+  // andet af to samtidige kald), mens insert'en rammer det rigtige indeks.
+  const raceDb = {
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      db.transaction((tx) =>
+        fn({
+          select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
+          insert: (table: unknown) => (tx as { insert: (t: unknown) => unknown }).insert(table),
+        }),
+      ),
+  } as unknown as Db;
+
+  await assert.rejects(createPost(raceDb, { title: "Kapløb", slug: "kaplob-om-slug" }, "hermes"), BlogInputError);
+  await assert.rejects(createPost(raceDb, { title: "Kapløb", slug: "kaplob-om-slug" }, "hermes"), /allerede brugt/);
+  assert.equal((await listPosts(db)).length, 1);
+});
+
 test("getPost slår op på id og slug og henter body med", async () => {
   const post = await createPost(db, { title: "Hvad betyder hosting egentlig", body: "# Hosting\n\nTekst her." }, "lucas");
   const byId = await getPost(db, post.id);

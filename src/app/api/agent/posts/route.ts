@@ -132,10 +132,17 @@ export async function POST(req: Request) {
         return json({ ok: true, post });
       }
       case "update": {
-        const post = await updatePost(getDb(), postId(input.id), updateFields(input.fields), actor);
+        const fields = updateFields(input.fields);
+        // Et kald uden felter ville ellers være et tavst no-op der alligevel rører
+        // updatedAt — og dermed rækkefølgen i kolonnen (listPosts sorterer på den).
+        if (Object.keys(fields).length === 0) throw new BlogInputError("ingen felter at rette");
+        const post = await updatePost(getDb(), postId(input.id), fields, actor);
         return json({ ok: true, post });
       }
       case "move": {
+        // Flytningen skal sige hvorhen: uden stage ville kaldet se ud som en succes
+        // uden at flytte noget (updatePost rører kun kolonnen når stage er sat).
+        if (input.stage === undefined || input.stage === null) throw new BlogInputError("stage mangler");
         const post = await updatePost(getDb(), postId(input.id), { stage: input.stage }, actor);
         return json({ ok: true, post });
       }
