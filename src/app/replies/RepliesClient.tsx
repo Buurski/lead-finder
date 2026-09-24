@@ -19,6 +19,7 @@ interface InboxItem {
   suggestedReply?: string;
   threadSummary?: string;
   threadCount?: number;
+  threadId?: string;
 }
 interface Digest {
   generatedAt: string;
@@ -59,14 +60,16 @@ function formatAge(min: number): string {
 // Denne mapping styrer KUN Gmail-links i UI'et (authuser), ikke afsendelse.
 const ACCOUNT_EMAIL: Record<string, string> = { lucas: "lucas@kinly.dk", charlie: "1charlie.nielsen@gmail.com" };
 
-// Gmail-compose-link, forudfyldt med kladden — "authuser" hopper direkte ind på
-// den konto svaret kom ind på, hvis Lucas/Charlie er logget ind med flere konti.
-function gmailComposeLink(item: InboxItem): string {
+// "Åbn i Gmail" peger på TRÅDEN — ikke en ny mail. En compose ("view=cm") sender
+// svaret ud af samtalen, så kunden får to spor i stedet for ét. Uden tråd-id
+// (ældre digest uden threadId) søger vi i stedet på afsenderen, så tråden kan
+// vælges manuelt — aldrig en ny, løsrevet mail.
+function gmailOpenLink(item: InboxItem): string {
   const authuser = ACCOUNT_EMAIL[item.account] ?? ACCOUNT_EMAIL.lucas;
-  const params = new URLSearchParams({
-    view: "cm", fs: "1", to: item.from, su: `Re: ${item.subject}`, body: item.suggestedReply ?? "", authuser,
-  });
-  return `https://mail.google.com/mail/?${params.toString()}`;
+  const base = `https://mail.google.com/mail/?authuser=${encodeURIComponent(authuser)}`;
+  return item.threadId
+    ? `${base}#all/${encodeURIComponent(item.threadId)}`
+    : `${base}#search/from:${encodeURIComponent(item.from)}`;
 }
 
 function CopyReplyButton({ text }: { text: string }) {
@@ -119,6 +122,39 @@ function RemoveButton({ item, onRemoved }: { item: InboxItem; onRemoved: (id: st
   return (
     <button className="cc-btn kinly-quiet-action" onClick={remove} disabled={busy} title="Skjul meddelelsen i Svar-listen">
       <Icon name="X" style={{ width: 14, height: 14 }} /> {busy ? "Fjerner…" : "Fjern"}
+    </button>
+  );
+}
+
+// "Svaret": Lucas/Charlie har svaret kunden manuelt i Gmail. Logger svaret på
+// kundens tidslinje (samme funktion som lead-udfaldene, så "hvem venter på
+// hvem" og næste scan hænger sammen) og skjuler meddelelsen — som "Fjern", men
+// med et CRM-spor. Kvitteringen vises af forælderen, fordi kortet forsvinder.
+function RepliedButton({ item, onDone }: { item: InboxItem; onDone: (id: string, msg: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function mark() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/replies/replied", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, from: item.from, note: item.suggestedReply ?? "", date: item.date }),
+      });
+      const d = await res.json().catch(() => null);
+      if (res.ok && d?.ok) {
+        onDone(item.id, d.company ? `Svar logget på ${d.company} ✓` : "Skjult — ingen kunde matchet i CRM");
+      } else {
+        onDone(item.id, d?.error ? `Kunne ikke gemme: ${d.error}` : "Kunne ikke gemme.");
+      }
+    } catch {
+      onDone(item.id, "Netværksfejl — intet blev gemt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button className="cc-btn kinly-quiet-action" onClick={mark} disabled={busy} title="Jeg har svaret kunden — log det i CRM og skjul meddelelsen her">
+      <Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> {busy ? "Gemmer…" : "Svaret"}
     </button>
   );
 }
@@ -251,7 +287,7 @@ function LiveSendButton({ item }: { item: InboxItem }) {
   return <span className="cc-dim" style={{ fontSize: 12.5, color: state === "error" ? "var(--red)" : state === "done" ? "var(--accent-ink)" : "var(--text-muted)" }}>{state === "sending" ? "Sender…" : msg}</span>;
 }
 
-function ItemCard({ item, armed, onAnswered, onRemoved }: { item: InboxItem; armed: boolean; onAnswered: (id: string) => void; onRemoved: (id: string) => void }) {
+function ItemCard({ item, armed, onAnswered, onRemoved, onReplied }: { item: InboxItem; armed: boolean; onAnswered: (id: string) => void; onRemoved: (id: string) => void; onReplied: (id: string, msg: string) => void }) {
   const [open, setOpen] = useState(false);
   const tone = catTone(item.category);
   return (
@@ -307,10 +343,11 @@ function ItemCard({ item, armed, onAnswered, onRemoved }: { item: InboxItem; arm
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {item.suggestedReply && <CopyReplyButton text={item.suggestedReply} />}
             {item.from && (
-              <a className="cc-btn" href={gmailComposeLink(item)} target="_blank" rel="noreferrer">
+              <a className="cc-btn" href={gmailOpenLink(item)} target="_blank" rel="noreferrer">
                 <Icon name="Mail" style={{ width: 14, height: 14 }} /> Åbn i Gmail
               </a>
             )}
+            <RepliedButton item={item} onDone={onReplied} />
             <RemoveButton item={item} onRemoved={onRemoved} />
             {item.leadId && <MarkAnsweredForm item={item} onAnswered={() => onAnswered(item.id)} />}
           </div>
@@ -322,7 +359,7 @@ function ItemCard({ item, armed, onAnswered, onRemoved }: { item: InboxItem; arm
           )}
           <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
-            Selve mailen sender du fra Gmail. &quot;Markér som besvaret&quot; opdaterer CRM&apos;et — status, tidslinje og opfølgning i ét klik.
+            Selve mailen sender du fra Gmail. &quot;Svaret&quot; logger den på kundens tidslinje og skjuler den her; &quot;Markér som besvaret&quot; opdaterer hele udfaldet (status, tidslinje og opfølgning).
           </div>
         </div>
       )}
@@ -372,6 +409,7 @@ export default function RepliesClient() {
   const [err, setErr] = useState("");
   const [armed, setArmed] = useState(false);
   const [showNoise, setShowNoise] = useState(false);
+  const [flash, setFlash] = useState("");
 
   function load() {
     setState("loading");
@@ -403,6 +441,15 @@ export default function RepliesClient() {
   // den skjulte "resten"-liste i stedet, uden en ny hentning.
   function markAnswered(id: string) {
     setDigest((d) => (d ? { ...d, items: d.items.map((i) => (i.id === id ? { ...i, needsReply: false } : i)) } : d));
+  }
+
+  // "Svaret": meddelelsen er skjult server-side (KV-markering) — fjern den fra
+  // listen med det samme og vis kvitteringen i toppen; kortet forsvinder, så
+  // knappen kan ikke selv vise beskeden.
+  function repliedItem(id: string, msg: string) {
+    setDigest((d) => (d ? { ...d, items: d.items.filter((i) => i.id !== id) } : d));
+    setFlash(msg);
+    setTimeout(() => setFlash(""), 8000);
   }
 
   // Fjern: meddelelsen er allerede skjult server-side (KV-markering) — fjern den
@@ -449,6 +496,7 @@ export default function RepliesClient() {
             {ageMin != null && ageMin >= 0 ? ` · opdateret ${formatAge(ageMin)}` : ""}
           </div>
         </div>
+        {flash && <span className="cc-chip" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{flash}</span>}
         <ScanNowButton onDone={load} />
         <button className="cc-btn kinly-quiet-action" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
       </div>
@@ -469,14 +517,14 @@ export default function RepliesClient() {
         <div className="cc-card"><div className="cc-empty"><Icon name="Inbox" /><div>Ingen svar at triagere lige nu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Morgen-scanneren fylder de vigtige svar ind her.</div></div></div>
       ) : (
         <>
-          {needs.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} onRemoved={removeItem} />)}
+          {needs.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} onRemoved={removeItem} onReplied={repliedItem} />)}
           {noise.length > 0 && (
             <>
               <button className="cc-btn" style={{ justifySelf: "start" }} onClick={() => setShowNoise((v) => !v)}>
                 <Icon name="ChevronRight" style={{ width: 14, height: 14, transform: showNoise ? "rotate(90deg)" : "none" }} />
                 {showNoise ? "Skjul" : `Vis resten (${noise.length})`}
               </button>
-              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} onRemoved={removeItem} />)}
+              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} armed={armed} onAnswered={markAnswered} onRemoved={removeItem} onReplied={repliedItem} />)}
             </>
           )}
         </>

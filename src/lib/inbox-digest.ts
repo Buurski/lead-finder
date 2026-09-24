@@ -54,6 +54,9 @@ export interface InboxItem {
   threadSummary?: string;
   /** Antal mails i tråden, når threadSummary er sat. */
   threadCount?: number;
+  /** Gmail-tråd-id (fra producenten) — så "Åbn i Gmail" kan åbne selve
+   *  samtalen i stedet for en ny mail; et svar lander så i tråden. */
+  threadId?: string;
 }
 
 export interface InboxDigest {
@@ -205,6 +208,7 @@ export function normalizeDigest(raw: Partial<InboxDigest> | null, fallbackBy = "
           suggestedReply: i.suggestedReply ? String(i.suggestedReply) : undefined,
           threadSummary: i.threadSummary ? String(i.threadSummary).slice(0, 600) : undefined,
           threadCount: typeof i.threadCount === "number" && i.threadCount > 0 ? Math.round(i.threadCount) : undefined,
+          threadId: i.threadId ? String(i.threadId).slice(0, 200) : undefined,
         }))
         // Vigtighed først; ved samme vigtighed: nyeste først (rangering "væsentlighed/dato").
         .sort((a, b) => (b.importance - a.importance) || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
