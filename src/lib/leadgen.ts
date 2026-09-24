@@ -10,6 +10,26 @@
 // the feed contents. Pure helpers; the route does the Sheets/KV I/O. Strip-safe.
 
 import { store } from "./store.ts";
+import { hasUsableEmail } from "./leads/channel.ts";
+
+// ingest-leadgen (Vercel-cron) — værn fra Claude-audit 25/9. Leadgen.json har
+// ~70 kandidater/dag; uden loft ville rate-fixet fylde /godkendelse med 50-70
+// kladder/dag (15-30 uden mail). 20 = TARGET_DRAFTS i run.mjs, det tilsigtede
+// dagsmål. En fil ældre end 20 t er gårsdagens (VPS-kørslen fejlede) → ingen nye
+// kladder, i stedet for at lade som om den er frisk.
+export const INGEST_MAX_NEW = 20;
+const INGEST_MAX_AGE_MS = 20 * 60 * 60 * 1000;
+
+export function isStaleLeadgen(at: string | undefined, now: number): boolean {
+  const t = Date.parse(at ?? "");
+  return !Number.isFinite(t) || now - t > INGEST_MAX_AGE_MS;
+}
+
+/** Kandidater med brugbar mail først, derefter højeste fitScore. */
+export function orderForIngest<T extends { email?: string | null; fitScore?: number }>(items: T[]): T[] {
+  const mail = (x: T) => (hasUsableEmail(x.email ?? undefined) ? 1 : 0);
+  return [...items].sort((a, b) => mail(b) - mail(a) || (b.fitScore ?? 0) - (a.fitScore ?? 0));
+}
 
 export interface IngestLead {
   name: string;

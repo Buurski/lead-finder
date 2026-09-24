@@ -10,6 +10,7 @@ import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress"
 import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
 import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
+import { INGEST_MAX_NEW, isStaleLeadgen, orderForIngest } from "@/lib/leadgen";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -180,13 +181,28 @@ async function ingest() {
   const blockSets = buildBlockSets(queue, sheetsLeads, now);
   const sheetsOk = blockSets.contactedAvailable;
 
+  // Fail-closed (Claude-audit 25/9): uden Sheets-halvdelen af never-twice-gaten
+  // kunne allerede kontaktede leads få en ny kladde, og en gammel fil ville blive
+  // behandlet som frisk. Backfill ovenfor er harmløs og kører stadig.
+  const stale = isStaleLeadgen(file.at, now);
+  if (!sheetsOk || stale) {
+    const error = !sheetsOk ? "Sheets utilgængelig — ingen nye kladder" : `leadgen.json er forældet (${file.at ?? "uden tidsstempel"}) — ingen nye kladder`;
+    // Kastes → withCronLog logger kørslen som fejl (/api/cron/health), ruten svarer 502.
+    throw new Error(`${error} (backfilled ${backfilled})`);
+  }
+
   const nowIso = new Date(now).toISOString();
   const drafts: QueueDraft[] = [];
   let skippedSuppressed = 0;
   let skippedVoice = 0;
   let skippedInvalid = 0;
 
-  for (const it of items) {
+  let capped = 0;
+  for (const it of orderForIngest(items)) {
+    if (drafts.length >= INGEST_MAX_NEW) {
+      capped++;
+      continue;
+    }
     const name = (it.name || "").trim();
     if (!name || !it.branch) {
       skippedInvalid++;
@@ -254,6 +270,7 @@ async function ingest() {
     skippedSuppressed,
     skippedVoice,
     skippedInvalid,
+    capped,
     sheetsDedup: sheetsOk,
     bizKeyWarns: bizKeyWarns.slice(0, 10),
     note: "kø fyldt — ingen mail sendt",

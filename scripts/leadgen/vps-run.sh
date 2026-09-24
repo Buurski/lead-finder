@@ -40,6 +40,8 @@ for i in 1 2 3 4 5; do
   [ -n "${remaining:-}" ] || remaining=0
   [ "$remaining" -gt 0 ] || break
 done
+# 5 x 26 = 130 leads max; en større pool ville ellers stille finalize på en delvis vurdering.
+[ "$remaining" -le 0 ] || echo "ADVARSEL: rate stoppede med remaining=$remaining — finalize kører på delvis vurdering" >&2
 
 node scripts/leadgen/run.mjs finalize
 node scripts/leadgen/run.mjs apply

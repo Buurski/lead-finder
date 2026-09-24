@@ -28,7 +28,7 @@ export default async function JevShadowPage() {
       />
       <section className="cc-card cc-card-pad" style={{ overflowX: "auto" }}>
         {ranked.length === 0 ? (
-          <p className="cc-dim" style={{ fontSize: 13, margin: 0 }}>Ingen leads vurderet endnu. Cronnen kører to gange i døgnet (ca. 05:30 og 15:30).</p>
+          <p className="cc-dim" style={{ fontSize: 13, margin: 0 }}>Ingen leads vurderet endnu. Cronnen kører to gange i døgnet (03:30 og 13:30 UTC).</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
