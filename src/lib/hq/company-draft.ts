@@ -49,7 +49,8 @@ export async function draftForCompany(
     city: c.city,
     hooks: [],
     demoPair: mail.demoPair,
-    professionalism: "Lavet fra virksomhedsprofilen",
+    // C4: skabelon ud fra CRM-felter, ikke research — skal kunne ses i /approve.
+    professionalism: "Standard-kladde fra skabelon (ikke researchet) — tjek teksten",
     subject: mail.subject,
     body: adaptToSender(mail.text, sender),
     recipientEmail: c.email.trim().toLowerCase(),

@@ -5,6 +5,7 @@ import { and, eq, gt, lte } from "drizzle-orm";
 import { getDb, pgEnabled } from "./db/client.ts";
 import { counter } from "./db/schema.ts";
 import { store } from "./store.ts";
+import { countsAsSent } from "./draft-status.ts";
 
 const LOCK_NAME = "send-lock";
 const KV_LOCK_KEY = "send/lock";
@@ -60,4 +61,25 @@ export function failedBeforeAccept(err: unknown): boolean {
   if (!e || typeof e !== "object") return false;
   if (typeof e.responseCode === "number" && e.responseCode >= 400) return true; // serveren svarede nej
   return typeof e.code === "string" && BEFORE_ACCEPT.has(e.code);
+}
+
+// Dagligt loft pr. mailkonto (plan C2): nyt domæne ⇒ max ~20 kolde mails pr. konto pr.
+// dansk kalenderdag. Tæller sendt + sending (et tvetydigt forsøg kan være gået ud).
+// ponytail: dagen udledes af updatedAt (= send-tidspunkt; sendte kladder redigeres ikke).
+export const DAILY_SEND_CAP = 20;
+const cphDay = (ms: number) => new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
+export function sentTodayBySender(
+  drafts: { status: string; updatedAt?: string; sender?: string; sentBy?: string }[],
+  nowMs = Date.now(),
+): Record<string, number> {
+  const today = cphDay(nowMs);
+  const counts: Record<string, number> = {};
+  for (const d of drafts) {
+    if (!countsAsSent(d.status) || !d.updatedAt) continue;
+    const t = Date.parse(d.updatedAt);
+    if (!Number.isFinite(t) || cphDay(t) !== today) continue;
+    const who = d.sentBy || d.sender || "lucas";
+    counts[who] = (counts[who] ?? 0) + 1;
+  }
+  return counts;
 }

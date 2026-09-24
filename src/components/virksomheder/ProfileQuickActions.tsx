@@ -55,8 +55,8 @@ export default function ProfileQuickActions({
           <Icon name="Briefcase" style={{ width: 14, height: 14 }} /> Ny aftale
         </button>
         {canDraft && (
-          <button className="cc-btn virk-btn-press" onClick={makeDraft} disabled={drafting} title="Lægger en kold mail-kladde i Indbakke → Afventer. Der sendes intet.">
-            <Icon name="Mail" style={{ width: 14, height: 14 }} /> {drafting ? "Laver kladde…" : "Lav mail-kladde"}
+          <button className="cc-btn virk-btn-press" onClick={makeDraft} disabled={drafting} title="Lægger en kold standard-kladde (skabelon ud fra virksomhedens felter, ikke research) i Indbakke → Afventer. Der sendes intet.">
+            <Icon name="Mail" style={{ width: 14, height: 14 }} /> {drafting ? "Laver kladde…" : "Lav standard-kladde"}
           </button>
         )}
       </div>

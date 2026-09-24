@@ -231,9 +231,10 @@ export function pickHybridSender(
 // nodemailer transports are safe to reuse (pool: true already), but creating
 // one per call is wasteful and complicates the SMTP throttle counter.
 // Keyed by senderId so Charlie's pool never gets Lucas's credential.
-const _transporters = new Map<SenderId, nodemailer.Transporter>();
+const _transporters = new Map<SenderId, Transporter>();
+type Transporter = ReturnType<typeof buildTransporter>;
 
-function buildTransporter(creds: SenderCreds): nodemailer.Transporter {
+function buildTransporter(creds: SenderCreds) {
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
@@ -250,7 +251,7 @@ function buildTransporter(creds: SenderCreds): nodemailer.Transporter {
  * the sender's credentials aren't configured — callers should defaultSender()
  * first or fall back gracefully.
  */
-export function getTransporter(senderId: SenderId): nodemailer.Transporter {
+export function getTransporter(senderId: SenderId): Transporter {
   const existing = _transporters.get(senderId);
   if (existing) return existing;
   const creds = getSenderCreds(senderId);

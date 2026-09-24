@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
 import { customerForDraft } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
-import { acquireSendLock, failedBeforeAccept, releaseSendLock, sendLockHeld } from "@/lib/send-safety";
+import { acquireSendLock, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, sentTodayBySender } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
@@ -50,6 +50,8 @@ const GAP_MAX_MS = 45_000;
 // the lock, every other call is rejected with busy:true. TTL > maxDuration so a
 // crashed run self-heals instead of jamming sending forever.
 const LOCK_TTL_MS = 6 * 60 * 1000;  // 6 min — longer than maxDuration (300s)
+
+const dailyCapReason = (id: SenderId) => `dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${id}) — sendes i morgen`;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const randGap = () => GAP_MIN_MS + Math.floor(Math.random() * (GAP_MAX_MS - GAP_MIN_MS));
@@ -129,6 +131,7 @@ export async function GET(req: Request) {
 
   const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
+  const sentToday = sentTodayBySender(drafts, now);
   let wouldSend = 0;
   let capped = 0;
   const skipped: { name: string; reason: string }[] = [];
@@ -174,11 +177,17 @@ export async function GET(req: Request) {
       skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" });
       continue;
     }
+    const sid = resolveSender(d.sender);
+    if ((sentToday[sid] ?? 0) >= DAILY_SEND_CAP) {
+      skipped.push({ name: d.name, reason: dailyCapReason(sid) });
+      continue;
+    }
     if (wouldSend >= SEND_CAP) {
       capped++;
       continue;
     }
     wouldSend++;
+    sentToday[sid] = (sentToday[sid] ?? 0) + 1;
     if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
     // Spejl send-løkkens in-run ledger så en sibling-draft for samme
     // virksomhed/adresse tælles som skip, præcis som i et rigtigt run.
@@ -199,6 +208,8 @@ export async function GET(req: Request) {
     wouldSend,
     capped,
     cap: SEND_CAP,
+    dailyCap: DAILY_SEND_CAP,
+    sentToday,
     skipped,
   });
 }
@@ -285,6 +296,8 @@ export async function POST(req: Request) {
 
   const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
+  // Dagligt loft pr. konto (C2). Tæller forsøg i denne kørsel oveni.
+  const sentToday = sentTodayBySender(drafts);
 
   // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
   // draft.sender (sat af engine via pickHybridSender ELLER manuelt via
@@ -461,6 +474,12 @@ export async function POST(req: Request) {
           }
 
           const { id: senderId, transport, from } = transportFor(fresh.sender);
+          if ((sentToday[senderId] ?? 0) >= DAILY_SEND_CAP) {
+            const reason = dailyCapReason(senderId);
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
+            continue;
+          }
           // 9. RESERVATION (Sol 25/9): approved → sending atomisk i DB, med modtageren
           // låst. Fejler den (afvist/redigeret/taget), sendes intet. En "sending"-kladde
           // kan ikke overskrives af forældede kø-snapshots og tæller som sendt i ledgers.
@@ -473,6 +492,7 @@ export async function POST(req: Request) {
             continue;
           }
           attempts++;
+          sentToday[senderId] = (sentToday[senderId] ?? 0) + 1;
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({
@@ -481,6 +501,7 @@ export async function POST(req: Request) {
               subject: fresh.subject,
               text: finalText,
               html: applySignatureHtml(fresh.body, senderId),
+              // Bevidst INGEN List-Unsubscribe (A/B 25/9: med header → Gmail Promotions, uden → Primær).
             });
           } catch (err) {
             failed++;

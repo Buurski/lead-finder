@@ -1,5 +1,5 @@
 import { DEMO_SITES } from "./demos.ts";
-import { applySignature, applySignatureHtml, defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
+import { defaultSender, formatSignature, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
 // level transport here because we now support two Gmail identities (Lucas
@@ -642,7 +642,7 @@ export function getEmailTemplate(
   // 2026-06-26: every cold mail now uses the sender-specific signature. Default to
   // "lucas" so legacy callers (preview routes, admin scripts) keep working without
   // changes — they'll simply render Lucas's signature. New callers (buildLeadEmail,
-  // sendLeadEmail) always pass the explicit sender.
+  // callers) always pass the explicit sender.
   const sender: SenderId = vars.sender ?? "lucas";
   const group = getBranchGroup(branch);
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
@@ -700,82 +700,6 @@ export function buildLeadEmail(
     sender,
   });
   return { subject: template.subject, text: template.text, html: template.html };
-}
-
-export async function sendLeadEmail(
-  lead: {
-    id: string; name: string; branch: string; city: string; email: string;
-    websiteStatus: string; websiteQualityTier: string; emailSentAt: string;
-    // Del 3: the engine composes the email ONCE (tone-mixer) and persists it.
-    // When present we send those exact bytes; the legacy templates are fallback.
-    composedSubject?: string; composedBody?: string; composedHtml?: string;
-    // Hybrid sender allocation (2026-06-17): which Gmail identity sends this
-    // lead. Defaults to the configured defaultSender() when absent (legacy
-    // drafts from before the Charlie-onboarding). The engine always sets this.
-    sender?: SenderId;
-  },
-  type: "cold" | "followup"
-): Promise<void> {
-  let subject: string;
-  let text: string;
-  let html: string;
-  const sender: SenderId = lead.sender && isSenderAvailable(lead.sender)
-    ? lead.sender
-    : defaultSender();
-
-  if (type === "cold" && lead.composedBody) {
-    // Compose-at-draft-time path — preserve the copy, but add/re-sign centrally
-    // so this path cannot bypass the official sender identity.
-    subject = lead.composedSubject || `En idé til ${lead.name}`;
-    text = applySignature(lead.composedBody, sender) + UNSUBSCRIBE_TEXT;
-    html = applySignatureHtml(lead.composedBody, sender);
-  } else {
-    if (type === "cold") {
-      console.warn(`[email] LEGACY template path for "${lead.name}". no composedBody on the lead.`);
-    }
-    const daysSince = type === "followup" && lead.emailSentAt
-      ? Math.round((Date.now() - new Date(lead.emailSentAt).getTime()) / (1000 * 60 * 60 * 24))
-      : 7;
-    const template = getEmailTemplate(lead.branch, type, {
-      leadId: lead.id,
-      name: lead.name,
-      branch: lead.branch,
-      city: lead.city,
-      websiteStatus: lead.websiteStatus,
-      websiteQualityTier: lead.websiteQualityTier,
-      daysSince,
-      sender,
-    });
-    subject = template.subject;
-    text = template.text;
-    html = template.html;
-  }
-
-  // Pick the sender: explicit lead.sender wins; otherwise fall back to whichever
-  // Gmail identity is configured (defaultSender). If neither is available, fail
-  // loudly — better than silently using the wrong creds.
-  const transporter = getTransporter(sender);
-  const fromAddress = formatFrom(sender);
-  // The List-Unsubscribe mailto must match the From: domain or Gmail will
-  // strip the header and tank deliverability. Use the sender's own address.
-  const unsubscribeMailto = fromAddress.match(/<([^>]+)>/)?.[1] ?? fromAddress;
-
-  await transporter.sendMail({
-    from: fromAddress,
-    to: lead.email,
-    subject,
-    text,
-    html,
-    headers: {
-      // Gmail's 2024 bulk-sender guidelines: one-click List-Unsubscribe lifts deliverability
-      // significantly and reduces the chance of a sender-side rate-limit (the 4.7.0 throttle
-      // that hit on May 12 + May 19). The mailto address is the sender's own — replies marked
-      // "unsubscribe" should be auto-skipped by /api/email/sync-replies.
-      "List-Unsubscribe": `<mailto:${unsubscribeMailto}?subject=unsubscribe>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      "X-Entity-Ref-ID": lead.id,
-    },
-  });
 }
 
 export function previewEmailTemplate(
