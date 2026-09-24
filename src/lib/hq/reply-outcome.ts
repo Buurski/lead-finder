@@ -6,20 +6,23 @@
 import "server-only";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, outreach, task } from "../db/schema.ts";
+import { activity, company, contact, outreach, task } from "../db/schema.ts";
 import { stopOpenForRows } from "../pg/queue.ts";
 
 export class ReplyOutcomeError extends Error {}
 
-export type ReplyOutcome = "interesseret" | "ikke-interesseret" | "ring-op" | "kunde-spoergsmaal" | "andet";
+export type ReplyOutcome = "interesseret" | "ikke-interesseret" | "ring-op" | "kunde-spoergsmaal" | "andet" | "besvaret";
 
-// Charlie-venlige udfaldstekster — indgår i tidslinje-opslaget.
+// Charlie-venlige udfaldstekster — indgår i tidslinje-opslaget. "besvaret" har
+// bevidst ingen label: den linje skal læses som "Svar sendt til X — <hvad vi
+// skrev>", ikke "…: besvaret manuelt — …".
 const OUTCOME_LABEL: Record<ReplyOutcome, string> = {
   interesseret: "interesseret",
   "ikke-interesseret": "ikke interesseret",
   "ring-op": "skal ringes op",
   "kunde-spoergsmaal": "har et spørgsmål",
   andet: "andet",
+  besvaret: "",
 };
 
 // Kun disse to udfald flytter lead-status; "ring-op"/"kunde-spoergsmaal"/"andet"
@@ -53,6 +56,25 @@ function tomorrow(): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Finder virksomheden bag en afsender-adresse. Bruges af "Svaret"-flowet på
+ * Svar-siden, hvor UI'et kun kender afsenderen (ikke et lead-id): først
+ * leadets egen mail, så en registreret kontakt (fx værkførerens adresse).
+ * Returnerer null når intet matcher — kalderen vælger selv hvad der så skal ske. */
+export async function findCompanyByEmail(db: Db, email: string): Promise<{ id: string; rowNo: number; name: string } | null> {
+  const clean = (email || "").trim().toLowerCase();
+  if (!clean.includes("@")) return null;
+  const cols = { id: company.id, rowNo: company.rowNo, name: company.name };
+  const [own] = await db.select(cols).from(company).where(sql`lower(${company.email}) = ${clean}`).limit(1);
+  if (own) return own;
+  const [viaContact] = await db
+    .select(cols)
+    .from(contact)
+    .innerJoin(company, eq(contact.companyId, company.id))
+    .where(sql`lower(${contact.email}) = ${clean}`)
+    .limit(1);
+  return viaContact ?? null;
+}
+
 /** Registrerer at et lead-svar er besvaret: sætter lead-status (medmindre
  * virksomheden er kunde), stopper åbne kolde kladder/opfølgninger, logger
  * tidslinjen (læses som "vi sendte" af kundeoverblikket, se overview.ts
@@ -76,7 +98,8 @@ export async function recordReplyOutcome(db: Db, input: RecordReplyOutcomeInput)
 
   // "Svar sendt til …" matcher overview.ts's OUT-regex (^svar sendt), så
   // kundeoverblikkets "hvem venter på hvem" vender rigtigt.
-  const summary = `Svar sendt til ${c.name || "leadet"}: ${OUTCOME_LABEL[input.outcome]}${note ? ` — ${note}` : ""}`;
+  const label = OUTCOME_LABEL[input.outcome];
+  const summary = `Svar sendt til ${c.name || "leadet"}${label ? `: ${label}` : ""}${note ? ` — ${note}` : ""}`;
 
   // Et svar betyder altid stop for kolde mails — også ved dobbeltklik (harmløst, ingen åbne rækker anden gang).
   const nowIso = new Date().toISOString();
