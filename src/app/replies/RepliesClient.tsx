@@ -343,8 +343,10 @@ function ScanNowButton({ onDone }: { onDone: () => void }) {
       const r = await fetch("/api/replies/refresh", { method: "POST" });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.ok) {
-        setMsg("Scan kører — tager et par minutter.");
-        setTimeout(onDone, 120_000);
+        // Jobbet tager typisk 5-10 min på VPS'en — derfor 10 min og ærlig tekst,
+        // så knappen ikke lover hurtigere resultat end den kan holde.
+        setMsg("Scan kører på VPS'en (5-10 min). Siden opdateres om 10 min — eller tryk Opdater.");
+        setTimeout(onDone, 600_000);
       } else {
         setMsg(d?.error ?? "Kunne ikke starte scan.");
       }
