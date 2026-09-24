@@ -13,13 +13,14 @@ import { listUpdates, type UpdateStatus } from "@/lib/hq/customer-updates";
 import { listPipeline } from "@/lib/hq/deals";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
+import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
 import { cleanEnv } from "@/lib/hermes";
 import { verifyHermesRequest } from "@/lib/hermes-hmac";
 import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms"] as const;
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies"] as const;
 
 function authorized(req: Request): boolean {
   return verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET));
@@ -69,6 +70,17 @@ export async function GET(req: Request) {
     case "cms": {
       const rows = await cmsUsageAll();
       return NextResponse.json({ ok: true, rows });
+    }
+    case "replies": {
+      // Svar-indbakken (digesten). loadDigest har allerede påført "besvaret/fjernet".
+      const d = await loadDigest();
+      const summary = summarizeDigest(d);
+      const items = (d?.items ?? []).map((i) => ({
+        id: i.id, from: i.from, fromName: i.fromName ?? null, subject: i.subject, date: i.date,
+        category: i.category, importance: i.importance, needsReply: i.needsReply,
+        reason: i.reason, leadId: i.leadId ?? null, gmailLink: i.gmailLink ?? null,
+      }));
+      return NextResponse.json({ ok: true, summary, generatedBy: d?.generatedBy ?? null, items });
     }
     default:
       return NextResponse.json({ ok: false, error: "ukendt what", mulige: WHATS }, { status: 400 });

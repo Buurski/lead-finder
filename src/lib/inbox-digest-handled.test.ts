@@ -11,3 +11,12 @@ test("besvarede svar forbliver skjulte når oversigten bygges igen; nyere svar d
   const out = applyHandled(d, { "42": "2026-09-23T12:00:00Z" });
   assert.deepEqual(out.items.map((i) => i.needsReply), [false, true]);
 });
+
+test("fjernede meddelelser droppes helt — også uden leadId", () => {
+  const d: InboxDigest = { generatedAt: "", generatedBy: "cowork-opus", account: "all", items: [
+    { id: "bosch1", account: "lucas", from: "allan@ikastautoservice.dk", subject: "Re: FW: Bosch billeder", snippet: "", date: "2026-08-28T09:03:36Z", category: "interested", importance: 90, needsReply: false, reason: "" },
+    { id: "keep1", account: "lucas", from: "x@y.dk", subject: "Hej", snippet: "", date: "2026-09-24T06:00:00Z", category: "question", importance: 80, needsReply: true, reason: "" },
+  ] };
+  const out = applyHandled(d, {}, { bosch1: "2026-09-24T09:00:00Z" });
+  assert.deepEqual(out.items.map((i) => i.id), ["keep1"]);
+});

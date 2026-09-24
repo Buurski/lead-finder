@@ -106,22 +106,40 @@ export async function markReplyHandled(leadId: string, upTo = new Date().toISOSt
   if (!prev || upTo > prev) await store.put(handledKey(leadId), upTo);
 }
 
+// Én delt map (itemId → tid) for "fjern meddelelsen" uanset lead/konto.
+// ponytail: én nøgle; to samtidige fjern-klik kan i teorien overskrive hinanden — fint for et manuelt klik.
+const HANDLED_ITEMS_KEY = "replies/handled-items";
+
+/** "Fjern meddelelsen": meddelelsen skjules helt i alle visninger (overlever genbygning). */
+export async function markItemHandled(itemId: string, upTo = new Date().toISOString()): Promise<void> {
+  const clean = (itemId || "").trim();
+  if (!clean) throw new Error("itemId mangler");
+  const prev = (await store.get<Record<string, string>>(HANDLED_ITEMS_KEY)) ?? {};
+  prev[clean] = upTo;
+  await store.put(HANDLED_ITEMS_KEY, prev);
+}
+
 /** Påfør markeringerne på en oversigt — bruges af ALLE veje der returnerer en digest. */
 export async function withHandled(d: InboxDigest): Promise<InboxDigest> {
   const ids = [...new Set(d.items.filter((i) => i.needsReply && i.leadId).map((i) => i.leadId!))];
-  const pairs = await Promise.all(ids.map(async (id) => [id, await store.get<string>(handledKey(id)).catch(() => null)] as const));
+  const [pairs, handledItems] = await Promise.all([
+    Promise.all(ids.map(async (id) => [id, await store.get<string>(handledKey(id)).catch(() => null)] as const)),
+    store.get<Record<string, string>>(HANDLED_ITEMS_KEY).catch(() => null),
+  ]);
   const handled: Record<string, string> = {};
   for (const [id, at] of pairs) if (at) handled[id] = at;
-  return applyHandled(d, handled);
+  return applyHandled(d, handled, handledItems ?? {});
 }
 
-/** Ren: slår behandlede svar fra (needsReply=false) når svaret ikke er nyere end behandlingen. */
-export function applyHandled(d: InboxDigest, handled: Record<string, string>): InboxDigest {
+/** Ren: slår behandlede svar fra (needsReply=false) og dropper "fjernede" meddelelser helt. */
+export function applyHandled(d: InboxDigest, handled: Record<string, string>, handledItems: Record<string, string> = {}): InboxDigest {
   return {
     ...d,
-    items: d.items.map((i) =>
-      i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
-    ),
+    items: d.items
+      .filter((i) => !(handledItems[i.id] && (i.date || "") <= handledItems[i.id]))
+      .map((i) =>
+        i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
+      ),
   };
 }
 
