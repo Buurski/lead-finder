@@ -39,6 +39,7 @@ Plan (Codex Sol, se `raa/codex-sol-strategi.md`):
 7. VPS: `/root/.hermes/state/prod-env-decoded.env/.json` ligger dekodet på disk (marketing så det) → slet/flyt (bed Hermes default om det). To åbne next-servere på 0.0.0.0:3210/:4317 → luk.
 8. Lucas' gamle app-password står i chat-transcriptet → nyt app-password når alt kører.
 9. **KT VVS-case** (gren `agent/0924-kt-vvs-case`) viser telefon/personnavn i tekst, metadata og screenshots → sanér før merge; brug ikke KT VVS som case-link i mails før det (i dag linker `demos.ts` kun ktvvs.vercel.app-demoen, ikke en case — tjek).
+11. GitHub melder 17 sårbarheder på lead-finder main (11 high, 25/9) → `npm audit` efter merge; nodemailer 8→10 kræver rigtig send-test til buur.aigro først.
 10. Vercel Blob `putAsset` er public → ingen upload af upublicerede blog-billeder før privat adgang.
 
 ## C. Godkendelse + kolde mails (penge, kort sigt)
