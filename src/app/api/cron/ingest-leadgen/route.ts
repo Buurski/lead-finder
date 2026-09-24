@@ -199,10 +199,6 @@ async function ingest() {
   const allowance = ingestAllowance(queue, file.at as string);
   let capped = 0;
   for (const it of orderForIngest(items)) {
-    if (drafts.length >= allowance) {
-      capped++;
-      continue;
-    }
     const name = (it.name || "").trim();
     if (!name || !it.branch) {
       skippedInvalid++;
@@ -211,6 +207,11 @@ async function ingest() {
     const leadId = (it.place_id || name).toString();
     if (suppressionReason({ leadId, name, city: it.city, branch: it.branch, email: it.email ?? undefined }, blockSets)) {
       skippedSuppressed++;
+      continue;
+    }
+    // Loftet tjekkes efter filtrene, så `capped` kun tæller egnede kandidater.
+    if (drafts.length >= allowance) {
+      capped++;
       continue;
     }
 

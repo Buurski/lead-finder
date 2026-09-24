@@ -11,6 +11,7 @@
 
 import { store } from "./store.ts";
 import { hasUsableEmail } from "./leads/channel.ts";
+import { classifyFeed, FEED_SPECS } from "./feed-health.ts";
 
 // ingest-leadgen (Vercel-cron) — værn fra Claude-audit 25/9. Leadgen.json har
 // ~70 kandidater/dag; uden loft ville rate-fixet fylde /godkendelse med 50-70
@@ -18,19 +19,22 @@ import { hasUsableEmail } from "./leads/channel.ts";
 // dagsmål. En fil ældre end 20 t er gårsdagens (VPS-kørslen fejlede) → ingen nye
 // kladder, i stedet for at lade som om den er frisk.
 export const INGEST_MAX_NEW = 20;
-const INGEST_MAX_AGE_MS = 20 * 60 * 60 * 1000;
 
+/** Samme klassificering som Mission Control (feed-health), men strammere: ingest
+ *  må kun bruge en fil fra i dag (kadence 10 t → "stale" efter 20 t). */
 export function isStaleLeadgen(at: string | undefined, now: number): boolean {
-  const t = Date.parse(at ?? "");
-  return !Number.isFinite(t) || now - t > INGEST_MAX_AGE_MS;
+  const spec = FEED_SPECS.find((f) => f.key === "leadgen")!;
+  return classifyFeed({ ...spec, expectEveryHours: 10 }, at ?? null, now).status !== "fresh";
 }
 
-/** Hvor mange nye kladder denne leadgen-fil må give endnu: loftet gælder pr. fil
- *  (pr. dag), så en manuel kørsel + cronen eller et cron-retry ikke giver 2 x 20. */
+/** Hvor mange nye leadgen-kladder der må laves endnu på filens UTC-dato: loftet
+ *  gælder pr. dag, så cron-retry, manuel ingest eller en genkørt VPS-fil (ny `at`)
+ *  ikke giver 2 x 20. */
 export function ingestAllowance(queue: { source?: string; createdAt?: string }[], fileAt: string): number {
+  const day = fileAt.slice(0, 10);
   // places-direct (VPS-apply) når i dag kun en lokal fil på VPS'en, men tælles med
   // så loftet holder hvis den nogensinde skriver til appens kø.
-  const already = queue.filter((d) => (d.source === "leadgen-ingest" || d.source === "places-direct") && (d.createdAt ?? "") >= fileAt).length;
+  const already = queue.filter((d) => (d.source === "leadgen-ingest" || d.source === "places-direct") && (d.createdAt ?? "") >= day).length;
   return Math.max(0, INGEST_MAX_NEW - already);
 }
 

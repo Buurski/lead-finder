@@ -33,14 +33,15 @@ export KOS_ROOT=/root/KnowledgeOS
 node scripts/leadgen/run.mjs plan
 node scripts/leadgen/run.mjs source
 
-for i in 1 2 3 4 5; do
+# 9 x 26 = 234 >= maks-poolen (sum af PER_CAT i run.mjs = 211), så rate altid bliver færdig.
+for i in 1 2 3 4 5 6 7 8 9; do
   out=$(node scripts/leadgen/run.mjs rate)
   echo "$out"
   remaining=$(printf '%s' "$out" | grep -o '"remaining":[-0-9]*' | head -1 | cut -d: -f2 || true)
   [ -n "${remaining:-}" ] || remaining=0
   [ "$remaining" -gt 0 ] || break
 done
-# 5 x 26 = 130 leads max; en større pool ville ellers stille finalize på en delvis vurdering.
+# Burde aldrig ske (se loop-loftet) — men hvis PER_CAT vokser, siges det højt.
 [ "$remaining" -le 0 ] || echo "ADVARSEL: rate stoppede med remaining=$remaining — finalize kører på delvis vurdering" >&2
 
 node scripts/leadgen/run.mjs finalize
