@@ -182,3 +182,18 @@ Tests: 469/469 (`npm run test`), heraf 8 i `src/lib/send-safety.test.ts`.
 | I2-F5 Charlies signatur viser charlie@kinly.dk | Accepteret — signaturen viser afsenderkontoens adresse |
 
 Rest-risiko (accepteret, dokumenteret): `writeQueue` sletter stadig ikke-endelige rækker der mangler i et snapshot (en kladde tilføjet efter snapshottet kan forsvinde, aldrig sendes) — datatab, ikke dobbelt-send; tages i bølge 2 hvis det ses.
+
+## Inspektion 3 + 4 — dispositioner og stop
+
+| Fund | Disposition |
+|---|---|
+| I3-F1 kunde kun via kontakt-mail | Rettet (`3b3559e`) + test |
+| I3-F2 afstemt opfølgning stempler forkert felt | Rettet (`3b3559e`) |
+| I4-F1 afstemning overskriver replied/afmeldt | Rettet: afstemning stempler kun tidspunkt, aldrig status (ikke Sol-inspiceret — 1 linje) |
+| I3-F3 writeQueue sletter række tilføjet efter snapshot | Rest-risiko: datatab (kladde forsvinder), aldrig dobbelt-send |
+| I3-F4 signatur-preview viser charlie@kinly.dk | Rest-risiko (lav): løses når Charlie får kinly.dk-postkasse |
+| I4-F2 kunde-konvertering i sekunderne mellem tjek og SMTP | Rest-risiko: kræver konvertering midt i en kørsel; næste kørsel fanger den |
+| I4-F3 legacy-kontakter uden companyId | Rest-risiko: 5 kontakter i DB; tjekkes ved kundeoprettelse i bølge 2 |
+| I4-F4 samme-millisekund-kollision i versions-guard | Rest-risiko: kræver afvisning og forældet skrivning i samme ms |
+
+Loop stoppet efter 3 plan-runder + 4 inspektioner: fundene er gået fra dobbelt-send-veje til sjældne race-vinduer. E2E-testmail bestået 25/9 01:00: SPF/DKIM/DMARC pass, Indbakke, persisteret `sent`, andet klik sender 0, gen-godkend 409.

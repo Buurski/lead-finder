@@ -173,7 +173,8 @@ export async function POST(req: Request) {
     // Sendt ⇒ stempl også kontakten, så ingen anden vej ser leadet som ukontaktet.
     if (payload.result === "sent" && /^\d+$/.test(d.leadId)) {
       // Samme felter som send-ruten: opfølgning stempler kun followupSentAt (bevarer første kontakt og "replied").
-      const stamp = isFollowUpDraft(d) ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString(), emailStatus: "sent" };
+      // Kun tidsstemplet — status røres ikke, så et svar/en afmelding der er landet siden aldrig overskrives (Sol I4).
+      const stamp = isFollowUpDraft(d) ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString() };
       await updateLeadEmailStatus(Number(d.leadId) - 2, stamp).catch((err: unknown) =>
         console.error(JSON.stringify({ evt: "reconcile.stamp_failed", leadId: d.leadId, error: String(err as unknown).slice(0, 200) })));
     }
