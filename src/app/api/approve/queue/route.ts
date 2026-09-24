@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { finishSend, readQueue, updateDraft, writeQueue } from "@/lib/queue";
+import { sendLockHeld } from "@/lib/send-safety";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
-import { getLeads } from "@/lib/sheets";
+import { getLeads, updateLeadEmailStatus } from "@/lib/sheets";
 import { matchLead } from "@/lib/leads/match";
 import { leadChannel, hasUsableEmail, isBlockedEmail } from "@/lib/leads/channel";
 import { buildContactIndex } from "@/lib/leads/contact-history";
@@ -164,8 +165,15 @@ export async function POST(req: Request) {
     const d = (await readQueue()).find((x) => x.id === id);
     if (!d || d.status !== "sending") return NextResponse.json({ error: "kladden venter ikke på afstemning" }, { status: 409 });
     if (payload.result !== "sent" && payload.result !== "not-sent") return NextResponse.json({ error: "result skal være sent eller not-sent" }, { status: 400 });
+    // Aldrig mens en send-kørsel er aktiv: SMTP kan stadig være i gang for netop denne kladde (Sol R3).
+    if (await sendLockHeld()) return NextResponse.json({ error: "afsendelse kører — prøv igen om et par minutter" }, { status: 409 });
     const ok = await finishSend(id, payload.result === "sent" ? "sent" : "approved", payload.result === "sent" ? (d.sender ?? null) : null);
     if (!ok) return NextResponse.json({ error: "kladden er allerede afstemt" }, { status: 409 });
+    // Sendt ⇒ stempl også kontakten, så ingen anden vej ser leadet som ukontaktet.
+    if (payload.result === "sent" && /^\d+$/.test(d.leadId)) {
+      await updateLeadEmailStatus(Number(d.leadId) - 2, { emailSentAt: new Date().toISOString(), emailStatus: "sent" }).catch((err: unknown) =>
+        console.error(JSON.stringify({ evt: "reconcile.stamp_failed", leadId: d.leadId, error: String(err as unknown).slice(0, 200) })));
+    }
     return NextResponse.json({ ok: true, status: payload.result === "sent" ? "sent" : "approved" });
   }
   // En kladde under afsendelse kan ikke ændres fra UI'et (stale faner) — kun afstemmes.

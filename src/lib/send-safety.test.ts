@@ -13,7 +13,7 @@ function draft(overrides: Partial<QueueDraft>): QueueDraft {
     id: "d1", leadId: "7", name: "Kagehuset", branch: "café", city: "Herning",
     hooks: [], demoPair: [], professionalism: "", subject: "s", body: "b",
     status: "approved", source: "daily-engine",
-    createdAt: "2026-09-25T08:00:00.000Z", updatedAt: "2026-09-25T08:00:00.000Z",
+    createdAt: "2026-09-01T08:00:00.000Z", updatedAt: "2026-09-01T08:00:00.000Z",
     ...overrides,
   };
 }
@@ -48,7 +48,7 @@ test("SMTP-fejl: kun sikre før-accept-fejl gør kladden sendbar igen", () => {
 test("reserveForSend: kun approved/edited, låser modtager, kun én vinder", async () => {
   await freshTestDb();
   await writeQueue([draft({ id: "a" }), draft({ id: "p", status: "pending" }), draft({ id: "e", status: "edited" })]);
-  const V = "2026-09-25T08:00:00.000Z";
+  const V = "2026-09-01T08:00:00.000Z";
   const [r1, r2] = await Promise.all([reserveForSend("a", "x@firma.dk", V), reserveForSend("a", "x@firma.dk", V)]);
   assert.equal([r1, r2].filter(Boolean).length, 1, "præcis én reservation");
   assert.equal(await reserveForSend("p", "x@firma.dk", V), null, "pending sendes aldrig");
@@ -64,7 +64,7 @@ test("sending er beskyttet mod forældede hel-kø-skrivninger og sletning", asyn
   await freshTestDb();
   const stale = [draft({ id: "a" }), draft({ id: "b" })];
   await writeQueue(stale);
-  await reserveForSend("a", "x@firma.dk", "2026-09-25T08:00:00.000Z");
+  await reserveForSend("a", "x@firma.dk", "2026-09-01T08:00:00.000Z");
   await writeQueue(stale); // forældet snapshot: "a" som approved
   assert.equal((await readQueue()).find((d) => d.id === "a")!.status, "sending");
   await writeQueue([draft({ id: "b" })]); // snapshot uden "a" må ikke slette den
@@ -74,8 +74,8 @@ test("sending er beskyttet mod forældede hel-kø-skrivninger og sletning", asyn
 test("finishSend: sending → sent (endelig) eller → approved; ellers false", async () => {
   await freshTestDb();
   await writeQueue([draft({ id: "a" }), draft({ id: "b" })]);
-  await reserveForSend("a", "x@firma.dk", "2026-09-25T08:00:00.000Z");
-  await reserveForSend("b", "y@firma.dk", "2026-09-25T08:00:00.000Z");
+  await reserveForSend("a", "x@firma.dk", "2026-09-01T08:00:00.000Z");
+  await reserveForSend("b", "y@firma.dk", "2026-09-01T08:00:00.000Z");
   assert.equal(await finishSend("a", "sent", "lucas"), true);
   assert.equal(await finishSend("a", "approved", null), false, "sendt kan ikke gøres godkendt igen");
   assert.equal(await finishSend("b", "approved", null), true);
@@ -89,7 +89,7 @@ test("reserveForSend: redigeret efter frisk læsning (ny version) ⇒ ingen rese
   await writeQueue([draft({ id: "a" })]);
   const edited = await updateDraft("a", { recipientEmail: "ny@firma.dk" });
   assert.ok(edited);
-  assert.equal(await reserveForSend("a", "gammel@firma.dk", "2026-09-25T08:00:00.000Z"), null, "gammel version");
+  assert.equal(await reserveForSend("a", "gammel@firma.dk", "2026-09-01T08:00:00.000Z"), null, "gammel version");
   assert.ok(await reserveForSend("a", "ny@firma.dk", edited!.updatedAt!));
 });
 
@@ -112,4 +112,23 @@ test("stopOpenForRows stopper også place_id- og c:<uuid>-kladder for virksomhed
   await writeQueue([draft({ id: "p", leadId: "ChIJxyz" }), draft({ id: "c", leadId: `c:${c.id}` }), draft({ id: "o", leadId: "ChIJandet" })]);
   assert.equal(await stopOpenForRows([900], "blev kunde", "2026-09-25T09:00:00.000Z"), 2);
   assert.deepEqual((await readQueue()).map((d) => d.status), ["rejected", "rejected", "approved"]);
+});
+
+test("writeQueue: forældet snapshot kan ikke genoplive en kladde der er afvist bagefter", async () => {
+  await freshTestDb();
+  await writeQueue([draft({ id: "a" })]);
+  const stale = await readQueue(); // fx queue-enrich læser køen …
+  await updateDraft("a", { status: "rejected" }); // … Lucas afviser imens …
+  await writeQueue(stale); // … og enrich skriver det gamle snapshot
+  assert.equal((await readQueue())[0].status, "rejected");
+});
+
+test("customerForDraft: manuelt oprettet kunde uden place_id matches på navn+by og mail", async () => {
+  const db = await freshTestDb();
+  const { company } = await import("./db/schema.ts");
+  const { customerForDraft } = await import("./pg/queue.ts");
+  await db.insert(company).values({ rowNo: -3, name: "Salon Ønske ApS", city: "Herning", email: "kontakt@salon.dk", clientNo: 7 });
+  assert.equal(await customerForDraft({ leadId: "ChIJnyt", name: "SALON ØNSKE", city: "Herning" }, "andet@x.dk"), true, "navn+by");
+  assert.equal(await customerForDraft({ leadId: "ChIJnyt", name: "Noget andet", city: "Ikast" }, "kontakt@salon.dk"), true, "mail");
+  assert.equal(await customerForDraft({ leadId: "ChIJnyt", name: "Salon Ønske", city: "Ikast" }, "x@y.dk"), false, "anden by, anden mail");
 });

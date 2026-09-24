@@ -335,7 +335,8 @@ export function formatSignature(senderId: SenderId, credsOverride?: SenderCreds)
   // title/tagline er tomme, så de filtreres væk og han ser stadig kun
   // "navn + telefon").
   const trim = (s: string) => s.trim();
-  const textLines = [name, title, senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : CHARLIE_DEFAULT_EMAIL, phone]
+  // Signaturens mail = den adresse der faktisk sender og modtager svar (Charlie har endnu ikke en kinly.dk-postkasse).
+  const textLines = [name, title, senderId === "lucas" ? LUCAS_DEFAULT_EMAIL : creds?.fromEmail || CHARLIE_DEFAULT_EMAIL, phone]
     .map(trim).filter((s) => s.length > 0);
 
   // 23/9 (Lucas): ren tekst-signatur — ingen billeder, ingen tabel. Billeder

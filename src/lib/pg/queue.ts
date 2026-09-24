@@ -6,6 +6,7 @@ import { and, asc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { company, outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
+import { bizKey } from "../leads/suppress.ts";
 
 export async function readQueue(): Promise<QueueDraft[]> {
   const db = getDb();
@@ -117,7 +118,10 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
           // En sendt eller system-stoppet kladde er endelig: et forældet snapshot
           // (fx queue-enrich der holder køen i minutter) må aldrig gøre den
           // "godkendt" igen — så kunne den blive sendt en gang til (Opus 22/9).
-          setWhere: sql`not ${FINAL}`,
+          // + versions-guard (Sol R3): et forældet snapshot (queue-enrich/append læser hele
+          // køen og skriver minutter senere) må ikke genoplive en kladde der er ændret siden —
+          // fx afvist efter snapshottet. Skriveren der selv ændrer en kladde bumper updatedAt.
+          setWhere: sql`not ${FINAL} and ${outreach.updatedAt} <= excluded.updated_at`,
         });
       // Endelige kladder slettes aldrig (historik + dobbelt-mail-værn): ellers kunne et
       // forældet snapshot bagefter indsætte et system-stoppet id som "godkendt" (Sol 23/9).
@@ -146,8 +150,21 @@ export async function updateDraftRow(id: string, patch: Partial<QueueDraft>, now
   return rows.length ? (rows[0].draft as QueueDraft) : null;
 }
 
-/** CRM-sandheden på send-tidspunktet: er virksomheden bag kladden kunde? (række, place_id eller c:<uuid>). */
-export async function customerForLead(leadId: string): Promise<boolean> {
+/** CRM-sandheden på send-tidspunktet: er virksomheden bag kladden kunde? Matcher på
+ *  række/place_id/c:<uuid> OG på navn+by eller modtager-mail mod kundelisten — en manuelt
+ *  oprettet kunde har ofte hverken rækkenummer eller place_id fælles med en leadgen-kladde (Sol R3). */
+export async function customerForDraft(d: { leadId: string; name?: string; city?: string }, recipient: string): Promise<boolean> {
+  if (await customerForLead(d.leadId)) return true;
+  const customers = await getDb()
+    .select({ name: company.name, city: company.city, email: company.email })
+    .from(company)
+    .where(or(and(sql`${company.clientNo} is not null`, eq(company.clientRemoved, false)), eq(company.leadStatus, "client")));
+  const key = bizKey(d.name, d.city);
+  const to = recipient.trim().toLowerCase();
+  return customers.some((c) => (key && bizKey(c.name, c.city) === key) || (to && c.email.trim().toLowerCase() === to));
+}
+
+async function customerForLead(leadId: string): Promise<boolean> {
   const where = /^\d+$/.test(leadId)
     ? eq(company.rowNo, Number(leadId))
     : leadId.startsWith("c:")

@@ -83,10 +83,10 @@ test("formatSignature: Lucas creds-missing fallback — defaults stadig active",
 test("formatSignature: Charlie defaults — officiel Kinly-signatur", () => {
   withEnv(setCharlieEnv, clearCharlieEnv, () => {
     const sig = formatSignature("charlie");
-    assert.equal(sig.text, "Charlie Nielsen\nCo-founder, Kinly\ncharlie@kinly.dk\n+45 42 25 32 62\nkinly.dk");
+    assert.equal(sig.text, "Charlie Nielsen\nCo-founder, Kinly\n1charlie.nielsen@gmail.com\n+45 42 25 32 62\nkinly.dk");
     assert.equal(sig.closing, "Mvh, Charlie Nielsen");
     assert.ok(sig.html.includes("Charlie Nielsen"));
-    assert.ok(sig.html.includes('href="mailto:charlie@kinly.dk"'));
+    assert.ok(sig.html.includes('href="mailto:1charlie.nielsen@gmail.com"'));
     assert.ok(sig.html.includes('href="tel:+4542253262"'));
   });
 });

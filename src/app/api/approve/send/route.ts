@@ -1,7 +1,7 @@
 import { LUCAS_ONLY } from "@/lib/tone-mixer";
 import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
-import { customerForLead } from "@/lib/pg/queue";
+import { customerForDraft } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
 import { acquireSendLock, failedBeforeAccept, releaseSendLock, sendLockHeld } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
@@ -444,7 +444,7 @@ export async function POST(req: Request) {
           const gate2 = freshLead
             ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
             : { ok: true as boolean, reason: undefined as string | undefined };
-          const isCustomer = pgEnabled() && d.leadId ? await customerForLead(d.leadId).catch(() => true) : false;
+          const isCustomer = pgEnabled() ? await customerForDraft(d, target).catch(() => true) : false;
           if (!again.ok || !gate2.ok || isCustomer) {
             const reason = isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
             skipped.push({ name: d.name, reason });

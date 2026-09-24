@@ -107,11 +107,11 @@ Oprindelige delskridt:
 
 Rækkefølge (Sol inspektion F5): E2E-testmailen på den isolerede kopi SKAL bestå (modtager, persisteret `sent`, headers) før Neon migreres og main pushes. Turbopack-build verificeres på Vercel-preview af feature-grenen (lokal Turbopack fejler på `next/font/google`-fetch; `next build --webpack` er grøn lokalt).
 
+- [ ] E2E-testmail (Sol R1 F5): i en SEPARAT PGlite-kopi sættes alle andre kladder `approved|edited → rejected` (kun kopien), én kladde med `recipientEmail=buur.aigro@gmail.com` indsættes som approved; kør `POST /api/approve/send?ids=<id>` mod lokal `next start` med SMTP-creds fra `~/.kinly/lucas-app-password`; assert før kald: `select count(*) from outreach where status in ('approved','edited')` = 1 og dens modtager = buur.aigro. → "Vis original": SPF/DKIM/DMARC pass, From lucas@kinly.dk, ren tekst-signatur; kopien ender med status `sent`.
 - [ ] Neon-backup: notér tidspunkt (PITR) og kør `node scripts/db-migrate.mjs` med `DATABASE_URL=$DATABASE_URL_UNPOOLED` (fra `.env.neon`, aldrig printet). Verificér 11 rækker + nye tabeller.
 - [ ] `git log HEAD..origin/main` = tom (ellers merge igen). Push feature; `git push origin feat/crm-hq-2026-09-22:main` (fast-forward).
 - [ ] Vercel: fjern `LIVE_SEND_ARMED`. Charlie-env → sensitive (pull til fil i scratchpad, rm, add `--sensitive`, slet fil).
 - [ ] Live: login-side 200, beskyttet side uden login → 302/401, `/api/health` 200, `/api/hermes/status` ok, `/api/kalender/lucas` uden token 404, en cron-rute uden secret 401.
-- [ ] E2E-testmail (Sol R1 F5): i en SEPARAT PGlite-kopi sættes alle andre kladder `approved|edited → rejected` (kun kopien), én kladde med `recipientEmail=buur.aigro@gmail.com` indsættes som approved; kør `POST /api/approve/send?ids=<id>` mod lokal `next start` med SMTP-creds fra `~/.kinly/lucas-app-password`; assert før kald: `select count(*) from outreach where status in ('approved','edited')` = 1 og dens modtager = buur.aigro. → "Vis original": SPF/DKIM/DMARC pass, From lucas@kinly.dk, ren tekst-signatur; kopien ender med status `sent`.
 
 ### Task 1.7: Overdragelse + dokumentation
 
@@ -169,3 +169,16 @@ Prioritér: `src/app/api/approve/send/route.ts`, `src/lib/send-safety.ts`, `src/
 | I-F5 E2E efter push | Accepteret — Task 1.6 omordnet |
 
 Tests: 469/469 (`npm run test`), heraf 8 i `src/lib/send-safety.test.ts`.
+
+## Sol R3 (plan) + inspektion 2 — dispositioner
+
+| Fund | Disposition |
+|---|---|
+| R3-F1 / I2-F2 afstemning under aktiv SMTP | Accepteret — `reconcile` afvises (409) mens send-låsen holdes |
+| R3-F2 / I2-F1 forældet hel-kø-snapshot genopliver afvist | Accepteret — upsert kun hvis `outreach.updated_at <= excluded.updated_at` (+ test) |
+| R3-F3 / I2-F3 kunde uden fælles id | Accepteret — `customerForDraft`: id ELLER navn+by (bizKey) ELLER modtager-mail mod kundelisten, fail-closed (+ test) |
+| R3-F4 afstemt "sendt" stempler ikke kontakt | Accepteret — stempler `emailSentAt` for numeriske leads; den døde anden send-vej (`/api/email/bulk-send` + ubrugt `BulkEmailPanel`) er slettet |
+| I2-F4 E2E-rækkefølge i tjeklisten | Accepteret — E2E er første punkt i Task 1.6 |
+| I2-F5 Charlies signatur viser charlie@kinly.dk | Accepteret — signaturen viser afsenderkontoens adresse |
+
+Rest-risiko (accepteret, dokumenteret): `writeQueue` sletter stadig ikke-endelige rækker der mangler i et snapshot (en kladde tilføjet efter snapshottet kan forsvinde, aldrig sendes) — datatab, ikke dobbelt-send; tages i bølge 2 hvis det ses.
