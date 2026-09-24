@@ -144,7 +144,9 @@ async function ingest() {
   try {
     sheetsLeads = await getLeads();
   } catch (err) {
-    throw new Error(`Sheets utilgængelig — ingen ændringer i køen (${String(err).slice(0, 200)})`);
+    // Detaljen logges, men lægges ikke i HTTP-svaret (council R3).
+    console.error(JSON.stringify({ evt: "ingest-leadgen.sheets_unavailable", err: String(err).slice(0, 300) }));
+    throw new Error("Sheets utilgængelig — ingen ændringer i køen");
   }
 
   const queue = await readQueue();
