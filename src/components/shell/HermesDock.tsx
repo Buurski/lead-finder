@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
+import { parseSseBuffer } from "@/lib/sse";
 import "./hermes-dock.css";
 
 // Hermes-docken: eneste assistent i UI'et (Claude-chatten er fjernet). Bor i
@@ -212,6 +213,41 @@ export default function HermesDock({ userKey = "ukendt" }: { userKey?: string })
     return () => clearInterval(id);
   }, [pending]);
 
+  // Poll indtil svaret ligger klar i hermes-api. Bruges af fallback-vejen (stream
+  // kunne ikke startes) og når en stream dør undervejs. existingId = den
+  // streamede bobles id, så svaret lander i SAMME bobbel i stedet for en dublet.
+  async function pollUntilDone(rid: string, text: string, existingId?: string): Promise<boolean> {
+    const pollUrl = `/api/hermes/ask?sessionId=${encodeURIComponent(sessionId)}&requestId=${rid}&message=${encodeURIComponent(text.slice(0, 4000))}`;
+    // eslint-disable-next-line react-hooks/purity -- poll-loop kører kun fra klik, aldrig under render
+    const started = Date.now();
+    let misses = 0;
+    for (let i = 0; ; i++) {
+      await new Promise((r) => setTimeout(r, Math.min(6000, 1500 + i * 750)));
+      // eslint-disable-next-line react-hooks/purity -- som ovenfor: kun fra klik
+      if (Date.now() - started > 45 * 60_000) return false;
+      const pr = await fetch(pollUrl).catch(() => null);
+      const pd = (await pr?.json().catch(() => null)) as { ok?: boolean; status?: string; reply?: string } | null;
+      if (!pd?.ok) {
+        // Netværkshikke må ikke dræbe et langt svar — giv op efter tre i træk.
+        if (++misses >= 3) return false;
+        continue;
+      }
+      misses = 0;
+      if (pd.status === "running") continue;
+      if (pd.status === "done") {
+        const reply = pd.reply ?? "";
+        setMessages((m) =>
+          existingId && m.some((x) => x.id === existingId)
+            ? m.map((x) => (x.id === existingId ? { ...x, text: reply } : x))
+            : [...m, { id: newSessionId(), role: "hermes", text: reply }],
+        );
+        if (!openRef.current) setBadge(true);
+        return true;
+      }
+      return false;
+    }
+  }
+
   async function ask(text: string) {
     setError(null);
     setRetryText(null);
@@ -220,57 +256,97 @@ export default function HermesDock({ userKey = "ukendt" }: { userKey?: string })
     // eslint-disable-next-line react-hooks/purity
     startRef.current = Date.now();
     setElapsed(0);
+
+    const streamId = newSessionId();
+    // Løftet ud af try, så catch også kan bruge den (poll-fallback ved brudt stream).
+    let streamRid: string | null = null;
     try {
+      // Primær vej: streaming — delsvaret vises mens agenten arbejder på VPS'en.
       const res = await fetch("/api/hermes/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, sessionId, page: pathname, ...(companyId ? { companyId } : {}) }),
-      });
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; requestId?: string } | null;
-      if (!res.ok || !data?.ok || !data.requestId) {
-        setError(CALM_ERROR);
-        setRetryText(text);
-        return;
-      }
-      const rid = data.requestId;
-      // Turen kører nu på VPS'en. Rigtige spørgsmål tager nogle gange minutter,
-      // så vi poller — én lang request ville blive dræbt af Vercel-funktionen,
-      // men svaret venter trygt i hermes-api indtil vi henter det.
-      const pollUrl = `/api/hermes/ask?sessionId=${encodeURIComponent(sessionId)}&requestId=${rid}&message=${encodeURIComponent(text.slice(0, 4000))}`;
-      // eslint-disable-next-line react-hooks/purity -- poll-loop kører kun fra klik, aldrig under render
-      const started = Date.now();
-      let misses = 0;
-      for (let i = 0; ; i++) {
-        await new Promise((r) => setTimeout(r, Math.min(6000, 1500 + i * 750)));
-        // eslint-disable-next-line react-hooks/purity -- som ovenfor: kun fra klik
-        if (Date.now() - started > 45 * 60_000) {
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ message: text, sessionId, page: pathname, stream: true, ...(companyId ? { companyId } : {}) }),
+      }).catch(() => null);
+      const ct = res?.headers.get("content-type") ?? "";
+      if (res?.ok && res.body && ct.includes("text/event-stream")) {
+        setMessages((m) => [...m, { id: streamId, role: "hermes", text: "" }]);
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let acc = "";
+        let finished = false;
+        let failed = false;
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const parsed = parseSseBuffer(buf);
+          buf = parsed.rest;
+          for (const rawEv of parsed.events) {
+            const ev = rawEv as { request_id?: string; text?: string; done?: boolean; full_text?: string; error?: string };
+            if (typeof ev.request_id === "string") streamRid = ev.request_id;
+            if (typeof ev.text === "string") {
+              acc += ev.text;
+              // Delsvaret vises mens agenten arbejder — det er hele pointen med streamen.
+              setMessages((m) => m.map((x) => (x.id === streamId ? { ...x, text: acc } : x)));
+            }
+            if (ev.done === true) {
+              if (ev.error) {
+                failed = true;
+              } else {
+                const fullText = (typeof ev.full_text === "string" && ev.full_text) || acc || "(tomt svar)";
+                setMessages((m) => m.map((x) => (x.id === streamId ? { ...x, text: fullText } : x)));
+                if (!openRef.current) setBadge(true);
+              }
+              finished = true;
+            }
+          }
+          if (finished) break;
+        }
+        if (finished) {
+          // Lad serveren lukke normalt (historik-gemningen kører i flush), men
+          // afbryd hvis den hænger — svaret er allerede vist.
+          const t0 = Date.now();
+          try {
+            for (;;) {
+              const r = await reader.read();
+              if (r.done) break;
+              if (Date.now() - t0 > 5_000) {
+                await reader.cancel();
+                break;
+              }
+            }
+          } catch {
+            // ligegyldigt — svaret er allerede vist
+          }
+        }
+        if (finished && !failed) return;
+        if (failed) {
           setError(CALM_ERROR);
           setRetryText(text);
           return;
         }
-        const pr = await fetch(pollUrl).catch(() => null);
-        const pd = (await pr?.json().catch(() => null)) as { ok?: boolean; status?: string; reply?: string } | null;
-        if (!pd?.ok) {
-          // Netværkshikke må ikke dræbe et langt svar — giv op efter tre i træk.
-          if (++misses >= 3) {
-            setError(CALM_ERROR);
-            setRetryText(text);
-            return;
-          }
-          continue;
-        }
-        misses = 0;
-        if (pd.status === "running") continue;
-        if (pd.status === "done") {
-          setMessages((m) => [...m, { id: newSessionId(), role: "hermes", text: pd.reply ?? "" }]);
-          if (!openRef.current) setBadge(true);
-          return;
-        }
+        // Streamen sluttede uden done: fortsæt via poll hvis vi fik et request_id.
+        if (streamRid && (await pollUntilDone(streamRid, text, streamId))) return;
         setError(CALM_ERROR);
         setRetryText(text);
         return;
       }
+
+      // Sekundær vej (uændret): start + poll — bruges når streamen ikke kan startes.
+      const data = (await res?.json().catch(() => null)) as { ok?: boolean; requestId?: string } | null;
+      if (!res?.ok || !data?.ok || !data.requestId) {
+        setError(CALM_ERROR);
+        setRetryText(text);
+        return;
+      }
+      if (await pollUntilDone(data.requestId, text)) return;
+      setError(CALM_ERROR);
+      setRetryText(text);
     } catch {
+      // Streamen faldt midt i (fx Vercel-dræb ved maxDuration): er request_id
+      // kendt, hentes svaret via poll i stedet for at tabe det.
+      if (streamRid && (await pollUntilDone(streamRid, text, streamId))) return;
       setError(CALM_ERROR);
       setRetryText(text);
     } finally {

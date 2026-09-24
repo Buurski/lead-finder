@@ -7,6 +7,7 @@ import {
   canAccessSession,
   hermesChatPoll,
   hermesChatStart,
+  hermesChatStreamRaw,
   listAllSessions,
   type HermesProfile,
 } from "@/lib/hermes";
@@ -35,9 +36,10 @@ export async function POST(req: Request) {
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 403 });
   }
-  const b = (await req.json().catch(() => null)) as { message?: unknown; sessionId?: unknown; companyId?: unknown; page?: unknown } | null;
+  const b = (await req.json().catch(() => null)) as { message?: unknown; sessionId?: unknown; companyId?: unknown; page?: unknown; stream?: unknown } | null;
   const message = typeof b?.message === "string" ? b.message.trim() : "";
   const sessionId = typeof b?.sessionId === "string" ? b.sessionId : "";
+  const wantStream = b?.stream === true;
   if (!message || message.length > 4000) return NextResponse.json({ ok: false, error: "spørgsmål mangler eller er for langt" }, { status: 400 });
   if (!SESSION_RE.test(sessionId)) return NextResponse.json({ ok: false, error: "ugyldig session" }, { status: 400 });
 
@@ -61,6 +63,60 @@ export async function POST(req: Request) {
   const prompt = context
     ? `${message}\n\n---\nKONTEKST FRA KINLY HQ (CRM'et er facit for tal, priser og status; vault-noterne for viden):\n${context}`
     : message;
+
+  // Streaming-vej (2026-09-24): svar vises mens agenten arbejder. VPS'ens SSE
+  // videresendes rå; undervejs samler vi det færdige svar, så historikken også
+  // gemmes for streamede svar (flush ved normal afslutning). Kan streamen ikke
+  // startes, falder vi igennem til start/poll nedenfor — uændret.
+  if (wantStream) {
+    const upstream = await hermesChatStreamRaw(prompt, profile, sessionId);
+    if (upstream?.body) {
+      const decoder = new TextDecoder();
+      let buf = "";
+      let acc = "";
+      let full = "";
+      let sawDone = false;
+      const ts = new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          controller.enqueue(chunk);
+          buf += decoder.decode(chunk, { stream: true });
+          let i: number;
+          while ((i = buf.indexOf("\n\n")) >= 0) {
+            const part = buf.slice(0, i);
+            buf = buf.slice(i + 2);
+            const line = part.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            try {
+              const ev = JSON.parse(line.slice(5).trim()) as { text?: string; done?: boolean; full_text?: string; error?: string };
+              if (typeof ev.text === "string") acc += ev.text;
+              if (ev.done === true && !ev.error) {
+                full = typeof ev.full_text === "string" && ev.full_text ? ev.full_text : acc;
+                if (full) sawDone = true;
+              }
+            } catch {
+              // ignorér ugyldig JSON i én event
+            }
+          }
+        },
+        async flush() {
+          if (sawDone && full) {
+            try {
+              await appendHermesExchange(sessionId, user, message, full);
+            } catch {
+              // KV-hikke må ikke koste svaret — det er allerede leveret til klienten.
+            }
+          }
+        },
+      });
+      return new Response(upstream.body.pipeThrough(ts), {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-store, no-transform",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+  }
 
   const start = await hermesChatStart(prompt, profile, sessionId);
   if (!start.ok || !start.requestId) {

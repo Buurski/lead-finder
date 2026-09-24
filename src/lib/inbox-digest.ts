@@ -49,6 +49,11 @@ export interface InboxItem {
   gmailLink?: string;    // deep link to open the thread in Gmail
   leadId?: string;       // CRM lead row id, when the sender matched a lead
   suggestedReply?: string; // optional pre-draft (when a lead matched)
+  /** Kort dansk resumé af hele tråden — kun sat for højt rangerede mails
+   *  (produceren har et fast token-loft, så ikke alle items får et). */
+  threadSummary?: string;
+  /** Antal mails i tråden, når threadSummary er sat. */
+  threadCount?: number;
 }
 
 export interface InboxDigest {
@@ -146,7 +151,10 @@ export function applyHandled(d: InboxDigest, handled: Record<string, string>, ha
 export async function loadDigest(): Promise<InboxDigest | null> {
   try {
     const d = await store.get<InboxDigest>(DIGEST_KEY);
-    return d ? await withHandled(d) : null;
+    // Normalisér ALTID ved læsning: producenter (fx VPS-cron) kan skrive direkte
+    // i KV uden om normalizeDigest, og Svar-siden skal altid vise sorteret,
+    // clampet data — ikke rå input.
+    return d ? await withHandled(normalizeDigest(d)) : null;
   } catch {
     return null;
   }
@@ -195,8 +203,11 @@ export function normalizeDigest(raw: Partial<InboxDigest> | null, fallbackBy = "
           gmailLink: i.gmailLink ? String(i.gmailLink) : undefined,
           leadId: i.leadId ? String(i.leadId) : undefined,
           suggestedReply: i.suggestedReply ? String(i.suggestedReply) : undefined,
+          threadSummary: i.threadSummary ? String(i.threadSummary).slice(0, 600) : undefined,
+          threadCount: typeof i.threadCount === "number" && i.threadCount > 0 ? Math.round(i.threadCount) : undefined,
         }))
-        .sort((a, b) => b.importance - a.importance)
+        // Vigtighed først; ved samme vigtighed: nyeste først (rangering "væsentlighed/dato").
+        .sort((a, b) => (b.importance - a.importance) || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     : [];
   return {
     generatedAt: typeof raw?.generatedAt === "string" ? raw!.generatedAt : new Date().toISOString(),
