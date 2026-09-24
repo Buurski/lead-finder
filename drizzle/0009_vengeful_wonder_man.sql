@@ -1,0 +1,1 @@
+ALTER TABLE "blog_post" ADD COLUMN "images" jsonb DEFAULT '{"a":null,"b":null,"choice":"none"}'::jsonb NOT NULL;

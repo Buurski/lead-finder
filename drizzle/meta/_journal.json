@@ -64,6 +64,13 @@
       "when": 1790250412193,
       "tag": "0008_easy_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790268581722,
+      "tag": "0009_vengeful_wonder_man",
+      "breakpoints": true
     }
   ]
 }

@@ -60,7 +60,7 @@ function keyOf(input: { id?: unknown; slug?: unknown }): string {
 // Mass-assignment: kun disse felter må sættes via create/update. `stage` flyttes
 // kun via move, og publishedAt/publishedUrl/publishRequestedAt/createdBy/updatedBy
 // må ALDRIG kunne patches — markPublished er den eneste vej til Udgivet.
-const WRITABLE = ["title", "slug", "category", "excerpt", "body", "note", "sourcePath"] as const;
+const WRITABLE = ["title", "slug", "category", "excerpt", "body", "note", "sourcePath", "images"] as const;
 const FORBIDDEN = ["stage", "position", "publishedAt", "publishedUrl", "publishRequestedAt", "createdBy", "updatedBy", "id", "createdAt", "updatedAt"] as const;
 
 /** Felterne til `update {id, fields}` — ukendte/forbudte nøgler afvises, ikke ignoreres. */

@@ -18,6 +18,28 @@ delete process.env.TYPESAFE_API_KEY;
 
 const PATH = "/api/agent/posts";
 const LIVE_URL = "https://kinly.dk/blog/hvad-koster-en-hjemmeside";
+const IMAGE_CANDIDATES = {
+  a: {
+    id: "billed-a",
+    url: "https://cdn.example.com/a.jpg",
+    placement: "hero",
+    alt: "Lucas foran et skrivebord",
+    credit: "Foto: A",
+    source: "CRM",
+    mobileUrl: "https://cdn.example.com/a-mobile.jpg",
+    desktopUrl: "https://cdn.example.com/a-desktop.jpg",
+  },
+  b: {
+    id: "billed-b",
+    url: "https://cdn.example.com/b.jpg",
+    placement: "inline",
+    alt: "Et arbejdsbord med laptop",
+    credit: "Foto: B",
+    source: "CRM",
+    mobileUrl: "https://cdn.example.com/b-mobile.jpg",
+    desktopUrl: "https://cdn.example.com/b-desktop.jpg",
+  },
+};
 
 let db: Db;
 
@@ -73,6 +95,35 @@ test("update retter felter uden at røre kolonnen", async () => {
   assert.equal(json.post.excerpt, "Nyt resume");
   assert.equal(json.post.stage, "ide");
   assert.equal(json.post.updatedBy, "hermes");
+});
+
+test("A/B-billeder kan round-trippe, men agenten kan ikke vælge dem", async () => {
+  const created = await (await post({
+    actor: "hermes",
+    action: "create",
+    title: "Billeder til bloggen",
+    images: IMAGE_CANDIDATES,
+  })).json();
+  assert.equal(created.post.images.choice, "none");
+  assert.deepEqual(created.post.images.a, IMAGE_CANDIDATES.a);
+  assert.deepEqual(created.post.images.b, IMAGE_CANDIDATES.b);
+
+  const list = await (await post({ actor: "hermes", action: "list" })).json();
+  assert.deepEqual(list.cards[0].images, created.post.images);
+
+  const agentChoice = await post({
+    actor: "hermes",
+    action: "update",
+    id: created.post.id,
+    fields: { images: { choice: "a" } },
+  });
+  assert.equal(agentChoice.status, 400);
+  assert.match((await agentChoice.json()).error, /kun Lucas eller Charlie/);
+
+  const humanChoice = await updatePost(db, created.post.id, { images: { choice: "both" } }, "lucas");
+  assert.equal(humanChoice.images.choice, "both");
+  assert.deepEqual(humanChoice.images.a, IMAGE_CANDIDATES.a);
+  assert.deepEqual(humanChoice.images.b, IMAGE_CANDIDATES.b);
 });
 
 test("move flytter mellem agentens tre kolonner og lægger kortet bagerst", async () => {

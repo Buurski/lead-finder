@@ -19,11 +19,12 @@ export const STAGE_LABEL: Record<BlogStage, string> = {
   udgivet: "Udgivet",
 };
 
-// Kun Lucas og Charlie må sætte et kort i Publicer — det er aftalen om at
-// udgiver-jobbet må tage det næste gang det kører. Alt andet end de to personlige
-// logins (agenten "hermes", det gamle fælles Basic-login der lander som "delt",
-// og ukendte aktører) må kun flytte mellem de tre første kolonner.
-const PUBLISH_ACTORS = new Set<string>(["lucas", "charlie"]);
+// Kun Lucas og Charlie tæller som mennesker her — det er aftalen om at
+// udgiver-jobbet må tage det næste gang det kører, og det er dem der vælger
+// A/B-billedet. Alt andet end de to personlige logins (agenten "hermes", det
+// gamle fælles Basic-login der lander som "delt", og ukendte aktører) må kun
+// flytte mellem de tre første kolonner.
+const HUMAN_ACTORS = new Set<string>(["lucas", "charlie"]);
 const AGENT_STAGES: readonly string[] = ["ide", "arbejder", "klar"];
 
 export class BlogInputError extends Error {}
@@ -103,7 +104,114 @@ export interface BlogPatch {
   body?: unknown;
   note?: unknown;
   sourcePath?: unknown;
+  images?: unknown;
   stage?: unknown;
+}
+
+// --- A/B-billedkontrakt ----------------------------------------------------
+// Hvert kort kan bære to selvstændige kandidater (a og b) og ét eksplicit valg.
+// Ren CRM-data: url'erne peger på billeder der allerede findes — ingen upload og
+// ingen publicering her. Agenten lægger kandidaterne ind; valget er menneskets
+// (se guardChoice).
+export const IMAGE_CHOICES = ["a", "b", "both", "none"] as const;
+export type ImageChoice = (typeof IMAGE_CHOICES)[number];
+
+/** De otte felter en kandidat bærer. Altid alle otte ud; de valgfrie som "". */
+export interface BlogImageCandidate {
+  id: string;
+  url: string;
+  placement: string;
+  alt: string;
+  credit: string;
+  source: string;
+  mobileUrl: string;
+  desktopUrl: string;
+}
+
+export interface BlogImages {
+  a: BlogImageCandidate | null;
+  b: BlogImageCandidate | null;
+  choice: ImageChoice;
+}
+
+export const NO_IMAGES: BlogImages = { a: null, b: null, choice: "none" };
+
+const IMAGE_FIELDS = ["id", "url", "placement", "alt", "credit", "source", "mobileUrl", "desktopUrl"] as const;
+const HTTP_URL = /^https?:\/\/[^\s]+$/;
+
+/** Valgfri http(s)-url. "" når feltet ikke er sat. */
+function imageUrl(v: unknown, label: string): string {
+  const t = text(v, label, 500) ?? "";
+  if (t && !HTTP_URL.test(t)) throw new BlogInputError(`${label} skal være en http(s)-url`);
+  return t;
+}
+
+/** Én kandidat. null = slotten er tom (eller bliver tømt). */
+function imageCandidate(v: unknown, slot: "a" | "b"): BlogImageCandidate | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== "object" || Array.isArray(v)) throw new BlogInputError(`kandidat ${slot} skal være et objekt`);
+  const src = v as Record<string, unknown>;
+  for (const key of Object.keys(src)) {
+    if (!(IMAGE_FIELDS as readonly string[]).includes(key)) throw new BlogInputError(`billedfeltet "${key}" kendes ikke`);
+  }
+  const id = text(src.id, "Kandidat-id", 80, true);
+  if (id && !SLUG.test(id)) throw new BlogInputError("Kandidat-id skal være 3-80 tegn med a-z (små bogstaver), 0-9 og bindestreg");
+  const url = imageUrl(src.url, "Url");
+  if (!url) throw new BlogInputError("Url mangler");
+  return {
+    id: id ?? "",
+    url,
+    placement: text(src.placement, "Placering", 40, true) ?? "",
+    alt: text(src.alt, "Alt-tekst", 300) ?? "",
+    credit: text(src.credit, "Kredit", 200) ?? "",
+    source: text(src.source, "Kilde", 300) ?? "",
+    mobileUrl: imageUrl(src.mobileUrl, "Mobil-url"),
+    desktopUrl: imageUrl(src.desktopUrl, "Desktop-url"),
+  };
+}
+
+/** Læser jsonb-kolonnen tolerant ind i BlogImages (legacy/ukendt valg → "none"). */
+export function readImages(v: unknown): BlogImages {
+  const o = (v ?? {}) as Partial<BlogImages>;
+  const raw = String(o.choice ?? "none");
+  return {
+    a: (o.a as BlogImageCandidate | null) ?? null,
+    b: (o.b as BlogImageCandidate | null) ?? null,
+    choice: (IMAGE_CHOICES as readonly string[]).includes(raw) ? (raw as ImageChoice) : "none",
+  };
+}
+
+function imageChoice(v: unknown): ImageChoice {
+  if (typeof v !== "string" || !(IMAGE_CHOICES as readonly string[]).includes(v)) {
+    throw new BlogInputError(`valget skal være ${IMAGE_CHOICES.join(", ")}`);
+  }
+  return v as ImageChoice;
+}
+
+/**
+ * Partial images-patch: kun de nøgler der sendes med ændres, så et menneske kan
+ * vende valget uden at gensende kandidaterne. Ukendte nøgler afvises.
+ */
+function imagesPatch(v: unknown, before: BlogImages): BlogImages {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) throw new BlogInputError("images skal være et objekt");
+  const src = v as Record<string, unknown>;
+  for (const key of Object.keys(src)) {
+    if (key !== "a" && key !== "b" && key !== "choice") throw new BlogInputError(`billedfeltet "${key}" kendes ikke`);
+  }
+  const a = "a" in src ? imageCandidate(src.a, "a") : before.a;
+  const b = "b" in src ? imageCandidate(src.b, "b") : before.b;
+  const choice = src.choice === undefined ? before.choice : imageChoice(src.choice);
+  // Fail-closed: valget må ikke pege på en tom kandidat — det ville give et kort
+  // hvor nogen tror der er valgt et billede.
+  if ((choice === "a" && !a) || (choice === "b" && !b)) throw new BlogInputError(`valget ${choice} kræver en kandidat i ${choice}`);
+  if (choice === "both" && (!a || !b)) throw new BlogInputError("valget both kræver både a og b");
+  return { a, b, choice };
+}
+
+/** A/B-valget sættes af et menneske. Agenten leverer kandidater, ikke beslutningen. */
+function guardChoice(next: ImageChoice, before: ImageChoice, actor: string) {
+  if (next === before) return;
+  if (!HUMAN_ACTORS.has(actor)) throw new BlogInputError("kun Lucas eller Charlie kan vælge A/B-billedet");
 }
 
 function validPatch(p: BlogPatch) {
@@ -136,6 +244,8 @@ function validPatch(p: BlogPatch) {
 export async function createPost(db: Db, patch: BlogPatch, actor: string) {
   const fields = validPatch(patch);
   if (!fields.title) throw new BlogInputError("Titel mangler");
+  const images = patch.images === undefined ? NO_IMAGES : imagesPatch(patch.images, NO_IMAGES);
+  guardChoice(images.choice, NO_IMAGES.choice, actor);
   const slug = fields.slug || slugFrom(fields.title);
   try {
     return await db.transaction(async (tx) => {
@@ -146,6 +256,7 @@ export async function createPost(db: Db, patch: BlogPatch, actor: string) {
         .insert(blogPost)
         .values({
           ...fields,
+          images,
           slug,
           stage: "ide",
           position: (top[0]?.value ?? 0) + 1,
@@ -185,15 +296,20 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
       if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes af udgiver-jobbet — brug markPublished");
       // Ud af Publicer er en aftale om udgivelse — den må kun aflyses af et menneske.
-      if (moving && from === "publicer" && !PUBLISH_ACTORS.has(actor)) {
+      if (moving && from === "publicer" && !HUMAN_ACTORS.has(actor)) {
         throw new BlogInputError("kun Lucas eller Charlie kan flytte et indlæg ud af Publicer");
       }
       if (fields.stage !== undefined && actor === "hermes" && !AGENT_STAGES.includes(target)) {
         throw new BlogInputError("agenten må kun flytte mellem Idéer, Arbejder og Klar");
       }
-      if (moving && target === "publicer" && !PUBLISH_ACTORS.has(actor)) {
+      if (moving && target === "publicer" && !HUMAN_ACTORS.has(actor)) {
         throw new BlogInputError("kun Lucas eller Charlie kan sætte et indlæg i Publicer");
       }
+
+      // A/B-billederne: kandidater må skrives af alle, valget kun af et menneske.
+      const beforeImages = readImages(before.images);
+      const images = patch.images === undefined ? null : imagesPatch(patch.images, beforeImages);
+      if (images) guardChoice(images.choice, beforeImages.choice, actor);
 
       // Tom slug betyder "udled af titlen" — af den nye titel hvis der kommer en.
       if (fields.slug === "") fields.slug = slugFrom(String(fields.title ?? before.title));
@@ -206,6 +322,7 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       }
 
       const set: Partial<typeof blogPost.$inferInsert> = { ...fields, updatedBy: actor, updatedAt: new Date() };
+      if (images) set.images = images;
       if (moving) {
         const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, target));
         set.position = (top[0]?.value ?? 0) + 1;
@@ -250,7 +367,7 @@ export async function markPublished(db: Db, id: string, p: { url?: unknown; note
 // Klar/Publicer/Udgivet, er der arbejde eller en aftale i det: flyt det først
 // (agenten kan flytte tilbage til Arbejder), så det ikke forsvinder i tavshed.
 export async function deletePost(db: Db, id: string, actor: string) {
-  if (!PUBLISH_ACTORS.has(actor)) throw new BlogInputError("kun Lucas eller Charlie kan slette et indlæg");
+  if (!HUMAN_ACTORS.has(actor)) throw new BlogInputError("kun Lucas eller Charlie kan slette et indlæg");
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
     if (!before) throw new BlogInputError("indlægget findes ikke");
@@ -270,6 +387,7 @@ export interface PostCard {
   stage: BlogStage;
   excerpt: string;
   note: string;
+  images: BlogImages;
   publishRequestedAt: string | null;
   publishedAt: string | null;
   publishedUrl: string | null;
@@ -288,6 +406,7 @@ export async function listPosts(db: Db, opts: { stage?: string } = {}): Promise<
       stage: blogPost.stage,
       excerpt: blogPost.excerpt,
       note: blogPost.note,
+      images: blogPost.images,
       publishRequestedAt: blogPost.publishRequestedAt,
       publishedAt: blogPost.publishedAt,
       publishedUrl: blogPost.publishedUrl,
@@ -299,6 +418,7 @@ export async function listPosts(db: Db, opts: { stage?: string } = {}): Promise<
   return rows.map((r) => ({
     ...r,
     stage: r.stage as BlogStage,
+    images: readImages(r.images),
     publishRequestedAt: r.publishRequestedAt ? r.publishRequestedAt.toISOString() : null,
     publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
     updatedAt: r.updatedAt.toISOString(),

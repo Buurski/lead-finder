@@ -228,6 +228,10 @@ export const blogPost = pgTable(
     body: text("body").notNull().default(""),
     note: text("note").notNull().default(""),
     sourcePath: text("source_path").notNull().default(""),
+    // A/B-billedkontrakt (se hq/posts.ts: BlogImages): {"a":kandidat|null,
+    // "b":kandidat|null,"choice":"a"|"b"|"both"|"none"}. Ren CRM-data, ingen
+    // upload — kandidaterne er URL'er til billeder der allerede ligger et sted.
+    images: jsonb("images").notNull().default({ a: null, b: null, choice: "none" }),
     publishRequestedAt: timestamp("publish_requested_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     publishedUrl: text("published_url"),
