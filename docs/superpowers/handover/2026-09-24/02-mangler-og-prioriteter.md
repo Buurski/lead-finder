@@ -90,6 +90,7 @@ Flowet: formular/"ja tak"-svar → preview-kø (KV) → Hermes `kinly-preview-in
 
 ## H. Kunde-synlighed (Lucas 25/9 — se 07)
 
+0. /kunder som kinly.dk/projekter-kort med faner Kunder · Varme · Leads · Ikke egnet; SEO som egen sektion med Jev-drevne "Opdateringer" og grafer (se 07, PRÆCISERING).
 1. HQ: "Bliver fundet"-kort pr. kunde med GSC (visninger/klik/top-søgninger) + GEO fra Hermes. Start med Ikast.
 2. kinly.dk/projekter: ens kunde-kort med mockups + ét verificeret resultat (efter audit; KT VVS først efter sanering).
 3. Forsiden: "Resultater"-stribe KUN med stærke, verificerede kunde-tal og kundens accept.

@@ -7,6 +7,38 @@ og vores kunder. **Kun det der er fedt, brugbart og væsentligt.**"
 Grundregel: **kun rigtige, verificerede tal, og kun med kundens accept før noget offentligt.** Et forkert eller
 pustet tal på kinly.dk koster mere tillid end det giver. Vis hellere ét stærkt tal end en graf med støj.
 
+## PRÆCISERING fra Lucas 25/9 (vinder over resten af filen hvor de er uenige)
+
+**A. "Kort" = i HQ, ikke på kinly.dk.** `/kunder` skal ligne kinly.dk/projekter: kun vores rigtige kunder som
+store visuelle kort (site-screenshot/mockup, navn, branche, by, status-linje), ikke alle 1.400+ virksomheder.
+Faner øverst for resten. Forslag (vurdér og skær hvis det er for meget):
+`Kunder` (standard) · `Varme` (svaret/interesseret/gratis udkast i gang — dem der kan blive kunder nu) ·
+`Leads` (kontaktet/nye) · `Ikke egnet` (fravalgt/arkiv). Tæller pr. fane. Samme kort-komponent i alle faner, men
+leads får mindre kort/liste når der er mange. Bygget som første udkast af Codex på feature (`/kunder` +
+`CustomerPreview`, faner Kunder | Alle virksomheder) — **uverificeret**; ret det til ovenstående og screenshot-tjek
+på rigtige data (desktop + 390 px). Screenshots via thum.io er en ekstern afhængighed → cache dem (Blob, privat)
+eller brug egne mockups fra kinly.dk-casesiderne.
+
+**B. "Tal" = grafer.** På kundeprofilen: en rolig graf over Google-visninger/klik (GSC, 90 dage) med markering af
+hvornår vi leverede/ændrede noget (fra arbejdsloggen) — det viser effekten af vores arbejde. Plus små sparklines for
+anmeldelser og AI-omtale. På HQ: én samlet graf "kunders synlighed i alt" højst. Kritisk: grafer kun hvor der er
+nok datapunkter (≥4 målinger); ellers tal + "for lidt data endnu". Brug `dataviz`-skillen.
+
+**C. SEO flyttes til sin egen sektion og gøres dybere med Jev.** Ikke gemt under "Mere". Egen nav-post `SEO`
+med faner: `Overblik` (alle kunder + kinly.dk, grafer) · `Pr. kunde` (dybt: søgninger, positioner, sider, AI-omtale,
+teknik) · `Opdateringer` · `Værktøjer` (seo-tjek m.m.).
+- **"Opdateringer" = et feed pr. uge og pr. kunde:** "Ikast: 'autoværksted ikast' steg fra plads 9 → 4", "VIDA: ny
+  side for microneedling indekseret", "KT VVS: PageSpeed faldt 20 point efter billedskift". Genereres af en ugentlig
+  cron: GSC-diff + seo-snapshot-diff + GEO-log → **Jev dømmer hvad der er væsentligt** (score, kategori, "kræver handling?")
+  → kun de væsentlige bliver til opdateringer; "kræver handling" bliver til en opgave i Opgaver. Samme feed kan
+  bruges som råstof til kundeopdaterings-kladder ("Nu har vi lavet det her for dig").
+- **Jev-brug (billigt, typed):** rangér muligheder (søgninger på plads 8–20 med visninger = lavthængende frugt),
+  match side ↔ søgeintention, klassificér ændringer, vurdér om en blogidé rammer en kundes søgeord. Jev er rådgiver,
+  aldrig beslutter (51 %-træfsikkerhed på mailkategorier 24/9 → kalibrér før tallene vises som sandhed).
+- Kinly.dk's egne tal hører også her (ikke på forsiden) indtil de er stærke.
+- Datakilder: GSC via service-account (ikke Composio), PageSpeed (nøgle findes), GEO fra Hermes marketing via
+  `/api/agent/*`. Koordinér med Hermes marketing, som allerede måler GEO ugentligt — ingen dobbeltmålinger.
+
 ## 1. SEO-data på kundeprofilen i HQ (internt — højeste værdi)
 
 I dag (feature, uverificeret): `/seo` + et Overblik-kort med PageSpeed/on-page-score (ugentlig cron `seo-snapshot`).
