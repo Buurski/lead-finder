@@ -29,7 +29,7 @@ export async function draftForCompany(
 
   const leadId = c.placeId || (c.rowNo > 0 ? String(c.rowNo) : `c:${c.id}`);
   const { appendDrafts, readQueue } = await import("../queue.ts");
-  if ((await readQueue()).some((d) => d.leadId === leadId && ["approved", "edited", "sent"].includes(d.status))) {
+  if ((await readQueue()).some((d) => d.leadId === leadId && ["approved", "edited", "sending", "sent"].includes(d.status))) {
     throw new DraftInputError("der findes allerede en godkendt eller sendt kladde — brug en opfølgning");
   }
 

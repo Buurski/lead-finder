@@ -2,7 +2,7 @@
 // draft jsonb er hele QueueDraft-objektet (loss-fri); de typede kolonner findes
 // kun for at kunne filtrere/joine (spec §3).
 import "server-only";
-import { and, asc, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
@@ -35,8 +35,39 @@ export async function stopOpenForRows(rowNos: number[], reason: string, now: str
   return rows.length;
 }
 
-/** Sendt eller system-stoppet = endelig. */
-const FINAL = sql`(${outreach.status} = 'sent' or (${outreach.status} = 'rejected' and ${outreach.draft} ? 'stoppedReason'))`;
+/** Sendt, under afsendelse eller system-stoppet = endelig for hel-kø-skrivninger.
+ *  "sending" flyttes KUN af finishSend (send-ruten) — et forældet snapshot må
+ *  hverken overskrive eller slette en kladde mens/efter SMTP har den. */
+const FINAL = sql`(${outreach.status} in ('sent', 'sending') or (${outreach.status} = 'rejected' and ${outreach.draft} ? 'stoppedReason'))`;
+
+/** Atomisk reservation: approved/edited → sending, med modtageren låst i kladden.
+ *  null = kladden er ændret/afvist/allerede taget → send IKKE. */
+export async function reserveForSend(id: string, recipientEmail: string, now: string): Promise<QueueDraft | null> {
+  const rows = await getDb()
+    .update(outreach)
+    .set({
+      status: "sending",
+      updatedAt: now,
+      draft: sql`${outreach.draft} || jsonb_build_object('status', 'sending', 'recipientEmail', ${recipientEmail}::text, 'sendingAt', ${now}::text, 'updatedAt', ${now}::text)`,
+    })
+    .where(and(eq(outreach.id, id), inArray(outreach.status, ["approved", "edited"])))
+    .returning({ draft: outreach.draft });
+  return rows.length ? (rows[0].draft as QueueDraft) : null;
+}
+
+/** Afslut en reservation: sending → sent (mailen gik ud) eller → approved (SMTP afviste
+ *  med sikkerhed før accept). false = rækken var ikke længere "sending". */
+export async function finishSend(id: string, result: "sent" | "approved", sentBy: string | null, now: string): Promise<boolean> {
+  const patch = result === "sent"
+    ? sql`jsonb_build_object('status', 'sent', 'sentBy', ${sentBy}::text, 'updatedAt', ${now}::text)`
+    : sql`jsonb_build_object('status', 'approved', 'updatedAt', ${now}::text)`;
+  const rows = await getDb()
+    .update(outreach)
+    .set({ status: result, updatedAt: now, ...(result === "sent" ? { sentBy } : {}), draft: sql`(${outreach.draft} - 'sendingAt') || ${patch}` })
+    .where(and(eq(outreach.id, id), eq(outreach.status, "sending")))
+    .returning({ id: outreach.id });
+  return rows.length === 1;
+}
 
 export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
   const db = getDb();

@@ -16,7 +16,8 @@ import { bizKey } from "./leads/suppress.ts";
 import type { Demo } from "./demos.ts";
 import type { SenderId } from "./senders.ts";
 
-export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
+// "sending" = reserveret lige før SMTP (se reserveForSend). Kun send-ruten flytter den videre.
+export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sending" | "sent";
 
 export interface QueueDraft {
   id: string;
@@ -127,7 +128,7 @@ export async function appendDrafts(
   const existing = await readQueue();
   const cutoff = now - REJECT_BLOCK_MS;
   const blockedLeadIds = new Set<string>();
-  const OPEN_OR_SENT: ReadonlySet<DraftStatus> = new Set(["pending", "edited", "approved", "sent"]);
+  const OPEN_OR_SENT: ReadonlySet<DraftStatus> = new Set(["pending", "edited", "approved", "sending", "sent"]);
   const blockedBizKeys = new Set<string>();
   for (const d of existing) {
     if (d.leadId) {
@@ -183,6 +184,30 @@ export async function updateDraft(
   drafts[idx] = next;
   await writeQueue(drafts);
   return next;
+}
+
+// Atomisk send-reservation (pg). KV-udgaven (kun lokal/test uden pg) er
+// læs-ændr-skriv og dermed ikke atomisk — prod kører pg.
+export async function reserveForSend(id: string, recipientEmail: string): Promise<QueueDraft | null> {
+  const now = new Date().toISOString();
+  if (pgEnabled()) return (await import("./pg/queue.ts")).reserveForSend(id, recipientEmail, now);
+  const drafts = await readQueue();
+  const d = drafts.find((x) => x.id === id);
+  if (!d || (d.status !== "approved" && d.status !== "edited")) return null;
+  Object.assign(d, { status: "sending", recipientEmail, updatedAt: now });
+  await writeQueue(drafts);
+  return d;
+}
+
+export async function finishSend(id: string, result: "sent" | "approved", sentBy: SenderId | null): Promise<boolean> {
+  const now = new Date().toISOString();
+  if (pgEnabled()) return (await import("./pg/queue.ts")).finishSend(id, result, sentBy, now);
+  const drafts = await readQueue();
+  const d = drafts.find((x) => x.id === id);
+  if (!d || d.status !== "sending") return false;
+  Object.assign(d, { status: result, updatedAt: now }, result === "sent" && sentBy ? { sentBy } : {});
+  await writeQueue(drafts);
+  return true;
 }
 
 export function newDraftId(): string {

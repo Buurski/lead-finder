@@ -26,7 +26,7 @@ export const ANGLE_LABEL: Record<Angle, string> = {
 // Livsfaser/status hvor vi aldrig følger op.
 const DONE_LIFECYCLE = ["tabt", "ikke_egnet", "kunde", "flettet"];
 const DONE_EMAIL_STATUS = new Set(["replied", "bounced", "unsubscribed", "unsubscribe"]);
-const OPEN = ["pending", "edited", "approved"];
+const OPEN = ["pending", "edited", "approved", "sending"]; // "sending" = holdt trin indtil afstemt
 
 /** Vælg vinkel til næste trin: sidste trin er altid "sidste"; ellers første ubrugte der passer. */
 export function nextAngle(step: number, maxTouches: number, used: string[], hasWebsite: boolean): Angle {

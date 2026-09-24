@@ -26,6 +26,7 @@
 // Strip-safe so node tooling can import it.
 
 import type { QueueDraft } from "../queue.ts";
+import { countsAsSent } from "../draft-status.ts";
 import type { Lead } from "../sheets.ts";
 import { isContactable, makeEmailBlock, addEmailToBlock, type EmailBlock } from "./contactable.ts";
 import { isExcludedBranch } from "./branch-policy.ts";
@@ -86,7 +87,7 @@ export function buildBlockSets(
 
   for (const d of queue) {
     const inFlightOrSent =
-      d.status === "pending" || d.status === "approved" || d.status === "edited" || d.status === "sent";
+      d.status === "pending" || d.status === "approved" || d.status === "edited" || countsAsSent(d.status);
     const recentlyRejected = d.status === "rejected" && rejectedAt(d) > cutoff;
     if (!inFlightOrSent && !recentlyRejected) continue;
     if (d.leadId) ids.add(d.leadId);

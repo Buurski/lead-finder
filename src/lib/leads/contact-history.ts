@@ -10,6 +10,7 @@
 
 import type { Lead } from "../sheets.ts";
 import type { QueueDraft } from "../queue.ts";
+import { countsAsSent } from "../draft-status.ts";
 import { isContactable, makeEmailBlock, addEmailToBlock, emailDomainOf, type EmailBlock } from "./contactable.ts";
 import { bizKey } from "./suppress.ts";
 
@@ -130,7 +131,7 @@ export function buildContactIndex(
   // fremstå som "aldrig set" og blive sendt til to gange. replied sættes til
   // "ukendt" — svaret er ikke sporet for kø-only-forretninger.
   for (const d of sentDrafts) {
-    if (d.status !== "sent") continue;
+    if (!countsAsSent(d.status)) continue;
     const at = parseDate(d.updatedAt) ?? parseDate(d.createdAt);
     const daysSince = at ? Math.max(0, Math.floor((now.getTime() - at.getTime()) / 86_400_000)) : null;
     const sentDay = (d.updatedAt ?? d.createdAt ?? "").slice(0, 10);

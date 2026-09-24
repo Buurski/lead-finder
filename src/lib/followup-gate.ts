@@ -8,6 +8,8 @@
 // (via et forældet kø-snapshot eller en manuel "nulstil") er blevet "godkendt"
 // igen — derfor de varige tjek på sidste kontakt og antal sendte.
 
+import { countsAsSent } from "./draft-status.ts";
+
 export const MAX_TOUCHES = 5;
 /** Mindste afstand mellem to mails i en sekvens (mindste GAP_DAYS er 5). */
 export const MIN_GAP_MS = 4 * 86_400_000;
@@ -42,7 +44,7 @@ export function buildSentLedger(drafts: Array<{ leadId?: string; status?: string
   const sentCount = new Map<string, number>();
   const recipients = new Map<string, Set<string>>();
   for (const d of drafts) {
-    if (d.status !== "sent" || !d.leadId) continue;
+    if (!countsAsSent(d.status) || !d.leadId) continue;
     sentCount.set(d.leadId, (sentCount.get(d.leadId) ?? 0) + 1);
     if (d.recipientEmail) {
       const set = recipients.get(d.leadId) ?? new Set<string>();

@@ -1,7 +1,10 @@
 import { LUCAS_ONLY } from "@/lib/tone-mixer";
 import { NextResponse } from "next/server";
-import { readQueue, updateDraft } from "@/lib/queue";
-import { store } from "@/lib/store";
+import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
+import { countsAsSent } from "@/lib/draft-status";
+import { acquireSendLock, failedBeforeAccept, releaseSendLock, sendLockHeld } from "@/lib/send-safety";
+import { createTask } from "@/lib/hq/tasks";
+import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
 import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
@@ -45,7 +48,6 @@ const GAP_MAX_MS = 45_000;
 // bug Lucas hit. The lock makes "click 5 times" send exactly once: while a run holds
 // the lock, every other call is rejected with busy:true. TTL > maxDuration so a
 // crashed run self-heals instead of jamming sending forever.
-const LOCK_KEY = "send/lock";
 const LOCK_TTL_MS = 6 * 60 * 1000;  // 6 min — longer than maxDuration (300s)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -88,22 +90,14 @@ import { matchLead } from "@/lib/leads/match";
 // Holdes bevidst i samme fil som POST så guard-logikken ikke driver fra
 // hinanden — ændrer du en guard i løkken, så ændr den også her.
 export async function GET(req: Request) {
-  // Spejler POST'ens ?force=1 (legacy re-run): samme kandidat-udvælgelse og
-  // samme !force-gating af re-contact-guards, ellers under-rapporterer
-  // dialogen på et force-run.
-  const force = new URL(req.url).searchParams.get("force") === "1";
   const senderFilter = parseSenderFilter(req);
   const senders = { lucas: isSenderAvailable("lucas"), charlie: isSenderAvailable("charlie") };
   const pause = await getPauseStatus("cold").catch(() => ({ paused: false as const, until: undefined as string | undefined }));
   const now = Date.now();
-  const lock = await store.get<{ until: number }>(LOCK_KEY).catch(() => null);
-  const busy = Boolean(lock && typeof lock.until === "number" && lock.until > now);
+  const busy = await sendLockHeld(now).catch(() => false);
 
   const drafts = await readQueue();
-  const allCandidates = (force
-    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
-    : drafts.filter((d) => isApproved(d.status))
-  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
+  const allCandidates = drafts.filter((d) => isApproved(d.status)).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
   // ?ids=… (mobil-fladen /send): kun disse drafts. Se src/lib/send-ids.ts.
   const candidates = onlyIds(allCandidates, parseIds(req.url));
 
@@ -111,7 +105,7 @@ export async function GET(req: Request) {
   const sentKeys = new Set<string>();
   const sentEmails = new Set<string>();
   for (const d of drafts) {
-    if (d.status !== "sent") continue;
+    if (!countsAsSent(d.status)) continue;
     if (d.leadId) sentIds.add(d.leadId);
     const k = bizKey(d.name, d.city);
     if (k) sentKeys.add(k);
@@ -152,7 +146,7 @@ export async function GET(req: Request) {
       continue;
     }
     const isFollowUp = fuGate?.ok === true;
-    if (lead && !force && !isFollowUp && alreadyEmailed(lead)) {
+    if (lead && !isFollowUp && alreadyEmailed(lead)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet" });
       continue;
     }
@@ -160,11 +154,11 @@ export async function GET(req: Request) {
       skipped.push({ name: d.name, reason: "branche ekskluderet (medicinsk/sundhed)" });
       continue;
     }
-    if (!force && !isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+    if (!isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
       skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
       continue;
     }
-    if (!force && !isFollowUp && sentEmails.has(targetKey)) {
+    if (!isFollowUp && sentEmails.has(targetKey)) {
       skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
       continue;
     }
@@ -209,10 +203,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  // ?force=1 overrides ONLY the never-re-contact guard (emailSentAt) — used for the
-  // May limit-hit batch where emailSentAt was stamped optimistically but the mail
-  // never actually went out (verified via Gmail). pause + canSendTo still apply.
-  const force = new URL(req.url).searchParams.get("force") === "1";
+  // ?force=1 (gen-send af "sent"-kladder) er fjernet 25/9 (Sol): intet flag må kunne
+  // sende en sendt kladde igen. Historisk oprydning sker manuelt, uden for ruten.
   const senderFilter = parseSenderFilter(req);
   // Accepter EITHER Lucas- eller Charlie-creds (hybrid allokering 2026-06-17).
   // Helt uden creds er eneste tilfælde hvor vi nægter at starte.
@@ -232,27 +224,22 @@ export async function POST(req: Request) {
   // 1b. CONCURRENCY LOCK — refuse to start a second run while one is in flight.
   // This is the core fix for double-sending: a run takes minutes, so a reload +
   // re-click would otherwise spin up a parallel run that re-sends the same leads.
-  const now = Date.now();
-  const lock = await store.get<{ until: number; startedAt: string }>(LOCK_KEY).catch(() => null);
-  if (lock && typeof lock.until === "number" && lock.until > now) {
+  // Atomisk compare-and-set i Postgres (KV get→put kunne lade to kald passere).
+  const lockHandle = await acquireSendLock(LOCK_TTL_MS);
+  if (lockHandle === null) {
     return NextResponse.json({
       ok: false, busy: true, sent: 0,
       error: "Afsendelse kører allerede — vent til den er færdig (et par minutter). Den sender kun én gang, uanset hvor mange gange du trykker.",
     });
   }
-  await store.put(LOCK_KEY, { until: now + LOCK_TTL_MS, startedAt: new Date().toISOString() });
 
   const drafts = await readQueue();
   // Only "approved" drafts are sent. A draft flips to "sent" the instant its mail
   // goes out, so it can never be picked again — the draft status itself is now an
   // idempotency guard (in addition to the lead's emailSentAt stamp). The old code
   // also re-included "sent" drafts (a one-time May-migration hack); that is what let
-  // an already-sent draft go out again, so it is gone. Use ?force=1 to re-run the
-  // legacy migration if ever needed.
-  const allCandidates = (force
-    ? drafts.filter((d) => isApproved(d.status) || d.status === "sent")
-    : drafts.filter((d) => isApproved(d.status))
-  ).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
+  // an already-sent draft go out again, so it is gone.
+  const allCandidates = drafts.filter((d) => isApproved(d.status)).filter((d) => !senderFilter || resolveSender(d.sender) === senderFilter);
   // ?ids=… (mobil-fladen /send): kun disse drafts. Se src/lib/send-ids.ts.
   const candidates = onlyIds(allCandidates, parseIds(req.url));
 
@@ -264,7 +251,7 @@ export async function POST(req: Request) {
   const sentKeys = new Set<string>();
   const sentEmails = new Set<string>();   // global by-address ledger (cross-sender)
   for (const d of drafts) {
-    if (d.status !== "sent") continue;
+    if (!countsAsSent(d.status)) continue;
     if (d.leadId) sentIds.add(d.leadId);
     const k = bizKey(d.name, d.city);
     if (k) sentKeys.add(k);
@@ -272,7 +259,7 @@ export async function POST(req: Request) {
   }
 
   if (candidates.length === 0) {
-    await store.delete(LOCK_KEY).catch(() => {});
+    await releaseSendLock(lockHandle).catch(() => {});
     return NextResponse.json({ ok: true, sent: 0, failed: 0, skipped: [], note: "Ingen udkast at sende." });
   }
 
@@ -351,7 +338,7 @@ export async function POST(req: Request) {
           const isFollowUp = fuGate?.ok === true;
 
           // 2. NEVER re-contact (only meaningful when we have a Sheets row to check).
-          if (lead && !force && !isFollowUp && alreadyEmailed(lead)) {
+          if (lead && !isFollowUp && alreadyEmailed(lead)) {
             skipped.push({ name: d.name, reason: "allerede kontaktet" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet" });
             continue;
@@ -365,7 +352,7 @@ export async function POST(req: Request) {
           }
           // 2b. Already-sent ledger — a sibling draft for this business already went
           // out (catches ingest leads with no Sheets row + place_id mismatch).
-          if (!force && !isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
+          if (!isFollowUp && ((d.leadId && sentIds.has(d.leadId)) || sentKeys.has(bizKey(d.name, d.city)))) {
             skipped.push({ name: d.name, reason: "allerede sendt (kø-historik)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede sendt (kø-historik)" });
             continue;
@@ -373,7 +360,7 @@ export async function POST(req: Request) {
           // 2c. Global by-address ledger — NEVER mail the same address twice,
           // across BOTH Lucas and Charlie (Lucas's krav: jeg må ikke sende til en
           // mail Charlie allerede har skrevet til, og omvendt). Cold-only route.
-          if (!force && !isFollowUp && sentEmails.has(targetKey)) {
+          if (!isFollowUp && sentEmails.has(targetKey)) {
             skipped.push({ name: d.name, reason: "allerede kontaktet (samme mail)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "allerede kontaktet (samme mail)" });
             continue;
@@ -407,9 +394,7 @@ export async function POST(req: Request) {
           // lige før afsendelse og respektér dens aktuelle body/subject/sender/
           // status.
           const fresh = (await readQueue()).find((q) => q.id === d.id) ?? d;
-          const freshOk = force
-            ? isApproved(fresh.status) || fresh.status === "sent"
-            : isApproved(fresh.status);
+          const freshOk = isApproved(fresh.status);
           if (!freshOk) {
             skipped.push({ name: d.name, reason: `status ændret undervejs (${fresh.status})` });
             send({ type: "skipped", index: processed, total, name: d.name, reason: `status ændret undervejs (${fresh.status})` });
@@ -460,6 +445,17 @@ export async function POST(req: Request) {
           }
 
           const { id: senderId, transport, from } = transportFor(fresh.sender);
+          // 9. RESERVATION (Sol 25/9): approved → sending atomisk i DB, med modtageren
+          // låst. Fejler den (afvist/redigeret/taget), sendes intet. En "sending"-kladde
+          // kan ikke overskrives af forældede kø-snapshots og tæller som sendt i ledgers.
+          const reserved = await reserveForSend(d.id, target).catch(() => null);
+          if (!reserved || reserved.body !== fresh.body || reserved.subject !== fresh.subject || reserved.sender !== fresh.sender) {
+            if (reserved) await finishSend(d.id, "approved", null).catch(() => {});
+            const reason = reserved ? "ændret lige før afsendelse — prøv igen" : "kunne ikke reservere (ændret eller allerede i gang)";
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
+            continue;
+          }
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({
@@ -469,36 +465,43 @@ export async function POST(req: Request) {
               text: finalText,
               html: applySignatureHtml(fresh.body, senderId),
             });
-            // Adressen gemmes, så en senere opfølgning kun kan gå til en adresse der faktisk er skrevet til.
-            await updateDraft(d.id, { status: "sent", sentBy: senderId, recipientEmail: target });
-            // Add to the in-run ledgers so a same-business / same-address sibling
-            // later in this run skips — across BOTH senders.
-            if (d.leadId) sentIds.add(d.leadId);
-            if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
-            const sk = bizKey(d.name, d.city);
-            if (sk) sentKeys.add(sk);
-            sentEmails.add(targetKey);
-            // Stamp Sheets only when there IS a row (ingest leads have none).
-            if (lead) {
-              const rowIndex = parseInt(lead.id, 10) - 2;
-              if (Number.isFinite(rowIndex) && rowIndex >= 0) {
-                // Opfølgning: stempl kun followupSentAt — første-kontakt-datoen bevares,
-                // og et "replied" der lander undervejs overskrives aldrig.
-                await updateLeadEmailStatus(
-                  rowIndex,
-                  isFollowUp ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString(), emailStatus: "sent" },
-                ).catch(() => {});
-              }
-            }
-            sent++;
-            send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: senderId });
           } catch (err) {
             failed++;
-            send({ type: "failed", index: processed, total, name: d.name, sender: senderId, error: String(err) });
+            // Kun når serveren med sikkerhed ikke tog mailen, må kladden blive sendbar igen.
+            // Tvetydige fejl (timeout efter DATA) bliver i "sending" og afstemmes manuelt.
+            const retryable = failedBeforeAccept(err);
+            if (retryable) await finishSend(d.id, "approved", null).catch(() => {});
+            else await flagForReconcile(d.name, target, "usikkert om mailen gik ud (forbindelsen faldt)");
+            send({ type: "failed", index: processed, total, name: d.name, sender: senderId, error: String(err), uncertain: !retryable });
+            continue;
           }
+          // Mailen ER sendt herfra. Bogføring må aldrig få den til at se usendt ud.
+          const recorded = await finishSend(d.id, "sent", senderId).catch(() => false);
+          if (!recorded) await flagForReconcile(d.name, target, "sendt, men ikke registreret i køen");
+          // Add to the in-run ledgers so a same-business / same-address sibling
+          // later in this run skips — across BOTH senders.
+          if (d.leadId) sentIds.add(d.leadId);
+          if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
+          const sk = bizKey(d.name, d.city);
+          if (sk) sentKeys.add(sk);
+          sentEmails.add(targetKey);
+          // Stamp Sheets only when there IS a row (ingest leads have none).
+          if (lead) {
+            const rowIndex = parseInt(lead.id, 10) - 2;
+            if (Number.isFinite(rowIndex) && rowIndex >= 0) {
+              // Opfølgning: stempl kun followupSentAt — første-kontakt-datoen bevares,
+              // og et "replied" der lander undervejs overskrives aldrig.
+              await updateLeadEmailStatus(
+                rowIndex,
+                isFollowUp ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString(), emailStatus: "sent" },
+              ).catch(() => {});
+            }
+          }
+          sent++;
+          send({ type: "sent", index: processed, total, name: d.name, n: sent, sender: senderId, ...(recorded ? {} : { unrecorded: true }) });
         }
       } finally {
-        await store.delete(LOCK_KEY).catch(() => {});
+        await releaseSendLock(lockHandle).catch(() => {});
       }
 
       send({ type: "done", ok: true, sent, failed, remaining, skipped, mode: "live" });
@@ -514,4 +517,16 @@ export async function POST(req: Request) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+// En mail der måske/sikkert er gået ud uden at køen ved det: kladden står i "sending"
+// (sendes aldrig igen) — og Lucas får en opgave om at tjekke Gmail Sendt.
+async function flagForReconcile(name: string, to: string, why: string): Promise<void> {
+  console.error(JSON.stringify({ evt: "approve-send.reconcile", name, to, why }));
+  if (!pgEnabled()) return;
+  await createTask(getDb(), {
+    title: `Afstem mail til ${name} (${to}): ${why} — tjek Gmail Sendt`.slice(0, 200),
+    owner: "lucas",
+    due: new Date().toISOString().slice(0, 10),
+  }).catch((err) => console.error(JSON.stringify({ evt: "approve-send.reconcile_task_failed", error: String(err).slice(0, 200) })));
 }

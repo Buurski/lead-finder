@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { appendDrafts, newDraftId, readQueue, updateDraft } from "@/lib/queue";
 import type { QueueDraft } from "@/lib/queue";
+import { countsAsSent } from "@/lib/draft-status";
 import { composeColdEmail } from "@/lib/compose";
 import type { ComposeLead } from "@/lib/compose";
 import { getLeads } from "@/lib/sheets";
@@ -156,7 +157,7 @@ async function ingest() {
   for (const d of queue) {
     // Historical Cowork, cron-ingest, and VPS-generated drafts all share this backfill.
     if (!isLeadgenBackfillSource(d.source)) continue;
-    if (d.status === "sent" || d.status === "rejected") continue;
+    if (countsAsSent(d.status) || d.status === "rejected") continue;
     if (d.recipientEmail && d.recipientEmail.trim()) continue;
     let email = d.leadId ? emailByLeadId.get(d.leadId) : undefined;
     if (!email && d.name) email = emailByBizKey.get(bizKey(d.name, d.city) ?? "");

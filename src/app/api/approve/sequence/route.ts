@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb, pgEnabled } from "@/lib/db/client";
+import { countsAsSent } from "@/lib/draft-status";
 import { company, outreach } from "@/lib/db/schema";
 import { ANGLE_LABEL, DEFAULT_TOUCHES, GAP_DAYS, MAX_TOUCHES, nextAngle, type Angle } from "@/lib/hq/sequence";
 
@@ -50,11 +51,11 @@ export async function GET(req: Request) {
       updatedAt: outreach.updatedAt, draft: outreach.draft,
     }).from(outreach).where(eq(outreach.companyRowNo, rowNo));
 
-    const sent = rows.filter((r) => r.status === "sent").sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+    const sent = rows.filter((r) => countsAsSent(r.status)).sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
     const maxTouches = Math.min(c?.maxTouches ?? DEFAULT_TOUCHES, MAX_TOUCHES);
     const lastSent = sent.at(-1) ?? null;
     const nextStepNo = sent.length + 1;
-    const hasOpen = rows.some((r) => r.status === "pending" || r.status === "edited" || r.status === "approved");
+    const hasOpen = rows.some((r) => r.status === "pending" || r.status === "edited" || r.status === "approved" || r.status === "sending");
     const stoppedRow = rows.find((r) => {
       const d = r.draft as { stoppedReason?: string } | null;
       return r.status === "rejected" && d?.stoppedReason;

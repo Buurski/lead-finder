@@ -5,6 +5,7 @@
 // Task 4. Ny fil (rører ikke queue.ts/sequence.ts, som jeg ikke ejer).
 import "server-only";
 import { readQueue } from "../queue.ts";
+import { countsAsSent } from "../draft-status.ts";
 import { DEFAULT_TOUCHES, ANGLE_LABEL, type Angle } from "./sequence.ts";
 
 export interface FollowUpOverview {
@@ -19,7 +20,7 @@ export interface FollowUpOverview {
 /** companyRowNo = company.rowNo (legacy Sheets-rækkenummer, delt nøgle med køen). */
 export async function getFollowUpOverview(companyRowNo: number, maxTouches?: number | null): Promise<FollowUpOverview> {
   const mine = (await readQueue()).filter((d) => d.leadId === String(companyRowNo) && d.source === "opfoelgning");
-  const sent = mine.filter((d) => d.status === "sent");
+  const sent = mine.filter((d) => countsAsSent(d.status));
   const latest = [...mine].sort((a, b) => (b.step ?? 0) - (a.step ?? 0) || b.updatedAt.localeCompare(a.updatedAt))[0];
   const stopped = mine.find((d) => d.stoppedReason);
   return {
