@@ -213,7 +213,8 @@ function InboxApp() {
       } else if (pendingSort === "jev") {
         base = [...base].sort((a, b) => jevPriority(b) - jevPriority(a));
       }
-      return base;
+      // Kladder uden modtager nederst — de kan ikke godkendes før mailen er fundet.
+      return [...base.filter((d) => d.to), ...base.filter((d) => !d.to)];
     }
     if (tab === "approved") return drafts.filter((d) => d.status === "approved" || d.status === "edited");
     if (tab === "sent") return drafts.filter((d) => d.status === "sent");

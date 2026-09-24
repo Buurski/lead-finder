@@ -197,3 +197,10 @@ Rest-risiko (accepteret, dokumenteret): `writeQueue` sletter stadig ikke-endelig
 | I4-F4 samme-millisekund-kollision i versions-guard | Rest-risiko: kræver afvisning og forældet skrivning i samme ms |
 
 Loop stoppet efter 3 plan-runder + 4 inspektioner: fundene er gået fra dobbelt-send-veje til sjældne race-vinduer. E2E-testmail bestået 25/9 01:00: SPF/DKIM/DMARC pass, Indbakke, persisteret `sent`, andet klik sender 0, gen-godkend 409.
+
+## CHECKPOINT 25/9 ~01:30 (før /compact)
+
+- Bølge 1 DONE og live (`d1f601c`). Hermes default: blog-migrationer 0011+ i gang (kort t_6c9d3972, run 613); 8789/8790 lukket for offentligheden (port-guard), 8787 uændret.
+- Bølge 2 påbegyndt på feature-grenen (IKKE deployet): C3 — `/api/approve/queue` approve/approve-many kræver brugbar modtager (422 / skippedNoEmail); /approve sorterer kladder uden mail nederst.
+- Næste i bølge 2: daglig send-loft ~20 + List-Unsubscribe-header (mailto) i `approve/send`, nodemailer 8→10 med testmail (samme E2E-opskrift: scratchpad `start-e2e.mjs` + isoleret `pglite-e2e`, Sheets-nøgle genskabes via `sa-keyfile.py`), "standard-kladde"-mærkat (C4), derefter claudex (Sol) + én deploy.
+- Penge-handlinger til Lucas: faktura 010 Jernbanecaféen (kladde, forfald 27/9), faktura 011 KT VVS (kladde); 73 interesseret + 63 svaret i CRM.
