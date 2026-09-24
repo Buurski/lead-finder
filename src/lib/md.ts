@@ -12,7 +12,8 @@ export function cleanMarkdown(input: string): string {
 function inline(input: string): string {
   let value = escapeHtml(input);
   value = value.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_match, label: string, url: string) =>
-    `<a href="${url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+    // url er allerede escaped af escapeHtml ovenfor (" → &quot;) — escapes ikke igen.
+    `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`);
   return value.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 }
 

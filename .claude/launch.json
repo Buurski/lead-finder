@@ -4,8 +4,19 @@
     {
       "name": "lead-system",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "hq-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/Buur/AppData/Local/Temp/claude/C--Users-Buur-Documents/b18f9c14-b2da-460a-af36-5b9597fc98db/scratchpad/start-local.mjs"
+      ],
+      "port": 3457
     }
   ]
 }
