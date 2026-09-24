@@ -283,7 +283,11 @@ function scoreLead(c, html) {
 }
 async function phaseRate() {
   const { pool } = rd("pool");
-  let rated = fs.existsSync(F("rated")) ? rd("rated").rated : [];
+  // Kun dagens pool: WORKDIR overlever mellem dage, og uden dette filter voksede
+  // lg_v2_rated.json fra 2/9 (470 rækker) — remaining blev negativ efter 26 leads,
+  // og finalize valgte gårsdagens allerede-kontaktede leads (0-3 kladder/dag).
+  const poolIds = new Set(pool.map((c) => c.place_id));
+  let rated = (fs.existsSync(F("rated")) ? rd("rated").rated : []).filter((r) => poolIds.has(r.place_id));
   const doneIds = new Set(rated.map((r) => r.place_id));
   const todo = pool.filter((c) => !doneIds.has(c.place_id)).slice(0, 26);
   let i = 0;

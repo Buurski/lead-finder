@@ -84,7 +84,9 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // brancheopremsning i stedet for at vælte hele kørslen.
   const clients = await getClients().catch(() => []);
 
+  const seenBefore = new Set(existing.map((r) => r.leadId));
   let judged = 0;
+  let firstTime = 0;
   let errors = 0;
   let i = 0;
   async function worker() {
@@ -93,13 +95,15 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       const rec = await judgeLead(lead, clients);
       await saveShadow(rec);
       judged++;
+      if (!seenBefore.has(lead.id)) firstTime++;
       if (rec.error) errors++;
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));
 
-  // Never-judged leads left after this run (re-judging old records is a bonus, not backlog).
-  const remaining = Math.max(0, countUnjudged(leads, existing) - judged);
+  // Never-judged leads left after this run. Only first-time judgments shrink the
+  // backlog — subtracting re-judgments made it look smaller than it was.
+  const remaining = Math.max(0, countUnjudged(leads, existing) - firstTime);
 
   // Phase 2: pending outreach drafts (approve UI ranking). Same deadline
   // as phase 1 — a slow phase 1 simply leaves fewer drafts judged tonight,

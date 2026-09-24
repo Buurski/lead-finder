@@ -96,10 +96,19 @@ const INELIGIBLE_STATUS = new Set(["client", "dead", "skip", "skip-bounced", "no
  */
 export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: number, firstIds?: Set<string>): Lead[] {
   const judgedAt = new Map(existing.map((r) => [r.leadId, r.judgedAt]));
+  const byId = new Map(existing.map((r) => [r.leadId, r]));
   const eligible = leads.filter(
     (l) => l.websiteStatus === "ok" && l.website.trim() !== "" && !INELIGIBLE_STATUS.has(l.status),
   );
-  const rank = (l: Lead) => (firstIds?.has(l.id) ? 0 : 1);
+  // Kun indtil dækket: et kladde-lead der allerede har en dom med det aktuelle
+  // spørgsmålssæt (lignerKunde) springer IKKE køen over. Før 25/9 gjorde de det
+  // hver nat, så de ~225 kladde-leads blev genvurderet i ring (40-74/nat) og
+  // 1.015 af 1.291 leads aldrig blev vurderet.
+  const needsJudging = (id: string) => {
+    const r = byId.get(id);
+    return !r || r.judgment?.lignerKunde === undefined;
+  };
+  const rank = (l: Lead) => (firstIds?.has(l.id) && needsJudging(l.id) ? 0 : 1);
   const sorted = [...eligible].sort((a, b) => {
     const ra = rank(a);
     const rb = rank(b);
