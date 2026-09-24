@@ -28,7 +28,9 @@ export function isStaleLeadgen(at: string | undefined, now: number): boolean {
 /** Hvor mange nye kladder denne leadgen-fil må give endnu: loftet gælder pr. fil
  *  (pr. dag), så en manuel kørsel + cronen eller et cron-retry ikke giver 2 x 20. */
 export function ingestAllowance(queue: { source?: string; createdAt?: string }[], fileAt: string): number {
-  const already = queue.filter((d) => d.source === "leadgen-ingest" && (d.createdAt ?? "") >= fileAt).length;
+  // places-direct (VPS-apply) når i dag kun en lokal fil på VPS'en, men tælles med
+  // så loftet holder hvis den nogensinde skriver til appens kø.
+  const already = queue.filter((d) => (d.source === "leadgen-ingest" || d.source === "places-direct") && (d.createdAt ?? "") >= fileAt).length;
   return Math.max(0, INGEST_MAX_NEW - already);
 }
 

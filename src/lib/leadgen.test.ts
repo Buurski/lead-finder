@@ -40,4 +40,5 @@ test("ingestAllowance — loftet gælder pr. leadgen-fil, ikke pr. kørsel", () 
   assert.equal(ingestAllowance(mk(25, "2026-09-25T06:30:05Z"), at), 0);
   assert.equal(ingestAllowance(mk(20, "2026-09-24T06:30:05Z"), at), 20, "gårsdagens tæller ikke");
   assert.equal(ingestAllowance(mk(20, "2026-09-25T06:30:05Z", "daily-engine"), at), 20, "andre kilder tæller ikke");
+  assert.equal(ingestAllowance(mk(5, "2026-09-25T04:01:30Z", "places-direct"), at), 15, "VPS-apply fra samme fil tæller med");
 });
