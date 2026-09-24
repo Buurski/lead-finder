@@ -28,6 +28,8 @@ for (const table of TABLES) {
     (await source`select column_name from information_schema.columns where table_name = ${table} and data_type = 'jsonb'`).map((r) => r.column_name),
   );
   const rows = await source.unsafe(`select * from "${table}"`);
+  // Migration 0007 seeder Lucas/Charlie i den tomme kopi — erstat dem med kildens rækker.
+  if (table === "app_user") await pg.query(`delete from app_user`);
   for (const row of rows) {
     const cols = Object.keys(row);
     const vals = cols.map((c) => (row[c] === null ? null : jsonCols.has(c) ? JSON.stringify(row[c]) : row[c] instanceof Date ? row[c].toISOString() : row[c]));
