@@ -57,6 +57,13 @@
       "when": 1790203964527,
       "tag": "0007_seed_app_users",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790250412193,
+      "tag": "0008_easy_kid_colt",
+      "breakpoints": true
     }
   ]
 }
