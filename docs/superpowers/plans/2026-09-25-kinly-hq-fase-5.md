@@ -103,7 +103,9 @@ Oprindelige delskridt:
 - [ ] Lokal: PGlite-kopi + migrationer + `next start`; login lokalt via bootstrap-kode (kun lokal kopi). Klik: HQ, Opgaver (redigér, vigtig, dato), Kunder (kort, relation), Viden, SEO, Godkendelse (Til-felt, demo-vælger), Svar (Scan nu, Åbn i Gmail), Settings (kalenderlink). Screenshots desktop + 390 px. Subagent-council (Sonnet "Charlie klikker") parallelt med Codex-diff-review.
 - [ ] Codex Sol inspicerer merge-diffen (kode-only, send/auth/proxy/migration-filer) → ret fund.
 
-### Task 1.6: Migrér Neon → push main → live-tjek
+### Task 1.6: E2E-testmail (FØR push) → migrér Neon → push main → live-tjek
+
+Rækkefølge (Sol inspektion F5): E2E-testmailen på den isolerede kopi SKAL bestå (modtager, persisteret `sent`, headers) før Neon migreres og main pushes. Turbopack-build verificeres på Vercel-preview af feature-grenen (lokal Turbopack fejler på `next/font/google`-fetch; `next build --webpack` er grøn lokalt).
 
 - [ ] Neon-backup: notér tidspunkt (PITR) og kør `node scripts/db-migrate.mjs` med `DATABASE_URL=$DATABASE_URL_UNPOOLED` (fra `.env.neon`, aldrig printet). Verificér 11 rækker + nye tabeller.
 - [ ] `git log HEAD..origin/main` = tom (ellers merge igen). Push feature; `git push origin feat/crm-hq-2026-09-22:main` (fast-forward).
@@ -152,3 +154,18 @@ Kandidater: "Lovet kunden"-liste, ugentlig Sendt-mappe↔CRM-afstemning, nav-di�
 ## Inspektionsfokus (Codex Sol, frisk session, base `pre-merge-main-2026-09-25` = nuværende prod)
 
 Prioritér: `src/app/api/approve/send/route.ts`, `src/lib/send-safety.ts`, `src/lib/queue.ts`, `src/lib/pg/queue.ts`, `src/lib/draft-status.ts` + kaldere, `src/proxy.ts`, `src/app/api/kalender/[user]/route.ts`, `src/lib/hq/calendar.ts`, `src/app/settings/CalendarCard.tsx`, `drizzle/0008-0010` + journal/snapshots, `src/app/replies/*` (direkte send fjernet), `src/app/api/approve/regenerate/route.ts` (ingen hardcodet Basic), `src/lib/senders.ts` (From = afsenderkonto). Resten af feature-diffen (kunder/opgaver/SEO-UI) er sekundær.
+
+## Sol R2 (plan) + inspektion 1 — dispositioner (bygget i `d73095c`)
+
+| Fund | Disposition |
+|---|---|
+| R2-F1 / — ECONNECTION tvetydig | Accepteret — fjernet fra sikker-listen |
+| R2-F2 / I-F1 modtager fra run-start | Accepteret — frisk modtager + gates for ALLE kladder; reservation betinget på `updatedAt`-version |
+| R2-F3 loft tæller kun bekræftede | Accepteret — loft/pacing på forsøg; kørslen stopper ved første SMTP-fejl |
+| R2-F4 mutationer på sending | Accepteret — 409 i `/api/approve/queue`; `updateDraft` (pg) er ét betinget række-UPDATE der nægter endelige |
+| R2-F5 / I-F4 sending usynlig | Accepteret — `ReconcileBanner` på /godkendelse + `reconcile`-handling (sendt / ikke sendt) |
+| I-F2 kunde får kold mail (c:/place_id) | Accepteret — `stopOpenForRows` matcher også place_id og `c:<uuid>`; `customerForLead` fail-closed før SMTP |
+| I-F3 updateDraft-race | Accepteret — række-UPDATE (pg) |
+| I-F5 E2E efter push | Accepteret — Task 1.6 omordnet |
+
+Tests: 469/469 (`npm run test`), heraf 8 i `src/lib/send-safety.test.ts`.
