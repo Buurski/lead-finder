@@ -132,3 +132,13 @@ test("customerForDraft: manuelt oprettet kunde uden place_id matches på navn+by
   assert.equal(await customerForDraft({ leadId: "ChIJnyt", name: "Noget andet", city: "Ikast" }, "kontakt@salon.dk"), true, "mail");
   assert.equal(await customerForDraft({ leadId: "ChIJnyt", name: "Salon Ønske", city: "Ikast" }, "x@y.dk"), false, "anden by, anden mail");
 });
+
+test("customerForDraft: kunde med mailen kun på kontaktpersonen", async () => {
+  const db = await freshTestDb();
+  const { company, contact } = await import("./db/schema.ts");
+  const { customerForDraft } = await import("./pg/queue.ts");
+  const [c] = await db.insert(company).values({ rowNo: -4, name: "VVS Hansen", city: "Ikast", clientNo: 9 }).returning({ id: company.id });
+  await db.insert(contact).values({ companyId: c.id, name: "Per", email: "Per@VVS-hansen.dk" });
+  assert.equal(await customerForDraft({ leadId: "ChIJandet", name: "Hansens Rør", city: "Brande" }, "per@vvs-hansen.dk"), true);
+  assert.equal(await customerForDraft({ leadId: "ChIJandet", name: "Hansens Rør", city: "Brande" }, "ukendt@x.dk"), false);
+});

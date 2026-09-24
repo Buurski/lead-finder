@@ -4,7 +4,7 @@
 import "server-only";
 import { and, asc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
-import { company, outreach } from "../db/schema.ts";
+import { company, contact, outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
 import { bizKey } from "../leads/suppress.ts";
 
@@ -155,13 +155,16 @@ export async function updateDraftRow(id: string, patch: Partial<QueueDraft>, now
  *  oprettet kunde har ofte hverken rækkenummer eller place_id fælles med en leadgen-kladde (Sol R3). */
 export async function customerForDraft(d: { leadId: string; name?: string; city?: string }, recipient: string): Promise<boolean> {
   if (await customerForLead(d.leadId)) return true;
-  const customers = await getDb()
-    .select({ name: company.name, city: company.city, email: company.email })
-    .from(company)
-    .where(or(and(sql`${company.clientNo} is not null`, eq(company.clientRemoved, false)), eq(company.leadStatus, "client")));
+  const isCustomer = or(and(sql`${company.clientNo} is not null`, eq(company.clientRemoved, false)), eq(company.leadStatus, "client"));
+  const customers = await getDb().select({ id: company.id, name: company.name, city: company.city, email: company.email }).from(company).where(isCustomer);
   const key = bizKey(d.name, d.city);
   const to = recipient.trim().toLowerCase();
-  return customers.some((c) => (key && bizKey(c.name, c.city) === key) || (to && c.email.trim().toLowerCase() === to));
+  if (customers.some((c) => (key && bizKey(c.name, c.city) === key) || (to && c.email.trim().toLowerCase() === to))) return true;
+  if (!to || !customers.length) return false;
+  // Kontaktpersoner hos kunder (onboarding kan have mailen KUN på kontakten).
+  const hit = await getDb().select({ id: contact.id }).from(contact)
+    .where(and(inArray(contact.companyId, customers.map((c) => c.id)), sql`lower(trim(${contact.email})) = ${to}`)).limit(1);
+  return hit.length > 0;
 }
 
 async function customerForLead(leadId: string): Promise<boolean> {

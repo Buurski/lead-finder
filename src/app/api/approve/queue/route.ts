@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { finishSend, readQueue, updateDraft, writeQueue } from "@/lib/queue";
 import { sendLockHeld } from "@/lib/send-safety";
+import { isFollowUpDraft } from "@/lib/followup-gate";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
@@ -171,7 +172,9 @@ export async function POST(req: Request) {
     if (!ok) return NextResponse.json({ error: "kladden er allerede afstemt" }, { status: 409 });
     // Sendt ⇒ stempl også kontakten, så ingen anden vej ser leadet som ukontaktet.
     if (payload.result === "sent" && /^\d+$/.test(d.leadId)) {
-      await updateLeadEmailStatus(Number(d.leadId) - 2, { emailSentAt: new Date().toISOString(), emailStatus: "sent" }).catch((err: unknown) =>
+      // Samme felter som send-ruten: opfølgning stempler kun followupSentAt (bevarer første kontakt og "replied").
+      const stamp = isFollowUpDraft(d) ? { followupSentAt: new Date().toISOString() } : { emailSentAt: new Date().toISOString(), emailStatus: "sent" };
+      await updateLeadEmailStatus(Number(d.leadId) - 2, stamp).catch((err: unknown) =>
         console.error(JSON.stringify({ evt: "reconcile.stamp_failed", leadId: d.leadId, error: String(err as unknown).slice(0, 200) })));
     }
     return NextResponse.json({ ok: true, status: payload.result === "sent" ? "sent" : "approved" });
