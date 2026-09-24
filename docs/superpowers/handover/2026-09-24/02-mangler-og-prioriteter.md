@@ -38,8 +38,12 @@ Plan (Codex Sol, se `raa/codex-sol-strategi.md`):
 6. `/api/agent/*` er undtaget fra proxy (main): hver rute skal selv verificere HMAC; HMAC viser VPS'en, ikke personen → acceptér kun `actor` fra en allowlist pr. Hermes-profil.
 7. VPS: `/root/.hermes/state/prod-env-decoded.env/.json` ligger dekodet på disk (marketing så det) → slet/flyt (bed Hermes default om det). To åbne next-servere på 0.0.0.0:3210/:4317 → luk.
 8. Lucas' gamle app-password står i chat-transcriptet → nyt app-password når alt kører.
+9. **KT VVS-case** (gren `agent/0924-kt-vvs-case`) viser telefon/personnavn i tekst, metadata og screenshots → sanér før merge; brug ikke KT VVS som case-link i mails før det (i dag linker `demos.ts` kun ktvvs.vercel.app-demoen, ikke en case — tjek).
+10. Vercel Blob `putAsset` er public → ingen upload af upublicerede blog-billeder før privat adgang.
 
 ## C. Godkendelse + kolde mails (penge, kort sigt)
+
+0. **Menneskelige penge-handlinger først** (cofounder): faktura 010/aftale med Jernbanecaféen, varme svar der venter, Ikast-pris. Tjek aktuel status i HQ/Gmail — det er mere værd end ny kode.
 
 1. **Test hele send-kæden ende-til-ende** efter merge: én kladde med modtager `buur.aigro@gmail.com` (kun test-adressen!) → godkend → Send godkendte → verificér i modtagerens "Vis original": SPF/DKIM/DMARC = PASS, ren tekst-signatur, From lucas@kinly.dk. Færdig når headers viser pass.
 2. Rigtig opvarmning: nyt domæne-send → maks ~20/dag i starten, 22–45 s pause (findes), ingen billeder/tracking-pixels, og list-unsubscribe-header (mangler — tjek).

@@ -22,6 +22,11 @@ blog-idéer ind. Alt skal have **rating**. Hermes skal kende alt og være aligne
 | Crons `agent-blog-cyklus` (man 08) | Hermes marketing | aktiv, aldrig kørt → **pause til boardet + /blog er live** |
 | `agent-blog-ideer` (ugentlig), `agent-blog-dybdescan` (månedlig) | spec | ikke oprettet (må først efter B2 + C er live og testet manuelt) |
 
+## ⚠ Kendte fejl i blog-kernen (cofounder 24/9)
+
+- Review AFVIST: `src/lib/hq/posts.ts:310–313` beskytter valgstrengen, men agenten kan bytte billedet under Lucas' valgte A/B → lås det valgte asset (hash/id) ved valg. Fuld `npm test` afbrudt efter 420 s (ikke bestået) — kør den fulde suite lokalt (Windows/Claude) i stedet for på VPS'en.
+- Vercel Blob `putAsset` er public → private kandidater indtil valgt/publiceret.
+
 ## ⚠ Migrations-kollision (tre sæt!)
 
 main har `0006_superb_shadowcat`, `0007_seed_app_users` (kørt på Neon). Claude-feature har `0006_task_priority`,
@@ -81,10 +86,28 @@ merger til lead-system main uden at tjekke `git log origin/main` og journalen f�
 - Mindre er mere: v1 = board + manuel idé + Hermes-bearbejdning + tjekliste + udgiver + ref-måling. Konkurrent-scan og
   dybdescan kan vente til der er 3 udgivne opslag med data.
 
-## Koordinering med Hermes
+## Koordinering med Hermes — AFTALT 24–25/9 (svar i raa/hermes-*-alignment-svar.md)
 
-Brief sendt 24/9 aften til marketing- og default-profilen (se `raa/hermes-blog-alignment-svar.md` når de har svaret):
-aftalt migrations-rækkefølge, pause `agent-blog-cyklus`, tilføjelserne ovenfor ind i spec + kanban, cron-plan
-(`blog-arbejder` dagligt, `agent-blog-ideer` ugentligt, `blog-signaler` i lead-system, udgiver hvert 15. min), ingen
-merge til lead-system main før Claude-merge, og at de svarer med enighed/indsigelser. Næste session: læs svaret,
-før blog-sporet røres.
+**Roller:** marketing ejer blog-sporet (spec, kort, kladder, crons). Claude (næste session) merger CRM-feature til main FØRST.
+**Default-Hermes er integrator på lead-system EFTER Claudes merge** (regenererer blog-migrationerne som 0011+ og merger blog-grenen).
+Én integrator pr. repo pr. dag.
+
+**Overdragelses-protokol (næste session SKAL gøre dette):** når feature er merget til main og Neon er migreret:
+send merge-SHA + bekræftelse på at `drizzle/meta/_journal.json` + snapshots er regenereret med drizzle-kit (ikke kun omdøbte filer)
+til default og marketing (Hermes-MCP `messages_send` eller `ssh hermes-vps 'hermes -p default -z "…"'`) og skriv det som kommentar
+på kanban-kort **t_6c9d3972**. Blog-grenens `0008_easy_kid_colt` + `0009_vengeful_wonder_man` er WIP og må aldrig køres/merges som de er.
+
+**Hermes har gjort (verificér ved lejlighed):**
+- Spec opdateret med Rev. A–E, release-gates og kinly.dk-gate; kort t_91d3080f, t_a916f19f, t_b948769b, t_2c38e6db, t_784ba422, t_d7ceaed5, t_a7487917
+  dækker 600–900 ord, ≥5 kilder, council-log, FAQ 3–5, ≥2 interne links, `?ref=blog-<slug>`, A/B-billeder uden stock/Space Bunny,
+  noindex og skjult nav indtil første rigtige opslag. De tre kladder (~1.400 ord) er IKKE klar til udgivelse.
+- `kinly-preview-intake` pin'et til GPT-6 Sol (første udkast + visuel review), DeepSeek kun mekaniske rettelser, Luna-kontrol til sidst.
+- Tunnel-rotation virker; GEO-loopets "beskidt vault"-fejl er rettet (tester 28/9 08:20); nat-build-tidsbudget rettet (første rigtige kørsel 25/9 06:00).
+- Dekodede env-filer flyttet til tmpfs `/run/hermes-sensitive/` (væk ved reboot; ikke sikker sletning af swap/backup); port 3210/4317 lukket.
+- Ingen nye blog-crons oprettet (korrekt — først når board + /blog er live og testet manuelt).
+
+**Uenigheder (accepteret):** rating-læring gemmes i `wiki/kinly/` (revisionsspor), ikke i modellens personlige memory. DeepSeek må ikke rette visuelt design uden Sol-kontrol.
+
+**Kræver Lucas:** (1) pause `agent-blog-cyklus` (id 448f179bcad1) før 28/9 08:00 — kort t_90f6b3f6; (2) ja til mail-gatens
+"frozen window" (0 afsendelse) + én grøn kørsel pr. job, så crm-mail-sync og inbox-digest kan tændes igen (kundetidslinjerne er forældede indtil da).
+**Kræver Claude:** merge-SHA + regenereret journal (protokollen ovenfor).

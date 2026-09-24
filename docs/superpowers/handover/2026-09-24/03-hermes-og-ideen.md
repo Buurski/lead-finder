@@ -44,6 +44,17 @@ Fra Lucas: go-live af /blog + svar på kladderne; valg af blogbilleder; KT VVS-c
 Fra Claude Code: færdiggør blog-board/udgiver i lead-system sammen med merge; én autoritativ CRM-optælling med entydige nævnere før score v2; release-gate for mail-sync (grøn "0-send"-test) så sync kan tændes igen.
 **Må ikke røres af Claude:** `KnowledgeOS/drafts/blog/*` (Lucas retter selv), `data/gbp-opslag.md`, Hermes' profil-scripts/cron/credentials/release-gates, kinly.dk's hero/priser/cookie-tekst (Lucas' alene).
 
+## Tilføjet fra cofounder-profilens handover (raa/hermes-cofounder.md)
+
+- **Cofounder = router, ikke bygger**: omsætter Lucas'/Charlies beslutninger til små testbare kanban-kort, angriber dårlige præmisser, lader et andet hoved kontrollere arbejdet. Crons: `morgenrapport.py` 07:00, `uge-rapport.sh` fre 16:00, `posthog-uge-brief` + `composio-version-watchdog` man.
+- **Blog-kernen (B4) er AFVIST**: `src/lib/hq/posts.ts:310–313` beskytter valgstrengen, men agenten kan bytte selve billedet under Lucas' valgte A/B → rettelseskort ligger hos "Charlie"-profilen. Fuld `npm test` blev afbrudt efter 420 s (ikke bestået).
+- **Vercel Blob `putAsset` er public** → upload ikke A/B-kandidater før privat adgang/udsat upload er valgt.
+- **KT VVS-case** (gren `agent/0924-kt-vvs-case`, `48a68e7`) viser telefon/personnavn i tekst, metadata og screenshots → skal saneres (Lucas' privatlivskorrektion) før merge og før case-links bruges i mails.
+- **Jev**: mailkategori ramte kun 51 % mod blandede labels; confidence er ikke kalibreret → kun rådgiver, aldrig autonom frasortering. Mail-release-gate stoppede korrekt (43/43 ugyldige Jev-svar); payload-rettelse bestod 9/9 + én live-probe, men jobs er stadig pauset → ny grøn gate (0-send, KV-readback, pause ved fejl) før genstart.
+- **Menneskelige handlinger der blokerer penge**: faktura 010/aftale med Jernbanecaféen og varme svar — tjek aktuel status (18/9-rapportens tal er ikke live).
+- **Fjern/nedton**: GEO-loop med nul svar, uafprøvede ugentlige signal-jobs, ekstra Jev-aksers pseudo-præcision. Mål henvendelser og aftaler før flere scores.
+- Buur-cms lokal klon er bagud og har tre ukendte untracked scripts — ryd dem ikke væk uden at spørge.
+
 ## Min kritiske vurdering (Claude)
 
 1. **For mange parallelle byggere på samme repo** (denne session, en Codex/Claude-session på main, Hermes-worktrees på VPS'en). Det er årsagen til den divergens der nu kræver en større merge. Aftal én integrations-ejer pr. repo pr. dag. Hermes bygger på grene; kun én merger til main.

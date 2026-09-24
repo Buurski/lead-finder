@@ -24,7 +24,8 @@ bliver til samtaler og kunder, (3) kunderne er i fokus (hvad har vi lovet, hvad 
 
 1. **Merge main ind i `feat/crm-hq-2026-09-22`** efter planen i 02-A (tag først, migrationer omnummereres 0008–0010, main's login vinder, `/profil` → `/settings`). Kør `claudex-loop`: skriv merge-planen, lad Codex gpt-6-sol reviewe den, byg, lad Sol inspicere diffen.
 2. **Luk sikkerheds-/send-punkterne i 02-B** i samme bølge (send-svar-ruten, "sendt men ikke registreret", Charlie-afsender, regenerate-Basic, ICS-token, dekodet env på VPS via Hermes).
-3. **Verificér og deploy én gang**: `npm run verify`, browser-gennemklik af de Codex-byggede spor (opgaver/kalender, kunder/relationer/Viden, SEO) på lokal kopi, én ende-til-ende testmail til `buur.aigro@gmail.com` med DMARC-pass, prod-deploy, live-tjek. Opdatér memory + vault-status.
+3. **Giv Hermes overdragelsen** (06, "Overdragelses-protokol"): merge-SHA + regenereret drizzle-journal til default + marketing og kanban-kort t_6c9d3972. Default integrerer derefter blog-grenen som 0011+.
+4. **Verificér og deploy én gang**: `npm run verify`, browser-gennemklik af de Codex-byggede spor (opgaver/kalender, kunder/relationer/Viden, SEO) på lokal kopi, én ende-til-ende testmail til `buur.aigro@gmail.com` med DMARC-pass, prod-deploy, live-tjek. Opdatér memory + vault-status.
 
 Derefter C → D → E → F (blog: se 06, koordineret med Hermes) → G i 02, med en plan pr. bølge. Du må ændre rækkefølgen, hvis du finder noget vigtigere — skriv hvorfor i planen.
 
