@@ -10,7 +10,7 @@ import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress"
 import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
 import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
-import { INGEST_MAX_NEW, isStaleLeadgen, orderForIngest } from "@/lib/leadgen";
+import { ingestAllowance, isStaleLeadgen, orderForIngest } from "@/lib/leadgen";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -197,9 +197,11 @@ async function ingest() {
   let skippedVoice = 0;
   let skippedInvalid = 0;
 
+  // file.at findes her (ellers havde isStaleLeadgen kastet).
+  const allowance = ingestAllowance(queue, file.at as string);
   let capped = 0;
   for (const it of orderForIngest(items)) {
-    if (drafts.length >= INGEST_MAX_NEW) {
+    if (drafts.length >= allowance) {
       capped++;
       continue;
     }
@@ -271,6 +273,7 @@ async function ingest() {
     skippedVoice,
     skippedInvalid,
     capped,
+    allowance,
     sheetsDedup: sheetsOk,
     bizKeyWarns: bizKeyWarns.slice(0, 10),
     note: "kø fyldt — ingen mail sendt",

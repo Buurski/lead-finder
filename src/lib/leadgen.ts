@@ -25,6 +25,13 @@ export function isStaleLeadgen(at: string | undefined, now: number): boolean {
   return !Number.isFinite(t) || now - t > INGEST_MAX_AGE_MS;
 }
 
+/** Hvor mange nye kladder denne leadgen-fil må give endnu: loftet gælder pr. fil
+ *  (pr. dag), så en manuel kørsel + cronen eller et cron-retry ikke giver 2 x 20. */
+export function ingestAllowance(queue: { source?: string; createdAt?: string }[], fileAt: string): number {
+  const already = queue.filter((d) => d.source === "leadgen-ingest" && (d.createdAt ?? "") >= fileAt).length;
+  return Math.max(0, INGEST_MAX_NEW - already);
+}
+
 /** Kandidater med brugbar mail først, derefter højeste fitScore. */
 export function orderForIngest<T extends { email?: string | null; fitScore?: number }>(items: T[]): T[] {
   const mail = (x: T) => (hasUsableEmail(x.email ?? undefined) ? 1 : 0);
