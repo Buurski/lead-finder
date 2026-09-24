@@ -12,7 +12,9 @@ export type BlogStage = (typeof BLOG_STAGES)[number];
 export const STAGE_LABEL: Record<BlogStage, string> = {
   ide: "Idéer",
   arbejder: "Arbejder",
-  klar: "Klar",
+  // Dataværdien er stadig "klar"; labelen siger hvad der skal ske herfra
+  // (spec-review 24-09, punkt 9): næste handling er Lucas' gennemlæsning.
+  klar: "Til gennemlæsning",
   publicer: "Publicer",
   udgivet: "Udgivet",
 };
@@ -28,6 +30,36 @@ export class BlogInputError extends Error {}
 
 const SLUG = /^[a-z0-9-]{3,80}$/;
 const PUBLISHED_URL = /^https:\/\/kinly\.dk\/blog\//;
+
+// Postgres' unique-violation. Drizzle pakker databasens fejl ind i en
+// DrizzleQueryError, så koden står på `cause` (og ikke på den yderste fejl).
+// postgres-js kalder feltet constraint_name, PGlite kalder det constraint.
+const UNIQUE_VIOLATION = "23505";
+const SLUG_CONSTRAINT = "blog_post_slug_uq";
+
+/** Sand når fejlen (eller dens cause-kæde) er et unique-violation på slug-indekset. */
+export function isSlugConflict(err: unknown): boolean {
+  let cur: unknown = err;
+  for (let depth = 0; depth < 4 && cur && typeof cur === "object"; depth++) {
+    const e = cur as { code?: unknown; constraint?: unknown; constraint_name?: unknown; cause?: unknown };
+    if (String(e.code ?? "") === UNIQUE_VIOLATION) {
+      const name = String(e.constraint ?? e.constraint_name ?? "");
+      if (!name || name === SLUG_CONSTRAINT) return true;
+    }
+    cur = e.cause;
+  }
+  return false;
+}
+
+/**
+ * To samtidige kald kan begge slippe gennem sammenstøds-tjekket nedenfor, og så
+ * er det indekset der siger nej. Kapløbet skal give en pæn 400 — ikke en rå 500
+ * (review-fund 24-09). Andre fejl kastes uændret videre.
+ */
+function slugConflictError(err: unknown, slug: string): unknown {
+  if (!isSlugConflict(err)) return err;
+  return new BlogInputError(`slugen "${slug}" er allerede brugt af et andet indlæg`);
+}
 
 const SLUG_CHARS: Record<string, string> = { æ: "ae", ø: "oe", å: "aa", ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
 
@@ -105,28 +137,35 @@ export async function createPost(db: Db, patch: BlogPatch, actor: string) {
   const fields = validPatch(patch);
   if (!fields.title) throw new BlogInputError("Titel mangler");
   const slug = fields.slug || slugFrom(fields.title);
-  return db.transaction(async (tx) => {
-    const [twin] = await tx.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.slug, slug));
-    if (twin) throw new BlogInputError(`slugen "${slug}" er allerede brugt af et andet indlæg`);
-    const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, "ide"));
-    const [row] = await tx
-      .insert(blogPost)
-      .values({
-        ...fields,
-        slug,
-        stage: "ide",
-        position: (top[0]?.value ?? 0) + 1,
-        createdBy: actor,
-        updatedBy: actor,
-      })
-      .returning();
-    return row;
-  });
+  try {
+    return await db.transaction(async (tx) => {
+      const [twin] = await tx.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.slug, slug));
+      if (twin) throw new BlogInputError(`slugen "${slug}" er allerede brugt af et andet indlæg`);
+      const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, "ide"));
+      const [row] = await tx
+        .insert(blogPost)
+        .values({
+          ...fields,
+          slug,
+          stage: "ide",
+          position: (top[0]?.value ?? 0) + 1,
+          createdBy: actor,
+          updatedBy: actor,
+        })
+        .returning();
+      return row;
+    });
+  } catch (err) {
+    // Kapløb om slug'en: indekset siger nej, og det skal blive en 400.
+    throw slugConflictError(err, slug);
+  }
 }
 
 // Stage-guards ét sted. Reglerne (spec 24-09-2026):
 // - til Publicer: kun lucas/charlie, og det sætter publishRequestedAt
-// - væk fra Publicer: publishRequestedAt ryddes (aftalen er aflyst inden næste kørsel)
+// - væk fra Publicer: kun lucas/charlie, og publishRequestedAt ryddes (aftalen er
+//   aflyst inden næste kørsel). Agenten må ikke selv kunne trække et kort ud af
+//   køen og dermed rydde aftalen i tavshed (review-fund 24-09).
 // - til Udgivet: afvist her — kun markPublished må gøre det
 // - fra Udgivet: afvist (v1 kan ikke trække et udgivet indlæg tilbage)
 // - agenten (hermes) må kun target'e ide/arbejder/klar
@@ -135,42 +174,51 @@ export async function createPost(db: Db, patch: BlogPatch, actor: string) {
 // publishRequestedAt — også når kortet står i Publicer eller Udgivet.
 export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: string) {
   const fields = validPatch(patch);
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
-    if (!before) throw new BlogInputError("indlægget findes ikke");
-    const from = before.stage as BlogStage;
-    const target = (fields.stage ?? from) as BlogStage;
-    const moving = fields.stage !== undefined && fields.stage !== before.stage;
+  try {
+    return await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
+      if (!before) throw new BlogInputError("indlægget findes ikke");
+      const from = before.stage as BlogStage;
+      const target = (fields.stage ?? from) as BlogStage;
+      const moving = fields.stage !== undefined && fields.stage !== before.stage;
 
-    if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
-    if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes af udgiver-jobbet — brug markPublished");
-    if (fields.stage !== undefined && actor === "hermes" && !AGENT_STAGES.includes(target)) {
-      throw new BlogInputError("agenten må kun flytte mellem Idéer, Arbejder og Klar");
-    }
-    if (moving && target === "publicer" && !PUBLISH_ACTORS.has(actor)) {
-      throw new BlogInputError("kun Lucas eller Charlie kan sætte et indlæg i Publicer");
-    }
+      if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
+      if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes af udgiver-jobbet — brug markPublished");
+      // Ud af Publicer er en aftale om udgivelse — den må kun aflyses af et menneske.
+      if (moving && from === "publicer" && !PUBLISH_ACTORS.has(actor)) {
+        throw new BlogInputError("kun Lucas eller Charlie kan flytte et indlæg ud af Publicer");
+      }
+      if (fields.stage !== undefined && actor === "hermes" && !AGENT_STAGES.includes(target)) {
+        throw new BlogInputError("agenten må kun flytte mellem Idéer, Arbejder og Klar");
+      }
+      if (moving && target === "publicer" && !PUBLISH_ACTORS.has(actor)) {
+        throw new BlogInputError("kun Lucas eller Charlie kan sætte et indlæg i Publicer");
+      }
 
-    // Tom slug betyder "udled af titlen" — af den nye titel hvis der kommer en.
-    if (fields.slug === "") fields.slug = slugFrom(String(fields.title ?? before.title));
+      // Tom slug betyder "udled af titlen" — af den nye titel hvis der kommer en.
+      if (fields.slug === "") fields.slug = slugFrom(String(fields.title ?? before.title));
 
-    // Samme sammenstøds-tjek som i createPost. Uden det rammer et slug der er i brug
-    // den rå unique-violation fra Postgres, og ruten svarer 500 i stedet for 400.
-    if (fields.slug !== undefined && fields.slug !== before.slug) {
-      const [twin] = await tx.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.slug, fields.slug));
-      if (twin) throw new BlogInputError(`slugen "${fields.slug}" er allerede brugt af et andet indlæg`);
-    }
+      // Samme sammenstøds-tjek som i createPost. Uden det rammer et slug der er i brug
+      // den rå unique-violation fra Postgres, og ruten svarer 500 i stedet for 400.
+      if (fields.slug !== undefined && fields.slug !== before.slug) {
+        const [twin] = await tx.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.slug, fields.slug));
+        if (twin) throw new BlogInputError(`slugen "${fields.slug}" er allerede brugt af et andet indlæg`);
+      }
 
-    const set: Partial<typeof blogPost.$inferInsert> = { ...fields, updatedBy: actor, updatedAt: new Date() };
-    if (moving) {
-      const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, target));
-      set.position = (top[0]?.value ?? 0) + 1;
-      set.publishRequestedAt = target === "publicer" ? new Date() : null;
-    }
+      const set: Partial<typeof blogPost.$inferInsert> = { ...fields, updatedBy: actor, updatedAt: new Date() };
+      if (moving) {
+        const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, target));
+        set.position = (top[0]?.value ?? 0) + 1;
+        set.publishRequestedAt = target === "publicer" ? new Date() : null;
+      }
 
-    const [after] = await tx.update(blogPost).set(set).where(eq(blogPost.id, id)).returning();
-    return after;
-  });
+      const [after] = await tx.update(blogPost).set(set).where(eq(blogPost.id, id)).returning();
+      return after;
+    });
+  } catch (err) {
+    // Kapløb om slug'en: indekset siger nej, og det skal blive en 400.
+    throw slugConflictError(err, String(fields.slug ?? ""));
+  }
 }
 
 /** Udgiver-jobbet melder et indlæg live. Eneste vej til kolonnen Udgivet. */

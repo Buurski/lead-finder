@@ -12,6 +12,7 @@ import {
   deletePost,
   deriveSlug,
   getPost,
+  isSlugConflict,
   listPosts,
   markPublished,
   updatePost,
@@ -133,6 +134,38 @@ test("flyt væk fra Publicer rydder publishRequestedAt", async () => {
   assert.equal(back.publishRequestedAt, null);
 });
 
+test("Klar-kolonnen heder \"Til gennemlæsning\" — dataværdien er stadig klar", () => {
+  assert.equal(STAGE_LABEL.klar, "Til gennemlæsning");
+  assert.equal(STAGE_LABEL.ide, "Idéer");
+  assert.equal(STAGE_LABEL.publicer, "Publicer");
+  assert.deepEqual([...BLOG_STAGES], ["ide", "arbejder", "klar", "publicer", "udgivet"]);
+});
+
+test("agenten kan ikke trække et kort ud af Publicer — aftalen aflyses kun af et menneske", async () => {
+  const post = await seed();
+  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+
+  for (const stage of ["klar", "arbejder", "ide"]) {
+    await assert.rejects(updatePost(db, post.id, { stage }, "hermes"), /ud af Publicer/);
+  }
+  // Det gamle fælles-login ("delt") og ukendte aktører må heller ikke aflyse aftalen.
+  await assert.rejects(updatePost(db, post.id, { stage: "klar" }, "delt"), /ud af Publicer/);
+
+  const [after] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  assert.equal(after.stage, "publicer");
+  assert.ok(after.publishRequestedAt instanceof Date);
+
+  // En ren felt-rettelse mens kortet står i Publicer er stadig tilladt for agenten.
+  const note = await updatePost(db, post.id, { note: "læst igennem af Lucas" }, "hermes");
+  assert.equal(note.stage, "publicer");
+  assert.ok(note.publishRequestedAt instanceof Date);
+
+  // Mennesket kan — og så ryddes aftalen.
+  const back = await updatePost(db, post.id, { stage: "klar" }, "charlie");
+  assert.equal(back.stage, "klar");
+  assert.equal(back.publishRequestedAt, null);
+});
+
 test("stage-skift lægger kortet bagerst i målkolonnen", async () => {
   const a = await seed("Første");
   const b = await seed("Anden");
@@ -224,6 +257,39 @@ test("listPosts filtrerer på kolonne og sorterer position asc, derefter nyeste 
   assert.equal(arbejde[0].stage, "arbejder");
   assert.equal((await listPosts(db, { stage: "ide" })).length, 1);
   await assert.rejects(listPosts(db, { stage: "vundet" }), /ukendt kolonne/);
+});
+
+test("unique-violation på slug (23505) bliver en BlogInputError, ikke en rå 500", async () => {
+  // Drizzle pakker databasens fejl ind i en DrizzleQueryError: koden står på cause.
+  const pakket = Object.assign(new Error('Failed query: insert into "blog_post"'), {
+    cause: Object.assign(new Error('duplicate key value violates unique constraint "blog_post_slug_uq"'), {
+      code: "23505",
+      constraint: "blog_post_slug_uq",
+    }),
+  });
+  // postgres-js (prod) kalder feltet constraint_name — begge navne skal fanges.
+  assert.equal(isSlugConflict(pakket), true);
+  assert.equal(isSlugConflict({ code: "23505", constraint_name: "blog_post_slug_uq" }), true);
+  assert.equal(isSlugConflict({ code: "23505" }), true);
+  // Andre indekser og andre fejlkoder er ikke slug-sammenstød.
+  assert.equal(isSlugConflict({ code: "23505", constraint_name: "company_place_id_uq" }), false);
+  assert.equal(isSlugConflict({ code: "23503", constraint_name: "blog_post_slug_uq" }), false);
+  assert.equal(isSlugConflict(new Error("noget andet")), false);
+  assert.equal(isSlugConflict(null), false);
+
+  // Kapløbs-stien (begge kald slipper gennem tjekket, indekset siger nej) kan ikke
+  // fremkaldes med PGlite's ene forbindelse. Fejl-mappingen testes derfor direkte:
+  // en db hvis transaktion kaster den pakkede unique-violation.
+  const fejlendeDb = { transaction: async () => { throw pakket; } } as unknown as Db;
+  await assert.rejects(createPost(fejlendeDb, { title: "Kapløb om slug" }, "hermes"), BlogInputError);
+  await assert.rejects(createPost(fejlendeDb, { title: "Kapløb om slug" }, "hermes"), /allerede brugt/);
+  await assert.rejects(updatePost(fejlendeDb, "00000000-0000-0000-0000-000000000001", { slug: "kaplob-om-slug" }, "hermes"), /allerede brugt/);
+
+  // Andre fejl kastes uændret videre — dem svarer ruten 500 på, og det skal den.
+  const andenFejl = new Error("forbindelsen røg");
+  const doedDb = { transaction: async () => { throw andenFejl; } } as unknown as Db;
+  await assert.rejects(createPost(doedDb, { title: "Rigtig fejl" }, "hermes"), /forbindelsen røg/);
+  await assert.rejects(updatePost(doedDb, "00000000-0000-0000-0000-000000000001", { slug: "rigtig-fejl" }, "hermes"), /forbindelsen røg/);
 });
 
 test("getPost slår op på id og slug og henter body med", async () => {

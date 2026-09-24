@@ -11,6 +11,7 @@ import { getAttention } from "@/lib/hq/attention";
 import { cmsUsageAll } from "@/lib/hq/cms-usage";
 import { listUpdates, type UpdateStatus } from "@/lib/hq/customer-updates";
 import { listPipeline } from "@/lib/hq/deals";
+import { BlogInputError, getPost, listPosts } from "@/lib/hq/posts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
@@ -20,7 +21,7 @@ import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies"] as const;
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post"] as const;
 
 function authorized(req: Request): boolean {
   return verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET));
@@ -81,6 +82,29 @@ export async function GET(req: Request) {
         reason: i.reason, leadId: i.leadId ?? null, gmailLink: i.gmailLink ?? null,
       }));
       return NextResponse.json({ ok: true, summary, generatedBy: d?.generatedBy ?? null, items });
+    }
+    case "blog": {
+      // Blog-pipelinen (/blog): kort-listen uden body. stage udeladt = alle kolonner.
+      const stage = (url.searchParams.get("stage") || "").trim();
+      try {
+        const cards = await listPosts(db, stage ? { stage } : {});
+        return NextResponse.json({ ok: true, stage: stage || null, cards });
+      } catch (err) {
+        if (err instanceof BlogInputError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
+        throw err;
+      }
+    }
+    case "blog-post": {
+      // Fuld post inkl. body — id (uuid) eller slug.
+      const key = (url.searchParams.get("id") || url.searchParams.get("slug") || "").trim();
+      if (!key) return NextResponse.json({ ok: false, error: "id eller slug mangler" }, { status: 400 });
+      try {
+        const post = await getPost(db, key);
+        return NextResponse.json({ ok: true, post });
+      } catch (err) {
+        if (err instanceof BlogInputError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
+        throw err;
+      }
     }
     default:
       return NextResponse.json({ ok: false, error: "ukendt what", mulige: WHATS }, { status: 400 });
