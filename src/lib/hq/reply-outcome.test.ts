@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
-import { activity, company, outreach, task } from "../db/schema.ts";
-import { recordReplyOutcome, ReplyOutcomeError } from "./reply-outcome.ts";
+import { activity, company, contact, outreach, task } from "../db/schema.ts";
+import { findCompanyByEmail, recordReplyOutcome, ReplyOutcomeError } from "./reply-outcome.ts";
 
 let db: Db;
 let companyId: string;
@@ -121,4 +121,33 @@ test("udfald: kladder kendt kun på draft.leadId stoppes; svaret tæller ikke l�
   const [d] = await db.select().from(outreach).where(eq(outreach.id, "ing1"));
   assert.equal(d.status, "rejected");
   assert.equal((await db.select().from(company).where(unhandledReplyWhere())).length, 0);
+});
+
+// "Svaret"-flowet på Svar-siden: UI'et kender kun AF SENDEREN (ikke et lead-id),
+// så opslaget skal ramme både firmaets egen mail og en registreret kontakt.
+test("findCompanyByEmail finder kunden på firmaets mail og på kontaktpersonens, ellers null", async () => {
+  await db.update(company).set({ email: "hej@vida.dk" }).where(eq(company.id, companyId));
+  await db.insert(contact).values({ companyId, name: "Allan", email: "Allan@IkastAutoservice.dk", role: "værkfører" });
+  assert.equal((await findCompanyByEmail(db, "hej@vida.dk"))?.rowNo, 42);
+  // Versaler og mellemrum skal ikke betyde noget (afsenderadresser er ikke case-sensitive).
+  assert.equal((await findCompanyByEmail(db, "  ALLAN@ikastautoservice.dk "))?.id, companyId);
+  assert.equal(await findCompanyByEmail(db, "ukendt@ingen.dk"), null);
+  assert.equal(await findCompanyByEmail(db, ""), null);
+  assert.equal(await findCompanyByEmail(db, "ikke-en-mail"), null);
+});
+
+test("besvaret: logger svaret med noten, rører ikke lead_status og opretter ingen opgave", async () => {
+  await recordReplyOutcome(db, { leadId: "42", outcome: "besvaret", note: "Passer tirsdag den 29.?", owner: "lucas", actor: "lucas" });
+  const [c] = await db.select().from(company).where(eq(company.id, companyId));
+  assert.equal(c.leadStatus, "new");
+  const [log] = await db.select().from(activity).where(eq(activity.companyId, companyId));
+  assert.equal(log.summary, "Svar sendt til VIDA Skønhedsklinik — Passer tirsdag den 29.?");
+  assert.match(log.summary, /^svar sendt/i); // vises som "ud" i kundeoverblikket
+  assert.equal((await db.select().from(task).where(eq(task.companyId, companyId))).length, 0);
+});
+
+test("besvaret uden note giver en ren linje uden løs colon", async () => {
+  await recordReplyOutcome(db, { leadId: "42", outcome: "besvaret", owner: "lucas", actor: "lucas" });
+  const [log] = await db.select().from(activity).where(eq(activity.companyId, companyId));
+  assert.equal(log.summary, "Svar sendt til VIDA Skønhedsklinik");
 });

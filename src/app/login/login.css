@@ -25,6 +25,9 @@
 .login-btn:hover { background: #000; }
 .login-btn:active { transform: scale(0.98); }
 .login-msg { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.login-setup { font-size: 13px; color: var(--text-muted); }
+.login-setup > summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.login-setup > form { margin-top: 12px; }
 .login-alt { font-size: 13px; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   .login-btn { transition: none; }

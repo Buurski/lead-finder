@@ -23,12 +23,12 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
   { href: "/agenter", label: "Agenter", icon: "Sparkles", hint: "Hermes og sessioner" },
+  { href: "/mit-rum", label: "Mit rum", icon: "NotebookPen", hint: "Dine private noter" },
 ];
 
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
 export const NAV_MORE: NavItem[] = [
   { href: "/virksomheder", label: "Alle virksomheder", icon: "Building2", hint: "Alle virksomheder og leads" },
-  { href: "/profil", label: "Profil", icon: "Users", hint: "Mine opgaver og kalender" },
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
@@ -38,7 +38,7 @@ export const NAV_MORE: NavItem[] = [
   { href: "/previews", label: "Gratis udkast", icon: "LayoutGrid", hint: "Spørgeskemaer og demoer" },
   { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig" },
   { href: "/messenger", label: "Messenger", icon: "MessagesSquare", hint: "Messenger-tråde" },
-  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed" },
+  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Din konto, adgangskode og motoren" },
 ];
 
 // Flad liste til ⌘K: hele IA'en, rail-item først.

@@ -24,6 +24,11 @@ export const appUser = pgTable("app_user", {
   id: text("id").primaryKey(), // "lucas" | "charlie"
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  // Personligt login: scrypt-hash af adgangskoden. null = koden er ikke sat endnu.
+  passwordHash: text("password_hash"),
+  // Engangs-opsætningsbevis (hash + udløb). Nulstilles ved brug.
+  setupHash: text("setup_hash"),
+  setupExpiresAt: timestamp("setup_expires_at", { withTimezone: true }),
 });
 
 export const company = pgTable(

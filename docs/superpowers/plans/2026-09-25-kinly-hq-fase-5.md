@@ -1,0 +1,133 @@
+# Kinly HQ fase 5 — merge, send-sikkerhed, kunder/SEO, blog
+
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development (UI/mekanik) — men bølge 1 (merge + send/auth/DB) koder orkestratoren selv (Fable-5 §1: dyr fejl ⇒ orkestrator). Steps bruger `- [ ]`.
+
+**Goal:** Én verificeret prod-version af Kinly HQ, hvor main (personligt login, agent-API, svar-indbakke) og feature (kunder, opgaver, SEO-historik, kladde-forbedringer) er samlet, send-vejen ikke kan dobbelt-sende eller "sende uden at registrere", og derefter kunde-/SEO-/blog-sporene bygges ovenpå.
+
+**Architecture:** Merge `origin/main` ind i `feat/crm-hq-2026-09-22` (main vinder auth + svar-indbakke). Feature-migrationerne gen-genereres med drizzle-kit som 0008–0010 med rigtige snapshots, køres på Neon før push. Send-rettelser er små og lokale i `approve/send` + ét atomisk lås-helper. Push af merge til main = prod-deploy (Vercel auto-deploy).
+
+**Tech Stack:** Next 16 / React 19, drizzle-orm + drizzle-kit (Postgres/Neon, PGlite lokalt), node:test, Vercel.
+
+**Spec:** `docs/superpowers/handover/2026-09-24/` (00–07 + raa/). Verificeret mod kode/DB 25/9 (se "Verificerede fakta").
+
+## Global Constraints (ordret fra handover/Lucas)
+
+- Udgående = kladder. Testmails kun til `buur.aigro@gmail.com`.
+- Send-gaten må aldrig svækkes (`canSendTo`, `followup-gate.ts`, "sendt = endelig", dobbeltklik-værn, kunder ⇒ ingen kold mail).
+- Hemmeligheder kun fra filer; aldrig i git/chat/logs. Vercel env: `vercel env add NAME production --value "…" -y < /dev/null`.
+- Claude rører aldrig Hermes' cron-config/.env. Tal via `ssh hermes-vps 'hermes -p <profil> -z "…"'` (Hermes-MCP er nede i denne session).
+- Migrér før deploy. Git-tag før destruktivt arbejde. Max 2–3 prod-deploys/dag.
+- Composio aldrig i produktionskode.
+- Ingen orange i CRM (lime `#C8F04B`). Faner øverst. 120–150 ms bevægelse.
+- Bash-heredoc halverer backslashes → regex-kode via Edit/Write-tool.
+- Aldrig `npm run dev`; `next start` på build, luk bagefter.
+
+## Verificerede fakta (25/9, denne session)
+
+- `origin/main` = `8599a78`; feature 25 commits foran, main 28 foran. `git merge-tree`: konflikter kun i `src/proxy.ts`, `src/components/shell/Sidebar.tsx`, `src/app/replies/RepliesClient.tsx`.
+- Neon `drizzle.__drizzle_migrations`: 8 rækker, sidste `created_at=1790203964527` (= main `0007_seed_app_users`). Tabellerne `company_relation`, `seo_snapshot` og kolonnerne `task.note/important` findes IKKE. `app_user`: 2 brugere, 1 med adgangskode.
+- Feature-migrationerne 0006–0008 er håndskrevne SQL uden snapshots og uden journal-rækker. `schema.ts` mangler CHECK `a_id < b_id` og indeks `company_relation_b_id_idx` som SQL'en har.
+- `outreach.status` er `text`; pg `writeQueue` har `setWhere: not FINAL` (FINAL = sent eller system-stoppet) → en sendt kladde kan ikke skrives om. Send-låsen i `approve/send` er KV get→put (ikke atomisk).
+- `/api/agent/tasks` (main) begrænser allerede `actor` til `lucas|charlie`.
+- Magic-link-koden findes også på main (login-siden beholder `?t=` for gamle links).
+
+## Beslutninger (og hvorfor)
+
+1. **"Send svar direkte" fjernes** (route + UI + `LIVE_SEND_ARMED`). Main's "Åbn i Gmail" svarer i den rigtige tråd med korrekte headers og DMARC; en sikker direkte-send kræver modtager-binding, trådheaders og atomisk reservation = ny send-vej at vedligeholde for et behov der allerede er dækket. Kan genopbygges senere hvis Lucas savner den.
+2. **Migrationer gen-genereres trinvis med drizzle-kit** (0008 task, 0009 relation, 0010 seo), så hver har snapshot og journal — Hermes kan så køre `db:generate` for blog som 0011 uden at genskabe vores tabeller.
+3. **Send-status `sending`** før SMTP (ikke FINAL): SMTP ok → `sent`; SMTP-fejl → `approved`; bogføring fejler efter SMTP → bliver `sending` (sendes aldrig igen, tæller i send-ledgeren, opgave "afstem" oprettes). Alternativet "sent før SMTP" gør fejlede mails permanent "sendt" pga. FINAL-guarden.
+4. **Atomisk send-lås** via `counter`-tabellen (INSERT … ON CONFLICT DO UPDATE … WHERE udløbet RETURNING) når pg er slået til; KV-fallback lokalt.
+5. **ICS-token** = tilfældigt token i KV (`ics-token/<user>`), roterbart fra `/settings`. Ingen ny migration (holder blog på 0011).
+6. **`/profil` slettes**; kalenderlink + rotér-knap flyttes til main's `/settings`.
+7. **Agent-actor (B6):** accepteret rest-risiko — én delt HMAC-secret pr. VPS; allowlist lucas|charlie findes. Pr.-profil-secrets kræver Hermes .env-ændring (ikke vores) → forslag i vault.
+8. **npm audit:** kun rapport + ikke-brydende `npm audit fix` hvis den ikke rører send-libs; nodemailer-major i egen bølge med testmail.
+
+---
+
+## BØLGE 1 — Merge + send/auth-sikkerhed + migration + én deploy
+
+### Task 1.1: Sikkerhedsnet og merge
+
+**Files:** konfliktfiler `src/proxy.ts`, `src/components/shell/Sidebar.tsx`, `src/app/replies/RepliesClient.tsx`; slet `src/app/api/replies/[leadId]/send-reply/route.ts`, `src/app/profil/page.tsx`.
+
+- [ ] `git tag pre-merge-2026-09-25 HEAD && git tag pre-merge-main-2026-09-25 origin/main && git push origin pre-merge-2026-09-25 pre-merge-main-2026-09-25`
+- [ ] `git merge origin/main --no-ff -m "merge: main (personligt HQ) ind i feat/crm-hq"`
+- [ ] `proxy.ts`: foren undtagelser (main's login/setup/agent + feature's `api/kalender/`). Hver undtagelse skal selv være fail-closed (kalender: token-tjek → 404).
+- [ ] `Sidebar.tsx`: main's bruger/avatar/log-ud + feature's `/kunder`-nav.
+- [ ] `RepliesClient.tsx`: tag main's version (`git checkout --theirs`), fjern kald til `send-reply`. Slet send-reply-route. Grep: `grep -rn "send-reply\|LIVE_SEND_ARMED\|needsArm" src` → 0 hits.
+- [ ] Grep regenerate: `grep -n "Basic " src/app/api/approve/regenerate/route.ts src/lib/hermes-client.ts` → ingen hardcodede legitimationer.
+- [ ] Login: main's login-side vinder; magic-link bliver kun som main har den (gamle links). Ingen ny magic-vej.
+- [ ] `/profil` → flyt kalenderlink til `/settings` (Task 1.4), slet `/profil` + nav-post.
+- [ ] `rm -rf .next && npm run typecheck && npm run lint` → grøn.
+- [ ] Commit merge.
+
+### Task 1.2: Migrationer 0008–0010 med drizzle-kit
+
+**Files:** slet `drizzle/0006_task_priority.sql`, `drizzle/0007_company_relation.sql`, `drizzle/0008_seo_snapshot.sql`; modify `src/lib/db/schema.ts` (tilføj `check("company_relation_order", sql\`a_id < b_id\`)` + `index("company_relation_b_id_idx").on(t.bId)`); create `drizzle/0008_task_priority.sql`, `0009_company_relation.sql`, `0010_seo_snapshot.sql` + `meta/0008-0010_snapshot.json` + journal.
+
+- [ ] Midlertidigt fjern `companyRelation`- og `seoSnapshot`-tabellerne fra schema.ts (behold task-kolonner) → `npx drizzle-kit generate --name task_priority` → 0008.
+- [ ] Genindsæt `companyRelation` → `npx drizzle-kit generate --name company_relation` → 0009.
+- [ ] Genindsæt `seoSnapshot` → `npx drizzle-kit generate --name seo_snapshot` → 0010.
+- [ ] `git diff src/lib/db/schema.ts` = kun check+indeks-tilføjelsen. `npx drizzle-kit generate` igen → "No schema changes".
+- [ ] Journal: 11 rækker, `when` stigende og > 1790203964527.
+- [ ] Kør migrationer mod frisk PGlite-kopi af Neon (`scripts/dev-db-snapshot.mjs`) → alle 3 nye tabeller/kolonner findes; eksisterende data uændret (count company/outreach før=efter).
+- [ ] Commit.
+
+### Task 1.3: Send-vej — `sending`-status + atomisk lås (orkestrator koder, TDD)
+
+**Files:** `src/lib/queue.ts` (DraftStatus + `"sending"`), `src/app/api/approve/send/route.ts`, create `src/lib/send-lock.ts` + `src/lib/send-lock.test.ts`, `src/lib/send-status.test.ts` (eller udvid eksisterende approve-send-test).
+
+- [ ] Test: lås — to samtidige `acquireSendLock()` → præcis én `true`; udløbet lås kan tages; `releaseSendLock()` frigiver. (pg via PGlite-testhelper hvis findes, ellers InMemory-fallback.)
+- [ ] Test: send-flow med fake transport — (a) SMTP ok ⇒ `sent`; (b) SMTP kaster ⇒ `approved`, failed++; (c) SMTP ok men `updateDraft(sent)` kaster ⇒ status forbliver `sending`, event `sent_unrecorded`, tæller som sendt, opgave oprettet best-effort; (d) `updateDraft(sending)` kaster ⇒ ingen SMTP.
+- [ ] Test: en `sending`-kladde tæller i `sentIds/sentKeys/sentEmails`-ledgeren og vælges aldrig som kandidat.
+- [ ] Implementér; kør tests → grøn.
+- [ ] `grep -rn '"sent"' src/lib/canSendTo.ts src/lib/followup-gate.ts src/lib/leads/*.ts` — vurdér hvor `sending` skal behandles som sendt (kontakt-historik/dublet-spærre). Minimum: send-ledger + ingest-dublet (`OPEN_OR_SENT`).
+- [ ] Commit.
+
+### Task 1.4: ICS-token i KV + /settings
+
+**Files:** `src/lib/hq/calendar.ts` (fjern `calendarToken`-HMAC, tilføj `getIcsToken(user)`/`rotateIcsToken(user)` via `store`), `src/app/api/kalender/[user]/route.ts`, main's `src/app/settings/*` (kalender-sektion + "Nyt link"-knap via server action), test `src/lib/hq/calendar.test.ts`.
+
+- [ ] Test: rotate giver nyt 64-hex token; gammelt token → 404; manglende token i KV → 404 (fail-closed).
+- [ ] Implementér; `/settings` viser abonnér-link for den loggede bruger + "Lav nyt link".
+- [ ] Commit.
+
+### Task 1.5: Verify + browser-gennemklik
+
+- [ ] `npm run verify` grøn (citér tal).
+- [ ] Lokal: PGlite-kopi + migrationer + `next start`; login lokalt via bootstrap-kode (kun lokal kopi). Klik: HQ, Opgaver (redigér, vigtig, dato), Kunder (kort, relation), Viden, SEO, Godkendelse (Til-felt, demo-vælger), Svar (Scan nu, Åbn i Gmail), Settings (kalenderlink). Screenshots desktop + 390 px. Subagent-council (Sonnet "Charlie klikker") parallelt med Codex-diff-review.
+- [ ] Codex Sol inspicerer merge-diffen (kode-only, send/auth/proxy/migration-filer) → ret fund.
+
+### Task 1.6: Migrér Neon → push main → live-tjek
+
+- [ ] Neon-backup: notér tidspunkt (PITR) og kør `node scripts/db-migrate.mjs` med `DATABASE_URL=$DATABASE_URL_UNPOOLED` (fra `.env.neon`, aldrig printet). Verificér 11 rækker + nye tabeller.
+- [ ] `git log HEAD..origin/main` = tom (ellers merge igen). Push feature; `git push origin feat/crm-hq-2026-09-22:main` (fast-forward).
+- [ ] Vercel: fjern `LIVE_SEND_ARMED`. Charlie-env → sensitive (pull til fil i scratchpad, rm, add `--sensitive`, slet fil).
+- [ ] Live: login-side 200, beskyttet side uden login → 302/401, `/api/health` 200, `/api/hermes/status` ok, `/api/kalender/lucas` uden token 404, en cron-rute uden secret 401.
+- [ ] E2E-testmail: én kladde til `buur.aigro@gmail.com` gennem godkend → send (lokal kørsel mod PGlite med rigtige SMTP-creds fra `~/.kinly/lucas-app-password`) → "Vis original": SPF/DKIM/DMARC pass, From lucas@kinly.dk, ren tekst-signatur.
+
+### Task 1.7: Overdragelse + dokumentation
+
+- [ ] Hermes default + marketing: merge-SHA, journal-bekræftelse (11 migrationer, 0008–0010 genereret af drizzle-kit m. snapshots), "blog = 0011+". Kommentar på kanban `t_6c9d3972` (via Hermes).
+- [ ] VPS read-only tjek: `/root/.hermes/state/prod-env-decoded.*` findes ikke; port 3210/4317 lytter ikke.
+- [ ] Memory + vault `wiki/os/kinly-hq-status-2026-09-25.md` + rapport til Lucas.
+
+**Gate til bølge 2:** prod kører merge-SHA, Neon 11 migrationer, testmail pass, Hermes har SHA.
+
+---
+
+## BØLGE 2 — Penge først (C) — egen plan før start
+
+C0 menneskelige penge-handlinger (faktura 010, varme svar, Ikast-pris) → liste til Lucas, ikke kode. C3 kladder uden modtager må aldrig nå Afventer (filtrér ved ingest). C2 `List-Unsubscribe`-header + daglig loft ~20 ved nyt domæne. C4 mærk "standard-kladde". Council (Sol + data-korrekthed) før deploy.
+
+## BØLGE 3 — /kunder som projekter-kort + SEO-sektion (H/07)
+
+Faner Kunder · Varme · Leads · Ikke egnet; kort med egne mockups (ikke thum.io live); SEO egen nav-post (Overblik · Pr. kunde · Opdateringer · Værktøjer); GSC via service-account (Lucas tilføjer SA som begrænset bruger — gate), `gsc_snapshot`-migration nummereres EFTER blog (aftales med Hermes); "Opdateringer" = ugentlig diff → Jev dømmer væsentlighed (rådgiver) → "kræver handling" ⇒ opgave. Grafer kun ved ≥4 målinger (dataviz). Start med Ikast.
+
+## BØLGE 4 — Blog-board med Hermes (06)
+
+Hermes default integrerer blog-grenen som 0011+ på ny main; Claude reviewer (Sol) + kører fuld `npm run verify` lokalt (VPS kan ikke). Board v1: board + manuel idé + tjekliste-guard + udgiver + `?ref=`. Første opslag: rigtig kunde (Ikast) med dateret GSC/GEO-tal og kundens accept; "billigste" kun med dateret prissammenligning.
+
+## BØLGE 5 — Ud af boksen (G) — kun det der giver penge
+
+Kandidater: "Lovet kunden"-liste, ugentlig Sendt-mappe↔CRM-afstemning, nav-diæt for Charlie, cron-fejl-alarm. Fjern: `/drift` som nav-post, uafprøvede signal-jobs.

@@ -33,9 +33,11 @@ function pauseLine(p: PauseInfo): string {
 export default function AppShell({
   children,
   defaultOwner = "lucas",
+  userKey = "ukendt",
 }: {
   children: React.ReactNode;
   defaultOwner?: "lucas" | "charlie";
+  userKey?: string;
 }) {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function AppShell({
 
   return (
     <div className="cc-shell">
-      <Sidebar counts={{ queue: counts.queue }} />
+      <Sidebar counts={{ queue: counts.queue }} user={userKey} />
 
       <div className="cc-main">
         <header className="cc-topbar">
@@ -115,7 +117,7 @@ export default function AppShell({
         <div className="cc-content">{children}</div>
       </div>
 
-      <HermesDock />
+      <HermesDock userKey={userKey} />
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>

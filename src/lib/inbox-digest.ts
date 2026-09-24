@@ -49,6 +49,14 @@ export interface InboxItem {
   gmailLink?: string;    // deep link to open the thread in Gmail
   leadId?: string;       // CRM lead row id, when the sender matched a lead
   suggestedReply?: string; // optional pre-draft (when a lead matched)
+  /** Kort dansk resumé af hele tråden — kun sat for højt rangerede mails
+   *  (produceren har et fast token-loft, så ikke alle items får et). */
+  threadSummary?: string;
+  /** Antal mails i tråden, når threadSummary er sat. */
+  threadCount?: number;
+  /** Gmail-tråd-id (fra producenten) — så "Åbn i Gmail" kan åbne selve
+   *  samtalen i stedet for en ny mail; et svar lander så i tråden. */
+  threadId?: string;
 }
 
 export interface InboxDigest {
@@ -106,29 +114,50 @@ export async function markReplyHandled(leadId: string, upTo = new Date().toISOSt
   if (!prev || upTo > prev) await store.put(handledKey(leadId), upTo);
 }
 
+// Én delt map (itemId → tid) for "fjern meddelelsen" uanset lead/konto.
+// ponytail: én nøgle; to samtidige fjern-klik kan i teorien overskrive hinanden — fint for et manuelt klik.
+const HANDLED_ITEMS_KEY = "replies/handled-items";
+
+/** "Fjern meddelelsen": meddelelsen skjules helt i alle visninger (overlever genbygning). */
+export async function markItemHandled(itemId: string, upTo = new Date().toISOString()): Promise<void> {
+  const clean = (itemId || "").trim();
+  if (!clean) throw new Error("itemId mangler");
+  const prev = (await store.get<Record<string, string>>(HANDLED_ITEMS_KEY)) ?? {};
+  prev[clean] = upTo;
+  await store.put(HANDLED_ITEMS_KEY, prev);
+}
+
 /** Påfør markeringerne på en oversigt — bruges af ALLE veje der returnerer en digest. */
 export async function withHandled(d: InboxDigest): Promise<InboxDigest> {
   const ids = [...new Set(d.items.filter((i) => i.needsReply && i.leadId).map((i) => i.leadId!))];
-  const pairs = await Promise.all(ids.map(async (id) => [id, await store.get<string>(handledKey(id)).catch(() => null)] as const));
+  const [pairs, handledItems] = await Promise.all([
+    Promise.all(ids.map(async (id) => [id, await store.get<string>(handledKey(id)).catch(() => null)] as const)),
+    store.get<Record<string, string>>(HANDLED_ITEMS_KEY).catch(() => null),
+  ]);
   const handled: Record<string, string> = {};
   for (const [id, at] of pairs) if (at) handled[id] = at;
-  return applyHandled(d, handled);
+  return applyHandled(d, handled, handledItems ?? {});
 }
 
-/** Ren: slår behandlede svar fra (needsReply=false) når svaret ikke er nyere end behandlingen. */
-export function applyHandled(d: InboxDigest, handled: Record<string, string>): InboxDigest {
+/** Ren: slår behandlede svar fra (needsReply=false) og dropper "fjernede" meddelelser helt. */
+export function applyHandled(d: InboxDigest, handled: Record<string, string>, handledItems: Record<string, string> = {}): InboxDigest {
   return {
     ...d,
-    items: d.items.map((i) =>
-      i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
-    ),
+    items: d.items
+      .filter((i) => !(handledItems[i.id] && (i.date || "") <= handledItems[i.id]))
+      .map((i) =>
+        i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
+      ),
   };
 }
 
 export async function loadDigest(): Promise<InboxDigest | null> {
   try {
     const d = await store.get<InboxDigest>(DIGEST_KEY);
-    return d ? await withHandled(d) : null;
+    // Normalisér ALTID ved læsning: producenter (fx VPS-cron) kan skrive direkte
+    // i KV uden om normalizeDigest, og Svar-siden skal altid vise sorteret,
+    // clampet data — ikke rå input.
+    return d ? await withHandled(normalizeDigest(d)) : null;
   } catch {
     return null;
   }
@@ -177,8 +206,12 @@ export function normalizeDigest(raw: Partial<InboxDigest> | null, fallbackBy = "
           gmailLink: i.gmailLink ? String(i.gmailLink) : undefined,
           leadId: i.leadId ? String(i.leadId) : undefined,
           suggestedReply: i.suggestedReply ? String(i.suggestedReply) : undefined,
+          threadSummary: i.threadSummary ? String(i.threadSummary).slice(0, 600) : undefined,
+          threadCount: typeof i.threadCount === "number" && i.threadCount > 0 ? Math.round(i.threadCount) : undefined,
+          threadId: i.threadId ? String(i.threadId).slice(0, 200) : undefined,
         }))
-        .sort((a, b) => b.importance - a.importance)
+        // Vigtighed først; ved samme vigtighed: nyeste først (rangering "væsentlighed/dato").
+        .sort((a, b) => (b.importance - a.importance) || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     : [];
   return {
     generatedAt: typeof raw?.generatedAt === "string" ? raw!.generatedAt : new Date().toISOString(),

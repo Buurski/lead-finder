@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
-import { calendarToken, tasksToIcs } from "./calendar.ts";
+import { __setStore, InMemoryStore } from "../store.ts";
+import { getIcsToken, icsTokenValid, rotateIcsToken, tasksToIcs } from "./calendar.ts";
 
 test("ICS bruger CRLF, heldagsdato og escaped tekst", () => {
   const ics = tasksToIcs([{ id: "123", title: "Ring, igen; nu\\snart", due: "2026-09-23", clientName: "Bager Ø", note: "Afventer\nAllan" }], new Date("2026-09-22T10:11:12Z"));
@@ -20,8 +20,21 @@ test("ICS folder lange UTF-8-linjer ved højst 75 oktetter", () => {
   assert.match(ics, /\r\n /);
 });
 
-test("kalendertoken er brugerbundet HMAC-SHA256", () => {
-  const expected = createHmac("sha256", "test-secret").update("cal:lucas").digest("hex");
-  assert.equal(calendarToken("lucas", "test-secret"), expected);
-  assert.notEqual(calendarToken("charlie", "test-secret"), expected);
+test("kalendertoken: tilfældigt pr. bruger, roterbart, fail-closed", async () => {
+  __setStore(new InMemoryStore());
+  try {
+    assert.equal(await icsTokenValid("lucas", "a".repeat(64)), false); // intet token gemt
+    const t1 = await getIcsToken("lucas");
+    assert.match(t1, /^[0-9a-f]{64}$/);
+    assert.equal(await getIcsToken("lucas"), t1); // stabilt
+    assert.equal(await icsTokenValid("lucas", t1), true);
+    assert.equal(await icsTokenValid("charlie", t1), false); // brugerbundet
+    assert.equal(await icsTokenValid("lucas", "xyz"), false);
+    const t2 = await rotateIcsToken("lucas");
+    assert.notEqual(t2, t1);
+    assert.equal(await icsTokenValid("lucas", t1), false); // gammelt link dødt
+    assert.equal(await icsTokenValid("lucas", t2), true);
+  } finally {
+    __setStore(null);
+  }
 });

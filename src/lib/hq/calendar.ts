@@ -1,4 +1,5 @@
-import { createHmac } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { store } from "../store.ts";
 
 export interface CalendarTask {
   id: string;
@@ -8,8 +9,28 @@ export interface CalendarTask {
   note: string;
 }
 
-export function calendarToken(user: "lucas" | "charlie", secret: string): string {
-  return createHmac("sha256", secret).update(`cal:${user}`).digest("hex");
+export type CalendarUser = "lucas" | "charlie";
+
+// Tilfældigt token pr. bruger i KV — ikke afledt af sessionshemmeligheden, så et
+// lækket link kan dræbes alene ("Lav nyt link" på /settings) uden at røre login.
+const tokenKey = (user: CalendarUser) => `ics-token/${user}`;
+
+export async function rotateIcsToken(user: CalendarUser): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  await store.put(tokenKey(user), { token, at: new Date().toISOString() });
+  return token;
+}
+
+export async function getIcsToken(user: CalendarUser): Promise<string> {
+  const saved = await store.get<{ token?: string }>(tokenKey(user));
+  return saved?.token ?? rotateIcsToken(user);
+}
+
+export async function icsTokenValid(user: CalendarUser, provided: string): Promise<boolean> {
+  if (!/^[0-9a-f]{64}$/.test(provided)) return false;
+  const saved = await store.get<{ token?: string }>(tokenKey(user));
+  if (!saved?.token || !/^[0-9a-f]{64}$/.test(saved.token)) return false;
+  return timingSafeEqual(Buffer.from(provided, "hex"), Buffer.from(saved.token, "hex"));
 }
 
 function escapeText(value: string): string {

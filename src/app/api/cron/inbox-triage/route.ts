@@ -31,6 +31,21 @@ export async function GET(req: Request) {
   const s = await readSettings();
   const { date, hour } = copenhagenNow();
 
+  // Frisk VPS-digest (inbox-digest-sync, lucas@kinly.dk) er den rigtige kilde nu.
+  // Denne live-scan dækker andre konti (buur.aigro/charlie) og må ikke overskrive
+  // Kinly-indbakken — uanset force.
+  {
+    const existing = await loadDigest();
+    const at = existing?.generatedAt ? Date.parse(existing.generatedAt) : NaN;
+    if (
+      existing?.generatedBy === "vps-hermes" &&
+      Number.isFinite(at) &&
+      Date.now() - at < 12 * 3600_000
+    ) {
+      return NextResponse.json({ ok: true, ran: false, reason: "frisk VPS-digest — springer over" });
+    }
+  }
+
   if (!force) {
     if (!s.autoInboxFallback) return NextResponse.json({ ok: true, ran: false, reason: "fallback slukket" });
     if (hour < (s.fallbackCutoffHour ?? 9)) return NextResponse.json({ ok: true, ran: false, reason: `før cutoff (${hour} < ${s.fallbackCutoffHour})` });

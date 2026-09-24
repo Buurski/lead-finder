@@ -17,6 +17,9 @@ interface InboxItem {
   gmailLink?: string;
   leadId?: string;
   suggestedReply?: string;
+  threadSummary?: string;
+  threadCount?: number;
+  threadId?: string;
 }
 interface Digest {
   generatedAt: string;
@@ -41,19 +44,32 @@ function catTone(c: string): { bg: string; fg: string } {
   return { bg: "var(--bg-3)", fg: "var(--text-muted)" };
 }
 
-// Gmail-konti pr. indbakke — samme mapping som kontopillen nedenfor (RepliesClient
-// kan ikke importere src/lib/senders.ts, den er server-only/nodemailer).
-// Lucas skriver fra lucas@kinly.dk (Workspace) — ikke den gamle buur.aigro-konto (23/9).
+// Alder i menneskelig form: minutter når det er nyt, ellers klokkeslæt+dato —
+// "opdateret for 31912 min siden" er ikke information nogen kan bruge.
+function formatAge(min: number): string {
+  if (min < 2) return "lige nu";
+  if (min < 90) return `for ${Math.round(min)} min siden`;
+  const d = new Date(Date.now() - min * 60_000);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getDate()}/${d.getMonth() + 1} kl. ${hh}:${mm}`;
+}
+
+// Gmail-konti pr. indbakke. Kilden er lucas@kinly.dk — der lander kundesvarene
+// (afsenderen på udgående mail er også kinly.dk; SMTP-login er en anden sag).
+// Denne mapping styrer KUN Gmail-links i UI'et (authuser), ikke afsendelse.
 const ACCOUNT_EMAIL: Record<string, string> = { lucas: "lucas@kinly.dk", charlie: "1charlie.nielsen@gmail.com" };
 
-// Gmail-compose-link, forudfyldt med kladden — "authuser" hopper direkte ind på
-// den konto svaret kom ind på, hvis Lucas/Charlie er logget ind med flere konti.
-function gmailComposeLink(item: InboxItem): string {
+// "Åbn i Gmail" peger på TRÅDEN — ikke en ny mail. En compose ("view=cm") sender
+// svaret ud af samtalen, så kunden får to spor i stedet for ét. Uden tråd-id
+// (ældre digest uden threadId) søger vi i stedet på afsenderen, så tråden kan
+// vælges manuelt — aldrig en ny, løsrevet mail.
+function gmailOpenLink(item: InboxItem): string {
   const authuser = ACCOUNT_EMAIL[item.account] ?? ACCOUNT_EMAIL.lucas;
-  const params = new URLSearchParams({
-    view: "cm", fs: "1", to: item.from, su: `Re: ${item.subject}`, body: item.suggestedReply ?? "", authuser,
-  });
-  return `https://mail.google.com/mail/?${params.toString()}`;
+  const base = `https://mail.google.com/mail/?authuser=${encodeURIComponent(authuser)}`;
+  return item.threadId
+    ? `${base}#all/${encodeURIComponent(item.threadId)}`
+    : `${base}#search/from:${encodeURIComponent(item.from)}`;
 }
 
 function CopyReplyButton({ text }: { text: string }) {
@@ -81,6 +97,67 @@ const OUTCOME_OPTIONS: { value: string; label: string }[] = [
   { value: "kunde-spoergsmaal", label: "Har et spørgsmål" },
   { value: "andet", label: "Andet" },
 ];
+
+// "Fjern meddelelsen": skjuler mailen i alle visninger (samme KV-markering som
+// agent-vejen bruger). Der slettes intet i CRM'et, og et NYERE svar fra samme
+// afsender dukker op igen, fordi markeringen tidsstemples.
+function RemoveButton({ item, onRemoved }: { item: InboxItem; onRemoved: (id: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function remove() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/replies/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id }),
+      });
+      const d = await res.json().catch(() => null);
+      if (res.ok && d?.ok) onRemoved(item.id);
+    } catch {
+      // netværksfejl — intet er skjult lokalt, knappen kan trykkes igen.
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button className="cc-btn kinly-quiet-action" onClick={remove} disabled={busy} title="Skjul meddelelsen i Svar-listen">
+      <Icon name="X" style={{ width: 14, height: 14 }} /> {busy ? "Fjerner…" : "Fjern"}
+    </button>
+  );
+}
+
+// "Svaret": Lucas/Charlie har svaret kunden manuelt i Gmail. Logger svaret på
+// kundens tidslinje (samme funktion som lead-udfaldene, så "hvem venter på
+// hvem" og næste scan hænger sammen) og skjuler meddelelsen — som "Fjern", men
+// med et CRM-spor. Kvitteringen vises af forælderen, fordi kortet forsvinder.
+function RepliedButton({ item, onDone }: { item: InboxItem; onDone: (id: string, msg: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function mark() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/replies/replied", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, from: item.from, note: item.suggestedReply ?? "", date: item.date }),
+      });
+      const d = await res.json().catch(() => null);
+      if (res.ok && d?.ok) {
+        onDone(item.id, d.company ? `Svar logget på ${d.company} ✓` : "Skjult — ingen kunde matchet i CRM");
+      } else {
+        onDone(item.id, d?.error ? `Kunne ikke gemme: ${d.error}` : "Kunne ikke gemme.");
+      }
+    } catch {
+      onDone(item.id, "Netværksfejl — intet blev gemt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button className="cc-btn kinly-quiet-action" onClick={mark} disabled={busy} title="Jeg har svaret kunden — log det i CRM og skjul meddelelsen her">
+      <Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> {busy ? "Gemmer…" : "Svaret"}
+    </button>
+  );
+}
 
 // Erstatter det gamle "Marker lead" (skrev til Sheets, kun status — se
 // /api/replies/[leadId]/status). Denne knap er den ene vej til at lukke et
@@ -118,7 +195,7 @@ function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: (
 
   if (!open) {
     return (
-      <button className="cc-btn" onClick={() => setOpen(true)}>
+      <button className="cc-btn cc-btn-accent" onClick={() => setOpen(true)}>
         <Icon name="CheckCheck" style={{ width: 14, height: 14 }} /> Markér som besvaret
       </button>
     );
@@ -151,61 +228,7 @@ function MarkAnsweredForm({ item, onAnswered }: { item: InboxItem; onAnswered: (
   );
 }
 
-function ReplyComposer({ item, onSent }: { item: InboxItem; onSent: () => void }) {
-  const [text, setText] = useState(item.suggestedReply ?? "");
-  const [sender, setSender] = useState<"lucas" | "charlie">(item.account === "charlie" ? "charlie" : "lucas");
-  const [state, setState] = useState<"idle" | "confirm" | "sending" | "done" | "error">("idle");
-  const [msg, setMsg] = useState("");
-  async function send() {
-    setState("sending"); setMsg("");
-    try {
-      const res = await fetch(`/api/replies/${encodeURIComponent(item.leadId!)}/send-reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reply: text, subject: item.subject, toEmail: item.from, sender, confirm: true, replyDate: item.date }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok || !d.sent) { setState("error"); setMsg(d.message ?? "Kunne ikke sende."); return; }
-      setState("done");
-      setMsg(d.recorded ? `Sendt til ${item.from} og registreret.` : `Sendt til ${item.from}. Markér det som besvaret nedenfor.`);
-      if (d.recorded) setTimeout(onSent, 1200);
-    } catch {
-      setState("error"); setMsg("Netværksfejl — tjek Sendt-mappen før du prøver igen.");
-    }
-  }
-  const locked = state === "sending" || state === "done";
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <label className="cc-kicker" htmlFor={`svar-${item.id}`}>Dit svar</label>
-      <textarea id={`svar-${item.id}`} className="cc-input" rows={7} value={text} onChange={(e) => { setText(e.target.value); if (state === "confirm") setState("idle"); }}
-        disabled={locked} style={{ height: "auto", minHeight: 170, padding: "12px 14px", lineHeight: 1.55, resize: "vertical" }} placeholder="Skriv svaret her…" />
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", gap: 10, alignItems: "center" }} disabled={locked}>
-          <legend className="cc-dim" style={{ fontSize: 12.5, float: "left", marginRight: 6 }}>Fra</legend>
-          {(["lucas", "charlie"] as const).map((o) => (
-            <label key={o} style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 13 }}>
-              <input type="radio" name={`fra-${item.id}`} checked={sender === o} onChange={() => setSender(o)} />
-              {o === "lucas" ? "Lucas" : "Charlie"}
-            </label>
-          ))}
-        </fieldset>
-        {state === "confirm" ? (
-          <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="cc-btn cc-btn-accent" onClick={send}>Ja, send til {item.from}</button>
-            <button className="cc-btn" onClick={() => setState("idle")}>Fortryd</button>
-          </span>
-        ) : (
-          <button className="cc-btn cc-btn-accent" onClick={() => setState("confirm")} disabled={locked || !text.trim()}>
-            <Icon name="Mail" style={{ width: 14, height: 14 }} /> {state === "sending" ? "Sender…" : state === "done" ? "Sendt" : "Send svar"}
-          </button>
-        )}
-      </div>
-      {msg && <p role="status" style={{ margin: 0, fontSize: 12.5, color: state === "error" ? "var(--red)" : "var(--text-muted)" }}>{msg}</p>}
-    </div>
-  );
-}
-
-function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boolean; onAnswered: (id: string) => void }) {
+function ItemCard({ item, onAnswered, onRemoved, onReplied }: { item: InboxItem; onAnswered: (id: string) => void; onRemoved: (id: string) => void; onReplied: (id: string, msg: string) => void }) {
   const [open, setOpen] = useState(false);
   const tone = catTone(item.category);
   return (
@@ -220,7 +243,7 @@ function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boo
             {item.account && (
               <span
                 className="cc-chip"
-                title={`Modtaget på ${item.account === "lucas" ? "buur.aigro@gmail.com" : "1charlie.nielsen@gmail.com"}`}
+                title={`Modtaget på ${ACCOUNT_EMAIL[item.account] ?? item.account}`}
                 style={{
                   fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase",
                   padding: "2px 7px",
@@ -242,13 +265,17 @@ function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boo
       </button>
       {open && (
         <div className="cc-fade" style={{ borderTop: "1px solid var(--border)", padding: "16px 20px", display: "grid", gap: 14 }}>
+          {item.threadSummary && (
+            <div>
+              <div className="cc-kicker" style={{ marginBottom: 6 }}>Tråden indtil nu{item.threadCount ? ` · ${item.threadCount} mails` : ""}</div>
+              <p className="cc-muted" style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0, whiteSpace: "pre-wrap" }}>{item.threadSummary}</p>
+            </div>
+          )}
           <div>
             <div className="cc-kicker" style={{ marginBottom: 6 }}>Besked</div>
             <p className="cc-muted" style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
           </div>
-          {canSend && item.leadId && item.from ? (
-            <ReplyComposer item={item} onSent={() => onAnswered(item.id)} />
-          ) : item.suggestedReply && (
+          {item.suggestedReply && (
             <div>
               <div className="cc-kicker" style={{ marginBottom: 6 }}>Foreslået svar</div>
               <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap", padding: "12px 14px", background: "var(--surface-2)", borderRadius: 10 }}>{item.suggestedReply}</p>
@@ -257,15 +284,17 @@ function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boo
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {item.suggestedReply && <CopyReplyButton text={item.suggestedReply} />}
             {item.from && (
-              <a className="cc-btn" href={gmailComposeLink(item)} target="_blank" rel="noreferrer">
+              <a className="cc-btn" href={gmailOpenLink(item)} target="_blank" rel="noreferrer">
                 <Icon name="Mail" style={{ width: 14, height: 14 }} /> Åbn i Gmail
               </a>
             )}
+            <RepliedButton item={item} onDone={onReplied} />
+            <RemoveButton item={item} onRemoved={onRemoved} />
             {item.leadId && <MarkAnsweredForm item={item} onAnswered={() => onAnswered(item.id)} />}
           </div>
           <div className="cc-dim" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="CircleDot" style={{ width: 13, height: 13 }} />
-            {canSend ? "Send svar herfra, eller åbn i Gmail og markér som besvaret bagefter." : "Selve mailen sender du fra Gmail. \"Markér som besvaret\" opdaterer CRM'et — status, tidslinje og opfølgning i ét klik."}
+            Selve mailen sender du fra Gmail. &quot;Svaret&quot; logger den på kundens tidslinje og skjuler den her; &quot;Markér som besvaret&quot; opdaterer hele udfaldet (status, tidslinje og opfølgning).
           </div>
         </div>
       )}
@@ -273,61 +302,48 @@ function ItemCard({ item, canSend, onAnswered }: { item: InboxItem; canSend: boo
   );
 }
 
-// Fetches the morning triage prompt and copies it, so Lucas can paste it into a
-// Cowork/Opus session for an on-demand scan (the scheduled task does this daily).
-function CopyPromptButton() {
-  const [label, setLabel] = useState("Hent morgen-scan prompt");
-  async function copy() {
-    try {
-      const r = await fetch("/api/inbox/cowork-prompt");
-      const text = await r.text();
-      await navigator.clipboard.writeText(text);
-      setLabel("Kopieret ✓");
-    } catch {
-      setLabel("Kunne ikke kopiere");
-    }
-    setTimeout(() => setLabel("Hent morgen-scan prompt"), 2000);
-  }
-  return <button className="cc-btn" onClick={copy}><Icon name="Sparkles" style={{ width: 14, height: 14 }} /> {label}</button>;
-}
-
-// Manual "kør nu": runs the live inbox scan immediately (bypasses the fallback
-// gates) and refreshes — for when Cowork hasn't delivered and Lucas wants it now.
+// "Scan nu": starter VPS-scanningen af Kinly-indbakken (inbox-digest-sync på
+// lucas@kinly.dk) og genindlæser siden automatisk et par minutter efter —
+// selve kørslen er asynkron og tager typisk 1-3 minutter.
 function ScanNowButton({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [msg, setMsg] = useState("");
   async function scan() {
     setBusy(true);
-    setFailed(false);
+    setMsg("");
     try {
-      // Bundle A's browser-safe manuelle cron-trigger (ingen CRON_SECRET i
-      // klienten) kombineret med Bundle E/F's fejl-notits.
-      const r = await fetch("/api/ops/run-cron/inbox-triage", { method: "POST" });
-      if (!r.ok) setFailed(true);
-      onDone();
+      const r = await fetch("/api/replies/refresh", { method: "POST" });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d?.ok) {
+        // Jobbet tager typisk 5-10 min på VPS'en — derfor 10 min og ærlig tekst,
+        // så knappen ikke lover hurtigere resultat end den kan holde.
+        setMsg("Scan kører på VPS'en (5-10 min). Siden opdateres om 10 min — eller tryk Opdater.");
+        setTimeout(onDone, 600_000);
+      } else {
+        setMsg(d?.error ?? "Kunne ikke starte scan.");
+      }
     } catch {
-      setFailed(true);
+      setMsg("Kunne ikke starte scan.");
     } finally {
       setBusy(false);
-      // Don't let a stale failure notice linger after later successful loads.
-      setTimeout(() => setFailed(false), 8000);
     }
   }
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <button className="cc-btn kinly-next-action" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Scanner…" : "Scan nu"}</button>
-      {failed && <span className="cc-dim" style={{ fontSize: 12, color: "var(--amber)" }}>Scan fejlede — prøv igen om lidt.</span>}
+      <button className="cc-btn kinly-next-action" onClick={scan} disabled={busy}><Icon name="Inbox" style={{ width: 14, height: 14 }} /> {busy ? "Starter…" : "Scan nu"}</button>
+      {msg && <span className="cc-dim" style={{ fontSize: 12, color: "var(--amber)" }}>{msg}</span>}
     </span>
   );
 }
 
-export default function RepliesClient({ canSend = false }: { canSend?: boolean }) {
+export default function RepliesClient() {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [digest, setDigest] = useState<Digest | null>(null);
   const [source, setSource] = useState<string>("");
   const [ageMin, setAgeMin] = useState<number | null>(null);
   const [err, setErr] = useState("");
   const [showNoise, setShowNoise] = useState(false);
+  const [flash, setFlash] = useState("");
 
   function load() {
     setState("loading");
@@ -359,6 +375,21 @@ export default function RepliesClient({ canSend = false }: { canSend?: boolean }
   // den skjulte "resten"-liste i stedet, uden en ny hentning.
   function markAnswered(id: string) {
     setDigest((d) => (d ? { ...d, items: d.items.map((i) => (i.id === id ? { ...i, needsReply: false } : i)) } : d));
+  }
+
+  // "Svaret": meddelelsen er skjult server-side (KV-markering) — fjern den fra
+  // listen med det samme og vis kvitteringen i toppen; kortet forsvinder, så
+  // knappen kan ikke selv vise beskeden.
+  function repliedItem(id: string, msg: string) {
+    setDigest((d) => (d ? { ...d, items: d.items.filter((i) => i.id !== id) } : d));
+    setFlash(msg);
+    setTimeout(() => setFlash(""), 8000);
+  }
+
+  // Fjern: meddelelsen er allerede skjult server-side (KV-markering) — fjern den
+  // fra den viste liste med det samme, så UI'et ikke venter på en ny hentning.
+  function removeItem(id: string) {
+    setDigest((d) => (d ? { ...d, items: d.items.filter((i) => i.id !== id) } : d));
   }
 
   if (state === "loading") {
@@ -395,12 +426,12 @@ export default function RepliesClient({ canSend = false }: { canSend?: boolean }
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontWeight: 600, fontSize: 13.5 }}>{needs.length} kræver svar · {items.length} scannet</div>
           <div className="cc-dim" style={{ fontSize: 12 }}>
-            {source === "artifact" ? "Rangeret af morgen-scan (Opus)" : "Live fallback — kun kendte leads. Fuld indbakke-triage kommer fra morgen-scanneren."}
-            {ageMin != null && ageMin >= 0 ? ` · opdateret for ${ageMin} min siden` : ""}
+            {source === "artifact" ? "Rangeret fra Kinly-indbakken (lucas@kinly.dk)" : "Ingen frisk digest — viser kun lead-matchede svar. Kør «Scan nu»."}
+            {ageMin != null && ageMin >= 0 ? ` · opdateret ${formatAge(ageMin)}` : ""}
           </div>
         </div>
+        {flash && <span className="cc-chip" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{flash}</span>}
         <ScanNowButton onDone={load} />
-        <CopyPromptButton />
         <button className="cc-btn kinly-quiet-action" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
       </div>
 
@@ -408,14 +439,14 @@ export default function RepliesClient({ canSend = false }: { canSend?: boolean }
         <div className="cc-card"><div className="cc-empty"><Icon name="Inbox" /><div>Ingen svar at triagere lige nu.</div><div className="cc-dim" style={{ fontSize: 12 }}>Morgen-scanneren fylder de vigtige svar ind her.</div></div></div>
       ) : (
         <>
-          {needs.map((it) => <ItemCard key={it.id} item={it} canSend={canSend} onAnswered={markAnswered} />)}
+          {needs.map((it) => <ItemCard key={it.id} item={it} onAnswered={markAnswered} onRemoved={removeItem} onReplied={repliedItem} />)}
           {noise.length > 0 && (
             <>
               <button className="cc-btn" style={{ justifySelf: "start" }} onClick={() => setShowNoise((v) => !v)}>
                 <Icon name="ChevronRight" style={{ width: 14, height: 14, transform: showNoise ? "rotate(90deg)" : "none" }} />
                 {showNoise ? "Skjul" : `Vis resten (${noise.length})`}
               </button>
-              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} canSend={canSend} onAnswered={markAnswered} />)}
+              {showNoise && noise.map((it) => <ItemCard key={it.id} item={it} onAnswered={markAnswered} onRemoved={removeItem} onReplied={repliedItem} />)}
             </>
           )}
         </>

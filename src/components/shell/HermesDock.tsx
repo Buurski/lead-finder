@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
+import { parseSseBuffer } from "@/lib/sse";
 import "./hermes-dock.css";
 
 // Hermes-docken: eneste assistent i UI'et (Claude-chatten er fjernet). Bor i
@@ -11,8 +12,12 @@ import "./hermes-dock.css";
 
 type ChatMsg = { id: string; role: "user" | "hermes"; text: string };
 
+// Nøglerne er brugerspecifikke: to personer i samme browser (login-skift) må
+// ikke arve hinandens samtale-id eller beskedhistorik fra sessionStorage.
 const SESSION_KEY = "hermes-dock:session";
 const MESSAGES_KEY = "hermes-dock:messages";
+const sessionKey = (userKey: string) => `${SESSION_KEY}:${userKey}`;
+const messagesKey = (userKey: string) => `${MESSAGES_KEY}:${userKey}`;
 const COMPANY_RE = /^\/virksomheder\/([0-9a-f-]{36})(?:\/|$)/i;
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 const CALM_ERROR = "Hermes svarer ikke lige nu — prøv igen";
@@ -21,23 +26,23 @@ function newSessionId(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
-function loadSessionId(): string {
+function loadSessionId(userKey: string): string {
   if (typeof window === "undefined") return "";
   try {
-    const existing = sessionStorage.getItem(SESSION_KEY);
+    const existing = sessionStorage.getItem(sessionKey(userKey));
     if (existing) return existing;
   } catch {}
   const id = newSessionId();
   try {
-    sessionStorage.setItem(SESSION_KEY, id);
+    sessionStorage.setItem(sessionKey(userKey), id);
   } catch {}
   return id;
 }
 
-function loadMessages(): ChatMsg[] {
+function loadMessages(userKey: string): ChatMsg[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = sessionStorage.getItem(MESSAGES_KEY);
+    const raw = sessionStorage.getItem(messagesKey(userKey));
     return raw ? (JSON.parse(raw) as ChatMsg[]) : [];
   } catch {
     return [];
@@ -86,12 +91,12 @@ function renderText(text: string): ReactNode[] {
   );
 }
 
-export default function HermesDock() {
+export default function HermesDock({ userKey = "ukendt" }: { userKey?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [badge, setBadge] = useState(false);
-  const [sessionId, setSessionId] = useState(loadSessionId);
-  const [messages, setMessages] = useState<ChatMsg[]>(loadMessages);
+  const [sessionId, setSessionId] = useState(() => loadSessionId(userKey));
+  const [messages, setMessages] = useState<ChatMsg[]>(() => loadMessages(userKey));
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -192,9 +197,9 @@ export default function HermesDock() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(messagesKey(userKey), JSON.stringify(messages));
     } catch {}
-  }, [messages]);
+  }, [messages, userKey]);
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
@@ -208,6 +213,41 @@ export default function HermesDock() {
     return () => clearInterval(id);
   }, [pending]);
 
+  // Poll indtil svaret ligger klar i hermes-api. Bruges af fallback-vejen (stream
+  // kunne ikke startes) og når en stream dør undervejs. existingId = den
+  // streamede bobles id, så svaret lander i SAMME bobbel i stedet for en dublet.
+  async function pollUntilDone(rid: string, text: string, existingId?: string): Promise<boolean> {
+    const pollUrl = `/api/hermes/ask?sessionId=${encodeURIComponent(sessionId)}&requestId=${rid}&message=${encodeURIComponent(text.slice(0, 4000))}`;
+    // eslint-disable-next-line react-hooks/purity -- poll-loop kører kun fra klik, aldrig under render
+    const started = Date.now();
+    let misses = 0;
+    for (let i = 0; ; i++) {
+      await new Promise((r) => setTimeout(r, Math.min(6000, 1500 + i * 750)));
+      // eslint-disable-next-line react-hooks/purity -- som ovenfor: kun fra klik
+      if (Date.now() - started > 45 * 60_000) return false;
+      const pr = await fetch(pollUrl).catch(() => null);
+      const pd = (await pr?.json().catch(() => null)) as { ok?: boolean; status?: string; reply?: string } | null;
+      if (!pd?.ok) {
+        // Netværkshikke må ikke dræbe et langt svar — giv op efter tre i træk.
+        if (++misses >= 3) return false;
+        continue;
+      }
+      misses = 0;
+      if (pd.status === "running") continue;
+      if (pd.status === "done") {
+        const reply = pd.reply ?? "";
+        setMessages((m) =>
+          existingId && m.some((x) => x.id === existingId)
+            ? m.map((x) => (x.id === existingId ? { ...x, text: reply } : x))
+            : [...m, { id: newSessionId(), role: "hermes", text: reply }],
+        );
+        if (!openRef.current) setBadge(true);
+        return true;
+      }
+      return false;
+    }
+  }
+
   async function ask(text: string) {
     setError(null);
     setRetryText(null);
@@ -216,21 +256,97 @@ export default function HermesDock() {
     // eslint-disable-next-line react-hooks/purity
     startRef.current = Date.now();
     setElapsed(0);
+
+    const streamId = newSessionId();
+    // Løftet ud af try, så catch også kan bruge den (poll-fallback ved brudt stream).
+    let streamRid: string | null = null;
     try {
+      // Primær vej: streaming — delsvaret vises mens agenten arbejder på VPS'en.
       const res = await fetch("/api/hermes/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, sessionId, page: pathname, ...(companyId ? { companyId } : {}) }),
-      });
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; reply?: string } | null;
-      if (!res.ok || !data?.ok) {
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ message: text, sessionId, page: pathname, stream: true, ...(companyId ? { companyId } : {}) }),
+      }).catch(() => null);
+      const ct = res?.headers.get("content-type") ?? "";
+      if (res?.ok && res.body && ct.includes("text/event-stream")) {
+        setMessages((m) => [...m, { id: streamId, role: "hermes", text: "" }]);
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let acc = "";
+        let finished = false;
+        let failed = false;
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const parsed = parseSseBuffer(buf);
+          buf = parsed.rest;
+          for (const rawEv of parsed.events) {
+            const ev = rawEv as { request_id?: string; text?: string; done?: boolean; full_text?: string; error?: string };
+            if (typeof ev.request_id === "string") streamRid = ev.request_id;
+            if (typeof ev.text === "string") {
+              acc += ev.text;
+              // Delsvaret vises mens agenten arbejder — det er hele pointen med streamen.
+              setMessages((m) => m.map((x) => (x.id === streamId ? { ...x, text: acc } : x)));
+            }
+            if (ev.done === true) {
+              if (ev.error) {
+                failed = true;
+              } else {
+                const fullText = (typeof ev.full_text === "string" && ev.full_text) || acc || "(tomt svar)";
+                setMessages((m) => m.map((x) => (x.id === streamId ? { ...x, text: fullText } : x)));
+                if (!openRef.current) setBadge(true);
+              }
+              finished = true;
+            }
+          }
+          if (finished) break;
+        }
+        if (finished) {
+          // Lad serveren lukke normalt (historik-gemningen kører i flush), men
+          // afbryd hvis den hænger — svaret er allerede vist.
+          const t0 = Date.now();
+          try {
+            for (;;) {
+              const r = await reader.read();
+              if (r.done) break;
+              if (Date.now() - t0 > 5_000) {
+                await reader.cancel();
+                break;
+              }
+            }
+          } catch {
+            // ligegyldigt — svaret er allerede vist
+          }
+        }
+        if (finished && !failed) return;
+        if (failed) {
+          setError(CALM_ERROR);
+          setRetryText(text);
+          return;
+        }
+        // Streamen sluttede uden done: fortsæt via poll hvis vi fik et request_id.
+        if (streamRid && (await pollUntilDone(streamRid, text, streamId))) return;
         setError(CALM_ERROR);
         setRetryText(text);
         return;
       }
-      setMessages((m) => [...m, { id: newSessionId(), role: "hermes", text: data.reply ?? "" }]);
-      if (!openRef.current) setBadge(true);
+
+      // Sekundær vej (uændret): start + poll — bruges når streamen ikke kan startes.
+      const data = (await res?.json().catch(() => null)) as { ok?: boolean; requestId?: string } | null;
+      if (!res?.ok || !data?.ok || !data.requestId) {
+        setError(CALM_ERROR);
+        setRetryText(text);
+        return;
+      }
+      if (await pollUntilDone(data.requestId, text)) return;
+      setError(CALM_ERROR);
+      setRetryText(text);
     } catch {
+      // Streamen faldt midt i (fx Vercel-dræb ved maxDuration): er request_id
+      // kendt, hentes svaret via poll i stedet for at tabe det.
+      if (streamRid && (await pollUntilDone(streamRid, text, streamId))) return;
       setError(CALM_ERROR);
       setRetryText(text);
     } finally {
@@ -263,8 +379,8 @@ export default function HermesDock() {
     setRetryText(null);
     setInput("");
     try {
-      sessionStorage.setItem(SESSION_KEY, id);
-      sessionStorage.setItem(MESSAGES_KEY, "[]");
+      sessionStorage.setItem(sessionKey(userKey), id);
+      sessionStorage.setItem(messagesKey(userKey), "[]");
     } catch {}
   }
 

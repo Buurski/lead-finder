@@ -10,9 +10,8 @@
 // Body: { dryRun?: boolean, onlyIds?: string[] }
 //
 // Auth: matches the rest of /api/approve — the route is gated by the same
-// env var the deploy uses (LEAD_FINDER_API_TOKEN), with a Basic-Auth
-// fallback for browser preview. We refuse to run if neither is set so we
-// don't accidentally expose a mass-rewrite endpoint.
+// env var the deploy uses (LEAD_FINDER_API_TOKEN); browser/cookie access is
+// handled by the proxy gate.
 
 import { NextResponse } from "next/server";
 import { readQueue, updateDraft } from "@/lib/queue";
@@ -37,15 +36,6 @@ function checkAuth(req: Request): { ok: true } | { ok: false; response: NextResp
   if (expected) {
     const got = req.headers.get("authorization") || "";
     if (got === `Bearer ${expected}`) return { ok: true };
-    if (got.startsWith("Basic ")) {
-      try {
-        const decoded = Buffer.from(got.slice(6), "base64").toString("utf8");
-        const [u, p] = decoded.split(":");
-        if (u === "LucasCharlie" && p === "BuurNielsen") return { ok: true };
-      } catch {
-        /* fallthrough */
-      }
-    }
     return {
       ok: false,
       response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),

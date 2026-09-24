@@ -11,9 +11,9 @@ export default function RepliesPage() {
       <PageHeader
         icon="Mail"
         title="Svar"
-        subtitle="Svar fra leads med et forslag til svar. Send direkte herfra eller via Gmail."
+        subtitle="Svar fra leads med et forslag til svar. Du svarer i Gmail-tråden."
       />
-      <RepliesClient canSend={process.env.LIVE_SEND_ARMED === "1"} />
+      <RepliesClient />
     </div>
   );
 }

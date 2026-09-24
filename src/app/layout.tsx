@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="da" className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`}>
       <body suppressHydrationWarning>
-        <AppShell defaultOwner={defaultOwner}>{children}</AppShell>
+        <AppShell defaultOwner={defaultOwner} userKey={user ?? "ukendt"}>{children}</AppShell>
       </body>
     </html>
   );
