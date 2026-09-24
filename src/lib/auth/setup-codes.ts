@@ -19,3 +19,14 @@ export function generateSetupCode(groups = GROUPS): string {
   }
   return parts.join("-");
 }
+
+/** Normaliserer et indtastet bevis til kanonisk form: store bogstaver, grupper
+ * af 4 med bindestreg. `bt27 u9lh 8x4x` → `BT27-U9LH-8X4X`, så case og
+ * mellemrum fra et tastatur ikke giver "forkert kode". */
+export function canonicalSetupCode(input: string): string {
+  return input
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .replace(/(.{4})(?=.)/g, "$1-");
+}

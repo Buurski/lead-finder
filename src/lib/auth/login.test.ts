@@ -133,3 +133,12 @@ test("login normaliserer mailen (trim + lowercase)", async () => {
   const login = await loginWithPassword(db, { email: "  Lucas@Kinly.DK  ", password: PASSWORD });
   assert.equal(login.ok, true);
 });
+
+test("opsætning accepterer koden i anden indtastning (små bogstaver, mellemrum i stedet for bindestreg)", async () => {
+  await giveCode("lucas@kinly.dk", CODE, omLidt());
+  const variant = CODE.toLowerCase().replace(/-/g, " ");
+  const res = await setupAccount(db, { email: "lucas@kinly.dk", code: variant, password: PASSWORD });
+  assert.equal(res.ok, true);
+  const login = await loginWithPassword(db, { email: "lucas@kinly.dk", password: PASSWORD });
+  assert.equal(login.ok, true);
+});

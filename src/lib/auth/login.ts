@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { appUser } from "../db/schema.ts";
 import { getDummyHash, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "./password.ts";
+import { canonicalSetupCode } from "./setup-codes.ts";
 
 export interface PublicUser {
   id: string;
@@ -62,8 +63,9 @@ export async function setupAccount(
   if (!user.setupHash || !user.setupExpiresAt) return afvis("ugyldig");
   if (user.setupExpiresAt.getTime() <= Date.now()) return afvis("udloebet");
   // Koden verificeres FØR længde-tjekket: ellers ville svaret "svag" afsløre,
-  // at mailen har et aktivt opsætningsbevis (bruger-enumeration).
-  if (!(await verifyPassword(input.code, user.setupHash))) return { ok: false, reason: "ugyldig" };
+  // at mailen har et aktivt opsætningsbevis (bruger-enumeration). Indtastningen
+  // normaliseres (case/mellemrum/bindestreger), så kun selve tegnene skal ramme.
+  if (!(await verifyPassword(canonicalSetupCode(input.code), user.setupHash))) return { ok: false, reason: "ugyldig" };
   if (input.password.length < MIN_PASSWORD_LENGTH) return { ok: false, reason: "svag" };
 
   const passwordHash = await hashPassword(input.password);
