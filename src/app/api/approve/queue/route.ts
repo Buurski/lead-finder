@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQueue, updateDraft, writeQueue } from "@/lib/queue";
+import { finishSend, readQueue, updateDraft, writeQueue } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
@@ -134,13 +134,15 @@ interface ActionBody {
     | "reset-approved"
     | "cleanup-no-email"
     | "reject-seen"
-    | "set-recipient";
+    | "set-recipient"
+    | "reconcile";
   ids?: string[];
   subject?: string;
   body?: string;
   demoPair?: Demo[];
   sender?: "lucas" | "charlie";
   recipientEmail?: string;
+  result?: "sent" | "not-sent";
 }
 
 // POST /api/approve/queue — approve | edit | reject a draft.
@@ -154,6 +156,22 @@ export async function POST(req: Request) {
   }
 
   const { id, action } = payload;
+
+  // Afstemning af en kladde der står i "sending" (SMTP-svaret gik tabt eller kunne ikke
+  // bogføres): Lucas har tjekket Gmail Sendt og siger om den gik ud.
+  if (action === "reconcile") {
+    if (!id) return NextResponse.json({ error: "id mangler" }, { status: 400 });
+    const d = (await readQueue()).find((x) => x.id === id);
+    if (!d || d.status !== "sending") return NextResponse.json({ error: "kladden venter ikke på afstemning" }, { status: 409 });
+    if (payload.result !== "sent" && payload.result !== "not-sent") return NextResponse.json({ error: "result skal være sent eller not-sent" }, { status: 400 });
+    const ok = await finishSend(id, payload.result === "sent" ? "sent" : "approved", payload.result === "sent" ? (d.sender ?? null) : null);
+    if (!ok) return NextResponse.json({ error: "kladden er allerede afstemt" }, { status: 409 });
+    return NextResponse.json({ ok: true, status: payload.result === "sent" ? "sent" : "approved" });
+  }
+  // En kladde under afsendelse kan ikke ændres fra UI'et (stale faner) — kun afstemmes.
+  if (id && (await readQueue()).some((x) => x.id === id && x.status === "sending")) {
+    return NextResponse.json({ error: "under afsendelse — afstem den først", status: "sending" }, { status: 409 });
+  }
 
   // Bulk-fortryd (no id): flyt ALLE godkendte (approved + legacy "edited")
   // tilbage til afventer. Lucas's nødbremse mod gamle masse-godkendelser

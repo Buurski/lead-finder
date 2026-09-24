@@ -7,7 +7,7 @@ export interface Demo {
   url: string;
 }
 
-export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sent";
+export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sending" | "sent";
 
 export interface QueueDraft {
   id: string;
@@ -21,6 +21,7 @@ export interface QueueDraft {
   subject: string;
   body: string;
   status: DraftStatus;
+  recipientEmail?: string;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -100,6 +101,7 @@ export const STATUS_META: Record<DraftStatus, { label: string; fg: string; bg: s
   approved: { label: "godkendt · klar", fg: "var(--green)", bg: "var(--bg-2)" },
   edited: { label: "redigeret · godkendt", fg: "var(--blue)", bg: "var(--blue-dim)" },
   rejected: { label: "afvist", fg: "var(--red)", bg: "var(--red-dim)" },
+  sending: { label: "afstem — tjek Gmail Sendt", fg: "var(--amber)", bg: "var(--amber-dim)" },
   sent: { label: "sendt (test)", fg: "var(--blue)", bg: "var(--blue-dim)" },
 };
 

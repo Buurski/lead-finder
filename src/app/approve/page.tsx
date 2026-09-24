@@ -10,6 +10,7 @@ import InboxList from "@/components/inbox/InboxList";
 import InboxDetail from "@/components/inbox/InboxDetail";
 import { jevPriority, type ActFn, type QueueDraft, type Tab } from "@/components/inbox/types";
 import "@/components/inbox/inbox.css";
+import ReconcileBanner from "@/components/inbox/ReconcileBanner";
 
 const LIST_PAGE = 30;
 
@@ -769,6 +770,8 @@ function InboxApp() {
           <div style={{ fontSize: 12.5, marginTop: 2 }}>Køen er der stadig — der er bare ikke hul igennem lige nu. Intet blev ændret.</div>
         </WarnBanner>
       ) : (
+        <>
+        <ReconcileBanner drafts={drafts} onDone={() => void load()} />
         <div className="inbox-split">
           <div className="inbox-listpane">
             {/* Status-fanerne ligger her — en kompakt segmented control OVER
@@ -810,6 +813,7 @@ function InboxApp() {
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );

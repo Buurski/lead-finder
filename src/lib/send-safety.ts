@@ -48,8 +48,10 @@ export async function sendLockHeld(nowMs = Date.now()): Promise<boolean> {
   return Boolean(lock && typeof lock.until === "number" && lock.until > nowMs);
 }
 
-// Nodemailer-koder hvor forbindelsen/login/modtager fejlede FØR beskeden blev afleveret.
-const BEFORE_ACCEPT = new Set(["EAUTH", "EDNS", "ECONNECTION", "EENVELOPE", "ETLS", "EREQUIRETLS"]);
+// Nodemailer-koder der kun opstår FØR beskeden afleveres (login, DNS, modtagere, TLS).
+// ECONNECTION er IKKE med: nodemailer giver den også når forbindelsen lukker mens
+// svaret på DATA venter — mailen kan være modtaget (Sol R2).
+const BEFORE_ACCEPT = new Set(["EAUTH", "EDNS", "EENVELOPE", "ETLS", "EREQUIRETLS"]);
 
 /** true = serveren tog med sikkerhed ikke imod mailen (sikker at prøve igen).
  *  false = tvetydigt (timeout/socket efter DATA) → bliv i "sending", afstem manuelt. */

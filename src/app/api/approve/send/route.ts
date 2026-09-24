@@ -1,6 +1,7 @@
 import { LUCAS_ONLY } from "@/lib/tone-mixer";
 import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
+import { customerForLead } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
 import { acquireSendLock, failedBeforeAccept, releaseSendLock, sendLockHeld } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
@@ -306,6 +307,9 @@ export async function POST(req: Request) {
       let failed = 0;
       let remaining = 0;
       let processed = 0;
+      // Loft og pacing tæller SMTP-FORSØG, ikke bekræftede — et tvetydigt forsøg kan være gået ud (Sol R2).
+      let attempts = 0;
+      let stopReason = "";
       const total = candidates.length;
       const skipped: { name: string; reason: string }[] = [];
 
@@ -379,14 +383,14 @@ export async function POST(req: Request) {
           }
 
           // 3. Per-run cap — leave the rest for the next click.
-          if (sent >= SEND_CAP) {
+          if (attempts >= SEND_CAP || stopReason) {
             remaining++;
             send({ type: "capped", index: processed, total, name: d.name });
             continue;
           }
 
           // 4. Human spacing before each send (except the first).
-          if (sent > 0) await sleep(randGap());
+          if (attempts > 0) await sleep(randGap());
 
           // 5. FRISK LÆSNING (2026-07-16): en run tager minutter, og drafts kan
           // redigeres/afvises/skifte afsender undervejs via /godkendelse. Uden
@@ -418,22 +422,34 @@ export async function POST(req: Request) {
             continue;
           }
 
-          // 7. Opfølgning: læs leadet igen lige før afsendelse — et svar eller
-          // "nej tak" kan være kommet ind siden run-start (Opus-review 22/9).
-          if (isFollowUp) {
-            const freshLead = (await getLeads().catch(() => [])).find((l) => l.id === lead?.id);
-            const again = freshLead
+          // 7. FRISK MODTAGER + GATES for ALLE kladder (Sol R2/inspektion): modtageren kan
+          // være rettet, og et svar/afmelding/kunde kan være landet siden run-start.
+          const freshLead = lead ? (await getLeads().catch(() => [])).find((l) => l.id === lead.id) : undefined;
+          if (lead && !freshLead) {
+            skipped.push({ name: d.name, reason: "lead ikke fundet ved genlæsning" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "lead ikke fundet ved genlæsning" });
+            continue;
+          }
+          const freshTarget = (fresh.recipientEmail && fresh.recipientEmail.trim()) || (freshLead?.email || "").trim();
+          if (freshTarget.toLowerCase() !== targetKey) {
+            skipped.push({ name: d.name, reason: "modtager ændret undervejs — send igen" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "modtager ændret undervejs — send igen" });
+            continue;
+          }
+          const again = isFollowUp
+            ? freshLead
               ? followUpAllowed(fresh, freshLead, targetKey, { ledger: sentLedger, sentThisRun: followUpsThisRun })
-              : { ok: false as const, reason: "lead ikke fundet ved genlæsning" };
-            const gate2 = freshLead
-              ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
-              : { ok: false, reason: "lead ikke fundet" };
-            if (!again.ok || !gate2.ok) {
-              const reason = !again.ok ? again.reason : gate2.reason ?? "blokeret";
-              skipped.push({ name: d.name, reason });
-              send({ type: "skipped", index: processed, total, name: d.name, reason });
-              continue;
-            }
+              : { ok: false as const, reason: "lead ikke fundet ved genlæsning" }
+            : { ok: !(freshLead && alreadyEmailed(freshLead)), reason: "allerede kontaktet" };
+          const gate2 = freshLead
+            ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
+            : { ok: true as boolean, reason: undefined as string | undefined };
+          const isCustomer = pgEnabled() && d.leadId ? await customerForLead(d.leadId).catch(() => true) : false;
+          if (!again.ok || !gate2.ok || isCustomer) {
+            const reason = isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
+            continue;
           }
 
           // 8. Lucas' personlige historie må aldrig gå ud fra Charlies konto (about_charlie.md).
@@ -448,14 +464,15 @@ export async function POST(req: Request) {
           // 9. RESERVATION (Sol 25/9): approved → sending atomisk i DB, med modtageren
           // låst. Fejler den (afvist/redigeret/taget), sendes intet. En "sending"-kladde
           // kan ikke overskrives af forældede kø-snapshots og tæller som sendt i ledgers.
-          const reserved = await reserveForSend(d.id, target).catch(() => null);
-          if (!reserved || reserved.body !== fresh.body || reserved.subject !== fresh.subject || reserved.sender !== fresh.sender) {
-            if (reserved) await finishSend(d.id, "approved", null).catch(() => {});
-            const reason = reserved ? "ændret lige før afsendelse — prøv igen" : "kunne ikke reservere (ændret eller allerede i gang)";
+          // Betinget på den version vi har valideret (updatedAt) — en redigering imellem ⇒ intet SMTP.
+          const reserved = await reserveForSend(d.id, target, fresh.updatedAt ?? "").catch(() => null);
+          if (!reserved) {
+            const reason = "ændret lige før afsendelse eller allerede i gang — send igen";
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;
           }
+          attempts++;
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({
@@ -473,6 +490,8 @@ export async function POST(req: Request) {
             if (retryable) await finishSend(d.id, "approved", null).catch(() => {});
             else await flagForReconcile(d.name, target, "usikkert om mailen gik ud (forbindelsen faldt)");
             send({ type: "failed", index: processed, total, name: d.name, sender: senderId, error: String(err), uncertain: !retryable });
+            // Mail-forbindelsen svigter ⇒ stop kørslen (resten venter til næste klik).
+            stopReason = retryable ? "mailkontoen afviste — resten er ikke sendt" : "forbindelsen faldt — resten er ikke sendt";
             continue;
           }
           // Mailen ER sendt herfra. Bogføring må aldrig få den til at se usendt ud.
@@ -504,7 +523,7 @@ export async function POST(req: Request) {
         await releaseSendLock(lockHandle).catch(() => {});
       }
 
-      send({ type: "done", ok: true, sent, failed, remaining, skipped, mode: "live" });
+      send({ type: "done", ok: true, sent, failed, remaining, skipped, mode: "live", ...(stopReason ? { stopped: stopReason } : {}) });
       controller.close();
     },
   });

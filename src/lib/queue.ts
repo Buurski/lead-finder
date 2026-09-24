@@ -167,6 +167,12 @@ export async function updateDraft(
   id: string,
   patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId; website?: string; reviewsCount?: number; businessStatus?: string }
 ): Promise<QueueDraft | null> {
+  if (pgEnabled()) {
+    // Ét betinget række-UPDATE: to samtidige redigeringer kan ikke overskrive hinanden
+    // med et forældet hel-kø-snapshot, og endelige kladder (sendt/sending) røres ikke (Sol 25/9).
+    const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<QueueDraft>;
+    return (await import("./pg/queue.ts")).updateDraftRow(id, clean, new Date().toISOString());
+  }
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
   if (idx === -1) return null;
@@ -188,12 +194,12 @@ export async function updateDraft(
 
 // Atomisk send-reservation (pg). KV-udgaven (kun lokal/test uden pg) er
 // læs-ændr-skriv og dermed ikke atomisk — prod kører pg.
-export async function reserveForSend(id: string, recipientEmail: string): Promise<QueueDraft | null> {
+export async function reserveForSend(id: string, recipientEmail: string, expectedUpdatedAt: string): Promise<QueueDraft | null> {
   const now = new Date().toISOString();
-  if (pgEnabled()) return (await import("./pg/queue.ts")).reserveForSend(id, recipientEmail, now);
+  if (pgEnabled()) return (await import("./pg/queue.ts")).reserveForSend(id, recipientEmail, expectedUpdatedAt, now);
   const drafts = await readQueue();
   const d = drafts.find((x) => x.id === id);
-  if (!d || (d.status !== "approved" && d.status !== "edited")) return null;
+  if (!d || (d.status !== "approved" && d.status !== "edited") || (d.updatedAt ?? "") !== expectedUpdatedAt) return null;
   Object.assign(d, { status: "sending", recipientEmail, updatedAt: now });
   await writeQueue(drafts);
   return d;

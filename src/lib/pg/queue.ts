@@ -2,9 +2,9 @@
 // draft jsonb er hele QueueDraft-objektet (loss-fri); de typede kolonner findes
 // kun for at kunne filtrere/joine (spec §3).
 import "server-only";
-import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
-import { outreach } from "../db/schema.ts";
+import { company, outreach } from "../db/schema.ts";
 import type { QueueDraft } from "../queue.ts";
 
 export async function readQueue(): Promise<QueueDraft[]> {
@@ -20,9 +20,16 @@ function excluded(column: string) {
   return sql.raw(`excluded.${column}`);
 }
 
-/** Målrettet stop (ingen hel-kø-omskrivning): åbne kladder for rækkerne → afvist med grund. */
+/** Målrettet stop (ingen hel-kø-omskrivning): åbne kladder for rækkerne → afvist med grund.
+ *  Matcher også kladder nøglet på place_id (VPS-leadgen) eller "c:<uuid>" (oprettet i CRM),
+ *  som ikke har company_row_no — ellers kunne en ny kunde stadig få en kold mail (Sol 25/9). */
 export async function stopOpenForRows(rowNos: number[], reason: string, now: string): Promise<number> {
   if (!rowNos.length) return 0;
+  const cos = await getDb().select({ id: company.id, placeId: company.placeId }).from(company).where(inArray(company.rowNo, rowNos));
+  const altIds = cos.flatMap((c) => [`c:${c.id}`, ...(c.placeId ? [c.placeId] : [])]);
+  const who = altIds.length
+    ? or(inArray(outreach.companyRowNo, rowNos), inArray(sql<string>`${outreach.draft}->>'leadId'`, altIds))
+    : inArray(outreach.companyRowNo, rowNos);
   const rows = await getDb()
     .update(outreach)
     .set({
@@ -30,7 +37,7 @@ export async function stopOpenForRows(rowNos: number[], reason: string, now: str
       updatedAt: now,
       draft: sql`${outreach.draft} || jsonb_build_object('status', 'rejected', 'stoppedReason', ${reason}::text, 'updatedAt', ${now}::text)`,
     })
-    .where(and(inArray(outreach.companyRowNo, rowNos), inArray(outreach.status, ["pending", "edited", "approved"])))
+    .where(and(who, inArray(outreach.status, ["pending", "edited", "approved"])))
     .returning({ id: outreach.id });
   return rows.length;
 }
@@ -42,7 +49,7 @@ const FINAL = sql`(${outreach.status} in ('sent', 'sending') or (${outreach.stat
 
 /** Atomisk reservation: approved/edited → sending, med modtageren låst i kladden.
  *  null = kladden er ændret/afvist/allerede taget → send IKKE. */
-export async function reserveForSend(id: string, recipientEmail: string, now: string): Promise<QueueDraft | null> {
+export async function reserveForSend(id: string, recipientEmail: string, expectedUpdatedAt: string, now: string): Promise<QueueDraft | null> {
   const rows = await getDb()
     .update(outreach)
     .set({
@@ -50,7 +57,8 @@ export async function reserveForSend(id: string, recipientEmail: string, now: st
       updatedAt: now,
       draft: sql`${outreach.draft} || jsonb_build_object('status', 'sending', 'recipientEmail', ${recipientEmail}::text, 'sendingAt', ${now}::text, 'updatedAt', ${now}::text)`,
     })
-    .where(and(eq(outreach.id, id), inArray(outreach.status, ["approved", "edited"])))
+    // Versions-tjek: en redigering (modtager/tekst/afsender) efter den friske læsning ⇒ ingen reservation.
+    .where(and(eq(outreach.id, id), inArray(outreach.status, ["approved", "edited"]), eq(outreach.updatedAt, expectedUpdatedAt)))
     .returning({ draft: outreach.draft });
   return rows.length ? (rows[0].draft as QueueDraft) : null;
 }
@@ -118,4 +126,34 @@ export async function writeQueue(drafts: QueueDraft[]): Promise<void> {
       await tx.delete(outreach).where(sql`not ${FINAL}`);
     }
   });
+}
+
+/** Én kladde, ét betinget UPDATE (ingen hel-kø-omskrivning fra et forældet snapshot).
+ *  null = findes ikke eller er endelig (sendt/under afsendelse/system-stoppet). */
+export async function updateDraftRow(id: string, patch: Partial<QueueDraft>, now: string): Promise<QueueDraft | null> {
+  const merged = { ...patch, updatedAt: now };
+  const rows = await getDb()
+    .update(outreach)
+    .set({
+      updatedAt: now,
+      ...(patch.status ? { status: patch.status } : {}),
+      ...(patch.sender !== undefined ? { sender: patch.sender ?? null } : {}),
+      ...(patch.sentBy !== undefined ? { sentBy: patch.sentBy ?? null } : {}),
+      draft: sql`${outreach.draft} || ${JSON.stringify(merged)}::jsonb`,
+    })
+    .where(and(eq(outreach.id, id), sql`not ${FINAL}`))
+    .returning({ draft: outreach.draft });
+  return rows.length ? (rows[0].draft as QueueDraft) : null;
+}
+
+/** CRM-sandheden på send-tidspunktet: er virksomheden bag kladden kunde? (række, place_id eller c:<uuid>). */
+export async function customerForLead(leadId: string): Promise<boolean> {
+  const where = /^\d+$/.test(leadId)
+    ? eq(company.rowNo, Number(leadId))
+    : leadId.startsWith("c:")
+      ? eq(company.id, leadId.slice(2))
+      : eq(company.placeId, leadId);
+  if (leadId.startsWith("c:") && !/^[0-9a-f-]{36}$/i.test(leadId.slice(2))) return false;
+  const [c] = await getDb().select({ clientNo: company.clientNo, removed: company.clientRemoved, leadStatus: company.leadStatus }).from(company).where(where).limit(1);
+  return Boolean(c && ((c.clientNo !== null && !c.removed) || c.leadStatus === "client"));
 }
