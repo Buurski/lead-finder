@@ -240,3 +240,39 @@ export const loginToken = pgTable("login_token", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
 });
+
+// Blog-pipelinen (/blog): ét kort pr. blogindlæg, trukket gennem fem kolonner
+// ide → arbejder → klar → publicer → udgivet. `stage` er fri tekst (som deal.stage)
+// og valideres i hq/posts.ts. `position` er rækkefølgen i kolonnen: nyt kort = max+1.
+// `publishRequestedAt` sættes når et menneske flytter kortet til Publicer og ryddes
+// igen hvis det flyttes væk — udgiver-jobbet tager kun kort med den sat.
+export const blogPost = pgTable(
+  "blog_post",
+  {
+    id: id(),
+    title: text("title").notNull().default(""),
+    // ^[a-z0-9-]{3,80}$ — tom = endnu ikke udledt af titlen (hq/posts.ts: deriveSlug).
+    slug: text("slug").notNull().default(""),
+    category: text("category").notNull().default(""),
+    stage: text("stage").notNull().default("ide"),
+    position: integer("position").notNull().default(0),
+    excerpt: text("excerpt").notNull().default(""),
+    body: text("body").notNull().default(""),
+    note: text("note").notNull().default(""),
+    sourcePath: text("source_path").notNull().default(""),
+    // A/B-billedkontrakt (se hq/posts.ts: BlogImages): {"a":kandidat|null,
+    // "b":kandidat|null,"choice":"a"|"b"|"both"|"none"}. Ren CRM-data, ingen
+    // upload — kandidaterne er URL'er til billeder der allerede ligger et sted.
+    images: jsonb("images").notNull().default({ a: null, b: null, choice: "none" }),
+    publishRequestedAt: timestamp("publish_requested_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    publishedUrl: text("published_url"),
+    createdBy: text("created_by").notNull().default(""),
+    updatedBy: text("updated_by").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  // To indlæg må ikke dele slug; tomme slugs er tilladte (ideer endnu uden titel)
+  // og holdes ude af indekset, samme greb som company_place_id_uq.
+  (t) => [uniqueIndex("blog_post_slug_uq").on(t.slug).where(sql`${t.slug} <> ''`)],
+);
