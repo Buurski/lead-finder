@@ -42,7 +42,7 @@ function SheetItem({ item, active, badge, onNavigate }: { item: { href: string; 
 
 // Dark icon-rail (desktop, fuld højde, sticky) — bliver til en bundbar +
 // "Mere"-ark på mobil (spec §4/§5, mockup-rettelse 1).
-export default function Sidebar({ counts }: { counts: Counts }) {
+export default function Sidebar({ counts, user }: { counts: Counts; user?: string }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -77,7 +77,15 @@ export default function Sidebar({ counts }: { counts: Counts }) {
           ))}
         </nav>
         <div className="cc-rail-spacer" />
-        <div className="cc-rail-avatar" aria-hidden="true">LB</div>
+        <Link
+          href="/settings"
+          className="cc-rail-avatar"
+          style={{ textDecoration: "none" }}
+          title="Indstillinger — konto, adgangskode og log ud"
+          aria-label="Indstillinger — konto og log ud"
+        >
+          {user === "lucas" ? "LB" : user === "charlie" ? "CN" : "K"}
+        </Link>
       </aside>
 
       {/* --- mobile bottom bar --------------------------------------------- */}

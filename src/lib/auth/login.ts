@@ -76,3 +76,30 @@ export async function setupAccount(
   if (consumed.length !== 1) return { ok: false, reason: "brugt" };
   return { ok: true, user: publicUser(user) };
 }
+
+export type ChangeFailReason = "ikke-fundet" | "forkert" | "svag";
+
+/**
+ * Skift (eller sæt) adgangskode for en logget-ind bruger. Har kontoen allerede
+ * en adgangskode, kræves den nuværende; har den ingen (fx en gammel
+ * magic-link-session), sættes koden uden — den signerede session er beviset.
+ * Et ubrugt opsætningsbevis ryddes samtidig, så en gammel bootstrap-kode ikke
+ * overlever et kodeskift.
+ */
+export async function changePassword(
+  db: Db,
+  userId: string,
+  input: { currentPassword: string; nextPassword: string },
+): Promise<{ ok: true } | { ok: false; reason: ChangeFailReason }> {
+  const [user] = await db.select().from(appUser).where(eq(appUser.id, userId)).limit(1);
+  if (!user) return { ok: false, reason: "ikke-fundet" };
+  if (user.passwordHash && !(await verifyPassword(input.currentPassword, user.passwordHash))) {
+    return { ok: false, reason: "forkert" };
+  }
+  if (input.nextPassword.length < MIN_PASSWORD_LENGTH) return { ok: false, reason: "svag" };
+  await db
+    .update(appUser)
+    .set({ passwordHash: await hashPassword(input.nextPassword), setupHash: null, setupExpiresAt: null })
+    .where(eq(appUser.id, user.id));
+  return { ok: true };
+}

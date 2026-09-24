@@ -37,7 +37,7 @@ export const NAV_MORE: NavItem[] = [
   { href: "/previews", label: "Gratis udkast", icon: "LayoutGrid", hint: "Spørgeskemaer og demoer" },
   { href: "/replies", label: "Svar", icon: "Mail", hint: "Svar der kræver dig" },
   { href: "/messenger", label: "Messenger", icon: "MessagesSquare", hint: "Messenger-tråde" },
-  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Motor-kadence og sikkerhed" },
+  { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Din konto, adgangskode og motoren" },
 ];
 
 // Flad liste til ⌘K: hele IA'en, rail-item først.

@@ -7,13 +7,15 @@ const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const GROUPS = 5;
 const GROUP_LEN = 4;
 
-/** 20 tegn i 5 grupper af 4, fx `AB3D-EFGH-JKLM-NPQR-STUV`. */
-export function generateSetupCode(): string {
-  const groups: string[] = [];
-  for (let g = 0; g < GROUPS; g++) {
+/** Grupper af 4 tegn, fx `AB3D-EFGH-JKLM-NPQR-STUV` (default 5 grupper).
+ * Færre grupper = nemmere at taste; 3 grupper (60 bit) er stadig rigeligt
+ * med rate limit + udløb + ét forbrug. */
+export function generateSetupCode(groups = GROUPS): string {
+  const parts: string[] = [];
+  for (let g = 0; g < groups; g++) {
     let group = "";
     for (let i = 0; i < GROUP_LEN; i++) group += ALPHABET[randomInt(ALPHABET.length)];
-    groups.push(group);
+    parts.push(group);
   }
-  return groups.join("-");
+  return parts.join("-");
 }

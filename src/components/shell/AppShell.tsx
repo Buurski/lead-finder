@@ -82,7 +82,7 @@ export default function AppShell({
 
   return (
     <div className="cc-shell">
-      <Sidebar counts={{ queue: counts.queue }} />
+      <Sidebar counts={{ queue: counts.queue }} user={userKey} />
 
       <div className="cc-main">
         <header className="cc-topbar">
