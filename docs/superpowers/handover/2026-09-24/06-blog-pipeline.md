@@ -4,6 +4,29 @@
 + plan `wiki/kinly/blog-plan-2026-09-24.md`. **Læs dem.** Denne fil = status + Lucas' tilføjelser 24/9 aften +
 Claudes kritiske tilføjelser + koordinering med Hermes. Byg IKKE en parallel version — byg sammen med Hermes' grene.
 
+## POINTEN med bloggen (Lucas 25/9 — vinder over alt andet i filen)
+
+Bloggen er **SEO/GEO for Kinly selv**: den skal få Kinly fundet på Google og nævnt af ChatGPT/Google AI/Perplexity,
+og den skal bære Kinlys position: **"de billigste og de bedste"** (fair pris, kodet i hånden, kunden ejer koden,
+dansk redigering, SEO/AI-søgning inkluderet). Hermes' tre kladder er netop det: "SEO der sælger",
+"Billigste og bedste webbureau", "Bliver din virksomhed nævnt af ChatGPT".
+
+Hvert opslag skal have:
+1. **Et hook** i de første 2–4 sætninger (en scene, et overraskende tal, et spørgsmål læseren selv stiller) — ingen clickbait.
+2. **Reelle fakta med kilde** (studier, offentlige data) — hvert tal kan åbnes og efterprøves; ingen opdigtede tal.
+3. **Eksempler fra vores rigtige kunder** der matcher historien: fx Ikast AutoServices placering på "autoværksted ikast",
+   at de nævnes i AI-søgning, VIDAs nye behandlingssider og hvad de gav. Tallene kommer fra 07 (GSC/GEO-målinger med dato)
+   og **kræver kundens accept**. Fiktive scener må kun bruges tydeligt mærket og aldrig som bevis.
+4. **Historie, fakta og kunde-eksempel skal hænge sammen** — kunde-tallet skal bevise præcis den pointe opslaget laver
+   (council-rådet "Sammenhæng" håndhæver det).
+5. **Salg uden bluff**: vejen videre til /seo-tjek/, prissiden eller gratis udkast med `?ref=blog-<slug>`.
+6. **Søgning først**: titel, H1 og FAQ formuleret som folk faktisk søger ("hvad koster en hjemmeside", "billigt webbureau
+   Herning", "bliver min virksomhed vist i ChatGPT").
+
+**Juridisk/kritisk:** "billigste" er en sammenlignende påstand (markedsføringsloven: skal kunne dokumenteres). Brug
+den kun med en dateret, kildebelagt prissammenligning — ellers "fair pris" / "fra 3.997 kr" / "uden binding". Samme
+for "bedste": vis det med kundetal og cases, påstå det ikke.
+
 ## Hvad Lucas vil have (hans ord, 24/9)
 
 En dybdegående egen side "lidt ala pipeline", hvor kort trækkes mellem stadier. Hermes tjekker dem og
