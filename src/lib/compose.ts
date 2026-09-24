@@ -12,6 +12,7 @@ import type { MixLead, OpenerKind } from "./tone-mixer.ts";
 import { pickDemos, verticalPageFor } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { validateDraft } from "./draft.ts";
+import { personalGreetingName } from "./qualify.ts";
 
 export interface ComposeLead extends MixLead {
   name: string;
@@ -87,9 +88,16 @@ function valueLine(name: string): string {
   ]);
 }
 
+// The mail's "Hej X," opener — a personal name ONLY when one clearly leads the
+// business name (personalGreetingName), never the business name/.dk/city/parens.
+function greetingLine(businessName: string): string {
+  const name = personalGreetingName(businessName);
+  return name ? `Hej ${name},` : "Hej,";
+}
+
 function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: Demo[], branch: string, closing: string, valueText?: string, offerText?: string): string {
   return [
-    `Hej ${name},`,
+    greetingLine(name),
     ``,
     `${opener}`,
     ``,

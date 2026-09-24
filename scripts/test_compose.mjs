@@ -50,7 +50,9 @@ check("no baked-in signature (appended at send time)", mvhOk);
 // ---- per-branch snapshot: greets + subject ---------------------------------
 for (const b of branches) {
   const c = composeColdEmail({ name: "Test " + b, branch: b, city: "Aarhus", reviewsCount: 60, websiteStatus: "old", hooks: [] });
-  check(`[${b}] greets the lead by name`, c.text.startsWith("Hej Test " + b + ","));
+  // "Test <branch>" has no personal first name leading it (bug fixed 2026-09-23:
+  // greetings used to spell out the whole business name) -> plain "Hej,".
+  check(`[${b}] greets with "Hej," (no personal name in the business name)`, c.text.startsWith("Hej,"));
   check(`[${b}] has a subject + openerKind`, c.subject.length > 0 && typeof c.openerKind === "string");
 }
 

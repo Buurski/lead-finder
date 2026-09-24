@@ -35,7 +35,10 @@ const REJECT_BLOCK_MS = 14 * 24 * 60 * 60 * 1000;
 
 // Strong business key: fold danish chars, strip apostrophes/punctuation, collapse
 // whitespace. "Pinseria C´ho Fame" / "Pinseria C'ho Fame" / "pinseria cho fame" all
-// collapse to "pinseria cho fame".
+// collapse to "pinseria cho fame". The NAME half also drops a trailing Danish
+// legal-form suffix (ApS/I·S — 2026-09-23, cross-path dedup) so "Kagehuset ApS"
+// and "Kagehuset" key the same business; only a TRAILING token is stripped so a
+// business genuinely named e.g. "... IS" mid-name is never touched.
 export function bizKey(name: string | undefined, city?: string | undefined): string {
   const norm = (s: string | undefined): string =>
     (s ?? "")
@@ -48,7 +51,7 @@ export function bizKey(name: string | undefined, city?: string | undefined): str
       .replace(/['´`‘’]/g, "")
       .replace(/[^a-z0-9]+/g, " ")
       .trim();
-  const n = norm(name);
+  const n = norm(name).replace(/\s+\b(aps|i\s*\/?\s*s)$/i, "").trim();
   const c = norm(city);
   return c ? `${n}|${c}` : n;
 }

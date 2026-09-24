@@ -11,6 +11,7 @@
 
 import { store } from "./store.ts";
 import { pgEnabled } from "./db/client.ts";
+import { bizKey } from "./leads/suppress.ts";
 
 import type { Demo } from "./demos.ts";
 import type { SenderId } from "./senders.ts";
@@ -109,6 +110,16 @@ function rejectedAt(d: QueueDraft): number {
 // - Lead afvist inden for REJECT_BLOCK_MS → spring over (Lucas's afvis-respekt).
 // - Lead approved/edited/sent → tillad nyt draft (måske ny follow-up runde).
 // - Lead afvist for længe siden → tillad igen (verden ændrer sig).
+//
+// Cross-path dupe guard (2026-09-23): the in-app engine keys a draft by Sheets
+// ROW NUMBER (leadId), the VPS lead-gen pipeline keys it by Google PLACE_ID —
+// so the same business drafted by both paths never collides on leadId, and
+// showed up twice in /godkendelse. Block a fresh cold-outreach draft when the
+// business (normalized name+city, bizKey) already has an OPEN (pending/edited/
+// approved) or SENT draft anywhere in the queue, regardless of leadId scheme.
+// Follow-up drafts (source "opfoelgning") are exempt — they deliberately target
+// an already-sent business (same leadId, later step); this guard would
+// otherwise block every follow-up round.
 export async function appendDrafts(
   newDrafts: QueueDraft[],
   now: number = Date.now(),
@@ -116,21 +127,34 @@ export async function appendDrafts(
   const existing = await readQueue();
   const cutoff = now - REJECT_BLOCK_MS;
   const blockedLeadIds = new Set<string>();
+  const OPEN_OR_SENT: ReadonlySet<DraftStatus> = new Set(["pending", "edited", "approved", "sent"]);
+  const blockedBizKeys = new Set<string>();
   for (const d of existing) {
-    if (!d.leadId) continue;
-    if (d.status === "pending") {
-      blockedLeadIds.add(d.leadId);
-    } else if (d.status === "rejected" && rejectedAt(d) > cutoff) {
-      blockedLeadIds.add(d.leadId);
+    if (d.leadId) {
+      if (d.status === "pending") {
+        blockedLeadIds.add(d.leadId);
+      } else if (d.status === "rejected" && rejectedAt(d) > cutoff) {
+        blockedLeadIds.add(d.leadId);
+      }
+    }
+    if (OPEN_OR_SENT.has(d.status)) {
+      const k = bizKey(d.name, d.city);
+      if (k) blockedBizKeys.add(k);
     }
   }
   const seen = new Set<string>();
-  const deduped = newDrafts.filter((d) => {
-    if (!d.leadId) return true; // no leadId ⇒ can't dedupe, keep it
-    if (blockedLeadIds.has(d.leadId) || seen.has(d.leadId)) return false;
-    seen.add(d.leadId);
-    return true;
-  });
+  const deduped: QueueDraft[] = [];
+  for (const d of newDrafts) {
+    const k = d.source !== "opfoelgning" ? bizKey(d.name, d.city) : "";
+    if (k && blockedBizKeys.has(k)) continue;
+    if (d.leadId && (blockedLeadIds.has(d.leadId) || seen.has(d.leadId))) continue;
+    if (d.leadId) seen.add(d.leadId);
+    // Fold this accepted draft's key back in so a duplicate WITHIN this same
+    // batch (e.g. two ingest items for the same business under different
+    // leadIds) is also caught, not just duplicates against the existing queue.
+    if (k) blockedBizKeys.add(k);
+    deduped.push(d);
+  }
   const merged = [...existing, ...deduped];
   await writeQueue(merged);
   return merged;

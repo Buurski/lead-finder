@@ -135,6 +135,26 @@ function isBarePersonalName(residue: string): boolean {
   return false;
 }
 
+// Personal greeting name for the outreach mail's "Hej X," line (bug fixed
+// 2026-09-23: "Hej Gitte Gylvig Skin & Welness," and "Hej Skagen
+// Sundhedsklinik.dk," went out as drafts). Returns a name ONLY when a personal
+// first name clearly leads the business name — reuses the same
+// COMMON_FIRST_NAMES list hardDrop already uses for personal-name-shop
+// detection, so a firm's brand/company name never lands in the greeting.
+export function personalGreetingName(businessName: string): string | null {
+  const stripped = (businessName || "").trim().replace(/^hos\s+/i, "").trim();
+  const tokens = stripped.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+  if (!matchesFirstName(tokens[0])) return null;
+  const first = tokens[0].replace(/[''`]s$/i, "");
+  // A second token only joins the greeting if it ALSO reads as a personal name
+  // ("Anne Marie") — not a company suffix ("Gitte Gylvig Skin & Welness" -> "Gitte").
+  if (tokens.length >= 2 && /^[A-ZÆØÅ][a-zæøåé]+$/.test(tokens[1]) && matchesFirstName(tokens[1])) {
+    return `${first} ${tokens[1]}`;
+  }
+  return first;
+}
+
 // Layer 1: fast regex pre-filter. Returns the reason it should be dropped, or
 // null if it survives the cheap checks.
 export function hardDrop(name: string): string | null {
