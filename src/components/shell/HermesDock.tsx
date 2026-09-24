@@ -226,14 +226,50 @@ export default function HermesDock({ userKey = "ukendt" }: { userKey?: string })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, sessionId, page: pathname, ...(companyId ? { companyId } : {}) }),
       });
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; reply?: string } | null;
-      if (!res.ok || !data?.ok) {
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; requestId?: string } | null;
+      if (!res.ok || !data?.ok || !data.requestId) {
         setError(CALM_ERROR);
         setRetryText(text);
         return;
       }
-      setMessages((m) => [...m, { id: newSessionId(), role: "hermes", text: data.reply ?? "" }]);
-      if (!openRef.current) setBadge(true);
+      const rid = data.requestId;
+      // Turen kører nu på VPS'en. Rigtige spørgsmål tager nogle gange minutter,
+      // så vi poller — én lang request ville blive dræbt af Vercel-funktionen,
+      // men svaret venter trygt i hermes-api indtil vi henter det.
+      const pollUrl = `/api/hermes/ask?sessionId=${encodeURIComponent(sessionId)}&requestId=${rid}&message=${encodeURIComponent(text.slice(0, 4000))}`;
+      // eslint-disable-next-line react-hooks/purity -- poll-loop kører kun fra klik, aldrig under render
+      const started = Date.now();
+      let misses = 0;
+      for (let i = 0; ; i++) {
+        await new Promise((r) => setTimeout(r, Math.min(6000, 1500 + i * 750)));
+        // eslint-disable-next-line react-hooks/purity -- som ovenfor: kun fra klik
+        if (Date.now() - started > 45 * 60_000) {
+          setError(CALM_ERROR);
+          setRetryText(text);
+          return;
+        }
+        const pr = await fetch(pollUrl).catch(() => null);
+        const pd = (await pr?.json().catch(() => null)) as { ok?: boolean; status?: string; reply?: string } | null;
+        if (!pd?.ok) {
+          // Netværkshikke må ikke dræbe et langt svar — giv op efter tre i træk.
+          if (++misses >= 3) {
+            setError(CALM_ERROR);
+            setRetryText(text);
+            return;
+          }
+          continue;
+        }
+        misses = 0;
+        if (pd.status === "running") continue;
+        if (pd.status === "done") {
+          setMessages((m) => [...m, { id: newSessionId(), role: "hermes", text: pd.reply ?? "" }]);
+          if (!openRef.current) setBadge(true);
+          return;
+        }
+        setError(CALM_ERROR);
+        setRetryText(text);
+        return;
+      }
     } catch {
       setError(CALM_ERROR);
       setRetryText(text);

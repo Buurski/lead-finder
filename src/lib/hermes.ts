@@ -251,6 +251,58 @@ export async function hermesChat(
   return { ok: false, error: data?.error ?? `Hermes-fejl (${status})` };
 }
 
+// ---------- async chat: start + poll ----------
+// Rigtige spørgsmål kører i minutter på VPS'en (værktøjsløb); en Vercel-funktion
+// lever kun ~200s. Derfor starter vi turen og poller resultatet separat.
+
+export interface HermesChatPoll {
+  ok: boolean;
+  status?: "running" | "done" | "error";
+  reply?: string;
+  fresh?: boolean;
+  elapsedMs?: number;
+  error?: string;
+}
+
+export async function hermesChatStart(
+  message: string,
+  profile: HermesProfile,
+  sessionId: string,
+): Promise<{ ok: boolean; requestId?: string; error?: string }> {
+  const { status, data } = await hermesFetch<{ request_id?: string; error?: string }>(
+    "POST",
+    "/api/chat/start",
+    { message, profile, session_id: sessionId },
+    20_000,
+  );
+  if (status === 202 && data?.request_id) return { ok: true, requestId: data.request_id };
+  if (status === 0) return { ok: false, error: "Kunne ikke nå Hermes (VPS offline eller HERMES_API_URL mangler)" };
+  return { ok: false, error: data?.error ?? `Hermes-fejl (${status})` };
+}
+
+export async function hermesChatPoll(requestId: string, consume: boolean): Promise<HermesChatPoll> {
+  const path = `/api/chat/result?request_id=${requestId}${consume ? "&consume=1" : ""}`;
+  const { status, data } = await hermesFetch<{
+    status?: string;
+    reply?: string;
+    fresh?: boolean;
+    elapsed_ms?: number;
+    error?: string;
+  }>("GET", path, undefined, 20_000);
+  if (status === 200 && data) {
+    return {
+      ok: true,
+      status: (data.status as HermesChatPoll["status"]) ?? "error",
+      reply: data.reply,
+      fresh: data.fresh,
+      elapsedMs: data.elapsed_ms,
+      error: data.error,
+    };
+  }
+  if (status === 0) return { ok: false, error: "Kunne ikke nå Hermes (VPS offline)" };
+  return { ok: false, error: data?.error ?? `Hermes-fejl (${status})` };
+}
+
 // ---------- website-side session store ----------
 
 const SESSIONS_KEY = "hermes/sessions";
