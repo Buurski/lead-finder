@@ -4,6 +4,7 @@
 // roundtrippe loss-frit. Stramning (enums, CHECK) kommer når kalderne flyttes.
 import {
   boolean,
+  check,
   integer,
   jsonb,
   numeric,
@@ -85,7 +86,11 @@ export const companyRelation = pgTable("company_relation", {
   bId: uuid("b_id").notNull().references(() => company.id),
   label: text("label").notNull().default(""),
   createdAt: createdAt(),
-}, (t) => [uniqueIndex("company_relation_pair_uq").on(t.aId, t.bId)]);
+}, (t) => [
+  uniqueIndex("company_relation_pair_uq").on(t.aId, t.bId),
+  index("company_relation_b_id_idx").on(t.bId),
+  check("company_relation_order", sql`${t.aId} < ${t.bId}`), // parret gemmes kun én vej
+]);
 
 export const contact = pgTable("contact", {
   id: id(),
