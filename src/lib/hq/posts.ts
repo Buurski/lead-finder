@@ -306,10 +306,21 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
         throw new BlogInputError("kun Lucas eller Charlie kan sætte et indlæg i Publicer");
       }
 
-      // A/B-billederne: kandidater må skrives af alle, valget kun af et menneske.
+      // A/B-billederne: agenten må skrive frie kandidater, men ikke udskifte
+      // dem mennesket allerede har valgt (heller ikke ved uændret choice).
       const beforeImages = readImages(before.images);
       const images = patch.images === undefined ? null : imagesPatch(patch.images, beforeImages);
-      if (images) guardChoice(images.choice, beforeImages.choice, actor);
+      if (images) {
+        guardChoice(images.choice, beforeImages.choice, actor);
+        if (!HUMAN_ACTORS.has(actor)) {
+          for (const slot of ["a", "b"] as const) {
+            if ((beforeImages.choice === slot || beforeImages.choice === "both") &&
+                IMAGE_FIELDS.some((field) => images[slot]?.[field] !== beforeImages[slot]?.[field])) {
+              throw new BlogInputError(`kun Lucas eller Charlie kan ændre et valgt billede (${slot})`);
+            }
+          }
+        }
+      }
 
       // Tom slug betyder "udled af titlen" — af den nye titel hvis der kommer en.
       if (fields.slug === "") fields.slug = slugFrom(String(fields.title ?? before.title));

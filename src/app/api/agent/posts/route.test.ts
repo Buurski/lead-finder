@@ -126,6 +126,50 @@ test("A/B-billeder kan round-trippe, men agenten kan ikke vælge dem", async () 
   assert.deepEqual(humanChoice.images.b, IMAGE_CANDIDATES.b);
 });
 
+test("agenten kan ikke udskifte et allerede valgt billede, men må rette frie slots", async () => {
+  for (const choice of ["a", "b", "both"] as const) {
+    const created = await (await post({ action: "create", title: `Valgt billede ${choice}`, images: IMAGE_CANDIDATES })).json();
+    const id = created.post.id;
+    await updatePost(db, id, { images: { choice } }, "lucas");
+
+    for (const slot of (["a", "b"] as const)) {
+      const replacement = {
+        ...IMAGE_CANDIDATES[slot],
+        id: `nyt-${slot}`,
+        url: `https://cdn.example.com/nyt-${slot}.jpg`,
+        mobileUrl: `https://cdn.example.com/nyt-${slot}-mobile.jpg`,
+        desktopUrl: `https://cdn.example.com/nyt-${slot}-desktop.jpg`,
+      };
+      const res = await post({ action: "update", id, fields: { images: { [slot]: replacement } } });
+      if (choice === slot || choice === "both") {
+        assert.equal(res.status, 400, `valgt ${slot} må ikke ændres ved choice=${choice}`);
+        assert.match((await res.json()).error, /valgt billede/);
+        const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+        assert.deepEqual(row.images[slot], IMAGE_CANDIDATES[slot]);
+        assert.equal(row.images.choice, choice);
+      } else {
+        assert.equal(res.status, 200, `frit ${slot} må ændres ved choice=${choice}`);
+        assert.deepEqual((await res.json()).post.images[slot], replacement);
+      }
+    }
+
+    // Idempotente gentagelser er ikke ændringer, og mennesket kan stadig rette sit valg.
+    const selectedSlot = choice === "b" ? "b" : "a";
+    const same = await post({ action: "update", id, fields: { images: { [selectedSlot]: IMAGE_CANDIDATES[selectedSlot] } } });
+    assert.equal(same.status, 200);
+    const human = await updatePost(db, id, { images: { [selectedSlot]: { ...IMAGE_CANDIDATES[selectedSlot], alt: "Godkendt ny alt-tekst" } } }, "lucas");
+    assert.equal(human.images[selectedSlot]?.alt, "Godkendt ny alt-tekst");
+  }
+
+  const created = await (await post({ action: "create", title: "Endnu intet valg", images: IMAGE_CANDIDATES })).json();
+  const res = await post({ action: "update", id: created.post.id, fields: { images: {
+    a: { ...IMAGE_CANDIDATES.a, id: "nyt-a" },
+    b: { ...IMAGE_CANDIDATES.b, id: "nyt-b" },
+  } } });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).post.images.choice, "none");
+});
+
 test("move flytter mellem agentens tre kolonner og lægger kortet bagerst", async () => {
   const a = await (await post({ actor: "hermes", action: "create", title: "Første indlæg" })).json();
   const b = await (await post({ actor: "hermes", action: "create", title: "Andet indlæg" })).json();
