@@ -240,3 +240,62 @@ export const loginToken = pgTable("login_token", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
 });
+
+// Blog-pipelinen (/blog): ét kort pr. blogindlæg, trukket gennem fem kolonner
+// ide → arbejder → klar → publicer → udgivet. `stage` er fri tekst (som deal.stage)
+// og valideres i hq/posts.ts. `position` er rækkefølgen i kolonnen: nyt kort = max+1.
+// `publishRequestedAt` sættes når et menneske flytter kortet til Publicer og ryddes
+// igen hvis det flyttes væk — udgiver-jobbet tager kun kort med den sat.
+export const blogPost = pgTable(
+  "blog_post",
+  {
+    id: id(),
+    title: text("title").notNull().default(""),
+    // ^[a-z0-9-]{3,80}$ — tom = endnu ikke udledt af titlen (hq/posts.ts: deriveSlug).
+    slug: text("slug").notNull().default(""),
+    category: text("category").notNull().default(""),
+    stage: text("stage").notNull().default("ide"),
+    position: integer("position").notNull().default(0),
+    excerpt: text("excerpt").notNull().default(""),
+    body: text("body").notNull().default(""),
+    note: text("note").notNull().default(""),
+    sourcePath: text("source_path").notNull().default(""),
+    // A/B-billedkontrakt (se hq/posts.ts: BlogImages): {"a":kandidat|null,
+    // "b":kandidat|null,"choice":"a"|"b"|"both"|"none"}. Ren CRM-data, ingen
+    // upload — kandidaterne er URL'er til billeder der allerede ligger et sted.
+    images: jsonb("images").notNull().default({ a: null, b: null, choice: "none" }),
+    // Hvor kortet kom fra (spec 24-09 §Datamodel): "manuel" | "agent" | "crm-signal".
+    // Kun den autentificerede menneske-intake kan skabe manuel — også når idéen
+    // videresendes fra dock/Telegram. Guarden ligger i hq/posts.ts.
+    source: text("source").notNull().default("agent"),
+    // Femakset scorekort 1-100, én kort begrundelse pr. akse:
+    // {"styrke":{"score":n,"why":"…"},"kundebase":{…},"seo":{…},"geo":{…},"gap":{…}}
+    scores: jsonb("scores").notNull().default({}),
+    // "Styrker (3-5 punkter)" fra blog-arbejder — fri tekst, vist på idékortet.
+    strengths: text("strengths").notNull().default(""),
+    // Menneskers ratings, append-only: hver række bærer stage + revision, aktør
+    // og tid, så en rating altid kan læses mod den tekst den gjaldt.
+    ratings: jsonb("ratings").notNull().default([]),
+    // Kvalitetsbeviser: {sources:[{url,date,claim,method}],council:{…}|null,
+    // faq:[{q,a}],factcheck:{by,at,note,revision}|null}. factcheck er menneskets
+    // erklæring (nul opdigtede kunder/tal) og er bundet til en revision.
+    proofs: jsonb("proofs").notNull().default({}),
+    // Sidste Jev-svar (ready/issue) for den revision det blev kørt på: {ready,
+    // score, issue, at, revision}. null = ikke kørt. Versioneret, så et svar på
+    // en gammel tekst ikke kan læses som et svar på den nuværende.
+    jev: jsonb("jev"),
+    // Serverens tjekliste for den aktuelle revision: {revision, ok, missing, at}.
+    // Genberegnes ved hver skrivning — klienter må aldrig sætte den selv.
+    checklist: jsonb("checklist").notNull().default({}),
+    publishRequestedAt: timestamp("publish_requested_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    publishedUrl: text("published_url"),
+    createdBy: text("created_by").notNull().default(""),
+    updatedBy: text("updated_by").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  // To indlæg må ikke dele slug; tomme slugs er tilladte (ideer endnu uden titel)
+  // og holdes ude af indekset, samme greb som company_place_id_uq.
+  (t) => [uniqueIndex("blog_post_slug_uq").on(t.slug).where(sql`${t.slug} <> ''`)],
+);
