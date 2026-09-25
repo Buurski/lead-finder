@@ -44,9 +44,11 @@ const REPLY_RESERVE_MS = 60_000;
 // ikke brænder et helt hold af som fejlposter (council 25/9).
 const JEV_FAIL_TRIP = 5;
 
-/** Streak af Jev-svar uden dom; nulstilles af alt andet (også fetch/thin-page). */
+/** Streak af Jev-svar uden dom. En god dom nulstiller; døde sider (fetch/thin-page)
+ *  siger intet om Jev og lader streaken stå. */
 export function nextFailStreak(streak: number, error?: string): number {
-  return error === "no-judgment" ? streak + 1 : 0;
+  if (error === "no-judgment") return streak + 1;
+  return error ? streak : 0;
 }
 
 /** En fejlet genvurdering må ikke erstatte en eksisterende god dom. */
@@ -124,8 +126,9 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
         console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase: "leads", streak: jevFailStreak }));
       }
       // En fejlet GENvurdering må ikke overskrive en god dom (badget forsvandt i
-      // /godkendelse). Den gamle post bliver stående og prøves igen næste gang.
-      if (shouldSave(rec, prev)) await saveShadow(rec);
+      // /godkendelse). Den gamle dom gemmes med nyt judgedAt, så leadet går bagerst
+      // i ældst-først-køen i stedet for at blive valgt forrest hver kørsel.
+      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt });
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));
@@ -157,7 +160,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let draftsErrors = 0;
   let di = 0;
   async function draftWorker() {
-    while (di < draftBatch.length && Date.now() + JEV_WORST_MS < draftDeadline) {
+    while (!tripped && di < draftBatch.length && Date.now() + JEV_WORST_MS < draftDeadline) {
       const draft = draftBatch[di++];
       const rec = await judgeDraft(draft);
       await saveDraftShadow(rec);
@@ -210,7 +213,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let repliesErrors = 0;
   let ri = 0;
   async function replyWorker() {
-    while (ri < replyBatch.length && Date.now() + JEV_WORST_MS < deadline) {
+    while (!tripped && ri < replyBatch.length && Date.now() + JEV_WORST_MS < deadline) {
       const lead = replyBatch[ri++];
       const item = digestByLead.get(lead.id);
       const info: ReplyInfo = item
