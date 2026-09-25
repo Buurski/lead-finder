@@ -3,6 +3,7 @@ import { hqWrite, HqInputError, jsonBody } from "@/lib/hq/api";
 import { PreviewSendError, reconcilePreview, sendPreview } from "@/lib/hq/preview-send";
 import { readPreviewRequests, updatePreviewStatus, type SeoTjekResult } from "@/lib/preview-queue";
 import { DAILY_SEND_CAP, takeDailyBudget } from "@/lib/send-safety";
+import { wrongPersonText } from "@/lib/tone-mixer";
 import { composePreviewMail, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
 
 export const runtime = "nodejs";
@@ -28,6 +29,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     const sender = b.sender === "lucas" || b.sender === "charlie" ? (b.sender as SenderId) : null;
     if (!sender || !isSenderAvailable(sender)) throw new HqInputError("vælg en afsender der er forbundet");
+    if (wrongPersonText(sender, String(b.body ?? ""))) throw new HqInputError("teksten nævner den anden person som afsender — ret den eller skift afsender");
     let seoTjek: SeoTjekResult | undefined;
     try {
       await sendPreview(getDb(), id, { subject: String(b.subject ?? ""), body: String(b.body ?? "") }, actor, {

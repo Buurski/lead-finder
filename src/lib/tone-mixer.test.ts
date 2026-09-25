@@ -29,3 +29,23 @@ test("adaptToSender: gammel salgselev-præsentation (før 23/9) bliver den nye p
   assert.ok(!LUCAS_ONLY.test(charlie));
   assert.equal(adaptToSender(charlie, "lucas"), lucas);
 });
+
+test("fælles præsentation: samme tekst for begge afsendere, gamle navngivne oversættes, forkert person fanges", async () => {
+  const { DISCLOSURE, adaptToSender, wrongPersonText, mixForLead } = await import("./tone-mixer.ts");
+  const lead = { name: "Café Klein", branch: "café", city: "Kolding", reviewsCount: 669, websiteStatus: "none" };
+  assert.equal(mixForLead(lead, "lucas").disclosure, mixForLead(lead, "charlie").disclosure);
+  for (const line of DISCLOSURE) {
+    assert.equal(wrongPersonText("lucas", line), false);
+    assert.equal(wrongPersonText("charlie", line), false);
+    assert.doesNotMatch(line, /Lucas|Charlie/);
+  }
+  const oldCharlie = "Hej,\n\nSammen med Lucas driver jeg Kinly ved siden af mit arbejde, og vi har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Vi står selv for både design, kode og kontakt.\n\nMvh";
+  assert.equal(wrongPersonText("lucas", oldCharlie), true);
+  const fixed = adaptToSender(oldCharlie, "lucas");
+  assert.ok(fixed.includes(DISCLOSURE[0]));
+  assert.equal(wrongPersonText("lucas", fixed), false);
+  const oldNamed = "Hej\n\nJeg hedder Lucas og er medstifter af Kinly. Vi laver hjemmesider til lokale virksomheder, blandt andet VIDA Klinik, Ikast AutoService og Jernbanecaféen.\n\nMvh";
+  assert.equal(wrongPersonText("charlie", oldNamed), true);
+  assert.equal(adaptToSender(oldNamed, "charlie"), adaptToSender(oldNamed, "lucas"));
+  assert.ok(adaptToSender(oldNamed, "charlie").includes(DISCLOSURE[0]));
+});

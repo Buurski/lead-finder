@@ -1,4 +1,4 @@
-import { LUCAS_ONLY } from "@/lib/tone-mixer";
+import { wrongPersonText } from "@/lib/tone-mixer";
 import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
 import { customerForDraft } from "@/lib/pg/queue";
@@ -466,9 +466,11 @@ export async function POST(req: Request) {
             continue;
           }
 
-          // 8. Lucas' personlige historie må aldrig gå ud fra Charlies konto (about_charlie.md).
-          if (transportFor(fresh.sender).id === "charlie" && LUCAS_ONLY.test(finalText)) {
-            const reason = "Lucas' præsentation står i en mail fra Charlie — skift afsender igen eller ret teksten";
+          // 8. Tekst der kun passer fra den anden person må aldrig gå ud (Lucas' historie fra
+          // Charlie, "sammen med Lucas" fra Lucas). Nye kladder har en fælles præsentation.
+          const who = transportFor(fresh.sender).id === "charlie" ? "charlie" : "lucas";
+          if (wrongPersonText(who, finalText)) {
+            const reason = `Teksten passer ikke til ${who === "charlie" ? "Charlie" : "Lucas"} som afsender (nævner den anden person) — skift afsender igen eller ret teksten`;
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;

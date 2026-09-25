@@ -234,10 +234,19 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
   return out;
 }
 
-// Samme index = samme plads i mailen, så en kladde kan skifte afsender (adaptToSender).
-// 23/9 (Lucas): præsentationen skal være professionel som kinly.dk — Kinly som
-// firma med rigtige kunder, ikke "sidevirksomhed ved siden af salgselevpladsen".
-export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
+// Samme index = samme plads i mailen, så en gammel kladde kan oversættes (adaptToSender).
+// 25/9 (Lucas): præsentationen er fælles for Lucas og Charlie — personlig ("jeg"),
+// men uden navne, så den passer uanset afsender. Navnet står i underskriften.
+export const DISCLOSURE: string[] = [
+  `Jeg er medstifter af Kinly i Herning. Vi laver hjemmesider til lokale virksomheder, blandt andet VIDA Klinik, Ikast AutoService og Jernbanecaféen.`,
+  `Jeg er fra Kinly i Herning. Vi bygger hjemmesider, der gør det nemt for nye kunder at finde jer og tage kontakt, og vi har blandt andet lavet sider for VIDA Klinik og Ikast AutoService.`,
+  `Jeg er medstifter af Kinly. Vi hjælper lokale virksomheder med hjemmesider, der giver flere henvendelser, og det er os selv, der bygger og følger op.`,
+];
+/** Bagudkompatibelt: begge afsendere får samme tekst. */
+export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = { lucas: DISCLOSURE, charlie: DISCLOSURE };
+
+// Navngivne præsentationer fra 23/9 — ligger stadig i ventende kladder.
+const NAMED_DISCLOSURES_0923: Record<"lucas" | "charlie", string[]> = {
   lucas: [
     `Jeg hedder Lucas og er medstifter af Kinly. Vi laver hjemmesider til lokale virksomheder, blandt andet VIDA Klinik, Ikast AutoService og Jernbanecaféen.`,
     `Jeg er Lucas fra Kinly i Herning. Vi bygger hjemmesider, der gør det nemt for nye kunder at finde jer og tage kontakt, og vi har blandt andet lavet sider for VIDA Klinik og Ikast AutoService.`,
@@ -250,8 +259,7 @@ export const DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
   ],
 };
 
-// Præsentationer fra før 23/9 — ligger stadig i ventende kladder. adaptToSender
-// oversætter dem til den nye tekst for den valgte afsender (samme plads).
+// Præsentationer fra før 23/9 — ligger stadig i ventende kladder.
 const LEGACY_DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
   lucas: [
     `Jeg arbejder med min sidevirksomhed Kinly ved siden af min salgselevplads, og jeg har et stort drive for at skabe hjemmesider, der kan give lokale virksomheder som jeres flere kunder. Jeg står selv for både kode og kontakt.`,
@@ -265,11 +273,10 @@ const LEGACY_DISCLOSURES: Record<"lucas" | "charlie", string[]> = {
   ],
 };
 
-/** Skift præsentationen i en færdig kladde til den valgte afsenders (samme plads).
- *  Oversætter også gamle præsentationer (før 23/9) — begge afsenderes. */
-export function adaptToSender(body: string, sender: "lucas" | "charlie"): string {
-  const other = sender === "charlie" ? "lucas" : "charlie";
-  const sources = [DISCLOSURES[other], LEGACY_DISCLOSURES.lucas, LEGACY_DISCLOSURES.charlie];
+/** Skift enhver gammel præsentation (før 23/9 og navngiven 23/9, begge afsendere) til
+ *  den fælles tekst på samme plads. Afsenderen påvirker ikke længere teksten. */
+export function adaptToSender(body: string, _sender?: "lucas" | "charlie"): string {
+  const sources = [NAMED_DISCLOSURES_0923.lucas, NAMED_DISCLOSURES_0923.charlie, LEGACY_DISCLOSURES.lucas, LEGACY_DISCLOSURES.charlie];
   // Hele præsentationen erstattes som én blok, uanset linjeskift/mellemrum inde i
   // den (kladder kan have den brudt over flere linjer — Sol 23/9).
   const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -277,7 +284,7 @@ export function adaptToSender(body: string, sender: "lucas" | "charlie"): string
   for (const list of sources) {
     list.forEach((line, i) => {
       const re = new RegExp(line.trim().split(/\s+/).map(esc).join("\\s+"), "g");
-      out = out.replace(re, DISCLOSURES[sender][i]);
+      out = out.replace(re, DISCLOSURE[i]);
     });
   }
   return out;
@@ -285,6 +292,12 @@ export function adaptToSender(body: string, sender: "lucas" | "charlie"): string
 
 /** Lucas' personlige detaljer i en mail der sendes fra Charlie (inkl. hans præsentation, uanset linjeskift). */
 export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger|Jeg\s+hedder\s+Lucas|Jeg\s+er\s+Lucas|Mit\s+navn\s+er\s+Lucas/i;
+
+/** Tekst der kun passer fra den ANDEN person (fx "sammen med Lucas" i en mail fra Lucas). */
+const CHARLIE_ONLY = /(sammen\s+med|med\s+min\s+(?:makker|kompagnon))\s+Lucas|Jeg\s+hedder\s+Charlie|Jeg\s+er\s+Charlie|Mit\s+navn\s+er\s+Charlie/i;
+export function wrongPersonText(sender: "lucas" | "charlie", text: string): boolean {
+  return (sender === "charlie" ? LUCAS_ONLY : CHARLIE_ONLY).test(text);
+}
 
 export function mixForLead(lead: MixLead, sender: "lucas" | "charlie" = "lucas"): ToneMix {
   const seed = lead.name;
@@ -318,7 +331,7 @@ export function mixForLead(lead: MixLead, sender: "lucas" | "charlie" = "lucas")
 
   // Honest Kinly disclosure: personal founder-led work without sounding like a
   // student project. No "pris"/"gratis" in cold mail. Afsenderens egen historie.
-  const disclosure = pick(seed + "i", DISCLOSURES[sender]);
+  const disclosure = pick(seed + "i", DISCLOSURE);
 
   const demoIntro = pick(seed + "dm", [
     `Jeg lavede et par demoer I kan kigge på:`,
