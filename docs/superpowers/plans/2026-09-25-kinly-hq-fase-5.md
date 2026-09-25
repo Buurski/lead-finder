@@ -230,3 +230,11 @@ Kendte, IKKE ændret i denne bølge (flag til Lucas/senere):
 | F2 preview-send bruger samme konti uden loft | Accepteret — `/api/previews/[id]/send` tager samme budget før SMTP. SEO-tjek-mails (dag 0-rapport + dag 7-cron) er opt-in-svar til folk der selv bad om det og holdes UDEN for budgettet (ellers kan kolde mails blokere et svar); dag 7-cronens automatik er flagget til Lucas. |
 | F3 List-Unsubscribe er et krav i 02 | Accepteret — kravet i 02 er opdateret med afgørelsen og A/B-beviset. |
 Data-linse (Sonnet) bekræftede samme huller + at tidszone er korrekt og at `sent`/`sending`-rækker er beskyttet mod hel-kø-skrivninger. Hermes: ingen kaldere af de slettede ruter; 5 gamle `send.mjs`-kopier på VPS kører ikke (ingen cron/timer).
+
+### Sol-inspektion bølge 2, runde 2 (REVISE) — dispositioner
+| Fund | Disposition |
+|---|---|
+| F1 (high) preview-send sletter kravet ved ENHVER SMTP-fejl ⇒ dobbelt-send ved timeout efter DATA | Accepteret — kravet frigives kun ved `failedBeforeAccept` eller vores egen afvisning før SMTP (budget = `PreviewSendError`); tvetydig fejl ⇒ kravet står + besked "tjek Gmail Sendt". Test: ETIMEDOUT holder kravet, nyt klik sender ikke. |
+| F2 afmeld-tekst påstået bevaret, men findes ikke i /approve-kladder | Accepteret som dokumentfejl — 02 rettet; tilføjelse af afmeld-linje = Lucas' beslutning (mailtekst). |
+| F3 budget nøglet på afsender-id, ikke Gmail-konto | Accepteret — nøgle = normaliseret SMTP-adresse; test: lucas+charlie på samme adresse deler loft. |
+Note: runde 1+2 meldte "Code changed during inspection" (runde 1: kunder-WIP; runde 2: formentlig `git fetch` under kørslen) — fundene er stadig behandlet.

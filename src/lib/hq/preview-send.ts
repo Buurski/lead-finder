@@ -1,10 +1,11 @@
 // Afsendelse af et færdigt gratis udkast. Kun på klik fra Lucas/Charlie efter de
 // har set udkastet — aldrig automatisk. Ét udkast sendes højst én gang: kravet
 // tages som en unik activity-række i Postgres FØR mailen går, og frigives hvis
-// afsendelsen fejler.
+// afsendelsen fejler MED SIKKERHED før Gmail tog mailen (tvetydig fejl ⇒ kravet står).
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
+import { failedBeforeAccept } from "../send-safety.ts";
 
 export class PreviewSendError extends Error {}
 
@@ -64,8 +65,15 @@ export async function sendPreview(
   try {
     await deps.deliver({ to, subject, body });
   } catch (err) {
-    await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, claimed[0].id)));
-    throw new PreviewSendError(`mailen kunne ikke sendes: ${String((err as Error)?.message ?? err).slice(0, 120)}`);
+    const msg = String((err as Error)?.message ?? err).slice(0, 120);
+    // Kun sikre før-accept-fejl (og vores egne afvisninger før SMTP) frigiver kravet.
+    // En timeout efter DATA kan betyde at mailen ER ude — så må et nyt klik ikke sende igen (Sol bølge 2 R2).
+    if (err instanceof PreviewSendError || failedBeforeAccept(err)) {
+      await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, claimed[0].id)));
+      throw new PreviewSendError(`mailen kunne ikke sendes: ${msg}`);
+    }
+    console.error(JSON.stringify({ evt: "preview.uncertain_send", id, to, error: msg }));
+    throw new PreviewSendError(`usikkert om mailen gik ud (${msg}) — tjek Gmail Sendt før du prøver igen; udkastet står som sendt`);
   }
   // Mailen er ude; status-fejl må ikke få nogen til at sende igen (kravet står).
   await deps.markSent(id, body).catch((err) =>

@@ -14,7 +14,7 @@ const url = "https://demo.kinly.dk/p/abc";
 const req: PreviewLike = { id: "preview_x1", company: "Salon Lux", email: "maja@salonlux.dk", status: "preview klar", previewUrl: url };
 const msg = { subject: "Jeres udkast", body: `Hej Maja\n\nHer er udkastet: ${url}` };
 
-function deps(r: PreviewLike | null, fail = false) {
+function deps(r: PreviewLike | null, fail?: Error) {
   const sent: string[] = [];
   const marked: string[] = [];
   return {
@@ -23,7 +23,7 @@ function deps(r: PreviewLike | null, fail = false) {
     d: {
       get: async () => r,
       deliver: async (m: { to: string }) => {
-        if (fail) throw new Error("smtp nede");
+        if (fail) throw fail;
         sent.push(m.to);
       },
       markSent: async (id: string) => {
@@ -42,8 +42,8 @@ test("sender én gang, og aldrig igen", async () => {
   assert.equal(x.sent.length, 1);
 });
 
-test("fejlet afsendelse frigiver kravet; forkerte input afvises før afsendelse", async () => {
-  const bad = deps(req, true);
+test("sikker før-accept-fejl frigiver kravet; forkerte input afvises før afsendelse", async () => {
+  const bad = deps(req, Object.assign(new Error("login afvist"), { code: "EAUTH" }));
   await assert.rejects(sendPreview(db, req.id, msg, "lucas", bad.d), PreviewSendError);
   assert.equal((await db.select().from(activity)).length, 0);
   const x = deps(req);
@@ -56,4 +56,13 @@ test("fejlet afsendelse frigiver kravet; forkerte input afvises før afsendelse"
   }
   const z = deps({ ...req, id: "preview_z" });
   await assert.rejects(sendPreview(db, "preview_z", { ...msg, body: "uden link" }, "lucas", z.d), PreviewSendError);
+});
+
+test("tvetydig SMTP-fejl (timeout efter DATA) holder kravet — intet dobbelt-send", async () => {
+  const amb = deps(req, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }));
+  await assert.rejects(sendPreview(db, req.id, msg, "lucas", amb.d), /usikkert/);
+  assert.equal((await db.select().from(activity)).length, 1, "kravet står");
+  const x = deps(req);
+  await assert.rejects(sendPreview(db, req.id, msg, "lucas", x.d), /allerede sendt/);
+  assert.equal(x.sent.length, 0);
 });

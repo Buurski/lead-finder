@@ -155,3 +155,19 @@ test("dagligt budget: atomisk pr. konto og dansk dag; samtidige forsøg overskri
   assert.equal(await takeDailyBudget("lucas", Date.parse("2026-09-25T21:30:00Z"), 5), false);
   assert.equal(await takeDailyBudget("lucas", Date.parse("2026-09-25T22:30:00Z"), 5), true);
 });
+
+test("dagligt budget: to afsender-id'er på samme Gmail-konto deler ét budget", async () => {
+  await freshTestDb();
+  process.env.GMAIL_USER = "lucas@kinly.dk"; process.env.GMAIL_APP_PASSWORD = "x";
+  process.env.CHARLIE_GMAIL_USER = "Lucas@Kinly.dk"; process.env.CHARLIE_GMAIL_APP_PASSWORD = "y";
+  try {
+    const { takeDailyBudget, dailyBudgetUsed } = await import("./send-safety.ts");
+    const t = Date.parse("2026-09-26T10:00:00Z");
+    assert.equal(await takeDailyBudget("lucas", t, 2), true);
+    assert.equal(await takeDailyBudget("charlie", t, 2), true);
+    assert.equal(await takeDailyBudget("charlie", t, 2), false, "samme konto ⇒ samme loft");
+    assert.equal(await dailyBudgetUsed("lucas", t), 2);
+  } finally {
+    for (const k of ["GMAIL_USER", "GMAIL_APP_PASSWORD", "CHARLIE_GMAIL_USER", "CHARLIE_GMAIL_APP_PASSWORD"]) delete process.env[k];
+  }
+});

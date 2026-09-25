@@ -5,6 +5,7 @@ import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import { getDb, pgEnabled } from "./db/client.ts";
 import { counter } from "./db/schema.ts";
 import { store } from "./store.ts";
+import { getSenderCreds, type SenderId } from "./senders.ts";
 
 const LOCK_NAME = "send-lock";
 const KV_LOCK_KEY = "send/lock";
@@ -69,10 +70,12 @@ export function failedBeforeAccept(err: unknown): boolean {
 // Et forsøg der bagefter afvises af reservationen bruger stadig en plads (sikker retning).
 export const DAILY_SEND_CAP = 20;
 const cphDay = (ms: number) => new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
-const budgetKey = (sender: string, nowMs: number) => `send-day:${sender}:${cphDay(nowMs)}`;
+// Nøglet på den faktiske Gmail-konto: peger lucas og charlie på samme adresse, deler de budget (Sol R2 F3).
+const budgetKey = (sender: SenderId, nowMs: number) =>
+  `send-day:${(getSenderCreds(sender)?.email || sender).trim().toLowerCase()}:${cphDay(nowMs)}`;
 
 /** Tager én plads i dagens budget. false = loftet er nået (send ikke). */
-export async function takeDailyBudget(sender: string, nowMs = Date.now(), cap = DAILY_SEND_CAP): Promise<boolean> {
+export async function takeDailyBudget(sender: SenderId, nowMs = Date.now(), cap = DAILY_SEND_CAP): Promise<boolean> {
   const name = budgetKey(sender, nowMs);
   if (pgEnabled()) {
     const rows = await getDb()
@@ -90,7 +93,7 @@ export async function takeDailyBudget(sender: string, nowMs = Date.now(), cap = 
 }
 
 /** Hvor mange pladser er brugt i dag (kun til GET-preflight). */
-export async function dailyBudgetUsed(sender: string, nowMs = Date.now()): Promise<number> {
+export async function dailyBudgetUsed(sender: SenderId, nowMs = Date.now()): Promise<number> {
   const name = budgetKey(sender, nowMs);
   if (pgEnabled()) {
     const rows = await getDb().select({ value: counter.value }).from(counter).where(eq(counter.name, name));

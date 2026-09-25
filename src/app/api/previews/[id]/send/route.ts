@@ -21,7 +21,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         get: async (pid) => (await readPreviewRequests()).find((r) => r.id === pid) ?? null,
         deliver: async ({ to, subject, body }) => {
           // Samme dagsbudget pr. konto som kold-køen (Sol bølge 2 F2). Kastes før SMTP ⇒ intet sendt.
-          if (!(await takeDailyBudget(sender).catch(() => false))) throw new Error(`dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${sender}) — prøv i morgen`);
+          if (!(await takeDailyBudget(sender).catch(() => false))) throw new PreviewSendError(`dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${sender}) — prøv i morgen`);
           await getTransporter(sender).sendMail({
             from: formatFrom(sender),
             to,
