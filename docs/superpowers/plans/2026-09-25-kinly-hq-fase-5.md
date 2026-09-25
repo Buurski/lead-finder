@@ -319,4 +319,4 @@ Indhold siden 0381ca0: Hermes' blog-backend (0011-0012) + SEO-gates (metaTitle/-
 5. Vercel env (HQ): `NYHEDSBREV_TOKEN_IKAST` fra fil (`--value`, aldrig stdin). Uden den: newsletter-sync 502 hver dag (bevidst rød).
 6. Merge feature → main, push (Vercel deployer). Live-tjek: login 200, /kunder 307 uden session, /api/shot 401, /api/cron/health 200, /seo-tjek 308 → kinly.dk.
 7. Derefter kinly-site: merge `claude/blog-redesign-0925` → main (sender telefon + seoTjek + nyhedsbrev til HQ; HQ skal være oppe først). Live-tjek /blog/, /blog/emne/*, /seo-tjek/, /nyhedsbrev/tak/ (noindex). Kinly-Brevo env (`BREVO_API_KEY`, `BREVO_LIST_ID`, `BREVO_DOI_TEMPLATE_ID`) sættes af nyhedsbrev-sessionen; uden dem springes DOI blødt over.
-8. Efter deploy: 12 blog-idéer (vault `wiki/kinly/blog-ideer-2026-09-25.md`) som idé-kort i HQ-board; E2E-test af SEO-tjek-formular med buur.aigro.
+8. Efter deploy: 12 blog-idéer (vault `wiki/kinly/blogideer-2026-09-25.md`) som idé-kort i HQ-board; E2E-test af SEO-tjek-formular med buur.aigro.
