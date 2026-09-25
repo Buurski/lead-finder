@@ -39,7 +39,10 @@ function domainOf(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
     const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
-    return /^[a-z0-9.-]+$/i.test(url.hostname) && url.hostname.includes(".") ? url.hostname : null;
+    const host = url.hostname.toLowerCase();
+    // Sociale profiler er ikke en hjemmeside — et skud af dem er en login-skærm.
+    if (/(^|\.)(facebook|fb|instagram|linkedin|tiktok|google|goo)\.[a-z]+$/.test(host)) return null;
+    return /^[a-z0-9.-]+$/.test(host) && host.includes(".") ? host : null;
   } catch { return null; }
 }
 
@@ -52,7 +55,7 @@ export default async function KunderPage({ searchParams }: { searchParams: Promi
   const counts = await Promise.all(TABS.map(async (t) => (await db.select({ n: count() }).from(company).where(whereFor(t.key)))[0]?.n ?? 0));
   const total = counts[TABS.findIndex((t) => t.key === fane)];
 
-  const nav = <nav className="virk-chips" aria-label="Vælg liste">
+  const nav = <nav className="virk-chips kunde-tabs" aria-label="Vælg liste">
     {TABS.map((t, i) => <Link key={t.key} href={t.key === "kunder" ? "/kunder" : `/kunder?fane=${t.key}`} className="virk-chip" aria-current={fane === t.key ? "true" : undefined}>
       {t.label} <span className="virk-chip-n">{counts[i]}</span>
     </Link>)}
