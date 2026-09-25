@@ -132,6 +132,8 @@ export function pickDemos(branch: string, name: string): Demo[] {
 // Aldrig kundens eget domæne (Lucas 23/9).
 
 export const KINLY_FRONT = "https://kinly.dk/";
+// URL'en må slutte her: /case/... og /hjemmeside-til-... er ikke forsiden.
+const KINLY_FRONT_LINK = /https:\/\/kinly\.dk\/(?=$|[\s<)"',;!?])/;
 
 /**
  * Rigtige kunders egne sider — også når de (som KT VVS) kun findes som vores
@@ -245,7 +247,7 @@ export const REFERENCE_INTRO = "Her kan I se min egen side og et par eksempler:"
 export function missingReferenceLinks(body: string, branch: string, name = ""): string[] {
   const l = referenceLinks(branch, name);
   const issues: string[] = [];
-  if (!body.includes(l.front)) issues.push(`mangler kinly.dk-forside (${l.front})`);
+  if (!KINLY_FRONT_LINK.test(body)) issues.push(`mangler kinly.dk-forside (${l.front})`);
   if (l.caseUrl && !body.includes(l.caseUrl)) issues.push(`mangler case-link (${l.caseUrl})`);
   if (l.verticalUrl && !body.includes(l.verticalUrl)) issues.push(`mangler branche-side (${l.verticalUrl})`);
   return issues;
@@ -267,7 +269,7 @@ export interface ReferenceFix {
 export function withReferenceLinks(text: string, branch: string, name = ""): ReferenceFix {
   const l = referenceLinks(branch, name);
   const links = referenceLines(branch, name).map((line) => line.slice(2));
-  const added = links.filter((u) => !text.includes(u));
+  const added = links.filter((u) => !(u === l.front ? KINLY_FRONT_LINK.test(text) : text.includes(u)));
   if (added.length === 0) return { body: text, added: [], caseMissing: l.caseMissing };
   const block = [REFERENCE_INTRO, ...added.map((u) => `→ ${u}`)].join("\n");
   return { body: `${text.replace(/\s+$/, "")}\n\n${block}`, added, caseMissing: l.caseMissing };

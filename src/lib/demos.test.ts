@@ -117,6 +117,15 @@ test("withReferenceLinks tilføjer det der mangler og rører ikke en komplet tek
   assert.equal(v.caseMissing, true);
 });
 
+test("case-link og branche-side tæller ikke som link til forsiden", () => {
+  const body = `→ ${DEMO_SITES.vidaCase}\n→ https://kinly.dk/hjemmeside-til-skoenhedsklinik/`;
+  assert.ok(missingReferenceLinks(body, "skønhedsklinik").some((issue) => issue.includes("forside")));
+  const fixed = withReferenceLinks(body, "skønhedsklinik");
+  assert.deepEqual(fixed.added, [KINLY_FRONT]);
+  assert.deepEqual(missingReferenceLinks(fixed.body, "skønhedsklinik"), []);
+  assert.deepEqual(withReferenceLinks(fixed.body, "skønhedsklinik").added, []);
+});
+
 test("dødt demo-link stopper kladden", async () => {
   const { validateDraft } = await import("./draft.ts");
   const r = validateDraft("Se fx https://vestfjends.vercel.app/ her");
