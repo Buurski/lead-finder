@@ -27,6 +27,7 @@ const SCHEDULE: Record<string, string> = {
   "jev-rescore": "30 3,13 * * *",
   "snapshot": "45 3 * * *",
   "calendar-sync": "15 * * * *",
+  "gsc-snapshot": "30 6 * * 1",
 };
 
 function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {

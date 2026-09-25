@@ -9,6 +9,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  real,
   text,
   timestamp,
   index,
@@ -176,6 +177,22 @@ export const newsletterSnapshot = pgTable("newsletter_snapshot", {
   campaigns: jsonb("campaigns").$type<import("../hq/newsletter.ts").CampaignStat[]>().notNull().default(sql`'[]'::jsonb`),
   domain: jsonb("domain").$type<{ name: string; authenticated: boolean; dkim?: boolean; dmarc?: boolean } | null>(),
 }, (t) => [index("newsletter_snapshot_account_taken_idx").on(t.account, t.takenAt)]);
+
+// Google Search Console pr. kunde (ugentligt). `daily` = 90 dages daglige tal fra API'et
+// (GSC har 16 mdr. historik), så grafen virker fra første måling. Kun aggregater.
+export const gscSnapshot = pgTable("gsc_snapshot", {
+  id: id(),
+  companyId: uuid("company_id").references(() => company.id).notNull(),
+  property: text("property").notNull(), // fx "sc-domain:ikastautoservice.dk"
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  periodStart: text("period_start").notNull(), // YYYY-MM-DD (28-dages vindue)
+  periodEnd: text("period_end").notNull(),
+  clicks: integer("clicks").notNull(),
+  impressions: integer("impressions").notNull(),
+  position: real("position"), // gennemsnitlig placering; null uden visninger
+  topQueries: jsonb("top_queries").$type<{ query: string; clicks: number; impressions: number; position: number }[]>().notNull().default(sql`'[]'::jsonb`),
+  daily: jsonb("daily").$type<{ date: string; clicks: number; impressions: number }[]>().notNull().default(sql`'[]'::jsonb`),
+}, (t) => [index("gsc_snapshot_company_taken_idx").on(t.companyId, t.takenAt)]);
 
 export const activity = pgTable("activity", {
   id: id(),

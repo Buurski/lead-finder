@@ -33,6 +33,8 @@ import TrackRecentCompany from "@/components/virksomheder/TrackRecentCompany";
 import CompanyTasks from "@/components/virksomheder/CompanyTasks";
 import NewsletterPanel from "@/components/virksomheder/NewsletterPanel";
 import { latestNewsletterFor } from "@/lib/hq/newsletter-sync";
+import { latestGscFor } from "@/lib/hq/gsc";
+import GscCard from "@/components/seo/GscCard";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -147,9 +149,16 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
     ? await db.select().from(seoSnapshot).where(eq(seoSnapshot.companyId, c.id)).orderBy(desc(seoSnapshot.takenAt)).limit(12)
     : [];
   const newsletter = c.clientNo !== null ? await latestNewsletterFor(db, c.id) : [];
+  const gscRows = c.clientNo !== null ? await latestGscFor(db, c.id) : { latest: null, previous: null, marks: [] };
+  const gsc = gscRows.latest ? {
+    periodStart: gscRows.latest.periodStart, periodEnd: gscRows.latest.periodEnd, takenAt: gscRows.latest.takenAt.toISOString(),
+    clicks: gscRows.latest.clicks, impressions: gscRows.latest.impressions, position: gscRows.latest.position,
+    topQueries: gscRows.latest.topQueries, daily: gscRows.latest.daily,
+    previous: gscRows.previous ? { clicks: gscRows.previous.clicks, impressions: gscRows.previous.impressions, position: gscRows.previous.position } : null,
+  } : null;
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} /> },
+    { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
     {
       key: "aftaler",
