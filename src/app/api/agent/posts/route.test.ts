@@ -5,7 +5,7 @@ import { POST } from "./route.ts";
 import { __setDb, type Db } from "../../../../lib/db/client.ts";
 import { freshTestDb } from "../../../../lib/db/test-db.ts";
 import { blogPost } from "../../../../lib/db/schema.ts";
-import { updatePost } from "../../../../lib/hq/posts.ts";
+import { updatePost, revisionOf, readProofs, readRatings } from "../../../../lib/hq/posts.ts";
 import { hermesSignature } from "../../../../lib/hermes-hmac.ts";
 
 // Handleren kaldes direkte med et signeret Request — samme HMAC-skema som i
@@ -66,8 +66,17 @@ function signed(body: string, opts: { secret?: string; path?: string; signPath?:
 
 const post = (payload: unknown, opts: { secret?: string; path?: string; signPath?: string } = {}) => POST(signed(JSON.stringify(payload), opts));
 
-/** Lægger et kort direkte i Publicer — det må kun ske med et menneske som actor. */
+/**
+ * Lægger et kort direkte i Publicer — det må kun ske med et menneske som actor.
+ * Tjeklisten kvitteres grøn for den aktuelle revision først, som serveren selv
+ * ville have gjort det; selve fail-closed-reglen testes i posts.test.ts.
+ */
 async function toPublicer(id: string) {
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  await db
+    .update(blogPost)
+    .set({ checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
+    .where(eq(blogPost.id, id));
   return updatePost(db, id, { stage: "publicer" }, "lucas");
 }
 
@@ -419,7 +428,7 @@ test("precheck uden JEV-nøgle svarer jev:null uden fejl", async () => {
 
   const res = await post({ actor: "hermes", action: "precheck", id: created.post.id });
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { ok: true, jev: null });
+  assert.deepEqual(await res.json(), { ok: true, jev: null, jevRecord: null });
 
   // Også på slug — udgiver-jobbet kan bruge begge veje.
   const bySlug = await post({ actor: "hermes", action: "precheck", slug: "klar-til-gennemlaesning" });
@@ -439,4 +448,52 @@ test("ugyldig JSON og ugyldigt indlægs-id giver 400", async () => {
   const id = await post({ actor: "hermes", action: "move", id: "ikke-en-uuid", stage: "klar" });
   assert.equal(id.status, 400);
   assert.equal((await id.json()).error, "ugyldigt indlægs-id");
+});
+
+test("agenten kan ikke rate, faktatjekke eller kalde sig manuel — og ikke publicere på grønt", async () => {
+  // Kilden er server-verificeret: agentens signerede rute må skrive agent og
+  // crm-signal, men aldrig manuel (den hører til menneskets egen intake).
+  const signal = await (await post({ action: "create", title: "Fra CRM-signalet", source: "crm-signal" })).json();
+  assert.equal(signal.post.source, "crm-signal");
+  const manuel = await post({ action: "create", title: "Snyder med kilden", source: "manuel" });
+  assert.equal(manuel.status, 400);
+  assert.match((await manuel.json()).error, /manuel/);
+
+  // Rating, source og tjeklisten er menneskets: felterne kendes ikke på
+  // agent-ruten. Faktatjekket står i proofs, som agenten må skrive — men ikke
+  // den del af det (guarden ligger i lib'en, så den også gælder UI-vejen).
+  const id = signal.post.id;
+  for (const fields of [{ rating: { value: 5 } }, { source: "manuel" }, { checklist: { ok: true } }, { jev: { ready: true } }]) {
+    const res = await post({ actor: "hermes", action: "update", id, fields });
+    assert.equal(res.status, 400, JSON.stringify(fields));
+    assert.match((await res.json()).error, /kan ikke sættes her/);
+  }
+  const factcheck = await post({ actor: "hermes", action: "update", id, fields: { proofs: { factcheck: { note: "jeg bekræfter min egen tekst" } } } });
+  assert.equal(factcheck.status, 400);
+  assert.match((await factcheck.json()).error, /kun Lucas eller Charlie/);
+
+  // Selv med en grøn tjekliste for den aktuelle revision er Publicer menneskets
+  // knap: agent-ruten afviser, og aftalen (publishRequestedAt) sættes ikke.
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  await db
+    .update(blogPost)
+    .set({ checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
+    .where(eq(blogPost.id, id));
+  const publicer = await post({ actor: "hermes", action: "move", id, stage: "publicer" });
+  assert.equal(publicer.status, 400);
+  assert.match((await publicer.json()).error, /agenten må kun/);
+
+  const [after] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  assert.equal(after.stage, "ide");
+  assert.equal(after.publishRequestedAt, null);
+  assert.deepEqual(readRatings(after.ratings), []);
+  assert.equal(readProofs(after.proofs).factcheck, null);
+
+  // Mennesket kan til gengæld: ratingen lægges til med aktør, stage og revision.
+  const rated = await updatePost(db, id, { rating: { value: 4, comment: "god vinkel" } }, "lucas");
+  const ratinger = readRatings(rated.ratings);
+  assert.equal(ratinger.length, 1);
+  assert.equal(ratinger[0].actor, "lucas");
+  assert.equal(ratinger[0].stage, "ide");
+  assert.equal(ratinger[0].revision, revisionOf(rated));
 });

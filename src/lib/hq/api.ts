@@ -1,7 +1,7 @@
 // Fælles for HQ's skrive-ruter: auth-vagt, hvem der handler, og ensartede fejl.
 import "server-only";
 import { NextResponse } from "next/server";
-import { assertWriteRequest } from "../cc-auth.ts";
+import { assertWriteRequest, isCommandCenterRequest } from "../cc-auth.ts";
 import { currentUser } from "../current-user.ts";
 import { DealInputError } from "./deals.ts";
 import { BlogInputError } from "./posts.ts";
@@ -35,6 +35,17 @@ export async function jsonBody(req: Request): Promise<Record<string, unknown>> {
   const b = await req.json().catch(() => null);
   if (!b || typeof b !== "object" || Array.isArray(b)) throw new HqInputError("ugyldig forespørgsel");
   return b as Record<string, unknown>;
+}
+
+/**
+ * Læse-ruter bag proxyen: når auth overhovedet er sat op (Vercel), skal kaldet
+ * bære proxyens markør. Lokalt (ingen auth-env, tests) lukkes der igennem —
+ * samme greb som /api/opgaver.
+ */
+export async function authorizedRead(req: Request): Promise<boolean> {
+  const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+  if (!authConfigured) return true;
+  return isCommandCenterRequest(req);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

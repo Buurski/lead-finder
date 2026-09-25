@@ -7,16 +7,29 @@ import { blogPost } from "../db/schema.ts";
 import {
   BLOG_STAGES,
   BlogInputError,
+  SOURCE_LABEL,
   STAGE_LABEL,
+  bodyLinks,
+  countWords,
   createPost,
   deletePost,
   deriveSlug,
   getPost,
+  internalLinks,
   isSlugConflict,
   listPosts,
   markPublished,
+  readChecklist,
+  readJev,
+  readProofs,
+  readRatings,
+  readScores,
+  recordJev,
+  revisionOf,
+  runChecklist,
   updatePost,
 } from "./posts.ts";
+import type { BlogImages } from "./posts.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -24,6 +37,60 @@ beforeEach(async () => {
 });
 
 const LIVE_URL = "https://kinly.dk/blog/hvad-koster-en-hjemmeside";
+
+/**
+ * Kvitterer tjeklisten grøn for den aktuelle revision, præcis som serveren selv
+ * gør efter en grøn kørsel. Bruges i de tests der handler om stage-guards og
+ * markPublished — selve fail-closed-reglen testes for sig nedenfor.
+ */
+async function publish(id: string, actor = "lucas") {
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  await db
+    .update(blogPost)
+    .set({ checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
+    .where(eq(blogPost.id, id));
+  return updatePost(db, id, { stage: "publicer" }, actor);
+}
+
+// --- Grønt eksempel: en kladde der opfylder hvert punkt i tjeklisten --------
+const GREEN_SLUG = "hvad-koster-en-hjemmeside";
+const GREEN_CANDIDATE = (slot: "a" | "b") => ({
+  id: `billed-${slot}`,
+  url: `https://cdn.kinly.dk/${slot}.jpg`,
+  placement: slot === "a" ? "hero" : "inline",
+  alt: `Alt-tekst ${slot}`,
+  credit: "Foto: Kinly",
+  source: "eget skud",
+  mobileUrl: `https://cdn.kinly.dk/${slot}-mobil.jpg`,
+  desktopUrl: `https://cdn.kinly.dk/${slot}-desktop.jpg`,
+});
+const GREEN_IMAGES: BlogImages = { a: GREEN_CANDIDATE("a"), b: GREEN_CANDIDATE("b"), choice: "none", choiceBy: "", choiceAt: null };
+const GREEN_SOURCES = [1, 2, 3, 4, 5].map((n) => ({
+  url: `https://www.erhvervsstyrelsen.dk/kilde-${n}`,
+  date: `2026-09-0${n}`,
+  claim: `Konkret påstand ${n} fra kilden`,
+  method: "åbnet og læst 25-09",
+}));
+const GREEN_COUNCIL = { reviewer: "uafhængig-agent-b", log: "wiki/kinly/council-2026-09-24.md", findings: "to fund lukket", retest: "grøn" };
+const GREEN_FAQ = [
+  { q: "Hvad koster en hjemmeside?", a: "Det afhænger af opgaven — spørg om et tilbud." },
+  { q: "Hvor lang tid tager det?", a: "Typisk to til fire uger." },
+  { q: "Ejer jeg koden?", a: "Ja, 100 procent." },
+];
+const GREEN_PROOFS = { sources: GREEN_SOURCES, council: GREEN_COUNCIL, faq: GREEN_FAQ, factcheck: null };
+
+/** 640 ord plus links og CTA — nok til at ligge i 600-900-vinduet. */
+function greenBody(slug = GREEN_SLUG): string {
+  const ord = Array.from({ length: 640 }, (_, i) => `ord${i % 40}`);
+  const afsnit: string[] = [];
+  for (let i = 0; i < ord.length; i += 40) afsnit.push(ord.slice(i, i + 40).join(" "));
+  return [
+    "# Hvad koster en hjemmeside",
+    ...afsnit,
+    "Læs også om [branchesiden for håndværkere](https://kinly.dk/brancher/haandvaerk) og [vores case med Ikast AutoService](https://kinly.dk/cases/ikast-autoservice).",
+    `[Tag SEO-tjekket](/seo-tjek/?ref=blog-${slug})`,
+  ].join("\n\n");
+}
 
 async function seed(title = "Hvad koster en hjemmeside egentlig i 2026", actor = "hermes") {
   return createPost(db, { title, excerpt: "Kort resume" }, actor);
@@ -117,18 +184,18 @@ test("agenten må ikke sætte Publicer eller Udgivet", async () => {
 test("Publicer kræver Lucas eller Charlie og sætter publishRequestedAt", async () => {
   const post = await seed();
   await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "delt"), /kun Lucas eller Charlie/);
-  const lucas = await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  const lucas = await publish(post.id);
   assert.ok(lucas.publishRequestedAt instanceof Date);
   assert.equal(lucas.stage, "publicer");
 
   const other = await seed("Fem ting lokale virksomheder spørger om");
-  const charlie = await updatePost(db, other.id, { stage: "publicer" }, "charlie");
+  const charlie = await publish(other.id, "charlie");
   assert.ok(charlie.publishRequestedAt instanceof Date);
 });
 
 test("flyt væk fra Publicer rydder publishRequestedAt", async () => {
   const post = await seed();
-  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  await publish(post.id);
   const back = await updatePost(db, post.id, { stage: "klar", note: "taget af køen" }, "lucas");
   assert.equal(back.stage, "klar");
   assert.equal(back.publishRequestedAt, null);
@@ -143,7 +210,7 @@ test("Klar-kolonnen heder \"Til gennemlæsning\" — dataværdien er stadig klar
 
 test("agenten kan ikke trække et kort ud af Publicer — aftalen aflyses kun af et menneske", async () => {
   const post = await seed();
-  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  await publish(post.id);
 
   for (const stage of ["klar", "arbejder", "ide"]) {
     await assert.rejects(updatePost(db, post.id, { stage }, "hermes"), /ud af Publicer/);
@@ -184,7 +251,7 @@ test("markPublished kræver Publicer og en kinly.dk/blog-url", async () => {
   const post = await seed();
   await assert.rejects(markPublished(db, post.id, { url: LIVE_URL }, "hermes"), /står ikke i Publicer/);
 
-  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  await publish(post.id);
   await assert.rejects(markPublished(db, post.id, { url: "https://kinly.dk/om-os" }, "hermes"), /kinly\.dk\/blog/);
   await assert.rejects(markPublished(db, post.id, { url: "http://kinly.dk/blog/x" }, "hermes"), /kinly\.dk\/blog/);
   await assert.rejects(markPublished(db, post.id, { url: "https://evil.dk/blog/x" }, "hermes"), /kinly\.dk\/blog/);
@@ -199,7 +266,7 @@ test("markPublished kræver Publicer og en kinly.dk/blog-url", async () => {
 
 test("et udgivet indlæg kan ikke flyttes tilbage", async () => {
   const post = await seed();
-  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  await publish(post.id);
   await markPublished(db, post.id, { url: LIVE_URL }, "hermes");
   await assert.rejects(updatePost(db, post.id, { stage: "klar" }, "lucas"), /kan ikke flyttes tilbage/);
   await assert.rejects(updatePost(db, post.id, { stage: "ide" }, "hermes"), /kan ikke flyttes tilbage/);
@@ -221,11 +288,11 @@ test("sletning kræver menneske og kun i Idéer eller Arbejder", async () => {
   await assert.rejects(deletePost(db, klar.id, "lucas"), /kun indlæg i Idéer eller Arbejder/);
 
   const publicer = await seed("Bliver i Publicer");
-  await updatePost(db, publicer.id, { stage: "publicer" }, "lucas");
+  await publish(publicer.id);
   await assert.rejects(deletePost(db, publicer.id, "lucas"), /Idéer eller Arbejder/);
 
   const udgivet = await seed("Bliver udgivet");
-  await updatePost(db, udgivet.id, { stage: "publicer" }, "charlie");
+  await publish(udgivet.id, "charlie");
   await markPublished(db, udgivet.id, { url: LIVE_URL }, "hermes");
   await assert.rejects(deletePost(db, udgivet.id, "lucas"), /Idéer eller Arbejder/);
 
@@ -332,4 +399,200 @@ test("getPost slår op på id og slug og henter body med", async () => {
   assert.equal(bySlug.id, post.id);
   await assert.rejects(getPost(db, "findes-ikke"), BlogInputError);
   await assert.rejects(getPost(db, "  "), /id eller slug mangler/);
+});
+
+// --- B2: kilde, scorekort, ratings, beviser, tjekliste, Jev -----------------
+
+test("kilden sættes serverside — agenten kan ikke kalde sit kort manuelt", async () => {
+  const menneske = await createPost(db, { title: "Idé fra Lucas" }, "lucas");
+  assert.equal(menneske.source, "manuel");
+  const agent = await createPost(db, { title: "Idé fra agenten" }, "hermes");
+  assert.equal(agent.source, "agent");
+  const signal = await createPost(db, { title: "Fra CRM-signalet", source: "crm-signal" }, "hermes");
+  assert.equal(signal.source, "crm-signal");
+  await assert.rejects(createPost(db, { title: "Snyder med kilden", source: "manuel" }, "hermes"), /manuel/);
+  // Også når et menneske skriver noget andet i payloaden, er kilden manuel.
+  const payload = await createPost(db, { title: "Mennesket siger agent", source: "agent" }, "charlie");
+  assert.equal(payload.source, "manuel");
+  assert.equal(SOURCE_LABEL["crm-signal"], "CRM-signal");
+});
+
+test("scorekort og menneskers rating: partial patches, round-trip og agent-afvisning", async () => {
+  const post = await createPost(db, { title: "Bliver din virksomhed nævnt af ChatGPT?" }, "hermes");
+
+  const første = await updatePost(db, post.id, { scores: { seo: { score: 78, why: "søgevolumen i Ikast" } } }, "hermes");
+  assert.deepEqual(readScores(første.scores), { seo: { score: 78, why: "søgevolumen i Ikast" } });
+  // Partial patch: næste akse må ikke rydde den første.
+  const anden = await updatePost(db, post.id, { scores: { gap: { score: 40, why: "mange skriver om emnet" } } }, "hermes");
+  assert.deepEqual(Object.keys(readScores(anden.scores)).sort(), ["gap", "seo"]);
+  await assert.rejects(updatePost(db, post.id, { scores: { seo: { score: 101, why: "" } } }, "hermes"), /1-100/);
+  await assert.rejects(updatePost(db, post.id, { scores: { ukendt: { score: 9, why: "" } } }, "hermes"), /kendes ikke/);
+
+  // Ratinger er menneskets: agenten må hverken skrive eller senere fjerne dem.
+  await assert.rejects(updatePost(db, post.id, { rating: { value: 5 } }, "hermes"), /kun Lucas eller Charlie kan rate/);
+  const rated = await updatePost(db, post.id, { rating: { value: 4, comment: "God vinkel" } }, "lucas");
+  const ratinger = readRatings(rated.ratings);
+  assert.equal(ratinger.length, 1);
+  assert.equal(ratinger[0].actor, "lucas");
+  assert.equal(ratinger[0].stage, "ide");
+  assert.equal(ratinger[0].kind, "score");
+  assert.equal(ratinger[0].revision, revisionOf(rated));
+
+  await updatePost(db, post.id, { rating: { thumb: "op" } }, "charlie");
+  const efterAgent = await updatePost(db, post.id, { note: "agenten retter videre" }, "hermes");
+  const beholdt = readRatings(efterAgent.ratings);
+  assert.equal(beholdt.length, 2, "agentens opdatering må ikke fjerne ratinger");
+  assert.deepEqual(beholdt.map((r) => r.actor), ["lucas", "charlie"]);
+  assert.equal(beholdt[1].kind, "thumb");
+  assert.equal(beholdt[1].thumb, "op");
+
+  await assert.rejects(updatePost(db, post.id, { rating: { value: 3, thumb: "op" } }, "lucas"), /enten 1-5/);
+  await assert.rejects(updatePost(db, post.id, { rating: { value: 6 } }, "lucas"), /1-5/);
+  const cards = await listPosts(db);
+  assert.equal(cards[0].ratings.length, 2);
+  assert.equal(cards[0].scores.seo?.score, 78);
+});
+
+test("beviserne er partial patches, og faktatjekket er menneskets alene", async () => {
+  const post = await createPost(db, { title: "Beviser for et indlæg" }, "hermes");
+  const medKilder = await updatePost(db, post.id, { proofs: { sources: GREEN_SOURCES } }, "hermes");
+  assert.equal(readProofs(medKilder.proofs).sources.length, 5);
+
+  // Agenten kan ikke bekræfte sin egen tekst.
+  await assert.rejects(updatePost(db, post.id, { proofs: { factcheck: { note: "tror det er fint" } } }, "hermes"), /kun Lucas eller Charlie/);
+
+  // Mennesket kan — og det der ikke sendes med, bevares.
+  const menneske = await updatePost(db, post.id, { proofs: { factcheck: { note: "talt med kunden" }, faq: GREEN_FAQ } }, "lucas");
+  const p = readProofs(menneske.proofs);
+  assert.equal(p.factcheck?.by, "lucas");
+  assert.equal(p.factcheck?.revision, revisionOf(menneske));
+  assert.equal(p.sources.length, 5);
+  assert.equal(p.faq.length, 3);
+  assert.equal(readProofs((await updatePost(db, post.id, { proofs: { council: GREEN_COUNCIL } }, "hermes")).proofs).factcheck?.by, "lucas");
+
+  // En kilde uden url, dato eller påstand er ikke en kilde.
+  await assert.rejects(updatePost(db, post.id, { proofs: { sources: [{ url: "https://x.dk", date: "", claim: "noget" }] } }, "hermes"), /Dato/);
+  await assert.rejects(updatePost(db, post.id, { proofs: { sources: [{ url: "ikke-en-url", date: "2026-09-01", claim: "noget" }] } }, "hermes"), /url/);
+  await assert.rejects(updatePost(db, post.id, { proofs: { ukendt: 1 } }, "hermes"), /kendes ikke/);
+});
+
+test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisionen", async () => {
+  // Ordtælling og links deler definition med UI'et (ingen netkald, ren tekst).
+  assert.equal(countWords("## Hej\n\n[med link](https://kinly.dk/x) og `kode`"), 4);
+  assert.equal(internalLinks(greenBody()).length, 2);
+  assert.equal(bodyLinks(greenBody()).some((l) => l.href.includes(`ref=blog-${GREEN_SLUG}`)), true);
+
+  const post = await createPost(db, { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "Priser" }, "hermes");
+  const rød = readChecklist(post.checklist);
+  assert.equal(rød.ok, false);
+  assert.ok(rød.missing.length >= 5, rød.missing.join("; "));
+  assert.equal(rød.revision, revisionOf(post));
+
+  // Agenten kan levere alt undtagen de to menneske-punkter.
+  const halv = await updatePost(db, post.id, { body: greenBody(), proofs: { ...GREEN_PROOFS }, images: GREEN_IMAGES }, "hermes");
+  assert.deepEqual(readChecklist(halv.checklist).missing, [
+    "menneskets A/B-valg mangler (A, B, begge eller ingen)",
+    "menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)",
+  ]);
+
+  // Agenten kan ikke publicere, uanset hvor grønt kortet er.
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "hermes"), /agenten må kun/);
+
+  // Mennesket vælger billede (også "ingen" er et valg) og kvitterer faktatjek.
+  // Klientens egne choiceBy/choiceAt ignoreres: stemplet er serverens, sat ud fra
+  // aktøren — så et UI kan ikke skrive et falsk menneskestempel på et valg.
+  const grøn = await updatePost(
+    db,
+    post.id,
+    {
+      images: { choice: "none", choiceBy: "hermes", choiceAt: "1999-01-01T00:00:00.000Z" },
+      proofs: { factcheck: { note: "læst igennem" } },
+    },
+    "lucas",
+  );
+  const check = readChecklist(grøn.checklist);
+  assert.equal(check.ok, true, check.missing.join("; "));
+  assert.equal(grøn.images.choiceBy, "lucas");
+  assert.notEqual(grøn.images.choiceAt, "1999-01-01T00:00:00.000Z");
+
+  const publiceret = await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  assert.equal(publiceret.stage, "publicer");
+  assert.ok(publiceret.publishRequestedAt instanceof Date);
+
+  // Ændres teksten, er tjeklisten ikke længere grøn (faktatjekket hører til den
+  // gamle revision) — og så kan kortet ikke sættes i Publicer igen.
+  const ændret = await updatePost(db, post.id, { body: greenBody() + "\n\nEt nyt afsnit, som ingen har læst." }, "hermes");
+  const ny = readChecklist(ændret.checklist);
+  assert.equal(ny.ok, false);
+  assert.match(ny.missing.join(" "), /ældre version/);
+  assert.equal(ny.revision, revisionOf(ændret));
+
+  await updatePost(db, post.id, { stage: "klar" }, "lucas"); // mennesket tager den ud af køen
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "lucas"), /ikke aktuel og grøn/);
+
+  // En gammel grøn kvittering kan heller ikke bruges: revisionen skal matche.
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  await db
+    .update(blogPost)
+    .set({ checklist: { revision: "gammel-revision", ok: true, missing: [], at: new Date().toISOString() } })
+    .where(eq(blogPost.id, post.id));
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "lucas"), /ikke aktuel og grøn/);
+  assert.equal(row.stage, "klar");
+
+  // Nyt faktatjek på den nye tekst → grønt igen.
+  await updatePost(db, post.id, { proofs: { factcheck: { note: "læst igen" } } }, "charlie");
+  const igen = await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  assert.equal(igen.stage, "publicer");
+});
+
+test("tjeklistens enkelte punkter: ord, links, CTA, pladsholder og A/B-stempel", async () => {
+  const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "Priser", excerpt: "Kort resume", body: greenBody() };
+  const billeder: BlogImages = { ...GREEN_IMAGES, choice: "both", choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" };
+  const beviser = { ...GREEN_PROOFS, factcheck: { by: "lucas", at: "2026-09-25T00:00:00.000Z", note: "", revision: revisionOf({ ...grund, images: billeder }) } };
+
+  const grøn = runChecklist({ ...grund, images: billeder, proofs: beviser });
+  assert.equal(grøn.ok, true, grøn.missing.join("; "));
+
+  const udenValg = runChecklist({ ...grund, images: { ...billeder, choiceBy: "", choiceAt: null }, proofs: beviser });
+  assert.match(udenValg.missing.join(" "), /A\/B-valg/);
+
+  const medTodo = runChecklist({ ...grund, body: `${grund.body}\n\nTODO: skriv resten`, images: billeder, proofs: beviser });
+  assert.match(medTodo.missing.join(" "), /pladsholder/);
+
+  const forKort = runChecklist({ ...grund, body: "Alt for kort.", images: billeder, proofs: beviser });
+  assert.match(forKort.missing.join(" "), /600-900/);
+
+  const udenCta = runChecklist({ ...grund, body: grund.body.replace(/\?ref=blog-[a-z-]+/, ""), images: billeder, proofs: beviser });
+  assert.match(udenCta.missing.join(" "), /CTA/);
+
+  const udenLink = runChecklist({ ...grund, body: grund.body.replace("https://kinly.dk/cases/ikast-autoservice", "https://kinly.dk/blog/et-andet-indlaeg"), images: billeder, proofs: beviser });
+  assert.match(udenLink.missing.join(" "), /interne links/);
+
+  const kunToFaq = runChecklist({ ...grund, images: billeder, proofs: { ...beviser, faq: GREEN_FAQ.slice(0, 2) } });
+  assert.match(kunToFaq.missing.join(" "), /3-5 FAQ/);
+
+  const udenKilder = runChecklist({ ...grund, images: billeder, proofs: { ...beviser, sources: GREEN_SOURCES.slice(0, 4) } });
+  assert.match(udenKilder.missing.join(" "), /5 kilder/);
+
+  const udenCouncil = runChecklist({ ...grund, images: billeder, proofs: { ...beviser, council: null } });
+  assert.match(udenCouncil.missing.join(" "), /council-log/);
+});
+
+test("Jev-svaret gemmes på den revision det gjaldt", async () => {
+  const post = await createPost(db, { title: "Klar til Jev" }, "hermes");
+  assert.equal(readJev(post.jev), null);
+
+  const record = await recordJev(db, post.id, { ready: true, score: 0.82, issue: "ingen" }, "hermes");
+  assert.equal(record.revision, revisionOf(post));
+  assert.equal(readJev(record)?.ready, true);
+  const [card] = await listPosts(db);
+  assert.equal(card.jev?.ready, true);
+  assert.equal(card.jev?.score, 0.82);
+
+  // Ny tekst: svaret hører til en ældre revision og må ikke læses som gyldigt.
+  await updatePost(db, post.id, { body: "Ny tekst her." }, "hermes");
+  const [efter] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  assert.equal(readJev(efter.jev)?.ready, true);
+  assert.notEqual(readJev(efter.jev)?.revision, revisionOf(efter));
+  assert.equal(readJev(efter.jev)?.revision, revisionOf(post));
 });

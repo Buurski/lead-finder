@@ -12,9 +12,11 @@ import {
   getPost,
   listPosts,
   markPublished,
+  readJev,
+  recordJev,
   updatePost,
 } from "../../../../lib/hq/posts.ts";
-import { jevAsk, jevEnabled, type JevQuestion } from "../../../../lib/jev.ts";
+import { choice as jevChoice, jevAsk, jevEnabled, noul as jevNoul, type JevQuestion } from "../../../../lib/jev.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
 import { cleanEnv } from "../../../../lib/hermes.ts";
 
@@ -60,8 +62,12 @@ function keyOf(input: { id?: unknown; slug?: unknown }): string {
 // Mass-assignment: kun disse felter må sættes via create/update. `stage` flyttes
 // kun via move, og publishedAt/publishedUrl/publishRequestedAt/createdBy/updatedBy
 // må ALDRIG kunne patches — markPublished er den eneste vej til Udgivet.
-const WRITABLE = ["title", "slug", "category", "excerpt", "body", "note", "sourcePath", "images"] as const;
-const FORBIDDEN = ["stage", "position", "publishedAt", "publishedUrl", "publishRequestedAt", "createdBy", "updatedBy", "id", "createdAt", "updatedAt"] as const;
+// `rating` og `proofs.factcheck` står med vilje ikke her: begge er menneskets
+// (1-5/👍-👎 og "nul opdigtede kunder/tal"), og en agent kan ikke bekræfte sin
+// egen tekst. `source` må kun med ved create — og aldrig som "manuel".
+const WRITABLE = ["title", "slug", "category", "excerpt", "body", "note", "sourcePath", "images", "strengths", "scores", "proofs"] as const;
+const AGENT_CREATE = [...WRITABLE, "source"] as const;
+const FORBIDDEN = ["stage", "position", "publishedAt", "publishedUrl", "publishRequestedAt", "createdBy", "updatedBy", "id", "createdAt", "updatedAt", "ratings", "checklist", "jev"] as const;
 
 /** Felterne til `update {id, fields}` — ukendte/forbudte nøgler afvises, ikke ignoreres. */
 function updateFields(v: unknown): Record<string, unknown> {
@@ -83,7 +89,7 @@ function createFields(input: Record<string, unknown>): Record<string, unknown> {
     if (key in input) throw new BlogInputError(`feltet "${key}" kan ikke sættes her`);
   }
   const out: Record<string, unknown> = {};
-  for (const key of WRITABLE) {
+  for (const key of AGENT_CREATE) {
     if (key in input) out[key] = input[key];
   }
   return out;
@@ -164,13 +170,25 @@ export async function POST(req: Request) {
         const post = await getPost(getDb(), keyOf(input));
         // jev.ts kaster aldrig: slået fra, timeout eller HTTP-fejl → null. Precheck
         // fejler derfor ikke på JEV — udgiver-jobbet behandler null som STOP.
-        if (!jevEnabled()) return json({ ok: true, jev: null });
+        if (!jevEnabled()) return json({ ok: true, jev: null, jevRecord: readJev(post.jev) });
         const jev = await jevAsk(
           { title: post.title, category: post.category, excerpt: post.excerpt, body: post.body },
           JEV_QUESTIONS,
           { timeoutMs: 20_000 },
         );
-        return json({ ok: true, jev });
+        if (!jev) return json({ ok: true, jev: null, jevRecord: readJev(post.jev) });
+        // Svaret gemmes på posten sammen med den revision det gjaldt (recordJev),
+        // så UI'et kan vise "Jev: klar/mangler" og udgiver-jobbet kan se, at
+        // svaret ikke kommer fra en ældre tekst. Mangler svaret på "ready",
+        // tælles det som ikke klar — fail-closed.
+        const ready = jevNoul(jev.answers, "ready");
+        const record = await recordJev(
+          getDb(),
+          post.id,
+          { ready: (ready ?? 0) >= 0.5, score: ready ?? null, issue: jevChoice(jev.answers, "issue")?.choice ?? "" },
+          actor,
+        );
+        return json({ ok: true, jev, jevRecord: record });
       }
       default:
         return json({ ok: false, error: "ukendt action" }, 400);

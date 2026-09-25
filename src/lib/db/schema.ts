@@ -264,6 +264,29 @@ export const blogPost = pgTable(
     // "b":kandidat|null,"choice":"a"|"b"|"both"|"none"}. Ren CRM-data, ingen
     // upload — kandidaterne er URL'er til billeder der allerede ligger et sted.
     images: jsonb("images").notNull().default({ a: null, b: null, choice: "none" }),
+    // Hvor kortet kom fra (spec 24-09 §Datamodel): "manuel" | "agent" | "crm-signal".
+    // Kun den autentificerede menneske-intake kan skabe manuel — også når idéen
+    // videresendes fra dock/Telegram. Guarden ligger i hq/posts.ts.
+    source: text("source").notNull().default("agent"),
+    // Femakset scorekort 1-100, én kort begrundelse pr. akse:
+    // {"styrke":{"score":n,"why":"…"},"kundebase":{…},"seo":{…},"geo":{…},"gap":{…}}
+    scores: jsonb("scores").notNull().default({}),
+    // "Styrker (3-5 punkter)" fra blog-arbejder — fri tekst, vist på idékortet.
+    strengths: text("strengths").notNull().default(""),
+    // Menneskers ratings, append-only: hver række bærer stage + revision, aktør
+    // og tid, så en rating altid kan læses mod den tekst den gjaldt.
+    ratings: jsonb("ratings").notNull().default([]),
+    // Kvalitetsbeviser: {sources:[{url,date,claim,method}],council:{…}|null,
+    // faq:[{q,a}],factcheck:{by,at,note,revision}|null}. factcheck er menneskets
+    // erklæring (nul opdigtede kunder/tal) og er bundet til en revision.
+    proofs: jsonb("proofs").notNull().default({}),
+    // Sidste Jev-svar (ready/issue) for den revision det blev kørt på: {ready,
+    // score, issue, at, revision}. null = ikke kørt. Versioneret, så et svar på
+    // en gammel tekst ikke kan læses som et svar på den nuværende.
+    jev: jsonb("jev"),
+    // Serverens tjekliste for den aktuelle revision: {revision, ok, missing, at}.
+    // Genberegnes ved hver skrivning — klienter må aldrig sætte den selv.
+    checklist: jsonb("checklist").notNull().default({}),
     publishRequestedAt: timestamp("publish_requested_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     publishedUrl: text("published_url"),
