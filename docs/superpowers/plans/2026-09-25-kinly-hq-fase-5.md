@@ -283,3 +283,6 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 ### Sol bølge 2 R9 — dispositioner
 - R9-01 (high) ACCEPT: lås-fejl ⇒ atomisk `store.append` til nødlog `preview-requests-fallback` (KV rpush); læsning fletter nødlog ind (arrayet vinder), næste låste skrivning folder den ind. Fejler også append ⇒ PreviewStorageError ⇒ 503 (prøv igen), aldrig 201 uden lagring.
 - R9-02 (medium) ACCEPT: sendt krav ⇒ kun status-only "sendt/lukket"; enhver feltændring afvises (409).
+
+### Sol bølge 2 R10 — disposition
+- R10-01 (medium) ACCEPT: læsefejl på nødloggen kastes (ingen stille tom liste). Forsiden fanger selv (`.catch(() => [])`, kun visning); bro-cron, GET og send fejler synligt. Test tilføjet.

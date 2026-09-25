@@ -70,3 +70,17 @@ test("låsen nede: henvendelsen går i nødloggen, kan læses og foldes ind ved 
     __setStore(new InMemoryStore());
   }
 });
+
+test("nødloggen kan ikke læses: læsning fejler synligt i stedet for et delvist svar (Sol R10-01)", async () => {
+  class BrokenLogStore extends InMemoryStore {
+    override async readAll(): Promise<unknown[]> {
+      throw new Error("kv nede");
+    }
+  }
+  __setStore(new BrokenLogStore());
+  try {
+    await assert.rejects(readPreviewRequests(), /kv nede/);
+  } finally {
+    __setStore(new InMemoryStore());
+  }
+});

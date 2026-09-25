@@ -67,7 +67,8 @@ export class PreviewStorageError extends Error {}
 export async function readPreviewRequests(): Promise<PreviewRequest[]> {
   const value = await store.get<PreviewRequest[]>(KEY);
   const records = Array.isArray(value) ? value : [];
-  const extra = (await store.readAll(FALLBACK).catch(() => [])) as PreviewRequest[];
+  // Fejl ved læsning af nødloggen kastes — et delvist svar ville skjule henvendelser (Sol R10-01).
+  const extra = (await store.readAll(FALLBACK)) as PreviewRequest[];
   const known = new Set(records.map((r) => r.id));
   return [...records, ...extra.filter((r) => r && typeof r.id === "string" && !known.has(r.id))];
 }
