@@ -231,7 +231,12 @@
 .kunde-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
 .kunde-card { color: inherit; text-decoration: none; overflow: hidden; display: flex; flex-direction: column; }
 .kunde-preview { aspect-ratio: 4 / 3; background: var(--bg-3); display: grid; place-items: center; overflow: hidden; }
-.kunde-preview img { width: 100%; height: 100%; object-fit: cover; }
+.kunde-preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 500ms cubic-bezier(.2,.7,.2,1); }
+/* Diskret hover (Lucas 25/9: "ikke vildt"): billedet zoomer 3 %, kortet løfter sig en anelse. */
+.kunde-card { transition: transform 250ms ease, box-shadow 250ms ease; }
+.kunde-card:hover .kunde-preview img, .kunde-card:focus-visible .kunde-preview img { transform: scale(1.03); }
+.kunde-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -18px rgba(0,0,0,.35); }
+@media (prefers-reduced-motion: reduce) { .kunde-card, .kunde-preview img { transition: none; } .kunde-card:hover { transform: none; } .kunde-card:hover .kunde-preview img { transform: none; } }
 .kunde-preview span { font-size: clamp(44px, 8vw, 88px); font-weight: 700; color: var(--text-muted); }
 .kunde-card-content { padding: 18px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
 .kunde-card-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
