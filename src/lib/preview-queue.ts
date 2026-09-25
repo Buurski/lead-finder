@@ -48,6 +48,14 @@ export interface NewsletterConsent {
 const HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 const s = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\r\n]+/g, " ").trim().slice(0, max) : "");
 
+function hostOf(url: string | undefined): string {
+  try {
+    return url ? new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, "").toLowerCase() : "";
+  } catch {
+    return "";
+  }
+}
+
 /** Kun et gyldigt resultat slipper igennem (offentlig formular bag en delt hemmelighed). */
 export function cleanSeoTjek(v: unknown): SeoTjekResult | undefined {
   if (!v || typeof v !== "object") return undefined;
@@ -137,7 +145,8 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     questionnaire: input.questionnaire?.trim() || undefined,
     sourceMessageId: input.sourceMessageId?.trim() || undefined,
     demoKey: input.demoKey?.trim() || demoKey(),
-    seoTjek: cleanSeoTjek(input.seoTjek),
+    // Resultatet skal høre til den side henvendelsen handler om (Sol w4a R2) — ellers droppes det.
+    seoTjek: ((r) => (r && hostOf(input.website) === r.host ? r : undefined))(cleanSeoTjek(input.seoTjek)),
     newsletterConsent: cleanNewsletterConsent(input.newsletterConsent),
     status: "ny",
     noindex: true,

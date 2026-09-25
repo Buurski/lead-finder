@@ -84,3 +84,14 @@ test("nødloggen kan ikke læses: læsning fejler synligt i stedet for et delvis
     __setStore(new InMemoryStore());
   }
 });
+
+test("SEO-resultat bindes til henvendelsens side; fremmed host droppes (Sol w4a R2)", async () => {
+  __setStore(new InMemoryStore());
+  const seo = { host: "frisor.dk", score: 41, mangler: ["Meta-beskrivelse"] };
+  const ok = await createPreviewRequest({ ...fixture, website: "https://www.frisor.dk/", seoTjek: seo });
+  assert.deepEqual(ok.seoTjek, seo);
+  const fremmed = await createPreviewRequest({ ...fixture, website: "https://frisor.dk", seoTjek: { ...seo, host: "konkurrent.dk" } });
+  assert.equal(fremmed.seoTjek, undefined);
+  const udenSide = await createPreviewRequest({ ...fixture, seoTjek: seo });
+  assert.equal(udenSide.seoTjek, undefined);
+});

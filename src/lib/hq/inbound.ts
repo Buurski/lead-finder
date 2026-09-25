@@ -118,9 +118,9 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         .select({ id: contact.id })
         .from(contact)
         .where(and(eq(contact.companyId, companyId), sql`lower(${contact.email}) = ${email.toLowerCase()}`));
-      const consent = input.newsletterConsent ? { newsletterConsent: { ...input.newsletterConsent, status: "afventer-bekraeftelse" } } : null;
-      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse", ...(consent ? { data: consent } : {}) });
-      else if (consent) await tx.update(contact).set({ data: sql`coalesce(${contact.data}, '{}'::jsonb) || ${JSON.stringify(consent)}::jsonb` }).where(eq(contact.id, known.id));
+      // Nyhedsbrev-samtykke fra en offentlig formular er ubekræftet (alle kan skrive en fremmeds mail):
+      // det står kun som append-only bevis på aktiviteten. Kontakten ændres først efter Brevo double opt-in (Sol w4a R1).
+      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse" });
     }
 
     const [co] = await tx.select({ name: company.name, rowNo: company.rowNo }).from(company).where(eq(company.id, companyId));

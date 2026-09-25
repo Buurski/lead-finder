@@ -60,6 +60,8 @@ export default function PostDialog({
   const [category, setCategory] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [consentA, setConsentA] = useState("");
+  const [altA, setAltA] = useState("");
+  const [altB, setAltB] = useState("");
   const [consentB, setConsentB] = useState("");
   const [factNote, setFactNote] = useState("");
 
@@ -79,6 +81,8 @@ export default function PostDialog({
         setCategory(p.category);
         setExcerpt(p.excerpt);
         setConsentA(p.images.a?.consentRef ?? "");
+        setAltA(p.images.a?.alt ?? "");
+        setAltB(p.images.b?.alt ?? "");
         setConsentB(p.images.b?.consentRef ?? "");
       })
       .catch((e) => { if (live) setLoadError(e instanceof Error ? e.message : "kunne ikke hente indlægget"); })
@@ -121,6 +125,16 @@ export default function PostDialog({
     if (!cand) return;
     const value = slot === "a" ? consentA : consentB;
     const full: BlogImageCandidate = { ...cand, consentRef: value };
+    void run({ images: { [slot]: full } });
+  }
+
+  // Alt-tekst rettes her, så checklistens alt-krav kan løses fra tavlen (Sol w4a R3).
+  // Serveren nulstiller valget, hvis et valgt billede ændres — så vælger man igen.
+  function saveAlt(slot: "a" | "b") {
+    if (!post) return;
+    const cand = slot === "a" ? post.images.a : post.images.b;
+    if (!cand) return;
+    const full: BlogImageCandidate = { ...cand, alt: (slot === "a" ? altA : altB).trim() };
     void run({ images: { [slot]: full } });
   }
 
@@ -225,9 +239,15 @@ export default function PostDialog({
                             </div>
                           )}
                           <div className="bl-ab-meta">
-                            <div className="bl-ab-alt">
-                              {cand.alt || "(ingen alt-tekst)"} <Counter value={cand.alt.length} min={SEO_LIMITS.altMin} max={SEO_LIMITS.alt} />
-                            </div>
+                            <label className="bl-field bl-ab-alt">
+                              <span>Alt-tekst <Counter value={(slot === "a" ? altA : altB).length} min={SEO_LIMITS.altMin} max={SEO_LIMITS.alt} /></span>
+                              <input className="bl-input" value={slot === "a" ? altA : altB} onChange={(e) => (slot === "a" ? setAltA : setAltB)(e.target.value)} maxLength={200} placeholder="Beskriv hvad billedet viser (ikke 'billede af')" />
+                            </label>
+                            {(slot === "a" ? altA : altB).trim() !== cand.alt && (
+                              <button type="button" className="cc-btn" onClick={() => saveAlt(slot)} disabled={busy}>
+                                Gem alt-tekst{chosen ? " (valget skal tages igen bagefter)" : ""}
+                              </button>
+                            )}
                             <div className="cc-dim bl-ab-credit">{cand.credit || "ingen kredit"} · {cand.source || "ingen kilde"}</div>
                           </div>
                           {custImg && (
