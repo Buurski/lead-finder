@@ -31,13 +31,13 @@ export default async function CalendarCard({ user }: { user: string | null }) {
         <span><strong>Google Kalender med påmindelser</strong> {connected ? "· forbundet" : "· ikke sat op"}</span>
         {connected ? (
           <span className="cc-dim" style={{ fontSize: 12.5 }}>
-            Opgaver og næste skridt med dato lægges kl. 8 på dagen med påmindelse kl. 17 dagen før og kl. 8. Forfaldne flyttes til i dag. Synkes hver time
+            Opgaver og næste skridt med dato lægges kl. 8 på dagen med påmindelse kl. 17 dagen før og kl. 8. Forfaldne flyttes til i dag. Sæt selv notifikationer på kalenderen &quot;Kinly HQ&quot; i Google Kalender. Synkes hver time
             {last ? ` · sidst ${new Date(last.at).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })}: ${last.ok ? last.note ?? "ok" : `fejl — ${last.error}`}` : ""}.
           </span>
         ) : (
           <ol className="cc-dim" style={{ fontSize: 12.5, margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-            <li>Åbn din egen kalender ({user}@kinly.dk) → Indstillinger og deling → Del med bestemte personer → tilføj <code>{saEmail || "service-accountens mail"}</code> med &quot;Foretag ændringer i begivenheder&quot;. HQ rører kun de begivenheder, den selv har lagt ind.</li>
-            <li>Sæt <code>{`HQ_GCAL_${user.toUpperCase()}`}</code> = <code>{`${user}@kinly.dk`}</code> i Vercel.</li>
+            <li>Kør <code>{`node scripts/gcal-setup.mjs ${user}@kinly.dk ${user[0].toUpperCase() + user.slice(1)}`}</code> med service-accountens nøgle. Den opretter kalenderen &quot;Kinly HQ&quot; og deler den ind til dig (Workspace tillader ikke redigering udefra den anden vej).</li>
+            <li>Sæt det udskrevne id som <code>{`HQ_GCAL_${user.toUpperCase()}`}</code> i Vercel, og tilføj kalenderen via mailen fra Google.</li>
           </ol>
         )}
       </div>
