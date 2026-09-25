@@ -34,6 +34,25 @@ export const MAX_BATCH = 250;
 const CONCURRENCY = 8;
 const DEADLINE_MS = 270_000;
 const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+// Et job startes kun hvis dets worst case kan nå at slutte før fasens deadline
+// (Codex 25/9): lead = fetch 9 s + Jev 15 s, kladde/svar = Jev 15 s. Og når
+// fase 3 er slået til, efterlader fase 2 plads til den (inkl. live-scan).
+const LEAD_WORST_MS = 24_000;
+const JEV_WORST_MS = 15_000;
+const REPLY_RESERVE_MS = 60_000;
+// 5 Jev-svar i træk uden dom (429/5xx/timeout) = stop fasen, så en rate-limit
+// ikke brænder et helt hold af som fejlposter (council 25/9).
+const JEV_FAIL_TRIP = 5;
+
+/** Streak af Jev-svar uden dom; nulstilles af alt andet (også fetch/thin-page). */
+export function nextFailStreak(streak: number, error?: string): number {
+  return error === "no-judgment" ? streak + 1 : 0;
+}
+
+/** En fejlet genvurdering må ikke erstatte en eksisterende god dom. */
+export function shouldSave(rec: { error?: string }, prev?: { judgment?: unknown } | null): boolean {
+  return !(rec.error && prev?.judgment);
+}
 
 export function clampBatch(raw: string | number | null | undefined): number {
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
@@ -84,19 +103,29 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // brancheopremsning i stedet for at vælte hele kørslen.
   const clients = await getClients().catch(() => []);
 
-  const seenBefore = new Set(existing.map((r) => r.leadId));
+  const prevById = new Map(existing.map((r) => [r.leadId, r]));
   let judged = 0;
   let firstTime = 0;
   let errors = 0;
+  let jevFailStreak = 0;
+  let tripped = false;
   let i = 0;
   async function worker() {
-    while (i < batch.length && Date.now() < leadDeadline) {
+    while (!tripped && i < batch.length && Date.now() + LEAD_WORST_MS < leadDeadline) {
       const lead = batch[i++];
       const rec = await judgeLead(lead, clients);
-      await saveShadow(rec);
+      const prev = prevById.get(lead.id);
       judged++;
-      if (!seenBefore.has(lead.id)) firstTime++;
+      if (!prev) firstTime++;
       if (rec.error) errors++;
+      jevFailStreak = nextFailStreak(jevFailStreak, rec.error);
+      if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
+        tripped = true;
+        console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase: "leads", streak: jevFailStreak }));
+      }
+      // En fejlet GENvurdering må ikke overskrive en god dom (badget forsvandt i
+      // /godkendelse). Den gamle post bliver stående og prøves igen næste gang.
+      if (shouldSave(rec, prev)) await saveShadow(rec);
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));
@@ -122,11 +151,13 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   });
   const draftBatch = unjudgedDrafts.slice(0, MAX_DRAFT_BATCH);
 
+  const repliesOn = includeReplies && process.env.JEV_REPLIES === "1";
+  const draftDeadline = repliesOn ? deadline - REPLY_RESERVE_MS : deadline;
   let draftsJudged = 0;
   let draftsErrors = 0;
   let di = 0;
   async function draftWorker() {
-    while (di < draftBatch.length && Date.now() < deadline) {
+    while (di < draftBatch.length && Date.now() + JEV_WORST_MS < draftDeadline) {
       const draft = draftBatch[di++];
       const rec = await judgeDraft(draft);
       await saveDraftShadow(rec);
@@ -140,7 +171,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // DPA gate (council TSJ-001): reply text is customer correspondence. Phase 3
   // stays OFF until Lucas has documented TypeSafe as data processor; then
   // JEV_REPLIES=1 in Vercel env turns it on. Built, reviewed, not active.
-  const repliesEnabled = includeReplies && process.env.JEV_REPLIES === "1";
+  const repliesEnabled = repliesOn;
   // Phase 3: warm replies that need a "what now?" suggestion. Same
   // deadline as phase 1+2, OBSERVES ONLY. Reply body text isn't stored on
   // the Lead row (sync-replies.ts only stamps emailStatus="replied") — the
@@ -179,7 +210,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let repliesErrors = 0;
   let ri = 0;
   async function replyWorker() {
-    while (ri < replyBatch.length && Date.now() < deadline) {
+    while (ri < replyBatch.length && Date.now() + JEV_WORST_MS < deadline) {
       const lead = replyBatch[ri++];
       const item = digestByLead.get(lead.id);
       const info: ReplyInfo = item

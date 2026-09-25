@@ -1,5 +1,6 @@
 // GET /api/cron/jev-rescore — shadow rescoring of leads with Jev, 03:30 + 13:30 UTC
-// (two slots since 25/9: ~40-74 leads per run left a 1.000-lead backlog).
+// (two slots since 25/9 to clear a ~1.000-lead backlog; drop the 13:30 slot once
+// `remaining` is ~0 — expected ~27-28/9).
 // OBSERVES ONLY: writes to the jev-shadow/* store namespace, never to the
 // Sheet, never to Lead.enrichedInfo, never sends/deletes/changes status.
 // Skips quietly when TYPESAFE_API_KEY isn't set.
@@ -37,7 +38,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       // Cronen tager hele loftet; deadline (270 s, fase 1 = 60 %) stopper den i tide.
       // Før 25/9 faldt den på DEFAULT_BATCH 40 (knappens hold) — 40 leads på ~40 s
       // hver nat, mens 975 leads ventede.
-      const max = clampBatch(limitParam ?? process.env.JEV_RESCORE_BATCH ?? MAX_BATCH);
+      // `||`, ikke `??`: en tom streng må ikke falde tilbage på 40 igen.
+      const max = clampBatch(limitParam || process.env.JEV_RESCORE_BATCH || MAX_BATCH);
       const r = await runJevBatch({ limit: max });
       return {
         result: r,
