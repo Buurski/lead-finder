@@ -90,3 +90,24 @@ test("website i headeren dækker for manglende site.domain", () => {
 test("'Lucas modtog svar' er indgående", () => {
   assert.equal(mailDirection("Lucas modtog svar fra Henrik om tidsplanen"), "ind");
 });
+
+test("monthlyMoney: 12 måneder, kladder ude, efter fakturadato", async () => {
+  const { monthlyMoney } = await import("./overview.ts");
+  const inv = (number: string, status: string, issueDate: string, amount: number, paidAt?: string) =>
+    ({ number, status, issueDate, paidAt, lines: [{ description: "x", amount }], vatRate: 0 }) as never;
+  const rows = monthlyMoney(
+    [
+      inv("1", "betalt", "2026-08-20", 4000, "2026-09-02"),
+      inv("2", "sendt", "2026-09-10", 750),
+      inv("3", "kladde", "2026-09-12", 9999),
+      inv("4", "betalt", "2025-01-05", 500),
+    ],
+    Date.parse("2026-09-25T10:00:00Z"),
+  );
+  assert.equal(rows.length, 12);
+  assert.equal(rows[0].month, "2025-10");
+  assert.equal(rows[11].month, "2026-09");
+  assert.deepEqual(rows[10], { month: "2026-08", invoiced: 4000 });
+  assert.deepEqual(rows[11], { month: "2026-09", invoiced: 750 });
+  assert.equal(rows.reduce((s, r) => s + r.invoiced, 0), 4750);
+});

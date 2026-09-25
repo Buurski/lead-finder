@@ -48,3 +48,15 @@ test("sync: for stort svar afvises før JSON-parsning; kildens tidsstempel gemme
   const [snap] = await db.select().from(newsletterSnapshot);
   assert.equal(snap.generatedAt?.toISOString(), "2026-09-25T05:00:00.000Z");
 });
+
+test("audienceHistory: sidste måling pr. dansk dag, kun modtagerlister", async () => {
+  const { audienceHistory } = await import("./newsletter-sync.ts");
+  const L = (n: number) => [{ id: 1, name: "Nyhedsbrev", subscribers: n }, { id: 2, name: "Import batch 2", subscribers: 2 }];
+  const h = audienceHistory([
+    { takenAt: new Date("2026-09-24T22:30:00Z"), lists: L(10) }, // 00:30 25/9 i DK
+    { takenAt: new Date("2026-09-25T05:20:00Z"), lists: L(12) },
+    { takenAt: new Date("2026-09-26T05:20:00Z"), lists: L(15) },
+  ]);
+  assert.deepEqual(h.map((x) => x.day), ["2026-09-25", "2026-09-26"]);
+  assert.equal(h[0].subscribers, 12);
+});

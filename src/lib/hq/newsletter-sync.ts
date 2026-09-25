@@ -4,7 +4,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { company, newsletterSnapshot } from "../db/schema.ts";
-import { parseSnapshot } from "./newsletter.ts";
+import { isAudienceList, parseSnapshot } from "./newsletter.ts";
 
 // Kilderne står i koden (ingen hemmelighed). Tokenet: env NYHEDSBREV_TOKEN_<ACCOUNT>, sat af Lucas.
 export const NEWSLETTER_SOURCES = [
@@ -94,5 +94,21 @@ export async function latestNewsletterFor(db: Db, companyId: string) {
     .orderBy(sql`${newsletterSnapshot.takenAt} desc`)
     .limit(20);
   const seen = new Set<string>();
-  return rows.filter((r) => (seen.has(r.account) ? false : (seen.add(r.account), true)));
+  const latest = rows.filter((r) => (seen.has(r.account) ? false : (seen.add(r.account), true)));
+  // Modtager-historik: seneste måling pr. dansk kalenderdag, 120 dage bagud.
+  const past = await db
+    .select({ account: newsletterSnapshot.account, takenAt: newsletterSnapshot.takenAt, lists: newsletterSnapshot.lists })
+    .from(newsletterSnapshot)
+    .where(and(eq(newsletterSnapshot.companyId, companyId), sql`${newsletterSnapshot.takenAt} > now() - interval '120 days'`))
+    .orderBy(sql`${newsletterSnapshot.takenAt} asc`);
+  return latest.map((snap) => ({ ...snap, history: audienceHistory(past.filter((p) => p.account === snap.account)) }));
+}
+
+export function audienceHistory(rows: { takenAt: Date; lists: { name: string; subscribers: number }[] }[]): { day: string; subscribers: number }[] {
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const day = r.takenAt.toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
+    byDay.set(day, r.lists.filter((l) => isAudienceList(l.name)).reduce((sum, l) => sum + l.subscribers, 0));
+  }
+  return [...byDay].map(([day, subscribers]) => ({ day, subscribers }));
 }

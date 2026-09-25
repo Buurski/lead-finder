@@ -37,6 +37,8 @@ export interface CustomerOverview {
     invoicedTotal: number;
     unbilled: number;
     openDraftInvoices: string[];
+    /** Seneste 12 måneder (ældst først), faktureret efter fakturadato. */
+    monthly: Array<{ month: string; invoiced: number }>;
   };
   services: string[];
   site: { status: string; domain: string | null; cmsUrl: string | null; lastDeployAt: string | null; health: Record<string, unknown> | null } | null;
@@ -64,6 +66,22 @@ function hostnameFrom(website: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** 12 kalendermåneder (dansk tid) bagud til og med indeværende. Kladder tæller aldrig. */
+export function monthlyMoney(invoices: Dossier["invoices"], now: number): CustomerOverview["money"]["monthly"] {
+  const cur = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }).slice(0, 7);
+  const [y, m] = cur.split("-").map(Number);
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 12 + i, 1));
+    return d.toISOString().slice(0, 7);
+  });
+  const rows = new Map(months.map((month) => [month, { month, invoiced: 0 }]));
+  for (const inv of invoices) {
+    const row = inv.status === "kladde" ? undefined : rows.get(inv.issueDate.slice(0, 7));
+    if (row) row.invoiced += invoiceTotal(inv).total;
+  }
+  return months.map((month) => rows.get(month)!);
 }
 
 export function buildOverview(
@@ -137,6 +155,7 @@ export function buildOverview(
       invoicedTotal,
       unbilled: extra.unbilled,
       openDraftInvoices: drafts.map((i) => i.number),
+      monthly: monthlyMoney(invoices, now),
     },
     services: d.company.services ?? [],
     site: d.site

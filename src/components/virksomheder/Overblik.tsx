@@ -9,6 +9,7 @@ import Icon from "@/components/shell/Icon";
 import RelationsPanel from "./RelationsPanel";
 import Link from "next/link";
 import SeoChart from "@/components/seo/SeoChart";
+import { BarChart } from "@/components/finance/FinanceUI";
 import { safeHref } from "@/lib/safe-href";
 // Kun type-imports fra overview.ts/invoices.ts/cms-usage.ts: de trækker (via
 // deals.ts/db/client.ts) "server-only"-moduler ind, som ikke må rørt fra en
@@ -285,6 +286,17 @@ function MoneyCard({
           <div className="virk-kv-row"><dt>Kladder</dt><dd>{money.openDraftInvoices.join(", ")}</dd></div>
         )}
       </dl>
+      {money.monthly.some((m) => m.invoiced > 0) && (
+        <div>
+          <div className="cc-dim" style={{ fontSize: 12 }}>Faktureret pr. måned (12 mdr.)</div>
+          <BarChart
+            height={72}
+            data={money.monthly.map((m) => ({ label: new Date(`${m.month}-01T12:00:00Z`).toLocaleDateString("da-DK", { month: "short" }).replace(".", ""), value: m.invoiced }))}
+            format={(n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n)))}
+            tipFormat={kr}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -42,6 +42,20 @@ export default function NewsletterPanel({ snaps }: { snaps: Snap[] }) {
               <StatTile label="Næste tidligst" value={i.nextAllowedAt ? dato(i.nextAllowedAt) : "Nu"} sub={`mindst ${MIN_DAYS_BETWEEN} dage imellem`} />
             </div>
 
+            {s.history.length >= 2 && (() => {
+              const first = s.history[0], last = s.history[s.history.length - 1];
+              const diff = last.subscribers - first.subscribers;
+              return (
+                <div style={{ display: "grid", gap: 4 }}>
+                  <div style={{ fontSize: 12.5 }}>
+                    <strong>{diff >= 0 ? `+${num(diff)}` : `−${num(-diff)}`}</strong>{" "}
+                    <span className="cc-dim">modtagere siden {dato(`${first.day}T12:00:00Z`)} ({s.history.length} målinger)</span>
+                  </div>
+                  <Trend points={s.history} />
+                </div>
+              );
+            })()}
+
             {s.domain && (
               <p style={{ margin: 0, fontSize: 12.5 }} className="cc-dim">
                 Afsenderdomæne {s.domain.name}:{" "}
@@ -128,5 +142,24 @@ function SentTable({ rows }: { rows: ReturnType<typeof newsletterInsights>["sent
         </div>
       )}
     </div>
+  );
+}
+
+// Modtagere over tid: fast lille graf (strækkes ikke), 2px linje, prik pr. måling med tooltip.
+function Trend({ points }: { points: { day: string; subscribers: number }[] }) {
+  const W = 320, H = 56, pad = 6;
+  const vals = points.map((p) => p.subscribers);
+  const min = Math.min(...vals), span = Math.max(...vals) - min || 1;
+  const xy = points.map((p, i) => ({ x: pad + (i / (points.length - 1)) * (W - 2 * pad), y: H - pad - ((p.subscribers - min) / span) * (H - 2 * pad), p }));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ maxWidth: "100%", display: "block" }} role="img" aria-label={`Modtagere fra ${num(vals[0])} til ${num(vals[vals.length - 1])}`}>
+      <polyline points={xy.map((q) => `${q.x},${q.y}`).join(" ")} fill="none" stroke="var(--text)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {xy.map((q) => (
+        <g key={q.p.day}>
+          <circle cx={q.x} cy={q.y} r={10} fill="transparent"><title>{`${dato(`${q.p.day}T12:00:00Z`)}: ${num(q.p.subscribers)} modtagere`}</title></circle>
+          <circle cx={q.x} cy={q.y} r={3} fill="var(--text)" stroke="var(--surface)" strokeWidth={2} pointerEvents="none" />
+        </g>
+      ))}
+    </svg>
   );
 }
