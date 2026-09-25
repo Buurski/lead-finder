@@ -71,7 +71,7 @@ export function failedBeforeAccept(err: unknown): boolean {
 export const DAILY_SEND_CAP = 20;
 const cphDay = (ms: number) => new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
 // Nøglet på den faktiske Gmail-konto: peger lucas og charlie på samme adresse, deler de budget (Sol R2 F3).
-const budgetKey = (sender: SenderId, nowMs: number) =>
+export const budgetKey = (sender: SenderId, nowMs: number) =>
   `send-day:${(getSenderCreds(sender)?.email || sender).trim().toLowerCase()}:${cphDay(nowMs)}`;
 
 /** Tager én plads i dagens budget. false = loftet er nået (send ikke). */

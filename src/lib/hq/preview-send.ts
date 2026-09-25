@@ -73,10 +73,39 @@ export async function sendPreview(
       throw new PreviewSendError(`mailen kunne ikke sendes: ${msg}`);
     }
     console.error(JSON.stringify({ evt: "preview.uncertain_send", id, to, error: msg }));
+    // Markér kravet som usikkert, så reconcilePreview kan bekræfte eller frigive det (Sol bølge 2 R3 F3).
+    await db
+      .update(activity)
+      .set({ payload: { previewId: id, previewUrl: r.previewUrl, subject, uncertain: true } })
+      .where(eq(activity.id, claimed[0].id))
+      .catch(() => {});
     throw new PreviewSendError(`usikkert om mailen gik ud (${msg}) — tjek Gmail Sendt før du prøver igen; udkastet står som sendt`);
   }
   // Mailen er ude; status-fejl må ikke få nogen til at sende igen (kravet står).
   await deps.markSent(id, body).catch((err) =>
     console.error(JSON.stringify({ evt: "preview.mark_sent_failed", id, error: String(err).slice(0, 200) })),
   );
+}
+
+/**
+ * Afstemning efter et usikkert forsøg: Lucas har tjekket Gmail Sendt.
+ * "sent" ⇒ kravet står og udkastet markeres sendt. "not-sent" ⇒ kravet frigives, så det kan sendes igen.
+ * Virker kun på et krav der er markeret usikkert — et sikkert sendt udkast kan aldrig låses op.
+ */
+export async function reconcilePreview(
+  db: Db,
+  id: string,
+  verdict: "sent" | "not-sent",
+  markSent: (id: string) => Promise<void>,
+): Promise<void> {
+  const legacyId = `preview-sent:${id}`;
+  const [row] = await db.select({ id: activity.id, payload: activity.payload }).from(activity).where(eq(activity.legacyId, legacyId));
+  const p = (row?.payload ?? {}) as Record<string, unknown>;
+  if (!row || p.uncertain !== true) throw new PreviewSendError("der er intet usikkert afsendelsesforsøg at afstemme");
+  if (verdict === "not-sent") {
+    await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, row.id)));
+    return;
+  }
+  await db.update(activity).set({ payload: { ...p, uncertain: false } }).where(eq(activity.id, row.id));
+  await markSent(id);
 }

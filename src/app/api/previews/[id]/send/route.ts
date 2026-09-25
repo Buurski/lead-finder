@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db/client";
 import { hqWrite, HqInputError, jsonBody } from "@/lib/hq/api";
-import { PreviewSendError, sendPreview } from "@/lib/hq/preview-send";
+import { PreviewSendError, reconcilePreview, sendPreview } from "@/lib/hq/preview-send";
 import { readPreviewRequests, updatePreviewStatus } from "@/lib/preview-queue";
 import { DAILY_SEND_CAP, takeDailyBudget } from "@/lib/send-safety";
 import { applySignature, applySignatureHtml, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
@@ -14,6 +14,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     if (!/^preview_[a-z0-9_]{4,40}$/.test(id)) throw new HqInputError("ugyldigt id");
     const b = await jsonBody(req);
+    // Afstemning efter usikkert forsøg: { reconcile: "sent" | "not-sent" } — sender aldrig noget.
+    if (b.reconcile === "sent" || b.reconcile === "not-sent") {
+      try {
+        await reconcilePreview(getDb(), id, b.reconcile, async (pid) => {
+          await updatePreviewStatus(pid, "sendt/lukket");
+        });
+      } catch (err) {
+        if (err instanceof PreviewSendError) throw new HqInputError(err.message);
+        throw err;
+      }
+      return { ok: true, reconciled: b.reconcile };
+    }
     const sender = b.sender === "lucas" || b.sender === "charlie" ? (b.sender as SenderId) : null;
     if (!sender || !isSenderAvailable(sender)) throw new HqInputError("vælg en afsender der er forbundet");
     try {

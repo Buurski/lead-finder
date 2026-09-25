@@ -365,6 +365,8 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
+    // Samme modtager-krav som approve/approve-many (Sol bølge 2 R3 F1).
+    if (!(await hasRecipient(id))) return NO_RECIPIENT();
     // FIX A: "Gem rettelse + godkend" skal lande i godkendt-tab'en, ikke
     // forsvinde som "edited". Status="approved" så den vises under
     // Godkendt og kan sendes uden yderligere klik.
@@ -432,9 +434,7 @@ export async function POST(req: Request) {
     const blocked = await finalBlock();
     if (blocked) return blocked;
     // En godkendt kladde uden brugbar modtager sidder bare fast i "klar" — kræv mailen først.
-    const cur = (await readQueue()).find((x) => x.id === id);
-    const to = (cur?.recipientEmail || "").trim() || (cur ? (matchLead(await getLeads().catch(() => []), cur)?.email || "").trim() : "");
-    if (!hasUsableEmail(to)) return NextResponse.json({ error: "mangler modtager-mail — tilføj den i Til-feltet før du godkender" }, { status: 422 });
+    if (!(await hasRecipient(id))) return NO_RECIPIENT();
     const updated = await updateDraft(id, { status: "approved" });
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     // Register back to Sheets so the lead leaves the engine's "new" pool — the
@@ -450,3 +450,13 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ error: `unknown action "${action}"` }, { status: 400 });
 }
+
+// Enhver overgang til "approved" kræver en brugbar modtager: kladdens egen mail,
+// ellers det matchede Sheets-leads mail.
+async function hasRecipient(id: string): Promise<boolean> {
+  const cur = (await readQueue()).find((x) => x.id === id);
+  if (!cur) return true; // ukendt id ⇒ updateDraft svarer 404
+  const to = (cur.recipientEmail || "").trim() || (matchLead(await getLeads().catch(() => []), cur)?.email || "").trim();
+  return hasUsableEmail(to);
+}
+const NO_RECIPIENT = () => NextResponse.json({ error: "mangler modtager-mail — tilføj den i Til-feltet før du godkender" }, { status: 422 });

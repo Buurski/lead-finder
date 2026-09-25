@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
 import { customerForDraft } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
-import { acquireSendLock, dailyBudgetUsed, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, takeDailyBudget } from "@/lib/send-safety";
+import { acquireSendLock, budgetKey, dailyBudgetUsed, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, takeDailyBudget } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
@@ -178,8 +178,10 @@ export async function GET(req: Request) {
       continue;
     }
     const sid = resolveSender(d.sender);
-    budgetUsed[sid] ??= await dailyBudgetUsed(sid, now).catch(() => DAILY_SEND_CAP);
-    if (budgetUsed[sid] >= DAILY_SEND_CAP) {
+    // Nøglet som selve budgettet (samme Gmail-konto ⇒ samme pulje) — Sol R3 F4.
+    const bk = budgetKey(sid, now);
+    budgetUsed[bk] ??= await dailyBudgetUsed(sid, now).catch(() => DAILY_SEND_CAP);
+    if (budgetUsed[bk] >= DAILY_SEND_CAP) {
       skipped.push({ name: d.name, reason: dailyCapReason(sid) });
       continue;
     }
@@ -188,7 +190,7 @@ export async function GET(req: Request) {
       continue;
     }
     wouldSend++;
-    budgetUsed[sid]++;
+    budgetUsed[bk]++;
     if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
     // Spejl send-løkkens in-run ledger så en sibling-draft for samme
     // virksomhed/adresse tælles som skip, præcis som i et rigtigt run.

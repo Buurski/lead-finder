@@ -196,6 +196,7 @@ async function ingest() {
   let skippedSuppressed = 0;
   let skippedVoice = 0;
   let skippedInvalid = 0;
+  let skippedNoEmail = 0;
 
   // file.at findes her (ellers havde isStaleLeadgen kastet).
   const allowance = ingestAllowance(queue, file.at as string);
@@ -235,6 +236,12 @@ async function ingest() {
       continue;
     }
 
+    // Ingen brugbar mail ⇒ ingen kladde (C3): leadgen-leads har ingen Sheets-række at slå
+    // modtageren op i, så kladden ville sidde fast i Afventer. Leadet kan komme igen i en senere fil.
+    if (!hasUsableEmail(it.email ?? undefined)) {
+      skippedNoEmail++;
+      continue;
+    }
     // Block the rest of this run from re-adding the same business.
     blockSets.ids.add(leadId);
     const k = bizKey(name, it.city);
@@ -252,7 +259,7 @@ async function ingest() {
       subject: composed.subject,
       body: composed.text,
       // Carry the email so the send route can reach this lead (no Sheets row exists).
-      recipientEmail: hasUsableEmail(it.email ?? undefined) ? (it.email as string).trim() : undefined,
+      recipientEmail: (it.email as string).trim(),
       status: "pending",
       source: "leadgen-ingest",
       createdAt: nowIso,
@@ -273,6 +280,7 @@ async function ingest() {
     skippedSuppressed,
     skippedVoice,
     skippedInvalid,
+    skippedNoEmail,
     capped,
     allowance,
     sheetsDedup: sheetsOk,

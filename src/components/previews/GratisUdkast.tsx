@@ -277,6 +277,26 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
     }
   }
 
+  async function reconcile(verdict: "sent" | "not-sent") {
+    try {
+      const res = await fetch(`/api/previews/${item.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reconcile: verdict }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Kunne ikke afstemme lige nu.");
+      setSendErr("");
+      if (verdict === "sent") {
+        setSendState("sent");
+        setSentAt(new Date().toISOString());
+        onSent();
+      } else setSendState("idle");
+    } catch (e) {
+      setSendErr(e instanceof Error ? e.message : "kunne ikke afstemme");
+    }
+  }
+
   async function saveDraft() {
     setSaving(true);
     setSaveMsg("");
@@ -411,6 +431,13 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
             {saveMsg && <span className="cc-dim" style={{ fontSize: 12.5 }}>{saveMsg}</span>}
           </div>
           {sendErr && <div className="gu-error-note">{sendErr}</div>}
+          {sendErr.includes("usikkert") && (
+            <div className="gu-actions">
+              <span className="cc-dim" style={{ fontSize: 12.5 }}>Tjekket Gmail Sendt?</span>
+              <button className="cc-btn" onClick={() => void reconcile("sent")}>Den er sendt</button>
+              <button className="cc-btn" onClick={() => void reconcile("not-sent")}>Den er ikke sendt</button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="gu-actions">

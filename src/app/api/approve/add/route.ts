@@ -6,6 +6,8 @@ import { validateDraft } from "@/lib/draft";
 import { getLeads } from "@/lib/sheets";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
 import { addEmailToBlock } from "@/lib/leads/contactable";
+import { hasUsableEmail } from "@/lib/leads/channel";
+import { matchLead } from "@/lib/leads/match";
 
 // POST /api/approve/add — secret-guarded endpoint so a Cowork lead-gen task can push
 // ready-made, deep-rated DRAFTS straight into the approval queue (the in-app engine is
@@ -92,6 +94,12 @@ export async function POST(req: NextRequest) {
     if (supp) { skipped.push({ name, reason: supp }); continue; }
     const check = validateDraft(body);
     if (!check.ok) { skipped.push({ name, reason: `voice: ${check.errors.join(", ")}` }); continue; }
+    // C3: ingen kladde i Afventer uden modtager — egen mail eller det matchede Sheets-leads mail.
+    const ownTo = d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : "";
+    if (!hasUsableEmail(ownTo || matchLead(sheetsLeads ?? [], { leadId: (d.leadId || "").toString(), name, city: d.city })?.email || "")) {
+      skipped.push({ name, reason: "ingen modtager-mail" });
+      continue;
+    }
     const pair = Array.isArray(d.demoPair) ? d.demoPair.filter((x) => x && typeof x.url === "string" && x.url) : [];
     valid.push({
       id: newDraftId(),
