@@ -292,3 +292,12 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - R11-02 (medium) ACCEPT: inbox-digest svarer 503 (saved:true) når udkast-opgaver fejler; applyDraftRequests er idempotent (dedupe på mail), så gentagelse er sikker.
 - R11-03 (low) ACCEPT: FSStore.readAll returnerer kun [] ved ENOENT; andre fejl kastes. Ingen FS-test (kun lokal driver).
 - Loop-beslutning: 11 inspektionsrunder på bølge 2; fundene er nu kaldergrænser på én ændret funktion. Resten verificeres i council efter deploy.
+
+## CHECKPOINT 25/9 ~10:00 — bølge 2+3 KLAR, IKKE DEPLOYET
+- Feature `0381ca0` (pushet): bølge 2 (send-hærdning, dagsbudget, preview-send-krav, SEO-tjek-lead m. tlf, Sol R1-R11) + bølge 3 (/kunder-faner Kunder·Varme·Leads·Ikke egnet, /api/shot-proxy for skærmbilleder, sociale profiler → initialer, mobil-faner scroller).
+- Verifikation: tsc 0, eslint 0 fejl, 493/493 tests, webpack-build grøn, lokale skærmbilleder (PGlite-kopi, aldrig Neon) desktop+mobil.
+- Council bølge 2: send-gate-linse INGEN FUND (alle sendMail-steder kræver menneskeklik); data-linse 2× LOW (bevidste valg). Ingen migrationer siden d1f601c.
+- DEPLOY-BESLUTNING: udskudt til 26/9. Main er allerede deployet ≥3 gange 25/9 (d1f601c + anden sessions 2109160/1df6a1e) = dagsloftet 2-3. Deploy: merge feature → main, push, live-tjek (login 200, /kunder 307 uden session, /api/shot 401 uden session, health 200).
+- Kinly-site `claude/blog-redesign-0925` @ a98e87e (pushet, IKKE merget): blog-redesign + emnesider + SEO-tjek-leadformular + samtykke-værn (consentRef) + pilot-billeder (AI, 1600x900/1200x630 WebP).
+- Næste: bølge 4 = blog-board i HQ (Hermes' B4 a3b2998 + B2 165e6b3 er blokeret/ufærdige → Claude integrerer: A/B-valg=hero, SEO-validering på server, eksport til kinly-site). Derefter kundeprofil-grafer + SEO-sektion.
+- Til Lucas: Café Nohr "(fiktiv intern test)" ligger i Varme i prod-data; seo-tjek-followup-cron sender auto-mail dag 7 (afventer beslutning).
