@@ -114,7 +114,7 @@ export interface NewsletterInsight {
   sentLastYear: number;
   lastSentAt: string | null;
   daysSinceLast: number | null;
-  nextAllowedAt: string | null; // tidligste dato der overholder både 30-dages-afstand og 6/år
+  nextAllowedAt: string | null; // tidligste FREMTIDIGE dato der overholder 30-dages-afstand og 6/år; null = må sendes nu
   drafts: CampaignStat[];
   scheduled: CampaignStat[];
   sent: (CampaignStat & { openRate: number; clickRate: number; unsubRate: number; bounceRate: number })[];
@@ -165,7 +165,7 @@ export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "c
     sentLastYear: lastYear.length,
     lastSentAt: last,
     daysSinceLast,
-    nextAllowedAt: last || lastYear.length ? new Date(next).toISOString() : null,
+    nextAllowedAt: next > now.getTime() ? new Date(next).toISOString() : null, // null = må sendes nu
     drafts: s.campaigns.filter((c) => c.status === "draft"),
     scheduled,
     sent,

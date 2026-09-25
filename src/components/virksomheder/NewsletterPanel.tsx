@@ -39,7 +39,7 @@ export default function NewsletterPanel({ snaps }: { snaps: Snap[] }) {
               <StatTile label="Modtagere" value={num(i.subscribers)} sub="på kundens lister" />
               <StatTile label="Sendt seneste år" value={`${i.sentLastYear} / ${MAX_PER_YEAR}`} sub={`maks ${MAX_PER_YEAR} om året`} />
               <StatTile label="Sidst sendt" value={dato(i.lastSentAt)} sub={i.daysSinceLast === null ? "intet sendt endnu" : `${i.daysSinceLast} dage siden`} />
-              <StatTile label="Næste tidligst" value={i.nextAllowedAt && Date.parse(i.nextAllowedAt) > Date.now() ? dato(i.nextAllowedAt) : "Nu"} sub={`mindst ${MIN_DAYS_BETWEEN} dage imellem`} />
+              <StatTile label="Næste tidligst" value={i.nextAllowedAt ? dato(i.nextAllowedAt) : "Nu"} sub={`mindst ${MIN_DAYS_BETWEEN} dage imellem`} />
             </div>
 
             {s.domain && (
