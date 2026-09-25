@@ -102,6 +102,10 @@ export async function loadCityRegions(): Promise<CityRegionMap> {
  * Returnerer HELE kortet (gammelt + nyt). Best-effort: en by Jev ikke svarer
  * på, springes over og prøves igen næste gang — ingen gættet landsdel.
  */
+export class JevUnavailableError extends Error {
+  constructor() { super("jev-unavailable"); }
+}
+
 export async function classifyCities(cities: string[], deadline?: number): Promise<CityRegionMap> {
   const known = await loadCityRegions();
   const missing: string[] = [];
@@ -137,5 +141,7 @@ export async function classifyCities(cities: string[], deadline?: number): Promi
   };
   await Promise.all(Array.from({ length: Math.min(8, batch.length) }, worker));
   if (added > 0) await store.put(CACHE_KEY, known);
+  // Kaldere (jev-run) skal vide at Jev er nede, så de ikke starter næste fase forfra.
+  if (failStreak >= 5) throw new JevUnavailableError();
   return known;
 }

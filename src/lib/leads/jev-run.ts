@@ -7,7 +7,7 @@ import { getLeads, getClients } from "../sheets.ts";
 import { jevEnabled } from "../jev.ts";
 import { loadShadow, saveShadow, pickBatch, judgeLead, countUnjudged } from "./jev-shadow.ts";
 import { readQueue } from "../queue.ts";
-import { classifyCities } from "./city-region.ts";
+import { classifyCities, JevUnavailableError } from "./city-region.ts";
 import { loadDraftShadow, saveDraftShadow, judgeDraft } from "./draft-judgments.ts";
 import { loadReplyShadow, saveReplyShadow, judgeReply, type ReplyInfo } from "./reply-judgments.ts";
 import { classifyReply } from "../reply.ts";
@@ -91,7 +91,22 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // cachet for evigt — byer flytter sig ikke. Skal ligge før fase 1, så
   // straffen er med i den attraktivitet der gemmes i nat.
   const leads = await getLeads();
-  await classifyCities(leads.map((l) => l.city), Date.now() + 45_000).catch(() => ({}));
+  // Én breaker for alle faser: 5 Jev-svar i træk uden dom stopper resten af kørslen.
+  let jevFailStreak = 0;
+  let tripped = false;
+  const noteJev = (error: string | undefined, phase: string) => {
+    jevFailStreak = nextFailStreak(jevFailStreak, error);
+    if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
+      tripped = true;
+      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase, streak: jevFailStreak }));
+    }
+  };
+  await classifyCities(leads.map((l) => l.city), Date.now() + 45_000).catch((err) => {
+    if (err instanceof JevUnavailableError) {
+      tripped = true;
+      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase: "cities" }));
+    }
+  });
 
   // Phase 1: leads (site attractiveness). Leads med en ventende kladde kommer
   // først: uden en vurdering af FORRETNINGEN kan /godkendelse aldrig vise andet
@@ -109,16 +124,6 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let judged = 0;
   let firstTime = 0;
   let errors = 0;
-  // Én breaker for alle faser: 5 Jev-svar i træk uden dom stopper resten af kørslen.
-  let jevFailStreak = 0;
-  let tripped = false;
-  const noteJev = (error: string | undefined, phase: string) => {
-    jevFailStreak = nextFailStreak(jevFailStreak, error);
-    if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
-      tripped = true;
-      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase, streak: jevFailStreak }));
-    }
-  };
   let i = 0;
   async function worker() {
     while (!tripped && i < batch.length && Date.now() + LEAD_WORST_MS < leadDeadline) {
@@ -134,7 +139,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       // i ældst-først-køen i stedet for at blive valgt forrest hver kørsel.
       // `prev!` er sikker: shouldSave er kun false når prev.judgment findes.
       // keptFrom gør audit-loggen ærlig (dommen er fra prev.judgedAt, ikke i dag).
-      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt, keptFrom: prev!.judgedAt });
+      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt, keptFrom: prev!.keptFrom ?? prev!.judgedAt });
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));

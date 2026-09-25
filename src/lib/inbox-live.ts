@@ -64,6 +64,8 @@ async function scanOneAccount(
     ...(process.env.IMAP_ALLOW_SELFSIGNED === "1" ? { tls: { rejectUnauthorized: false } } : {}),
     auth: { user: account.user, pass: account.appPassword },
     logger: false,
+    // Ingen hængende scanning efter jev-run's vindue (Codex 25/9): standard er 5 min inaktivitet.
+    socketTimeout: 30_000,
   });
 
   try {
