@@ -1,9 +1,9 @@
 import { getDb } from "@/lib/db/client";
 import { hqWrite, HqInputError, jsonBody } from "@/lib/hq/api";
 import { PreviewSendError, reconcilePreview, sendPreview } from "@/lib/hq/preview-send";
-import { readPreviewRequests, updatePreviewStatus } from "@/lib/preview-queue";
+import { readPreviewRequests, updatePreviewStatus, type SeoTjekResult } from "@/lib/preview-queue";
 import { DAILY_SEND_CAP, takeDailyBudget } from "@/lib/send-safety";
-import { applySignature, applySignatureHtml, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
+import { composePreviewMail, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,9 +28,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     const sender = b.sender === "lucas" || b.sender === "charlie" ? (b.sender as SenderId) : null;
     if (!sender || !isSenderAvailable(sender)) throw new HqInputError("vælg en afsender der er forbundet");
+    let seoTjek: SeoTjekResult | undefined;
     try {
       await sendPreview(getDb(), id, { subject: String(b.subject ?? ""), body: String(b.body ?? "") }, actor, {
-        get: async (pid) => (await readPreviewRequests()).find((r) => r.id === pid) ?? null,
+        get: async (pid) => {
+          const rec = (await readPreviewRequests()).find((r) => r.id === pid) ?? null;
+          seoTjek = rec?.seoTjek;
+          return rec;
+        },
         deliver: async ({ to, subject, body }) => {
           // Samme dagsbudget pr. konto som kold-køen (Sol bølge 2 F2). Kastes før SMTP ⇒ intet sendt.
           if (!(await takeDailyBudget(sender).catch(() => false))) throw new PreviewSendError(`dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${sender}) — prøv i morgen`);
@@ -38,8 +43,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             from: formatFrom(sender),
             to,
             subject,
-            text: applySignature(body, sender),
-            html: applySignatureHtml(body, sender),
+            // SEO-tjek-henvendelse ⇒ den designede rapport-mail (samme som forhåndsvisningen).
+            ...composePreviewMail(body, sender, seoTjek),
           });
         },
         markSent: async (pid, body) => {

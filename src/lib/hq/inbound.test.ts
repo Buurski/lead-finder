@@ -72,3 +72,21 @@ test("ubekræftet nummer lægges aldrig på en eksisterende virksomhed uden numm
   const [a] = await db.select().from(activity).where(eq(activity.legacyId, "preview:p11"));
   assert.equal((a.payload as { phone?: string }).phone, "99 88 77 66");
 });
+
+test("nyhedsbrev-samtykke: bevis på kontakt + aktivitet, newsletterOk forbliver false (Brevo DOI er sandheden)", async () => {
+  const consent = { at: "2026-09-25T20:00:00.000Z", source: "kinly.dk/seo-tjek", textVersion: "nb-v1-2026-09-25", ipHash: "a".repeat(32) };
+  const seoTjek = { host: "blomst.dk", score: 41, mangler: ["Meta-beskrivelse"] };
+  await recordInbound(db, { ...base, id: "p20", company: "blomst.dk", email: "ejer@blomst.dk", website: "https://blomst.dk", seoTjek, newsletterConsent: consent });
+  const [k] = await db.select().from(contact).where(eq(contact.email, "ejer@blomst.dk"));
+  assert.equal(k.newsletterOk, false);
+  assert.deepEqual((k.data as { newsletterConsent: unknown }).newsletterConsent, { ...consent, status: "afventer-bekraeftelse" });
+  const [a] = await db.select().from(activity).where(eq(activity.legacyId, "preview:p20"));
+  assert.deepEqual((a.payload as { seoTjek: unknown }).seoTjek, seoTjek);
+  assert.deepEqual((a.payload as { newsletterConsent: unknown }).newsletterConsent, consent);
+  // Kendt kontakt: beviset flettes ind uden at slette eksisterende data.
+  await db.update(contact).set({ data: { gammel: 1 } }).where(eq(contact.id, k.id));
+  await recordInbound(db, { ...base, id: "p21", company: "blomst.dk", email: "ejer@blomst.dk", website: "https://blomst.dk", newsletterConsent: consent });
+  const [k2] = await db.select().from(contact).where(eq(contact.id, k.id));
+  assert.equal((k2.data as { gammel: number }).gammel, 1);
+  assert.ok((k2.data as { newsletterConsent?: unknown }).newsletterConsent);
+});

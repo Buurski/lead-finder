@@ -30,6 +30,7 @@
 //
 // Strip-safe (no Next imports) so node tooling (CLI engine) can use it.
 
+import { renderSeoReportHtml, renderSeoReportText } from "./hq/seo-report-mail.ts";
 import nodemailer from "nodemailer";
 
 export type SenderId = "lucas" | "charlie";
@@ -405,4 +406,22 @@ ${paragraphs}
 <p style="margin:18px 0 10px 0;">Med venlig hilsen</p>
 ${sig.html}
 </div>`;
+}
+
+/**
+ * Hele mailen (tekst + HTML) til et gratis udkast. Kom henvendelsen fra
+ * SEO-tjekket på kinly.dk, bliver HTML-delen den designede rapport-mail;
+ * ellers den almindelige personlige mail. Bruges af send-ruten OG af
+ * forhåndsvisningen i /previews, så det I ser, er det der sendes.
+ */
+export function composePreviewMail(
+  body: string,
+  id: SenderId,
+  seoTjek?: { host: string; score: number; mangler: string[] },
+  now?: Date,
+): { text: string; html: string } {
+  if (!seoTjek) return { text: applySignature(body, id), html: applySignatureHtml(body, id) };
+  const sig = formatSignature(id);
+  const input = { body: _strip(body), seoTjek, signatureHtml: sig.html, signatureText: sig.text, now };
+  return { text: renderSeoReportText(input), html: renderSeoReportHtml(input) };
 }

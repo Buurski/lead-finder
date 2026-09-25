@@ -410,6 +410,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
             <span className="cc-kicker">Mail til {item.email}</span>
             <textarea className="gu-textarea" style={{ marginTop: 5 }} rows={10} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Mailtekst" />
           </label>
+          <MailPreview id={item.id} sender={sender} body={body} />
           <div className="gu-mail-row">
             <span className="cc-kicker" style={{ marginRight: 2 }}>Afsender</span>
             <div className="gu-sender-pick">
@@ -477,5 +478,57 @@ function SenderButton({ id, label, active, connected, onPick }: { id: "lucas" | 
       {label}
       {!connected && <span className="gu-pill-unconnected">Ikke forbundet</span>}
     </button>
+  );
+}
+
+/**
+ * Forhåndsvisning af den mail der faktisk sendes (samme komposition som send-ruten).
+ * Kom henvendelsen fra SEO-tjekket, er det den designede rapport med tal, huller og tilbud.
+ * Sandboxet iframe: ingen scripts, ingen navigation fra mailens links.
+ */
+function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "charlie"; body: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [report, setReport] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/previews/${id}/mail-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sender, body }),
+        signal: ctrl.signal,
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { html: string; report: boolean } | null) => {
+          if (j) {
+            setHtml(j.html);
+            setReport(j.report);
+          }
+        })
+        .catch(() => {});
+    }, 400);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [open, id, sender, body]);
+  return (
+    <div>
+      <button type="button" className="cc-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? "Skjul forhåndsvisning" : "Vis mailen som modtageren ser den"}
+      </button>
+      {open ? (
+        <div style={{ marginTop: 8 }}>
+          {report ? <p className="cc-kicker" style={{ margin: "0 0 6px" }}>SEO-rapport med tilbud (fra SEO-tjekket)</p> : null}
+          {html ? (
+            <iframe title="Forhåndsvisning af mailen" sandbox="" srcDoc={html} style={{ width: "100%", height: 640, border: "1px solid var(--rule, #e4dccd)", borderRadius: 10, background: "#faf6ef" }} />
+          ) : (
+            <p className="cc-kicker">Henter…</p>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }

@@ -16,6 +16,9 @@ export interface InboundInput {
   contactName?: string;
   branch?: string;
   questionnaire?: string;
+  seoTjek?: { host: string; score: number; mangler: string[] };
+  /** Bevis for nyhedsbrev-samtykke. newsletterOk forbliver false til Brevo bekræfter double opt-in. */
+  newsletterConsent?: { at: string; source: string; textVersion: string; ipHash: string };
 }
 
 function host(url: string): string {
@@ -115,7 +118,9 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         .select({ id: contact.id })
         .from(contact)
         .where(and(eq(contact.companyId, companyId), sql`lower(${contact.email}) = ${email.toLowerCase()}`));
-      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse" });
+      const consent = input.newsletterConsent ? { newsletterConsent: { ...input.newsletterConsent, status: "afventer-bekraeftelse" } } : null;
+      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse", ...(consent ? { data: consent } : {}) });
+      else if (consent) await tx.update(contact).set({ data: sql`coalesce(${contact.data}, '{}'::jsonb) || ${JSON.stringify(consent)}::jsonb` }).where(eq(contact.id, known.id));
     }
 
     const [co] = await tx.select({ name: company.name, rowNo: company.rowNo }).from(company).where(eq(company.id, companyId));
@@ -127,7 +132,14 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
       actor: "system",
       type: "henvendelse",
       summary: `Henvendelse via kinly.dk (${input.channel})${what ? `: ${what}` : ""}`,
-      payload: { previewId: input.id, contactName: input.contactName ?? "", email, ...(phone ? { phone } : {}) },
+      payload: {
+        previewId: input.id,
+        contactName: input.contactName ?? "",
+        email,
+        ...(phone ? { phone } : {}),
+        ...(input.seoTjek ? { seoTjek: input.seoTjek } : {}),
+        ...(input.newsletterConsent ? { newsletterConsent: input.newsletterConsent } : {}),
+      },
     });
     return { companyId, created, rowNo: co.rowNo, duplicate: false };
   });

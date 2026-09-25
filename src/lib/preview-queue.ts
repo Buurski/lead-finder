@@ -26,6 +26,47 @@ export interface PreviewRequestInput {
   questionnaire?: string;
   sourceMessageId?: string;
   demoKey?: string;
+  /** Resultatet af det gratis SEO-tjek på kinly.dk (struktureret; bruges i rapport-mailen). */
+  seoTjek?: SeoTjekResult;
+  /** Samtykkebevis til nyhedsbrevet. Tilmelder IKKE: det sker først efter double opt-in i Brevo. */
+  newsletterConsent?: NewsletterConsent;
+}
+
+export interface SeoTjekResult {
+  host: string;
+  score: number;
+  mangler: string[];
+}
+
+export interface NewsletterConsent {
+  at: string;
+  source: string;
+  textVersion: string;
+  ipHash: string;
+}
+
+const HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+const s = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\r\n]+/g, " ").trim().slice(0, max) : "");
+
+/** Kun et gyldigt resultat slipper igennem (offentlig formular bag en delt hemmelighed). */
+export function cleanSeoTjek(v: unknown): SeoTjekResult | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const r = v as Record<string, unknown>;
+  const host = s(r.host, 100).toLowerCase();
+  const score = typeof r.score === "number" && Number.isFinite(r.score) ? Math.round(r.score) : NaN;
+  if (!HOST_RE.test(host) || !(score >= 0 && score <= 100)) return undefined;
+  const mangler = (Array.isArray(r.mangler) ? r.mangler : []).map((m) => s(m, 120)).filter(Boolean).slice(0, 8);
+  return { host, score, mangler };
+}
+
+export function cleanNewsletterConsent(v: unknown): NewsletterConsent | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const r = v as Record<string, unknown>;
+  const at = s(r.at, 40);
+  const textVersion = s(r.textVersion, 60);
+  const ipHash = s(r.ipHash, 64);
+  if (!at || Number.isNaN(Date.parse(at)) || !/^nb-v\d+/.test(textVersion) || !/^[0-9a-f]{16,64}$/.test(ipHash)) return undefined;
+  return { at, source: s(r.source, 60) || "kinly.dk", textVersion, ipHash };
 }
 
 export interface PreviewRequest extends PreviewRequestInput {
@@ -96,6 +137,8 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     questionnaire: input.questionnaire?.trim() || undefined,
     sourceMessageId: input.sourceMessageId?.trim() || undefined,
     demoKey: input.demoKey?.trim() || demoKey(),
+    seoTjek: cleanSeoTjek(input.seoTjek),
+    newsletterConsent: cleanNewsletterConsent(input.newsletterConsent),
     status: "ny",
     noindex: true,
     createdAt: now,
