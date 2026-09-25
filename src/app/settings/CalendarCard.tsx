@@ -36,9 +36,8 @@ export default async function CalendarCard({ user }: { user: string | null }) {
           </span>
         ) : (
           <ol className="cc-dim" style={{ fontSize: 12.5, margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-            <li>Google Kalender → Andre kalendere → + → Opret ny kalender, fx &quot;Kinly HQ&quot;.</li>
-            <li>Kalenderens indstillinger → Del med bestemte personer → tilføj <code>{saEmail || "service-accountens mail"}</code> med &quot;Foretag ændringer i begivenheder&quot;.</li>
-            <li>Kopiér &quot;Kalender-id&quot; (under Integrer kalender) og sæt det som <code>{`HQ_GCAL_${user.toUpperCase()}`}</code> i Vercel.</li>
+            <li>Åbn din egen kalender ({user}@kinly.dk) → Indstillinger og deling → Del med bestemte personer → tilføj <code>{saEmail || "service-accountens mail"}</code> med &quot;Foretag ændringer i begivenheder&quot;. HQ rører kun de begivenheder, den selv har lagt ind.</li>
+            <li>Sæt <code>{`HQ_GCAL_${user.toUpperCase()}`}</code> = <code>{`${user}@kinly.dk`}</code> i Vercel.</li>
           </ol>
         )}
       </div>
