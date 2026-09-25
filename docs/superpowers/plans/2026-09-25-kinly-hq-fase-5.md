@@ -286,3 +286,9 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 
 ### Sol bølge 2 R10 — disposition
 - R10-01 (medium) ACCEPT: læsefejl på nødloggen kastes (ingen stille tom liste). Forsiden fanger selv (`.catch(() => [])`, kun visning); bro-cron, GET og send fejler synligt. Test tilføjet.
+
+### Sol bølge 2 R11 — dispositioner (loop lukket her)
+- R11-01 (medium) ACCEPT: attention fanger kø-læsefejl og viser en "haster"-linje i stedet for at vælte forsiden.
+- R11-02 (medium) ACCEPT: inbox-digest svarer 503 (saved:true) når udkast-opgaver fejler; applyDraftRequests er idempotent (dedupe på mail), så gentagelse er sikker.
+- R11-03 (low) ACCEPT: FSStore.readAll returnerer kun [] ved ENOENT; andre fejl kastes. Ingen FS-test (kun lokal driver).
+- Loop-beslutning: 11 inspektionsrunder på bølge 2; fundene er nu kaldergrænser på én ændret funktion. Resten verificeres i council efter deploy.

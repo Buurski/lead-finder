@@ -119,7 +119,12 @@ export async function getAttention(
   }
 
   // 6) Gratis udkast klar men ikke sendt.
-  const previews = await readPreviewRequests();
+  // Kan køen ikke læses, vises det som en linje — resten af forsiden må ikke vælte (Sol R11-01).
+  const previews = await readPreviewRequests().catch((err) => {
+    console.error(JSON.stringify({ evt: "attention.previews_failed", error: String(err).slice(0, 200) }));
+    items.push({ level: "haster", kind: "preview", text: "Kunne ikke læse gratis udkast-køen — tjek /previews", href: "/previews" });
+    return [];
+  });
   const previewsReady = previews.filter((p) => p.status === "preview klar");
   if (previewsReady.length > 0) {
     items.push({ level: "obs", kind: "preview", text: `${previewsReady.length} ${previewsReady.length === 1 ? "gratis udkast er" : "gratis udkast er"} klar — ikke sendt`, href: "/previews" });

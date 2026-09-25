@@ -77,8 +77,9 @@ export class FSStore implements Store {
     let raw: string;
     try {
       raw = fs.readFileSync(fsLogPath(key), "utf-8");
-    } catch {
-      return []; // no log file yet
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return []; // no log file yet
+      throw err; // andre læsefejl må ikke ligne en tom log (Sol R11-03)
     }
     return parseJsonl(raw);
   }

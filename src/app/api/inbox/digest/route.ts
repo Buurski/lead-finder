@@ -58,10 +58,15 @@ export async function POST(req: NextRequest) {
   });
   // "Ja tak til et udkast" → udkast-opgave til Hermes (samme kø som kinly.dk-formularen).
   const { applyDraftRequests } = await import("@/lib/hq/draft-requests");
-  const draftRequests = await applyDraftRequests(digest.items).catch((err) => {
+  // Fejler udkast-opgaverne, svarer vi 503 så afsenderen prøver igen: digesten er gemt, og
+  // applyDraftRequests er idempotent (springer mails over der allerede har en henvendelse) — Sol R11-02.
+  let draftRequests: number;
+  try {
+    draftRequests = await applyDraftRequests(digest.items);
+  } catch (err) {
     console.error(JSON.stringify({ evt: "digest.draft_requests_failed", error: String(err).slice(0, 200) }));
-    return 0;
-  });
+    return NextResponse.json({ ok: false, saved: true, error: "udkast-opgaver kunne ikke oprettes — prøv igen" }, { status: 503 });
+  }
   return NextResponse.json({ ok: true, summary: summarizeDigest(digest), noThanks, draftRequests });
 }
 
