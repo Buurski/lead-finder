@@ -91,3 +91,16 @@ test("nyhedsbrev-samtykke: kun append-only bevis på aktiviteten; kontakten rør
   const [a2] = await db.select().from(activity).where(eq(activity.legacyId, "preview:p21"));
   assert.equal((a2.payload as { newsletterConsent: { ipHash: string } }).newsletterConsent.ipHash, "b".repeat(32));
 });
+
+test("henvendelse opretter én 'svar'-opgave i dag til ejeren (idempotent)", async () => {
+  const { task } = await import("../db/schema.ts");
+  const input = { ...base, id: "p-task", company: "Ny Frisør", email: "a@nyfrisor.dk", website: "nyfrisor.dk", seoTjek: { host: "nyfrisor.dk", score: 41, mangler: [] } };
+  await recordInbound(db, input);
+  await recordInbound(db, input);
+  const tasks = await db.select().from(task);
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].title, "Svar på SEO-tjek (41/100)");
+  assert.equal(tasks[0].owner, "lucas");
+  assert.equal(tasks[0].important, true);
+  assert.equal(tasks[0].due, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }));
+});

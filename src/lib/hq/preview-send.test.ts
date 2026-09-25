@@ -158,3 +158,20 @@ test("previewBodyError: samme krav som send (Sol w4a-r2 R2)", async () => {
   assert.match(previewBodyError("x".repeat(5001) + url, url) ?? "", /for lang/);
   assert.match(previewBodyError(`Se ${url}`, undefined) ?? "", /intet link/);
 });
+
+test("SEO-tjek-henvendelse: sendes uden demo-link fra 'ny', lukker svar-opgaven; afvist kan ikke sendes (E2E 25/9)", async () => {
+  const { isSendable, previewBodyError } = await import("./preview-send.ts");
+  const { task } = await import("../db/schema.ts");
+  const seo: PreviewLike = { id: "preview_seo1", company: "example.com", email: "ejer@example.com", status: "ny", seoTjek: { host: "example.com", score: 22, mangler: ["Sidetitel"] } };
+  assert.equal(isSendable(seo), true);
+  assert.equal(isSendable({ ...seo, status: "afvist" }), false);
+  assert.equal(isSendable({ status: "ny", previewUrl: url }), false); // demo-henvendelse venter stadig på Hermes
+  assert.equal(previewBodyError("Hej, tak for tjekket", undefined, true), null);
+  await db.insert(task).values({ legacyId: "inbound:preview_seo1", title: "Svar på SEO-tjek (22/100)", owner: "lucas" });
+  const x = deps(seo);
+  await sendPreview(db, seo.id, { subject: "Dit SEO-tjek af example.com", body: "Hej, tak for tjekket" }, "lucas", x.d);
+  assert.deepEqual(x.sent, ["ejer@example.com"]);
+  const [t] = await db.select().from(task);
+  assert.ok(t.doneAt, "svar-opgaven lukkes når svaret er sendt");
+  await assert.rejects(sendPreview(db, "preview_seo2", msg, "lucas", deps({ ...seo, id: "preview_seo2", status: "afvist" }).d), /status "afvist"/);
+});

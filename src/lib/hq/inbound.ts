@@ -4,7 +4,7 @@
 // og stop kolde kladder — en der selv har skrevet skal ikke have en kold mail.
 import { and, eq, max, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, contact } from "../db/schema.ts";
+import { activity, company, contact, task } from "../db/schema.ts";
 
 export interface InboundInput {
   id: string; // preview-id — gør kaldet idempotent
@@ -123,7 +123,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
       if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse" });
     }
 
-    const [co] = await tx.select({ name: company.name, rowNo: company.rowNo }).from(company).where(eq(company.id, companyId));
+    const [co] = await tx.select({ name: company.name, rowNo: company.rowNo, owner: company.owner }).from(company).where(eq(company.id, companyId));
     const what = (input.questionnaire ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
     await tx.insert(activity).values({
       legacyId,
@@ -141,6 +141,16 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         ...(input.newsletterConsent ? { newsletterConsent: input.newsletterConsent } : {}),
       },
     });
+    // En varm henvendelse må ikke kunne glide igennem: opgave i dag til ejeren (E2E 25/9). Idempotent via legacyId.
+    await tx.insert(task).values({
+      legacyId: `inbound:${input.id}`,
+      companyId,
+      clientName: co.name,
+      owner: co.owner === "charlie" ? "charlie" : "lucas",
+      title: input.seoTjek ? `Svar på SEO-tjek (${input.seoTjek.score}/100)` : "Svar på henvendelse fra kinly.dk",
+      due: new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }),
+      important: true,
+    }).onConflictDoNothing();
     return { companyId, created, rowNo: co.rowNo, duplicate: false };
   });
 }

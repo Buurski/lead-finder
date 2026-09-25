@@ -24,6 +24,8 @@ interface PreviewRequest {
   screenshotUrl?: string;
   mailDraft?: string;
   reviewNotes?: string;
+  /** Fra SEO-tjekket på kinly.dk: ingen demo — besvares med rapportmailen og kan sendes med det samme. */
+  seoTjek?: { host: string; score: number; mangler: string[] };
   /** Afsendelseskrav fra Postgres: "sending" = uafklaret/låst, "uncertain" = registreret usikkert, "sent" = sendt. */
   sendClaim?: "sending" | "uncertain" | "sent";
   createdAt: string;
@@ -49,12 +51,18 @@ const DEFAULT_SUBJECT = "Jeres gratis udkast fra Kinly";
 
 function defaultBody(item: PreviewRequest): string {
   const hilsen = item.contactName ? `Hej ${item.contactName},` : "Hej,";
+  if (item.seoTjek) return `${hilsen}
+
+Tak fordi du tjekkede ${item.seoTjek.host} hos os. Herunder er resultatet og de ting, jeg ville rette først.
+
+Skriv eller ring, hvis du vil have hjælp til det.`;
   const link = item.previewUrl ?? "";
   return `${hilsen}\n\nTak fordi I spurgte. Her er et første udkast til en ny hjemmeside til ${item.company}:\n${link}\n\nDet er et udkast — alt kan rettes. Sig til hvad I synes, så tager vi den derfra.`;
 }
 
-function groupOf(status: Status): "ready" | "working" | "sent" | "rejected" {
-  if (READY.includes(status)) return "ready";
+function groupOf(r: PreviewRequest): "ready" | "working" | "sent" | "rejected" {
+  const status = r.status;
+  if (READY.includes(status) || (r.seoTjek && WORKING.includes(status))) return "ready";
   if (WORKING.includes(status)) return "working";
   if (status === "afvist") return "rejected";
   return "sent";
@@ -83,7 +91,7 @@ export default function GratisUdkast({ senders }: { senders: Senders }) {
         // Auto-vælg kun på desktop — på mobil er detaljen en fuldskærms-overlay,
         // og skal åbnes med et bevidst tryk, ikke poppe op over listen.
         if (typeof window === "undefined" || !window.matchMedia("(min-width: 900px)").matches) return null;
-        const firstReady = list.find((r) => READY.includes(r.status));
+        const firstReady = list.find((r) => groupOf(r) === "ready");
         return firstReady?.id ?? null;
       });
     } catch (e) {
@@ -102,7 +110,7 @@ export default function GratisUdkast({ senders }: { senders: Senders }) {
 
   const groups = useMemo(() => {
     const by = { ready: [] as PreviewRequest[], working: [] as PreviewRequest[], sent: [] as PreviewRequest[], rejected: [] as PreviewRequest[] };
-    for (const r of requests) by[groupOf(r.status)].push(r);
+    for (const r of requests) by[groupOf(r)].push(r);
     return by;
   }, [requests]);
 
@@ -202,7 +210,7 @@ function Group({ title, items, selectedId, onPick }: { title: string; items: Pre
             <span className="gu-item-time">{timeAgo(item.createdAt)}</span>
           </div>
           <span className="gu-item-sub">
-            {WORKING.includes(item.status) ? WORKING_LABEL[item.status] : item.branch || item.email}
+            {item.seoTjek ? `SEO-tjek ${item.seoTjek.score}/100 · klar til svar` : WORKING.includes(item.status) ? WORKING_LABEL[item.status] : item.branch || item.email}
           </span>
         </button>
       ))}
@@ -244,7 +252,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
   onPatch: (body: Record<string, unknown>) => Promise<void>;
   onSent: () => void;
 }) {
-  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [subject, setSubject] = useState(item.seoTjek ? `Dit SEO-tjek af ${item.seoTjek.host}` : DEFAULT_SUBJECT);
   const [body, setBody] = useState(item.mailDraft || defaultBody(item));
   const [sender, setSender] = useState<"lucas" | "charlie">(senders.lucas ? "lucas" : "charlie");
   const [sendState, setSendState] = useState<"idle" | "confirm" | "sending" | "sent" | "error">(
@@ -260,7 +268,8 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
   const [screenshotFailed, setScreenshotFailed] = useState(false);
   const [sentAt, setSentAt] = useState(item.status === "sendt/lukket" ? item.updatedAt : "");
 
-  const sendable = SENDABLE.includes(item.status) && Boolean(item.previewUrl);
+  // Samme regel som isSendable() i lib/hq/preview-send.ts (server-kopien er den der gælder).
+  const sendable = item.seoTjek ? !["afvist", "sendt/lukket"].includes(item.status) : SENDABLE.includes(item.status) && Boolean(item.previewUrl);
 
   async function send() {
     setSendState("sending");
@@ -353,7 +362,9 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
           </a>
         ) : (
           <span className="gu-visual-empty" style={{ margin: "auto" }}>
-            {item.previewUrl ? "Intet screenshot endnu" : "Demo ikke klar endnu"}
+            {item.seoTjek
+              ? `SEO-tjek ${item.seoTjek.score}/100 på ${item.seoTjek.host} · ${item.seoTjek.mangler.length} ting at rette. Svar med rapportmailen herunder.`
+              : item.previewUrl ? "Intet screenshot endnu" : "Demo ikke klar endnu"}
           </span>
         )}
         {item.previewUrl && (
@@ -363,7 +374,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
         )}
       </div>
 
-      {WORKING.includes(item.status) && (
+      {WORKING.includes(item.status) && !item.seoTjek && (
         <div className="gu-working-note">
           <Icon name="Hourglass" style={{ width: 15, height: 15 }} />
           {WORKING_LABEL[item.status]} · startede {timeAgo(item.createdAt)}

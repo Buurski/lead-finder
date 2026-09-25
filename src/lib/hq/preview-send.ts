@@ -4,7 +4,7 @@
 // afsendelsen fejler MED SIKKERHED før Gmail tog mailen (tvetydig fejl ⇒ kravet står og afstemmes).
 import { and, eq, like, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity } from "../db/schema.ts";
+import { activity, task } from "../db/schema.ts";
 import { failedBeforeAccept, withLock } from "../send-safety.ts";
 
 export class PreviewSendError extends Error {}
@@ -13,12 +13,20 @@ export class PreviewSendError extends Error {}
 export const previewLockName = (id: string) => `preview:${id}`;
 
 export const SENDABLE = ["preview klar", "godkendt", "kladde klar"] as const;
+const CLOSED = ["afvist", "sendt/lukket"];
+
+/** SEO-tjek-henvendelser har ingen demo: de besvares med rapportmailen og kan sendes, så snart de er kommet ind (E2E 25/9). */
+export function isSendable(r: { status: string; previewUrl?: string; seoTjek?: unknown }): boolean {
+  if (r.seoTjek) return !CLOSED.includes(r.status);
+  return (SENDABLE as readonly string[]).includes(r.status) && Boolean(r.previewUrl);
+}
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
 /** Samme tekstkrav i send og forhåndsvisning, så forhåndsvisningen aldrig viser en mail send-ruten afviser (Sol w4a R2). */
-export function previewBodyError(body: string, previewUrl: string | undefined): string | null {
+export function previewBodyError(body: string, previewUrl: string | undefined, seoReport = false): string | null {
   const b = body.trim();
   if (!b || b.length > 5000) return "teksten mangler eller er for lang";
+  if (seoReport) return null; // rapportmailen har intet demo-link
   if (!previewUrl) return "udkastet har intet link endnu";
   if (!b.includes(previewUrl)) return "mailen skal indeholde linket til udkastet";
   return null;
@@ -30,6 +38,7 @@ export interface PreviewLike {
   email: string;
   status: string;
   previewUrl?: string;
+  seoTjek?: unknown;
 }
 
 export interface SendDeps {
@@ -48,14 +57,13 @@ export async function sendPreview(
   const { to, subject, legacyId, claimed } = await withLock(previewLockName(id), async () => {
     const r = await deps.get(id);
     if (!r) throw new PreviewSendError("udkastet findes ikke");
-    if (!(SENDABLE as readonly string[]).includes(r.status)) throw new PreviewSendError(`kan ikke sendes i status "${r.status}"`);
-    if (!r.previewUrl) throw new PreviewSendError("udkastet har intet link endnu");
+    if (!isSendable(r)) throw new PreviewSendError(r.previewUrl || r.seoTjek ? `kan ikke sendes i status "${r.status}"` : "udkastet har intet link endnu");
     const to = r.email.trim();
     if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
     const subject = input.subject.trim();
     const body = input.body.trim();
     if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
-    const bodyErr = previewBodyError(body, r.previewUrl);
+    const bodyErr = previewBodyError(body, r.previewUrl, Boolean(r.seoTjek));
     if (bodyErr) throw new PreviewSendError(bodyErr);
 
     const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
@@ -109,6 +117,16 @@ export async function sendPreview(
   await deps.markSent(id, body).catch((err) =>
     console.error(JSON.stringify({ evt: "preview.mark_sent_failed", id, error: String(err).slice(0, 200) })),
   );
+  await closeInboundTask(db, id);
+}
+
+/** Svaret er sendt ⇒ "Svar på henvendelse"-opgaven fra inbound.ts lukkes. Fejler det, står opgaven bare åben. */
+export async function closeInboundTask(db: Db, previewId: string): Promise<void> {
+  await db
+    .update(task)
+    .set({ doneAt: new Date() })
+    .where(and(eq(task.legacyId, `inbound:${previewId}`), sql`${task.doneAt} is null`))
+    .catch((err) => console.error(JSON.stringify({ evt: "preview.close_task_failed", id: previewId, error: String(err).slice(0, 200) })));
 }
 
 const STATE = sql<string | null>`${activity.payload}->>'state'`;
@@ -151,6 +169,7 @@ export async function reconcilePreview(
     // Allerede sendt (eller et ældre krav uden state): gentag bare status-skrivningen.
   }
   await markSent(id);
+  await closeInboundTask(db, id);
 }
 
 async function whyNot(db: Db, legacyId: string): Promise<string> {
