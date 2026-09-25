@@ -27,7 +27,12 @@ async function authorized(req: NextRequest): Promise<boolean> {
 export async function GET(req: NextRequest) {
   if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const status = req.nextUrl.searchParams.get("status") as PreviewStatus | null;
-  const requests = await readPreviewRequests();
+  const all = await readPreviewRequests();
+  // Afsendelseskrav (Postgres) så UI'et kan vise afstemning efter et usikkert forsøg — også efter reload (Sol R4-2).
+  const claims = await import("@/lib/hq/preview-send")
+    .then(async (m) => m.previewClaims((await import("@/lib/db/client")).getDb()))
+    .catch(() => new Map<string, "pending" | "sent">());
+  const requests = all.map((r) => (claims.has(r.id) ? { ...r, sendClaim: claims.get(r.id) } : r));
   return NextResponse.json({
     requests: status && PREVIEW_STATUSES.includes(status) ? requests.filter((r) => r.status === status) : requests,
     statuses: PREVIEW_STATUSES,

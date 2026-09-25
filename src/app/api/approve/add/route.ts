@@ -96,7 +96,9 @@ export async function POST(req: NextRequest) {
     if (!check.ok) { skipped.push({ name, reason: `voice: ${check.errors.join(", ")}` }); continue; }
     // C3: ingen kladde i Afventer uden modtager — egen mail eller det matchede Sheets-leads mail.
     const ownTo = d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : "";
-    if (!hasUsableEmail(ownTo || matchLead(sheetsLeads ?? [], { leadId: (d.leadId || "").toString(), name, city: d.city })?.email || "")) {
+    // Den fundne modtager gemmes på kladden, så den ikke afhænger af at Sheets svarer senere (Sol R4-1).
+    const to = ownTo || (matchLead(sheetsLeads ?? [], { leadId: (d.leadId || "").toString(), name, city: d.city })?.email || "").trim();
+    if (!hasUsableEmail(to)) {
       skipped.push({ name, reason: "ingen modtager-mail" });
       continue;
     }
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
       professionalism: d.professionalism || "",
       subject: (d.subject || `En idé til ${name}`).trim(),
       body,
-      recipientEmail: d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : undefined,
+      recipientEmail: to,
       status: "pending",
       source: d.source || "cowork-leadgen",
       ...(d.sender === "charlie" ? { sender: "charlie" as const } : d.sender === "lucas" ? { sender: "lucas" as const } : {}),

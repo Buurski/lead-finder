@@ -238,3 +238,17 @@ Data-linse (Sonnet) bekræftede samme huller + at tidszone er korrekt og at `sen
 | F2 afmeld-tekst påstået bevaret, men findes ikke i /approve-kladder | Accepteret som dokumentfejl — 02 rettet; tilføjelse af afmeld-linje = Lucas' beslutning (mailtekst). |
 | F3 budget nøglet på afsender-id, ikke Gmail-konto | Accepteret — nøgle = normaliseret SMTP-adresse; test: lucas+charlie på samme adresse deler loft. |
 Note: runde 1+2 meldte "Code changed during inspection" (runde 1: kunder-WIP; runde 2: formentlig `git fetch` under kørslen) — fundene er stadig behandlet.
+
+### Sol bølge 2 R3 — dispositioner (commit `b1fd633`, base `8fed51a`)
+- F1 ACCEPT: `action=edit` (Gem + godkend) kræver nu samme modtager som approve/approve-many via fælles `hasRecipient()` i `api/approve/queue/route.ts` (422).
+- F2 ACCEPT: `cron/ingest-leadgen` laver ingen kladde uden brugbar mail (`skippedNoEmail`); `approve/add` springer over uden egen mail eller Sheets-match-mail. Eksisterende pending uden mail: kan ikke godkendes (F1) og står nederst.
+- F3 ACCEPT: usikker preview-send markerer kravet `payload.uncertain=true`; `reconcilePreview` ("sent" ⇒ markér sendt, "not-sent" ⇒ frigiv) virker KUN på usikre krav. UI viser to knapper efter tjek af Gmail Sendt. Sender aldrig noget. Test i `preview-send.test.ts`.
+- F4 ACCEPT: GET-preflight nøgler projekteret forbrug med eksporteret `budgetKey` (samme Gmail-konto ⇒ samme pulje).
+Inspektion R4: kun diff `8fed51a..b1fd633`.
+
+### Sol bølge 2 R4 — dispositioner (base `b1fd633`)
+- R4-1 ACCEPT: `approve/add` gemmer den fundne modtager (egen eller Sheets-match) på kladden.
+- R4-2 ACCEPT: GET /api/previews eksponerer `sendClaim` ("pending"/"sent") fra Postgres; UI viser afstemning ud fra den (overlever reload) + "Markér som sendt" når kravet er sendt men status ikke er.
+- R4-3 ACCEPT: tilstand fødes i kravet (`payload.state="pending"` ved insert); "sent" sættes efter Gmail-accept. Ingen efterfølgende skrivning der kan fejle stille.
+- R4-4 ACCEPT: "sent"-afstemning er idempotent — gentager status-skrivningen når kravet allerede er sendt.
+- R4-5 ACCEPT: hver overgang er én betinget sætning på `state='pending' AND at < nu-2min` (DELETE/UPDATE … RETURNING); modsatte klik kan ikke begge vinde; et forsøg der kan være i gang kan ikke afstemmes.

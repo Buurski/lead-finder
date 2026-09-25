@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { PreviewSendError, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { PreviewSendError, previewClaims, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -67,20 +67,31 @@ test("tvetydig SMTP-fejl (timeout efter DATA) holder kravet — intet dobbelt-se
   assert.equal(x.sent.length, 0);
 });
 
-test("usikkert forsøg kan afstemmes: ikke-sendt frigiver, sendt markerer; sikkert sendt kan aldrig låses op", async () => {
-  const amb = deps(req, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }));
-  await assert.rejects(sendPreview(db, req.id, msg, "lucas", amb.d), /usikkert/);
-  await reconcilePreview(db, req.id, "not-sent", async () => {});
+test("usikkert forsøg kan afstemmes: én vinder, ikke mens det kan være i gang, sikkert sendt kan aldrig låses op", async () => {
+  const later = Date.now() + 3 * 60_000;
+  const amb = () => deps(req, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d;
+  await assert.rejects(sendPreview(db, req.id, msg, "lucas", amb()), /usikkert/);
+  // For tidligt: forsøget kan stadig være i gang.
+  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}), /vent 2 minutter/);
+  await reconcilePreview(db, req.id, "not-sent", async () => {}, later);
+  // Modsat klik efter frigivelse taber.
+  await assert.rejects(reconcilePreview(db, req.id, "sent", async () => {}, later), PreviewSendError);
   const x = deps(req);
   await sendPreview(db, req.id, msg, "lucas", x.d);
   assert.deepEqual(x.sent, ["maja@salonlux.dk"]);
-  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}), PreviewSendError);
+  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}, later), /kan ikke frigives/);
   assert.equal((await db.select().from(activity)).length, 1, "sikkert krav står");
 
   const r2 = { ...req, id: "preview_x2" };
   await assert.rejects(sendPreview(db, r2.id, msg, "lucas", deps(r2, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d), /usikkert/);
+  // "sent" med fejlende status-skrivning kan gentages (idempotent), og derefter kan kravet ikke frigives.
+  await assert.rejects(reconcilePreview(db, r2.id, "sent", async () => { throw new Error("KV nede"); }, later), /KV nede/);
   const marked: string[] = [];
-  await reconcilePreview(db, r2.id, "sent", async (i) => { marked.push(i); });
+  await reconcilePreview(db, r2.id, "sent", async (i) => { marked.push(i); }, later);
   assert.deepEqual(marked, [r2.id]);
-  await assert.rejects(reconcilePreview(db, r2.id, "not-sent", async () => {}), PreviewSendError);
+  await assert.rejects(reconcilePreview(db, r2.id, "not-sent", async () => {}, later), /kan ikke frigives/);
+
+  const claims = await previewClaims(db);
+  assert.equal(claims.get(req.id), "sent");
+  assert.equal(claims.get(r2.id), "sent");
 });
