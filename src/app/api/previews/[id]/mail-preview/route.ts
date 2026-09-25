@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizedRead, jsonBody } from "@/lib/hq/api";
 import { readPreviewRequests } from "@/lib/preview-queue";
 import { composePreviewMail, type SenderId } from "@/lib/senders";
+import { previewBodyError } from "@/lib/hq/preview-send";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const sender: SenderId = b.sender === "charlie" ? "charlie" : "lucas";
   const rec = (await readPreviewRequests()).find((r) => r.id === id);
   if (!rec) return NextResponse.json({ error: "findes ikke" }, { status: 404 });
-  const { html } = composePreviewMail(String(b.body ?? "").slice(0, 20_000), sender, rec.seoTjek);
+  const body = String(b.body ?? "");
+  const invalid = previewBodyError(body, rec.previewUrl);
+  if (invalid) return NextResponse.json({ error: invalid }, { status: 422 });
+  const { html } = composePreviewMail(body.trim(), sender, rec.seoTjek);
   return NextResponse.json({ html, report: Boolean(rec.seoTjek) });
 }

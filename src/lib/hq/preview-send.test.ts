@@ -149,3 +149,12 @@ test("sendt krav er endeligt: kun 'sendt/lukket' tilladt; intet krav blokerer in
   assert.equal(await claimBlocksStatus(db, r.id, "sendt/lukket"), false);
   assert.equal(await claimBlocksStatus(db, r.id, "sendt/lukket", true), true); // feltændring på sendt udkast (R9-02)
 });
+
+test("previewBodyError: samme krav som send (Sol w4a-r2 R2)", async () => {
+  const { previewBodyError } = await import("./preview-send.ts");
+  const url = "https://kinly.dk/udkast/x";
+  assert.equal(previewBodyError(`Se ${url}`, url), null);
+  assert.match(previewBodyError("uden link", url) ?? "", /linket/);
+  assert.match(previewBodyError("x".repeat(5001) + url, url) ?? "", /for lang/);
+  assert.match(previewBodyError(`Se ${url}`, undefined) ?? "", /intet link/);
+});

@@ -146,7 +146,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     sourceMessageId: input.sourceMessageId?.trim() || undefined,
     demoKey: input.demoKey?.trim() || demoKey(),
     // Resultatet skal høre til den side henvendelsen handler om (Sol w4a R2) — ellers droppes det.
-    seoTjek: ((r) => (r && hostOf(input.website) === r.host ? r : undefined))(cleanSeoTjek(input.seoTjek)),
+    seoTjek: ((r) => (r && hostOf(input.website) === hostOf(r.host) ? r : undefined))(cleanSeoTjek(input.seoTjek)),
     newsletterConsent: cleanNewsletterConsent(input.newsletterConsent),
     status: "ny",
     noindex: true,

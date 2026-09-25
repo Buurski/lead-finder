@@ -489,6 +489,7 @@ function SenderButton({ id, label, active, connected, onPick }: { id: "lucas" | 
 function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "charlie"; body: string }) {
   const [html, setHtml] = useState<string | null>(null);
   const [report, setReport] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -500,11 +501,15 @@ function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "char
         body: JSON.stringify({ sender, body }),
         signal: ctrl.signal,
       })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j: { html: string; report: boolean } | null) => {
-          if (j) {
+        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+        .then(({ ok, j }: { ok: boolean; j: { html?: string; report?: boolean; error?: string } }) => {
+          if (ok && j.html) {
+            setErr(null);
             setHtml(j.html);
-            setReport(j.report);
+            setReport(Boolean(j.report));
+          } else {
+            setHtml(null);
+            setErr(j.error ?? "Kunne ikke vise mailen");
           }
         })
         .catch(() => {});
@@ -522,7 +527,9 @@ function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "char
       {open ? (
         <div style={{ marginTop: 8 }}>
           {report ? <p className="cc-kicker" style={{ margin: "0 0 6px" }}>SEO-rapport med tilbud (fra SEO-tjekket)</p> : null}
-          {html ? (
+          {err ? (
+            <p role="alert" className="cc-kicker" style={{ color: "var(--danger, #b3261e)" }}>Kan ikke sendes sådan: {err}</p>
+          ) : html ? (
             <iframe title="Forhåndsvisning af mailen" sandbox="" srcDoc={html} style={{ width: "100%", height: 640, border: "1px solid var(--rule, #e4dccd)", borderRadius: 10, background: "#faf6ef" }} />
           ) : (
             <p className="cc-kicker">Henter…</p>

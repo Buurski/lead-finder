@@ -15,6 +15,15 @@ export const previewLockName = (id: string) => `preview:${id}`;
 export const SENDABLE = ["preview klar", "godkendt", "kladde klar"] as const;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
+/** Samme tekstkrav i send og forhåndsvisning, så forhåndsvisningen aldrig viser en mail send-ruten afviser (Sol w4a R2). */
+export function previewBodyError(body: string, previewUrl: string | undefined): string | null {
+  const b = body.trim();
+  if (!b || b.length > 5000) return "teksten mangler eller er for lang";
+  if (!previewUrl) return "udkastet har intet link endnu";
+  if (!b.includes(previewUrl)) return "mailen skal indeholde linket til udkastet";
+  return null;
+}
+
 export interface PreviewLike {
   id: string;
   company: string;
@@ -46,8 +55,8 @@ export async function sendPreview(
     const subject = input.subject.trim();
     const body = input.body.trim();
     if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
-    if (!body || body.length > 5000) throw new PreviewSendError("teksten mangler eller er for lang");
-    if (!body.includes(r.previewUrl)) throw new PreviewSendError("mailen skal indeholde linket til udkastet");
+    const bodyErr = previewBodyError(body, r.previewUrl);
+    if (bodyErr) throw new PreviewSendError(bodyErr);
 
     const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
     const legacyId = `preview-sent:${id}`;

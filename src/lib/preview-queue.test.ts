@@ -90,6 +90,8 @@ test("SEO-resultat bindes til henvendelsens side; fremmed host droppes (Sol w4a 
   const seo = { host: "frisor.dk", score: 41, mangler: ["Meta-beskrivelse"] };
   const ok = await createPreviewRequest({ ...fixture, website: "https://www.frisor.dk/", seoTjek: seo });
   assert.deepEqual(ok.seoTjek, seo);
+  const medWww = await createPreviewRequest({ ...fixture, website: "https://www.frisor.dk/", seoTjek: { ...seo, host: "www.frisor.dk" } });
+  assert.equal(medWww.seoTjek?.score, 41, "www på begge sider skal matche (Sol w4a-r2 R1)");
   const fremmed = await createPreviewRequest({ ...fixture, website: "https://frisor.dk", seoTjek: { ...seo, host: "konkurrent.dk" } });
   assert.equal(fremmed.seoTjek, undefined);
   const udenSide = await createPreviewRequest({ ...fixture, seoTjek: seo });
