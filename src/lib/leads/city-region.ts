@@ -97,15 +97,16 @@ export async function loadCityRegions(): Promise<CityRegionMap> {
   return out;
 }
 
+/** Kastes af classifyCities når Jev ikke svarer (5 kald i træk uden svar). */
+export class JevUnavailableError extends Error {
+  constructor() { super("jev-unavailable"); }
+}
+
 /**
  * Klassificér de byer der ikke allerede står i cachen, og gem resultatet.
  * Returnerer HELE kortet (gammelt + nyt). Best-effort: en by Jev ikke svarer
  * på, springes over og prøves igen næste gang — ingen gættet landsdel.
  */
-export class JevUnavailableError extends Error {
-  constructor() { super("jev-unavailable"); }
-}
-
 export async function classifyCities(cities: string[], deadline?: number): Promise<CityRegionMap> {
   const known = await loadCityRegions();
   const missing: string[] = [];
