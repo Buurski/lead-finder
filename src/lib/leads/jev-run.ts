@@ -7,7 +7,7 @@ import { getLeads, getClients } from "../sheets.ts";
 import { jevEnabled } from "../jev.ts";
 import { loadShadow, saveShadow, pickBatch, judgeLead, countUnjudged } from "./jev-shadow.ts";
 import { readQueue } from "../queue.ts";
-import { classifyCities } from "./city-region.ts";
+import { classifyCities, JevUnavailableError } from "./city-region.ts";
 import { loadDraftShadow, saveDraftShadow, judgeDraft } from "./draft-judgments.ts";
 import { loadReplyShadow, saveReplyShadow, judgeReply, type ReplyInfo } from "./reply-judgments.ts";
 import { classifyReply } from "../reply.ts";
@@ -30,10 +30,31 @@ const LEAD_PHASE_SHARE = 0.6;
 // og deadline sat til 270 s: worst case pr. lead er fetch 9 s + Jev 15 s = 24 s,
 // og med CONCURRENCY 8 når et hold altid at returnere inden for maxDuration.
 // Resten bliver "remaining" og tages i næste kørsel (ældst-vurderet først).
-const MAX_BATCH = 250;
+export const MAX_BATCH = 250;
 const CONCURRENCY = 8;
 const DEADLINE_MS = 270_000;
 const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+// Et job startes kun hvis dets worst case kan nå at slutte før fasens deadline
+// (Codex 25/9): lead = fetch 9 s + Jev 15 s, kladde/svar = Jev 15 s. Og når
+// fase 3 er slået til, efterlader fase 2 plads til den (inkl. live-scan).
+const LEAD_WORST_MS = 24_000;
+const JEV_WORST_MS = 15_000;
+const REPLY_RESERVE_MS = 60_000;
+// 5 Jev-svar i træk uden dom (429/5xx/timeout) = stop fasen, så en rate-limit
+// ikke brænder et helt hold af som fejlposter (council 25/9).
+const JEV_FAIL_TRIP = 5;
+
+/** Streak af Jev-svar uden dom. En god dom nulstiller; døde sider (fetch/thin-page)
+ *  siger intet om Jev og lader streaken stå. */
+export function nextFailStreak(streak: number, error?: string): number {
+  if (error === "no-judgment") return streak + 1;
+  return error ? streak : 0;
+}
+
+/** En fejlet genvurdering må ikke erstatte en eksisterende god dom. */
+export function shouldSave(rec: { error?: string }, prev?: { judgment?: unknown } | null): boolean {
+  return !(rec.error && prev?.judgment);
+}
 
 export function clampBatch(raw: string | number | null | undefined): number {
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
@@ -70,7 +91,22 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // cachet for evigt — byer flytter sig ikke. Skal ligge før fase 1, så
   // straffen er med i den attraktivitet der gemmes i nat.
   const leads = await getLeads();
-  await classifyCities(leads.map((l) => l.city), Date.now() + 45_000).catch(() => ({}));
+  // Én breaker for alle faser: 5 Jev-svar i træk uden dom stopper resten af kørslen.
+  let jevFailStreak = 0;
+  let tripped = false;
+  const noteJev = (error: string | undefined, phase: string) => {
+    jevFailStreak = nextFailStreak(jevFailStreak, error);
+    if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
+      tripped = true;
+      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase, streak: jevFailStreak }));
+    }
+  };
+  await classifyCities(leads.map((l) => l.city), Date.now() + 45_000).catch((err) => {
+    if (err instanceof JevUnavailableError) {
+      tripped = true;
+      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase: "cities" }));
+    }
+  });
 
   // Phase 1: leads (site attractiveness). Leads med en ventende kladde kommer
   // først: uden en vurdering af FORRETNINGEN kan /godkendelse aldrig vise andet
@@ -84,22 +120,33 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // brancheopremsning i stedet for at vælte hele kørslen.
   const clients = await getClients().catch(() => []);
 
+  const prevById = new Map(existing.map((r) => [r.leadId, r]));
   let judged = 0;
+  let firstTime = 0;
   let errors = 0;
   let i = 0;
   async function worker() {
-    while (i < batch.length && Date.now() < leadDeadline) {
+    while (!tripped && i < batch.length && Date.now() + LEAD_WORST_MS < leadDeadline) {
       const lead = batch[i++];
       const rec = await judgeLead(lead, clients);
-      await saveShadow(rec);
+      const prev = prevById.get(lead.id);
       judged++;
+      if (!prev) firstTime++;
       if (rec.error) errors++;
+      noteJev(rec.error, "leads");
+      // En fejlet GENvurdering må ikke overskrive en god dom (badget forsvandt i
+      // /godkendelse). Den gamle dom gemmes med nyt judgedAt, så leadet går bagerst
+      // i ældst-først-køen i stedet for at blive valgt forrest hver kørsel.
+      // `prev!` er sikker: shouldSave er kun false når prev.judgment findes.
+      // keptFrom gør audit-loggen ærlig (dommen er fra prev.judgedAt, ikke i dag).
+      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt, keptFrom: prev!.keptFrom ?? prev!.judgedAt });
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));
 
-  // Never-judged leads left after this run (re-judging old records is a bonus, not backlog).
-  const remaining = Math.max(0, countUnjudged(leads, existing) - judged);
+  // Never-judged leads left after this run. Only first-time judgments shrink the
+  // backlog — subtracting re-judgments made it look smaller than it was.
+  const remaining = Math.max(0, countUnjudged(leads, existing) - firstTime);
 
   // Phase 2: pending outreach drafts (approve UI ranking). Same deadline
   // as phase 1 — a slow phase 1 simply leaves fewer drafts judged tonight,
@@ -118,16 +165,19 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   });
   const draftBatch = unjudgedDrafts.slice(0, MAX_DRAFT_BATCH);
 
+  const repliesOn = includeReplies && process.env.JEV_REPLIES === "1";
+  const draftDeadline = repliesOn ? deadline - REPLY_RESERVE_MS : deadline;
   let draftsJudged = 0;
   let draftsErrors = 0;
   let di = 0;
   async function draftWorker() {
-    while (di < draftBatch.length && Date.now() < deadline) {
+    while (!tripped && di < draftBatch.length && Date.now() + JEV_WORST_MS < draftDeadline) {
       const draft = draftBatch[di++];
       const rec = await judgeDraft(draft);
       await saveDraftShadow(rec);
       draftsJudged++;
       if (rec.error) draftsErrors++;
+      noteJev(rec.error, "drafts");
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, draftBatch.length) }, draftWorker));
@@ -136,7 +186,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // DPA gate (council TSJ-001): reply text is customer correspondence. Phase 3
   // stays OFF until Lucas has documented TypeSafe as data processor; then
   // JEV_REPLIES=1 in Vercel env turns it on. Built, reviewed, not active.
-  const repliesEnabled = includeReplies && process.env.JEV_REPLIES === "1";
+  const repliesEnabled = repliesOn;
   // Phase 3: warm replies that need a "what now?" suggestion. Same
   // deadline as phase 1+2, OBSERVES ONLY. Reply body text isn't stored on
   // the Lead row (sync-replies.ts only stamps emailStatus="replied") — the
@@ -155,7 +205,15 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // least one candidate lacks a snippet, so Jev judges the actual reply.
   const needsLive = repliedLeads.some((l) => !digestByLead.get(l.id)?.snippet && (!replyJudgedAt.has(l.id) || noTextYet.has(l.id)));
   if (needsLive && Date.now() < deadline - 30_000) {
-    const live = await liveScanDigest().catch(() => null);
+    // IMAP har ingen egen timeout — begræns ventetiden til vinduet før fase 3's reserve.
+    // ponytail: den tabende scanning annulleres ikke (kun socketTimeout 30 s ved
+    // inaktivitet); fase 3 er slukket bag DPA-gaten. Giv liveScanDigest et
+    // AbortSignal/client.close() hvis JEV_REPLIES slås til.
+    const budget = Math.max(0, deadline - 30_000 - Date.now());
+    const live = await Promise.race([
+      liveScanDigest().catch(() => null),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), budget).unref?.()),
+    ]);
     for (const it of live?.digest?.items ?? []) {
       if (it.leadId && it.snippet && !digestByLead.get(it.leadId)?.snippet) digestByLead.set(it.leadId, it);
     }
@@ -175,7 +233,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let repliesErrors = 0;
   let ri = 0;
   async function replyWorker() {
-    while (ri < replyBatch.length && Date.now() < deadline) {
+    while (!tripped && ri < replyBatch.length && Date.now() + JEV_WORST_MS < deadline) {
       const lead = replyBatch[ri++];
       const item = digestByLead.get(lead.id);
       const info: ReplyInfo = item
@@ -185,6 +243,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       await saveReplyShadow(rec);
       repliesJudged++;
       if (rec.error) repliesErrors++;
+      if (rec.error !== "no-reply-text") noteJev(rec.error, "replies");
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, replyBatch.length) }, replyWorker));

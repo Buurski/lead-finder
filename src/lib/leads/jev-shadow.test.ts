@@ -110,6 +110,14 @@ test("pickBatch: leads med en ventende kladde kommer først", () => {
   ] as JevShadowRecord[];
   const plain = pickBatch(leads, existing, 2).map((l) => l.id);
   assert.deepEqual(plain, ["3", "1"], "uden prioritering: aldrig-vurderet først, så ældst");
+  // 4's dom er fra før ICP-spørgsmålet (ingen lignerKunde) → skal genvurderes først.
   const withDraft = pickBatch(leads, existing, 2, new Set(["4"])).map((l) => l.id);
-  assert.equal(withDraft[0], "4", "kladde-lead springer køen over selvom det er nyest vurderet");
+  assert.equal(withDraft[0], "4", "kladde-lead med forældet dom springer køen over");
+  // Med en aktuel dom springer det IKKE over — ellers genvurderes kladde-leads i ring.
+  const current = existing.map((r) => (r.leadId === "4" ? { ...r, judgment: { lignerKunde: 0.7 } } : r)) as JevShadowRecord[];
+  const covered = pickBatch(leads, current, 2, new Set(["4"])).map((l) => l.id);
+  assert.deepEqual(covered, ["3", "1"], "dækket kladde-lead: normal rækkefølge");
+  // Fejl-post (ingen dom) springer heller ikke over — ellers sulter den resten.
+  const failed = existing.map((r) => (r.leadId === "4" ? { ...r, error: "fetch" } : r)) as JevShadowRecord[];
+  assert.deepEqual(pickBatch(leads, failed, 2, new Set(["4"])).map((l) => l.id), ["3", "1"], "fejlet kladde-lead: normal rækkefølge");
 });

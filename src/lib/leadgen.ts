@@ -10,6 +10,39 @@
 // the feed contents. Pure helpers; the route does the Sheets/KV I/O. Strip-safe.
 
 import { store } from "./store.ts";
+import { hasUsableEmail } from "./leads/channel.ts";
+import { classifyFeed, FEED_SPECS } from "./feed-health.ts";
+
+// ingest-leadgen (Vercel-cron) — værn fra Claude-audit 25/9. Leadgen.json har
+// ~70 kandidater/dag; uden loft ville rate-fixet fylde /godkendelse med 50-70
+// kladder/dag (15-30 uden mail). 20 = TARGET_DRAFTS i run.mjs, det tilsigtede
+// dagsmål. En fil ældre end 20 t er gårsdagens (VPS-kørslen fejlede) → ingen nye
+// kladder, i stedet for at lade som om den er frisk.
+export const INGEST_MAX_NEW = 20;
+
+/** Samme klassificering som Mission Control (feed-health), men strammere: ingest
+ *  må kun bruge en fil fra i dag (kadence 10 t → "stale" efter 20 t). */
+export function isStaleLeadgen(at: string | undefined, now: number): boolean {
+  const spec = FEED_SPECS.find((f) => f.key === "leadgen")!;
+  return classifyFeed({ ...spec, expectEveryHours: 10 }, at ?? null, now).status !== "fresh";
+}
+
+/** Hvor mange nye leadgen-kladder der må laves endnu på filens UTC-dato: loftet
+ *  gælder pr. dag, så cron-retry, manuel ingest eller en genkørt VPS-fil (ny `at`)
+ *  ikke giver 2 x 20. */
+export function ingestAllowance(queue: { source?: string; createdAt?: string }[], fileAt: string): number {
+  const day = fileAt.slice(0, 10);
+  // places-direct (VPS-apply) når i dag kun en lokal fil på VPS'en, men tælles med
+  // så loftet holder hvis den nogensinde skriver til appens kø.
+  const already = queue.filter((d) => (d.source === "leadgen-ingest" || d.source === "places-direct") && (d.createdAt ?? "") >= day).length;
+  return Math.max(0, INGEST_MAX_NEW - already);
+}
+
+/** Kandidater med brugbar mail først, derefter højeste fitScore. */
+export function orderForIngest<T extends { email?: string | null; fitScore?: number }>(items: T[]): T[] {
+  const mail = (x: T) => (hasUsableEmail(x.email ?? undefined) ? 1 : 0);
+  return [...items].sort((a, b) => mail(b) - mail(a) || (b.fitScore ?? 0) - (a.fitScore ?? 0));
+}
 
 export interface IngestLead {
   name: string;

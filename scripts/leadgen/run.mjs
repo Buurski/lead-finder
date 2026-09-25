@@ -247,7 +247,7 @@ async function phaseSource() {
   const balanced = [];
   for (const cat of Object.keys(PER_CAT)) balanced.push(...pool.filter((c) => c.cat === cat).slice(0, PER_CAT[cat]));
   stats.pool_by_cat = poolCatCount;
-  wr("pool", { stats, calls, rateLimited, pool: balanced });
+  wr("pool", { at: nowIso, stats, calls, rateLimited, pool: balanced });
   log("SOURCE done.", JSON.stringify(stats), "calls", calls, "balancedPool", balanced.length);
   console.log(JSON.stringify({ raw: raw.length, eligible: pool.length, balanced: balanced.length, poolByCat: poolCatCount, calls, rateLimited }));
 }
@@ -281,15 +281,22 @@ function scoreLead(c, html) {
   return { fitScore, hasViewport, copyrightYear, bureau, emailOnSite,
     websiteStatus: copyrightYear && copyrightYear <= (new Date().getFullYear() - 4) ? "old" : "ok" };
 }
+// Rated-filen hører til ÉN source-kørsel (pool.at). WORKDIR overlever mellem
+// dage; før 25/9 voksede lg_v2_rated.json fra 2/9 til 470 rækker, remaining blev
+// negativ efter 26 leads, og finalize valgte historikkens allerede-kladdede leads
+// (~2 kladder/dag). Chunks inden for samme kørsel genoptages stadig.
+export function ratedForPool(prev, poolAt) {
+  return poolAt && prev && prev.poolAt === poolAt && Array.isArray(prev.rated) ? prev.rated : [];
+}
 async function phaseRate() {
-  const { pool } = rd("pool");
-  let rated = fs.existsSync(F("rated")) ? rd("rated").rated : [];
+  const { pool, at: poolAt } = rd("pool");
+  let rated = ratedForPool(fs.existsSync(F("rated")) ? rd("rated") : null, poolAt);
   const doneIds = new Set(rated.map((r) => r.place_id));
   const todo = pool.filter((c) => !doneIds.has(c.place_id)).slice(0, 26);
   let i = 0;
   async function worker() { while (i < todo.length) { const c = todo[i++]; const html = await fetchHtml(c.website); Object.assign(c, scoreLead(c, html)); rated.push(c); } }
   await Promise.all(Array.from({ length: 6 }, worker));
-  wr("rated", { rated });
+  wr("rated", { poolAt, rated });
   const remaining = pool.length - rated.length;
   log("RATE chunk done. rated", rated.length, "of", pool.length, "remaining", remaining);
   console.log(JSON.stringify({ rated: rated.length, total: pool.length, remaining }));

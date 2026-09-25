@@ -1,4 +1,6 @@
-// GET /api/cron/jev-rescore — nightly shadow rescoring of leads with Jev.
+// GET /api/cron/jev-rescore — shadow rescoring of leads with Jev, 03:30 + 13:30 UTC
+// (two slots since 25/9 to clear a ~1.000-lead backlog; drop the 13:30 slot once
+// `remaining` in the cron-log is ~0 — throughput per run is deadline-bound, not 250).
 // OBSERVES ONLY: writes to the jev-shadow/* store namespace, never to the
 // Sheet, never to Lead.enrichedInfo, never sends/deletes/changes status.
 // Skips quietly when TYPESAFE_API_KEY isn't set.
@@ -6,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { withCronLog } from "@/lib/cron-log";
 import { jevEnabled } from "@/lib/jev";
-import { runJevBatch, clampBatch } from "@/lib/leads/jev-run";
+import { runJevBatch, clampBatch, MAX_BATCH } from "@/lib/leads/jev-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -33,7 +35,11 @@ export async function GET(req: Request): Promise<NextResponse> {
       }
       const url = new URL(req.url);
       const limitParam = url.searchParams.get("limit");
-      const max = clampBatch(limitParam ?? process.env.JEV_RESCORE_BATCH);
+      // Cronen tager hele loftet; deadline (270 s, fase 1 = 60 %) stopper den i tide.
+      // Før 25/9 faldt den på DEFAULT_BATCH 40 (knappens hold) — 40 leads på ~40 s
+      // hver nat, mens 975 leads ventede.
+      // `||`, ikke `??`: en tom streng må ikke falde tilbage på 40 igen.
+      const max = clampBatch(limitParam || process.env.JEV_RESCORE_BATCH || MAX_BATCH);
       const r = await runJevBatch({ limit: max });
       return {
         result: r,

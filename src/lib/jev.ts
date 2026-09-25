@@ -54,7 +54,9 @@ export interface JevResult {
 }
 
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
-export const JEV_MODEL = "jev-latest";
+// Pinned (samme som VPS'ens jev_lib.py): jev-latest flytter sig ved nye releases,
+// og så skifter alle domme/karakterer uden at koden har ændret sig.
+export const JEV_MODEL = "jev-1.13.0";
 
 export function jevEnabled(): boolean {
   return Boolean(process.env.TYPESAFE_API_KEY) && process.env.JEV_DISABLED !== "1";

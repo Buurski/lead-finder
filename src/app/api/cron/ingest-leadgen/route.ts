@@ -10,6 +10,7 @@ import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress"
 import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
 import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
+import { ingestAllowance, isStaleLeadgen, orderForIngest } from "@/lib/leadgen";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -128,6 +129,26 @@ async function ingest() {
   const file = await fetchLeadgen(now);
   const items = Array.isArray(file.items) ? file.items : [];
 
+  // Fail-closed (Claude-audit 25/9) — FØR noget skrives (også backfill): en fil
+  // ældre end 20 t er gårsdagens, og uden Sheets kører never-twice-gaten kun på
+  // køen, så allerede kontaktede leads kunne få en ny kladde. Kastes →
+  // withCronLog logger fejl (/api/cron/health), ruten svarer 502, køen er urørt.
+  if (isStaleLeadgen(file.at, now)) {
+    throw new Error(`leadgen.json er forældet (${file.at ?? "uden tidsstempel"}) — ingen ændringer i køen`);
+  }
+  // Never-twice gate (suppress.ts): one set of rules shared with /api/approve/add.
+  // Blocks businesses already in-flight/sent/recently-rejected in the queue (by
+  // place_id + normalized name+city) AND already-contacted in Sheets — plus a hard
+  // medical/health branch exclude.
+  let sheetsLeads: Awaited<ReturnType<typeof getLeads>> | null = null;
+  try {
+    sheetsLeads = await getLeads();
+  } catch (err) {
+    // Detaljen logges, men lægges ikke i HTTP-svaret (council R3).
+    console.error(JSON.stringify({ evt: "ingest-leadgen.sheets_unavailable", err: String(err).slice(0, 300) }));
+    throw new Error("Sheets utilgængelig — ingen ændringer i køen");
+  }
+
   const queue = await readQueue();
 
   // Backfill: older drafts were queued BEFORE recipientEmail existed (incl. the
@@ -167,16 +188,6 @@ async function ingest() {
     }
   }
 
-  // Never-twice gate (suppress.ts): one set of rules shared with /api/approve/add.
-  // Blocks businesses already in-flight/sent/recently-rejected in the queue (by
-  // place_id + normalized name+city) AND already-contacted in Sheets — plus a hard
-  // medical/health branch exclude. Best-effort Sheets: no creds ⇒ queue half guards.
-  let sheetsLeads: Awaited<ReturnType<typeof getLeads>> | null = null;
-  try {
-    sheetsLeads = await getLeads();
-  } catch (err) {
-    console.warn(JSON.stringify({ evt: "ingest-leadgen.sheets_unavailable", err: String(err) }));
-  }
   const blockSets = buildBlockSets(queue, sheetsLeads, now);
   const sheetsOk = blockSets.contactedAvailable;
 
@@ -186,7 +197,10 @@ async function ingest() {
   let skippedVoice = 0;
   let skippedInvalid = 0;
 
-  for (const it of items) {
+  // file.at findes her (ellers havde isStaleLeadgen kastet).
+  const allowance = ingestAllowance(queue, file.at as string);
+  let capped = 0;
+  for (const it of orderForIngest(items)) {
     const name = (it.name || "").trim();
     if (!name || !it.branch) {
       skippedInvalid++;
@@ -195,6 +209,11 @@ async function ingest() {
     const leadId = (it.place_id || name).toString();
     if (suppressionReason({ leadId, name, city: it.city, branch: it.branch, email: it.email ?? undefined }, blockSets)) {
       skippedSuppressed++;
+      continue;
+    }
+    // Loftet tjekkes efter filtrene, så `capped` kun tæller egnede kandidater.
+    if (drafts.length >= allowance) {
+      capped++;
       continue;
     }
 
@@ -254,6 +273,8 @@ async function ingest() {
     skippedSuppressed,
     skippedVoice,
     skippedInvalid,
+    capped,
+    allowance,
     sheetsDedup: sheetsOk,
     bizKeyWarns: bizKeyWarns.slice(0, 10),
     note: "kø fyldt — ingen mail sendt",
