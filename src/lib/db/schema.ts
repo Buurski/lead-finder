@@ -163,6 +163,19 @@ export const seoSnapshot = pgTable("seo_snapshot", {
   issues: jsonb("issues").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
 }, (t) => [index("seo_snapshot_company_taken_idx").on(t.companyId, t.takenAt)]);
 
+// Nyhedsbrev-tal pr. konto (Brevo), ét snapshot pr. sync. KUN aggregater — aldrig modtagere/mails
+// (kundens slutkunder hører ikke hjemme i HQ; vi er databehandler). companyId null = Kinlys egen konto.
+export const newsletterSnapshot = pgTable("newsletter_snapshot", {
+  id: id(),
+  companyId: uuid("company_id").references(() => company.id),
+  provider: text("provider").notNull().default("brevo"),
+  account: text("account").notNull(), // fx "ikast" / "kinly" — nøglen bag hører til på VPS/lokalt, aldrig her
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  lists: jsonb("lists").$type<{ id: number; name: string; subscribers: number }[]>().notNull().default(sql`'[]'::jsonb`),
+  campaigns: jsonb("campaigns").$type<import("../hq/newsletter.ts").CampaignStat[]>().notNull().default(sql`'[]'::jsonb`),
+  domain: jsonb("domain").$type<{ name: string; authenticated: boolean; dkim?: boolean; dmarc?: boolean } | null>(),
+}, (t) => [index("newsletter_snapshot_account_taken_idx").on(t.account, t.takenAt)]);
+
 export const activity = pgTable("activity", {
   id: id(),
   legacyId: text("legacy_id").unique(),

@@ -6,6 +6,7 @@ import { getDossier } from "@/lib/hq/dossier";
 import { loadOverview } from "@/lib/hq/overview-load";
 import { listRelations } from "@/lib/hq/relations";
 import { SERVICES } from "@/lib/hq/overview";
+import { loadProjectImages, projectImageFor } from "@/lib/hq/project-images";
 import { copenhagenNow } from "@/lib/settings";
 import PageHeader from "@/components/shell/PageHeader";
 import CustomerPreview from "@/components/virksomheder/CustomerPreview";
@@ -74,18 +75,20 @@ async function CustomerCards() {
     .from(company).where(whereFor("kunder")).orderBy(company.name);
   const cards = [];
   const today = copenhagenNow().date;
+  const projects = await loadProjectImages();
   for (const row of rows) {
     const dossier = await getDossier(db, row.id, { today });
     if (!dossier) continue;
     const overview = await loadOverview(db, dossier);
     const relations = await listRelations(db, row.id);
     const health = overview.site?.health as { ok?: boolean } | null | undefined;
-    cards.push({ ...row, overview, relations, domain: domainOf(overview.site?.domain || dossier.company.website), health: health?.ok });
+    const domain = domainOf(overview.site?.domain || dossier.company.website);
+    cards.push({ ...row, overview, relations, domain, image: projectImageFor(projects, domain, row.name), health: health?.ok });
   }
   if (cards.length === 0) return <div className="cc-card cc-card-pad">Ingen aktive kunder endnu.</div>;
   return <div className="kunde-grid">
     {cards.map((card) => <Link className="cc-card kunde-card cc-focus" href={`/virksomheder/${card.id}`} key={card.id}>
-      <CustomerPreview domain={card.domain} name={card.name} />
+      <CustomerPreview domain={card.domain} name={card.name} image={card.image} />
       <div className="kunde-card-content">
         <div className="kunde-card-heading"><h2>{card.name || "(uden navn)"}</h2><span>Kunde #{card.clientNo}</span></div>
         <div className="kunde-card-services">{card.overview.services.map((service) => <span className="cc-chip" key={service}>{SERVICES[service] || service}</span>)}</div>
@@ -112,8 +115,7 @@ async function CompanyCards({ fane, side, total }: { fane: TabKey; side: number;
   const page = (n: number) => `/kunder?fane=${fane}${n > 1 ? `&side=${n}` : ""}`;
   return <>
     <div className="kunde-grid">
-      {rows.map((r) => <Link className="cc-card kunde-card cc-focus" href={`/virksomheder/${r.id}`} key={r.id}>
-        <CustomerPreview domain={domainOf(r.website)} name={r.name} />
+      {rows.map((r) => <Link className="cc-card kunde-card kunde-card-plain cc-focus" href={`/virksomheder/${r.id}`} key={r.id}>
         <div className="kunde-card-content">
           <div className="kunde-card-heading"><h2>{r.name || "(uden navn)"}</h2>{r.jevGrade && <span>Jev {r.jevGrade}</span>}</div>
           <p className="kunde-card-relations">{[r.branch, r.city].filter(Boolean).join(" · ") || "Ukendt branche"}</p>

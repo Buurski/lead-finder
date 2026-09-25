@@ -31,6 +31,8 @@ import ProfileTabs from "@/components/virksomheder/ProfileTabs";
 import ProfileQuickActions from "@/components/virksomheder/ProfileQuickActions";
 import TrackRecentCompany from "@/components/virksomheder/TrackRecentCompany";
 import CompanyTasks from "@/components/virksomheder/CompanyTasks";
+import NewsletterPanel from "@/components/virksomheder/NewsletterPanel";
+import { latestNewsletterFor } from "@/lib/hq/newsletter-sync";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -144,6 +146,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const seoRows = c.clientNo !== null
     ? await db.select().from(seoSnapshot).where(eq(seoSnapshot.companyId, c.id)).orderBy(desc(seoSnapshot.takenAt)).limit(12)
     : [];
+  const newsletter = c.clientNo !== null ? await latestNewsletterFor(db, c.id) : [];
 
   const tabs = [
     { key: "overblik", label: "Overblik", content: <Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} /> },
@@ -251,6 +254,8 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         </div>
       ),
     },
+    // Kun kunder med et forbundet nyhedsbrev får fanen — ellers er den tom støj.
+    ...(newsletter.length ? [{ key: "nyhedsbrev", label: "Nyhedsbrev", content: <NewsletterPanel snaps={newsletter} /> }] : []),
   ];
 
   return (

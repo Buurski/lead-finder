@@ -92,6 +92,13 @@
       "when": 1790294266269,
       "tag": "0012_glorious_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790324239931,
+      "tag": "0013_newsletter_snapshot",
+      "breakpoints": true
     }
   ]
 }

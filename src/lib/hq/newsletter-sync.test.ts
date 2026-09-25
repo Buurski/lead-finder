@@ -1,0 +1,38 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { freshTestDb } from "../db/test-db.ts";
+import { company, newsletterSnapshot } from "../db/schema.ts";
+import { latestNewsletterFor, syncNewsletters } from "./newsletter-sync.ts";
+
+const payload = {
+  generatedAt: "2026-09-25T05:00:00Z",
+  lists: [{ id: 3, name: "Kunder", subscribers: 1558 }],
+  campaigns: [{ id: 12, name: "[service] Mail1 navneskift batch 1", type: "service", status: "draft", sentAt: null, scheduledAt: null, recipients: 0, opens: 0, clicks: 0, unsubscribes: 0, hardBounces: 0, softBounces: 0, complaints: 0 }],
+  domain: { name: "ikastautoservice.dk", authenticated: true, dkim: true, dmarc: true },
+};
+
+test("sync: henter med Bearer-token, gemmer aggregater på kunden fundet via website-host", async () => {
+  const db = await freshTestDb();
+  const [ikast] = await db.insert(company).values({ rowNo: 1, name: "Ikast AutoService", website: "https://www.ikastautoservice.dk/", clientNo: 5 }).returning({ id: company.id });
+  const calls: { url: string; auth: string | null }[] = [];
+  const fakeFetch = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, auth: new Headers(init?.headers).get("authorization") });
+    return new Response(JSON.stringify(payload), { status: 200 });
+  }) as unknown as typeof fetch;
+  const r = await syncNewsletters(db, { fetch: fakeFetch, env: { NYHEDSBREV_TOKEN_IKAST: "tok" } });
+  assert.deepEqual(r, [{ account: "ikast", ok: true }]);
+  assert.equal(calls[0].auth, "Bearer tok");
+  const [snap] = await latestNewsletterFor(db, ikast.id);
+  assert.equal(snap.lists[0].subscribers, 1558);
+  assert.equal(snap.campaigns[0].type, "service");
+});
+
+test("sync: uden token springes over; payload med persondata afvises og gemmes ikke", async () => {
+  const db = await freshTestDb();
+  assert.deepEqual(await syncNewsletters(db, { env: {} }), [{ account: "ikast", ok: false, error: "token ikke sat" }]);
+  const leaky = (async () => new Response(JSON.stringify({ ...payload, contacts: [{ email: "a@b.dk" }] }), { status: 200 })) as unknown as typeof fetch;
+  const r = await syncNewsletters(db, { fetch: leaky, env: { NYHEDSBREV_TOKEN_IKAST: "tok" } });
+  assert.equal(r[0].ok, false);
+  assert.match(r[0].error ?? "", /ukendt felt/);
+  assert.equal((await db.select().from(newsletterSnapshot)).length, 0);
+});
