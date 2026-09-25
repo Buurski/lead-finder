@@ -409,3 +409,11 @@ test("applySignatureHtml: citationstegn i en URL kan ikke bryde ud af href (Sol 
   assert.doesNotMatch(out, / onmouseover=/);
   assert.match(out, /&quot;onmouseover=&quot;/);
 });
+
+test("applySignatureHtml: URL i citationstegn får et rent href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se "https://kinly.dk" og 'https://kinly.dk/x' her`, "lucas");
+  assert.match(out, /href="https:\/\/kinly\.dk"/);
+  assert.match(out, /href="https:\/\/kinly\.dk\/x"/);
+  assert.doesNotMatch(out, /href="[^"]*&(quot|#39);/);
+});

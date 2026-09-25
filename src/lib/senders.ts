@@ -398,7 +398,8 @@ export function applySignatureHtml(body: string, id: SenderId): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
   const linked = escaped.replace(
-    /https?:\/\/[^\s<]+/g,
+    // Stop ved escapede citationstegn, så "https://x.dk" ikke giver href med %22 til sidst.
+    /https?:\/\/(?:(?!&quot;|&#39;)[^\s<])+/g,
     (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,
   );
   const paragraphs = linked

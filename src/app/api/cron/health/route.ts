@@ -23,11 +23,9 @@ const SCHEDULE: Record<string, string> = {
   "sync-replies": "30 4 * * *",
   "engine": "0 * * * *",
   "ingest-leadgen": "30 6 * * *",
-  "find-emails": "0 7-10 * * *",
   "newsletter-sync": "20 5 * * *",
   "jev-rescore": "30 3,13 * * *",
   "snapshot": "45 3 * * *",
-  "invoices": "0 5 * * *",
 };
 
 function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {

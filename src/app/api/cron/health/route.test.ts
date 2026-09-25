@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import test from "node:test";
 
 function declaredSchedule(): Record<string, string> {
@@ -23,11 +23,18 @@ test("cron health = de loggende jobs i vercel.json, med samme tider", () => {
     assert.equal(vercel[name], schedule, `health kender "${name}", men vercel.json har ${vercel[name] ?? "intet job"}`);
   }
   const cronDir = new URL("../", import.meta.url);
-  for (const name of Object.keys(vercel)) {
+  const LOGS = /\bwithCronLog\s*(<[^>]*>)?\s*\(/;
+  const logs = (name: string) => {
     const file = new URL(`./${name}/route.ts`, cronDir);
-    if (existsSync(file) && readFileSync(file, "utf8").includes("withCronLog(")) {
-      assert.ok(name in declared, `"${name}" logger til cron-loggen men mangler i health`);
-    }
+    assert.ok(existsSync(file), `vercel.json peger på /api/cron/${name}, men route-filen findes ikke`);
+    return LOGS.test(readFileSync(file, "utf8"));
+  };
+  // Begge veje: et logget job skal være i health, og et job i health skal logge
+  // (ellers står det altid rødt som "aldrig kørt").
+  for (const name of Object.keys(vercel)) {
+    if (logs(name)) assert.ok(name in declared, `"${name}" logger til cron-loggen men mangler i health`);
   }
-  assert.ok(readdirSync(cronDir).length > 0);
+  for (const name of Object.keys(declared)) {
+    assert.ok(logs(name), `health følger "${name}", men jobbet kalder ikke withCronLog`);
+  }
 });
