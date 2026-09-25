@@ -128,11 +128,13 @@ export async function classifyCities(cities: string[], deadline?: number): Promi
   // 5 Jev-kald i træk uden svar (429/5xx/timeout) = stop fase 0 (Codex 25/9);
   // byerne caches ikke ved fejl og prøves igen næste kørsel.
   let failStreak = 0;
+  let tripped = false; // låses: et sent svar fra et igangværende kald ophæver den ikke
   const worker = async () => {
-    while (failStreak < 5 && i < batch.length && !(deadline && Date.now() > deadline)) {
+    while (!tripped && i < batch.length && !(deadline && Date.now() > deadline)) {
       const key = batch[i++];
       const res = await jevAsk({ by: key }, REGION_QUESTION, { timeoutMs: 10_000 });
       failStreak = res ? 0 : failStreak + 1;
+      if (failStreak >= 5) tripped = true;
       const h = noul(res?.answers, "hovedstaden");
       if (typeof h !== "number" || !Number.isFinite(h) || h < 0 || h > 1) continue;
       const o = noul(res?.answers, "oest_for_storebaelt");
@@ -143,6 +145,6 @@ export async function classifyCities(cities: string[], deadline?: number): Promi
   await Promise.all(Array.from({ length: Math.min(8, batch.length) }, worker));
   if (added > 0) await store.put(CACHE_KEY, known);
   // Kaldere (jev-run) skal vide at Jev er nede, så de ikke starter næste fase forfra.
-  if (failStreak >= 5) throw new JevUnavailableError();
+  if (tripped) throw new JevUnavailableError();
   return known;
 }

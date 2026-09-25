@@ -205,7 +205,10 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // least one candidate lacks a snippet, so Jev judges the actual reply.
   const needsLive = repliedLeads.some((l) => !digestByLead.get(l.id)?.snippet && (!replyJudgedAt.has(l.id) || noTextYet.has(l.id)));
   if (needsLive && Date.now() < deadline - 30_000) {
-    // IMAP har ingen egen timeout — begræns den til vinduet før fase 3's reserve.
+    // IMAP har ingen egen timeout — begræns ventetiden til vinduet før fase 3's reserve.
+    // ponytail: den tabende scanning annulleres ikke (kun socketTimeout 30 s ved
+    // inaktivitet); fase 3 er slukket bag DPA-gaten. Giv liveScanDigest et
+    // AbortSignal/client.close() hvis JEV_REPLIES slås til.
     const budget = Math.max(0, deadline - 30_000 - Date.now());
     const live = await Promise.race([
       liveScanDigest().catch(() => null),
