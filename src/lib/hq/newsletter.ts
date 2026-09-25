@@ -27,6 +27,7 @@ export interface NewsletterSnapshotInput {
   lists: { id: number; name: string; subscribers: number }[];
   campaigns: CampaignStat[];
   domain: { name: string; authenticated: boolean; dkim?: boolean; dmarc?: boolean } | null;
+  generatedAt: string | null; // kildens tidsstempel — kan være ældre end hentningen
 }
 
 // Regler fra nyhedsbrevs-principperne (wiki/os/nyhedsbrev-til-kunder-regler): maks 4-6 om året.
@@ -38,7 +39,6 @@ const COMPLAINT_FLAG = 0.001; // 0,1 % (Gmail/Yahoo-grænsen er 0,3 %)
 
 export class NewsletterInputError extends Error {}
 
-const EMAIL_RE = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
 const TYPES: CampaignType[] = ["seo", "nyhedsbrev", "service", "andet"];
 const STATUSES = ["draft", "scheduled", "sent", "other"] as const;
 
@@ -48,10 +48,10 @@ function int(v: unknown, label: string): number {
 }
 function text(v: unknown, label: string, max: number): string {
   if (typeof v !== "string") throw new NewsletterInputError(`${label} skal være tekst`);
-  const t = v.replace(/[\r\n]+/g, " ").trim().slice(0, max);
-  // Persondata-værn: et navn på en liste/kampagne må ikke indeholde en mailadresse.
-  if (EMAIL_RE.test(t)) throw new NewsletterInputError(`${label} må ikke indeholde en mailadresse`);
-  return t;
+  // Persondata-værn: intet "@" nogen steder i den FULDE tekst (før afkortning) — hellere
+  // afvise et skævt navn end gemme en halv mailadresse (Sol w4a-r3 R3-04).
+  if (v.includes("@")) throw new NewsletterInputError(`${label} må ikke indeholde "@"`);
+  return v.replace(/[\r\n]+/g, " ").trim().slice(0, max);
 }
 function iso(v: unknown, label: string): string | null {
   if (v === null || v === undefined || v === "") return null;
@@ -106,7 +106,7 @@ export function parseSnapshot(raw: unknown): NewsletterSnapshotInput {
     const d = r.domain as Record<string, unknown>;
     domain = { name: text(d.name, "domain.name", 120), authenticated: d.authenticated === true, dkim: d.dkim === true, dmarc: d.dmarc === true };
   }
-  return { account, companyId, lists, campaigns, domain };
+  return { account, companyId, lists, campaigns, domain, generatedAt: iso(r.generatedAt, "generatedAt") };
 }
 
 export interface NewsletterInsight {
@@ -123,11 +123,15 @@ export interface NewsletterInsight {
 }
 
 const DAY = 86_400_000;
+const STALE_DAYS = 3;
 // Batch-lister er delmængder af hovedlisten, og Brevos egne standardlister er støj — tælles ikke med (ellers dobbelttælling).
 export const isAudienceList = (name: string) => !/\bbatch\s*\d+\s*$/i.test(name) && !/^(identified_contacts|your first list)$/i.test(name.trim());
 const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
-export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "campaigns" | "domain">, now = new Date()): NewsletterInsight {
+export function newsletterInsights(
+  s: Pick<NewsletterSnapshotInput, "lists" | "campaigns" | "domain"> & { generatedAt?: string | Date | null },
+  now = new Date(),
+): NewsletterInsight {
   const sent = s.campaigns
     .filter((c) => c.status === "sent" && c.sentAt)
     .sort((a, b) => b.sentAt!.localeCompare(a.sentAt!))
@@ -147,8 +151,20 @@ export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "c
   if (lastYear.length >= MAX_PER_YEAR) next = Math.max(next, Date.parse(lastYear[MAX_PER_YEAR - 1].sentAt!) + 365 * DAY);
   const flags: NewsletterInsight["flags"] = [];
   const scheduled = s.campaigns.filter((c) => c.status === "scheduled");
-  for (const c of scheduled) {
-    if (c.scheduledAt && Date.parse(c.scheduledAt) < next) flags.push({ level: "haster", text: `"${c.name}" er planlagt før næste tilladte dato (maks ${MAX_PER_YEAR}/år, ${MIN_DAYS_BETWEEN} dage imellem)` });
+  // Planlagte i datoorden mod ALLE tidligere (sendte + tidligere planlagte): 30-dages-afstand
+  // og rullende årsloft gælder også mellem to planlagte (Sol w4a-r3 R3-03).
+  const timeline = sent.map((c) => Date.parse(c.sentAt!));
+  for (const c of [...scheduled].filter((c) => c.scheduledAt).sort((a, b) => a.scheduledAt!.localeCompare(b.scheduledAt!))) {
+    const t = Date.parse(c.scheduledAt!);
+    const before = timeline.filter((x) => x <= t);
+    const prev = before.length ? Math.max(...before) : null;
+    if (prev !== null && t - prev < MIN_DAYS_BETWEEN * DAY) {
+      flags.push({ level: "haster", text: `"${c.name}" er planlagt ${Math.floor((t - prev) / DAY)} dage efter forrige udsendelse — mindst ${MIN_DAYS_BETWEEN} dage imellem` });
+    }
+    if (before.filter((x) => x > t - 365 * DAY).length + 1 > MAX_PER_YEAR) {
+      flags.push({ level: "haster", text: `"${c.name}" bliver udsendelse nr. ${before.filter((x) => x > t - 365 * DAY).length + 1} på et år — maks ${MAX_PER_YEAR}` });
+    }
+    timeline.push(t);
   }
   if (lastYear.length > MAX_PER_YEAR) flags.push({ level: "haster", text: `${lastYear.length} udsendelser det seneste år — over grænsen på ${MAX_PER_YEAR}` });
   for (const c of sent.slice(0, 3)) {
@@ -157,6 +173,10 @@ export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "c
     if (c.bounceRate > BOUNCE_FLAG) flags.push({ level: "haster", text: `"${c.name}": ${(c.bounceRate * 100).toFixed(1)} % bounce — listen skal renses` });
     if (c.unsubRate > UNSUB_FLAG) flags.push({ level: "obs", text: `"${c.name}": ${(c.unsubRate * 100).toFixed(1)} % afmeldte sig` });
   }
+  // Kildens egne tal kan være gamle, selv om HQ hentede dem i nat (Sol w4a-r3 R3-06).
+  const gen = s.generatedAt ? new Date(s.generatedAt).getTime() : null;
+  if (gen === null) flags.push({ level: "obs", text: "Kilden oplyser ikke hvornår tallene er lavet — tjek i Brevo før I handler på dem" });
+  else if (now.getTime() - gen > STALE_DAYS * DAY) flags.push({ level: "obs", text: `Tallene er ${Math.floor((now.getTime() - gen) / DAY)} dage gamle — kundens status-endpoint har ikke leveret nyt` });
   if (s.domain && !s.domain.authenticated) flags.push({ level: "haster", text: `Domænet ${s.domain.name} er ikke godkendt i Brevo (DKIM/DMARC) — send intet før det er på plads` });
   const byType = { seo: 0, nyhedsbrev: 0, service: 0, andet: 0 } as Record<CampaignType, number>;
   for (const c of lastYear) byType[c.type]++;

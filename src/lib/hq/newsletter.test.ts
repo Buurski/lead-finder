@@ -9,7 +9,10 @@ test("parseSnapshot: afviser ukendte felter og mailadresser (ingen persondata i 
   const ok = parseSnapshot({ account: "ikast", companyId: null, generatedAt: "2026-09-25T10:00:00Z", lists: [{ id: 1, name: "Kunder", subscribers: 1558 }], campaigns: [c({ sentAt: "2026-09-01T08:00:00Z" })], domain: { name: "ikastautoservice.dk", authenticated: true } });
   assert.equal(ok.lists[0].subscribers, 1558);
   assert.throws(() => parseSnapshot({ account: "ikast", lists: [{ id: 1, name: "x", subscribers: 1, emails: ["a@b.dk"] }], campaigns: [] }), NewsletterInputError);
-  assert.throws(() => parseSnapshot({ account: "ikast", lists: [{ id: 1, name: "Test til allan@ikast.dk", subscribers: 1 }], campaigns: [] }), /mailadresse/);
+  assert.throws(() => parseSnapshot({ account: "ikast", lists: [{ id: 1, name: "Test til allan@ikast.dk", subscribers: 1 }], campaigns: [] }), /må ikke indeholde "@"/);
+  // "@" afvises i den fulde tekst — også når afkortning ville have skjult det (Sol w4a-r3 R3-04).
+  assert.throws(() => parseSnapshot({ account: "ikast", lists: [{ id: 1, name: "Allan@ikast", subscribers: 1 }], campaigns: [] }), /"@"/);
+  assert.equal(ok.generatedAt, "2026-09-25T10:00:00.000Z");
   assert.throws(() => parseSnapshot({ account: "ikast", lists: [], campaigns: [], contacts: [] }), /ukendt felt/);
   assert.throws(() => parseSnapshot({ account: "ikast", lists: [], campaigns: [{ ...c({}), recipients: -1 }] }), NewsletterInputError);
 });
@@ -28,7 +31,7 @@ test("insights: kadence (30 dage, maks 6/år), procenter og flag", () => {
   assert.equal(i.byType.seo, 1);
   assert.equal(i.sent[0].bounceRate, 0.027);
   const texts = i.flags.map((f) => f.text).join(" | ");
-  assert.match(texts, /planlagt før næste tilladte/);
+  assert.match(texts, /planlagt 10 dage efter forrige/);
   assert.match(texts, /spamklager/);
   assert.match(texts, /bounce/);
   assert.match(texts, /afmeldte/);
@@ -52,4 +55,16 @@ test("abonnenter: batch-lister og Brevos standardlister dobbelttælles ikke", as
     { id: 5, name: "Your first list", subscribers: 1 },
   ];
   assert.equal(newsletterInsights({ lists, campaigns: [], domain: null }).subscribers, 1560);
+});
+
+test("insights: to planlagte med for kort afstand og årsloft med planlagte (Sol w4a-r3 R3-03)", () => {
+  const i = newsletterInsights({ lists: [], campaigns: [c({ id: 1, status: "scheduled", scheduledAt: "2026-11-04T08:00:00Z", name: "A" }), c({ id: 2, status: "scheduled", scheduledAt: "2026-11-05T08:00:00Z", name: "B" })], domain: null }, now);
+  const t = i.flags.map((f) => f.text).join(" | ");
+  assert.match(t, /"B" er planlagt 1 dage efter forrige/);
+  assert.doesNotMatch(t, /"A" er planlagt/);
+  const months = ["2025-12-01", "2026-02-01", "2026-04-01", "2026-06-01", "2026-08-01"];
+  const j = newsletterInsights({ lists: [], campaigns: [...months.map((d, n) => c({ id: n, sentAt: `${d}T08:00:00Z` })), c({ id: 10, status: "scheduled", scheduledAt: "2026-10-15T08:00:00Z", name: "Seks" }), c({ id: 11, status: "scheduled", scheduledAt: "2026-11-20T08:00:00Z", name: "Syv" })], domain: null }, now);
+  const u = j.flags.map((f) => f.text).join(" | ");
+  assert.doesNotMatch(u, /"Seks" bliver/);
+  assert.match(u, /"Syv" bliver udsendelse nr. 7/);
 });

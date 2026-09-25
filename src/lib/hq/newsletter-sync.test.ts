@@ -36,3 +36,15 @@ test("sync: uden token springes over; payload med persondata afvises og gemmes i
   assert.match(r[0].error ?? "", /ukendt felt/);
   assert.equal((await db.select().from(newsletterSnapshot)).length, 0);
 });
+
+test("sync: for stort svar afvises før JSON-parsning; kildens tidsstempel gemmes (Sol w4a-r3 R3-05/06)", async () => {
+  const db = await freshTestDb();
+  await db.insert(company).values({ rowNo: 1, name: "Ikast AutoService", website: "https://www.ikastautoservice.dk/", clientNo: 5 });
+  const huge = (async () => new Response("x".repeat(1_100_000), { status: 200 })) as unknown as typeof fetch;
+  const r = await syncNewsletters(db, { fetch: huge, env: { NYHEDSBREV_TOKEN_IKAST: "tok" } });
+  assert.match(r[0].error ?? "", /for stort/);
+  const ok = (async () => new Response(JSON.stringify(payload), { status: 200 })) as unknown as typeof fetch;
+  await syncNewsletters(db, { fetch: ok, env: { NYHEDSBREV_TOKEN_IKAST: "tok" } });
+  const [snap] = await db.select().from(newsletterSnapshot);
+  assert.equal(snap.generatedAt?.toISOString(), "2026-09-25T05:00:00.000Z");
+});

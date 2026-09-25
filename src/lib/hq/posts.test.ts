@@ -40,16 +40,14 @@ beforeEach(async () => {
 const LIVE_URL = "https://kinly.dk/blog/hvad-koster-en-hjemmeside";
 
 /**
- * Kvitterer tjeklisten grøn for den aktuelle revision, præcis som serveren selv
- * gør efter en grøn kørsel. Bruges i de tests der handler om stage-guards og
- * markPublished — selve fail-closed-reglen testes for sig nedenfor.
+ * Gør kortet RIGTIGT grønt (agentens indhold + menneskets valg og faktatjek) og
+ * sætter det i Publicer. Ingen forfalsket kvittering: gaten kræver at tjeklisten
+ * regnet på kortet er grøn (Sol w4a-r3 R3-01). Bruges af stage-/markPublished-tests.
  */
 async function publish(id: string, actor = "lucas") {
   const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
-  await db
-    .update(blogPost)
-    .set({ checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
-    .where(eq(blogPost.id, id));
+  await updatePost(db, id, { category: "pris", excerpt: GREEN_EXCERPT, body: greenBody(row.slug), proofs: { ...GREEN_PROOFS }, images: GREEN_IMAGES }, "hermes");
+  await updatePost(db, id, { images: { choice: "a" }, proofs: { factcheck: { note: "læst igennem" } } }, "lucas");
   return updatePost(db, id, { stage: "publicer" }, actor);
 }
 
@@ -78,6 +76,7 @@ const GREEN_FAQ = [
   { q: "Hvor lang tid tager det?", a: "Typisk to til fire uger." },
   { q: "Ejer jeg koden?", a: "Ja, 100 procent." },
 ];
+const GREEN_EXCERPT = "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre.";
 const GREEN_PROOFS = { sources: GREEN_SOURCES, council: GREEN_COUNCIL, faq: GREEN_FAQ, factcheck: null };
 
 /** 640 ord plus links og CTA — nok til at ligge i 600-900-vinduet. */
@@ -521,6 +520,12 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   assert.equal(publiceret.stage, "publicer");
   assert.ok(publiceret.publishRequestedAt instanceof Date);
 
+  // I Publicer er den godkendte version låst: en tekstændring afvises (Sol w4a-r3 R3-01).
+  await assert.rejects(updatePost(db, post.id, { body: greenBody() + "\n\nEt nyt afsnit, som ingen har læst." }, "hermes"), /står i Publicer/);
+  await updatePost(db, post.id, { stage: "klar" }, "lucas"); // mennesket tager den ud af køen
+  // Og samme PATCH kan ikke flytte til Publicer og samtidig gøre kortet rødt.
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer", proofs: { sources: [] } }, "lucas"), /ikke aktuel og grøn/);
+
   // Ændres teksten, er tjeklisten ikke længere grøn (faktatjekket hører til den
   // gamle revision) — og så kan kortet ikke sættes i Publicer igen.
   const ændret = await updatePost(db, post.id, { body: greenBody() + "\n\nEt nyt afsnit, som ingen har læst." }, "hermes");
@@ -528,8 +533,6 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   assert.equal(ny.ok, false);
   assert.match(ny.missing.join(" "), /ældre version/);
   assert.equal(ny.revision, revisionOf(ændret));
-
-  await updatePost(db, post.id, { stage: "klar" }, "lucas"); // mennesket tager den ud af køen
   await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "lucas"), /ikke aktuel og grøn/);
 
   // En gammel grøn kvittering kan heller ikke bruges: revisionen skal matche.

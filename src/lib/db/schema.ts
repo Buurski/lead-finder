@@ -170,7 +170,8 @@ export const newsletterSnapshot = pgTable("newsletter_snapshot", {
   companyId: uuid("company_id").references(() => company.id),
   provider: text("provider").notNull().default("brevo"),
   account: text("account").notNull(), // fx "ikast" / "kinly" — nøglen bag hører til på VPS/lokalt, aldrig her
-  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(), // hvornår HQ hentede
+  generatedAt: timestamp("generated_at", { withTimezone: true }), // hvornår kildens tal blev lavet (kan være ældre)
   lists: jsonb("lists").$type<{ id: number; name: string; subscribers: number }[]>().notNull().default(sql`'[]'::jsonb`),
   campaigns: jsonb("campaigns").$type<import("../hq/newsletter.ts").CampaignStat[]>().notNull().default(sql`'[]'::jsonb`),
   domain: jsonb("domain").$type<{ name: string; authenticated: boolean; dkim?: boolean; dmarc?: boolean } | null>(),

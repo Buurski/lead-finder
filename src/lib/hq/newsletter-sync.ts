@@ -30,6 +30,27 @@ async function companyFor(db: Db, url: string): Promise<string | null> {
   return exact.length === 1 ? exact[0].id : null;
 }
 
+// Et statistik-svar er et par KB; alt over 1 MB er en fejl eller et angreb (Sol w4a-r3 R3-05).
+const MAX_BYTES = 1_000_000;
+async function readCapped(res: Response, max: number): Promise<string> {
+  if (Number(res.headers.get("content-length") ?? 0) > max) throw new Error("svaret er for stort");
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      throw new Error("svaret er for stort");
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
 export async function syncNewsletters(
   db: Db,
   deps: { fetch?: typeof fetch; env?: Record<string, string | undefined> } = {},
@@ -46,7 +67,7 @@ export async function syncNewsletters(
     try {
       const res = await f(src.url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(15_000), redirect: "error" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as Record<string, unknown>;
+      const body = JSON.parse(await readCapped(res, MAX_BYTES)) as Record<string, unknown>;
       const snap = parseSnapshot({ ...body, account: src.account, companyId: null });
       await db.insert(newsletterSnapshot).values({
         companyId: await companyFor(db, src.url),
@@ -54,6 +75,7 @@ export async function syncNewsletters(
         lists: snap.lists,
         campaigns: snap.campaigns,
         domain: snap.domain,
+        generatedAt: snap.generatedAt ? new Date(snap.generatedAt) : null,
       });
       out.push({ account: src.account, ok: true });
     } catch (err) {

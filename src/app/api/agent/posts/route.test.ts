@@ -75,9 +75,12 @@ async function toPublicer(id: string) {
   const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
   await db
     .update(blogPost)
-    .set({ checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
+    // Testopsætning: kortet placeres direkte i Publicer med en grøn kvittering for revisionen.
+    // Selve Publicer-gaten (tjeklisten regnet på kortet skal være grøn) testes i posts.test.ts.
+    .set({ stage: "publicer", publishRequestedAt: new Date(), checklist: { revision: revisionOf(row), ok: true, missing: [], at: new Date().toISOString() } })
     .where(eq(blogPost.id, id));
-  return updatePost(db, id, { stage: "publicer" }, "lucas");
+  const [after] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  return after;
 }
 
 test("create opretter kortet i Idéer med udledt slug", async () => {

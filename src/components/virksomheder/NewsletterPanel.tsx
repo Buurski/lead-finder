@@ -1,6 +1,6 @@
 import { Pill, StatTile } from "@/components/finance/FinanceUI";
 import type { latestNewsletterFor } from "@/lib/hq/newsletter-sync";
-import { MAX_PER_YEAR, MIN_DAYS_BETWEEN, newsletterInsights, type CampaignStat, type CampaignType } from "@/lib/hq/newsletter";
+import { isAudienceList, MAX_PER_YEAR, MIN_DAYS_BETWEEN, newsletterInsights, type CampaignStat, type CampaignType } from "@/lib/hq/newsletter";
 
 // Kundens nyhedsbrev (Brevo) set fra HQ: kun aggregater fra kundens eget site — ingen kontakter, ingen mails.
 // Afsendelse sker aldrig herfra; HQ viser status, kadence og advarsler.
@@ -21,7 +21,7 @@ export default function NewsletterPanel({ snaps }: { snaps: Snap[] }) {
           <section key={s.account} className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="virk-section-title" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
               <span>Nyhedsbrev · Brevo</span>
-              <span className="cc-dim" style={{ fontSize: 12, fontWeight: 400 }}>Opdateret {s.takenAt.toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })}</span>
+              <span className="cc-dim" style={{ fontSize: 12, fontWeight: 400 }}>Tal fra {(s.generatedAt ?? s.takenAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })} · hentet {s.takenAt.toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })}</span>
             </div>
 
             {i.flags.length > 0 && (
@@ -36,7 +36,7 @@ export default function NewsletterPanel({ snaps }: { snaps: Snap[] }) {
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
-              <StatTile label="Modtagere" value={num(i.subscribers)} sub="på kundens lister" />
+              <StatTile label="Modtagere" value={num(i.subscribers)} sub={s.lists.filter((l) => isAudienceList(l.name)).map((l) => `${l.name}: ${num(l.subscribers)}`).join(" · ") || "ingen lister"} />
               <StatTile label="Sendt seneste år" value={`${i.sentLastYear} / ${MAX_PER_YEAR}`} sub={`maks ${MAX_PER_YEAR} om året`} />
               <StatTile label="Sidst sendt" value={dato(i.lastSentAt)} sub={i.daysSinceLast === null ? "intet sendt endnu" : `${i.daysSinceLast} dage siden`} />
               <StatTile label="Næste tidligst" value={i.nextAllowedAt ? dato(i.nextAllowedAt) : "Nu"} sub={`mindst ${MIN_DAYS_BETWEEN} dage imellem`} />

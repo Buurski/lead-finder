@@ -900,12 +900,19 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       // tjekliste for PRÆCIS denne revision. Er teksten ændret siden tjeklisten
       // blev kørt, eller er et punkt ikke opfyldt, er svaret nej — også selv om
       // ændringen i dette kald ville gøre kortet grønt.
+      // Og tjeklisten regnet på kortet EFTER dette kald skal også være grøn — ellers kan
+      // samme PATCH flytte til Publicer og samtidig tømme fx kilderne (Sol w4a-r3 R3-01).
       if (moving && target === "publicer") {
         const stored = readChecklist(before.checklist);
-        if (!stored.ok || stored.revision !== revision) {
+        if (!stored.ok || stored.revision !== revision || !checklist.ok) {
           const why = checklist.missing.length ? checklist.missing : ["tjeklisten er ikke kørt for den nuværende tekst"];
           throw new BlogInputError(`tjeklisten er ikke aktuel og grøn: ${why.join("; ")}`);
         }
+      }
+      // Står kortet i Publicer, er den godkendte version låst: en ændring af indholdet
+      // (ny revision) eller en rød tjekliste afvises — flyt det ud af Publicer først.
+      if (!moving && from === "publicer" && (revision !== readChecklist(before.checklist).revision || !checklist.ok)) {
+        throw new BlogInputError("indlægget står i Publicer — flyt det tilbage til Klar før du retter i det");
       }
 
       const set: Partial<typeof blogPost.$inferInsert> = {
@@ -974,6 +981,8 @@ export async function markPublished(db: Db, id: string, p: { url?: unknown; note
     const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
     if (!before) throw new BlogInputError("indlægget findes ikke");
     if (before.stage !== "publicer") throw new BlogInputError("indlægget står ikke i Publicer");
+    const stored = readChecklist(before.checklist);
+    if (!stored.ok || stored.revision !== revisionOf(before)) throw new BlogInputError("tjeklisten er ikke grøn for den nuværende tekst — kan ikke meldes udgivet");
     const set: Partial<typeof blogPost.$inferInsert> = {
       stage: "udgivet",
       publishedAt: new Date(),

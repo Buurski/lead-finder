@@ -1,5 +1,5 @@
 {
-  "id": "577be4f8-73f4-4546-883d-3f63c3522821",
+  "id": "1f79192b-6726-4ecd-9d80-3223aed22cc1",
   "prevId": "ae82319b-bd23-4585-8714-a64052bc7b16",
   "version": "7",
   "dialect": "postgresql",
@@ -1266,6 +1266,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "lists": {
           "name": "lists",

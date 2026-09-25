@@ -4,6 +4,7 @@ CREATE TABLE "newsletter_snapshot" (
 	"provider" text DEFAULT 'brevo' NOT NULL,
 	"account" text NOT NULL,
 	"taken_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"generated_at" timestamp with time zone,
 	"lists" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"campaigns" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"domain" jsonb

@@ -311,11 +311,12 @@ export default function PostDialog({
                   <Icon name="ChevronRight" style={{ width: 15, height: 15, transform: "rotate(180deg)" }} />
                 </button>
                 <span className="bl-stage-current">{stages[idx]?.label ?? post.stage}</span>
-                <button type="button" className="cc-btn cc-focus" aria-label="Næste fase" onClick={() => moveStage(1)} disabled={busy || idx < 0 || idx >= stages.length - 1}>
+                <button type="button" className="cc-btn cc-focus" aria-label="Næste fase" onClick={() => moveStage(1)} disabled={busy || dirty || idx < 0 || idx >= stages.length - 1} title={dirty ? "Gem SEO-felterne først" : undefined}>
                   <Icon name="ChevronRight" style={{ width: 15, height: 15 }} />
                 </button>
+                {canPublish && dirty && <span className="cc-dim" style={{ fontSize: 12 }}>Gem SEO-felterne først — ellers publiceres den gemte version.</span>}
                 {canPublish && (
-                  <button type="button" className="cc-btn cc-btn-accent" onClick={submitForPublish} disabled={busy || !post.checklist.ok}>Send til publicering</button>
+                  <button type="button" className="cc-btn cc-btn-accent" onClick={submitForPublish} disabled={busy || dirty || !post.checklist.ok}>Send til publicering</button>
                 )}
               </div>
             </section>
