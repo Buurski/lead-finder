@@ -26,10 +26,6 @@
       "schedule": "20 5 * * *"
     },
     {
-      "path": "/api/cron/seo-tjek-followup",
-      "schedule": "15 7 * * *"
-    },
-    {
       "path": "/api/cron/snapshot",
       "schedule": "45 3 * * *"
     },

@@ -12,7 +12,6 @@
 
 import { runSeoChecks, type SeoResult, type LighthouseScores } from "./seo.ts";
 import { prioritizeFixes } from "./seo-fix-priority.ts";
-import { formatSignature, type SenderId } from "./senders.ts";
 
 // ---- types ----------------------------------------------------------------
 
@@ -451,23 +450,6 @@ export function renderReportHtml(r: SeoTjekReport, opts: { standalone?: boolean;
   return `<style>${css}</style>${body}`;
 }
 
-// ---- mails (pure) -------------------------------------------------------------
-// Copy rules: plain Danish, no em-dashes, no emojis, visible unsubscribe.
-
-function unsubscribeUrl(sub: SeoTjekSubmission, reportUrl: string): string {
-  const base = reportUrl.replace(/\/seo-tjek\/rapport\/.*$/, "");
-  return `${base}/api/seo-tjek/unsubscribe?id=${encodeURIComponent(sub.id)}`;
-}
-
-function mailHtml(paragraphs: string[], ctaText: string, ctaUrl: string, unsubUrl: string): string {
-  const ps = paragraphs.map((p) => `<p style="margin:0 0 1em">${p}</p>`).join("");
-  return `<div style="font-family:ui-sans-serif,system-ui,sans-serif;font-size:15px;color:#1f2937;line-height:1.6;max-width:560px">
-${ps}
-<p style="margin:1.2em 0"><a href="${ctaUrl}" style="background:#1f2937;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">${ctaText}</a></p>
-<p style="margin:2em 0 0;font-size:12px;color:#9ca3af">Du får denne mail, fordi du bad om et gratis SEO-tjek. Vil du ikke høre mere fra os? <a href="${unsubUrl}" style="color:#9ca3af">Afmeld her</a>.</p>
-</div>`;
-}
-
 // Direkte booking-link (Cal.com el.lign.) i funnel-mails. Samme env som
 // rapport-siden bruger; tom streng = ingen ekstra linje (CTA'en er så "svar
 // på mailen"), aldrig en død placeholder.
@@ -475,88 +457,6 @@ export function bookingUrlFromEnv(): string | null {
   const u = (process.env.SEO_TJEK_BOOKING_URL || "").trim();
   return u || null;
 }
-function bookingLineText(): string {
-  const u = bookingUrlFromEnv();
-  return u ? `\n\nBook direkte i kalenderen (15 min, gratis): ${u}` : "";
-}
-function bookingLineHtml(): string {
-  const u = bookingUrlFromEnv();
-  return u ? ` <a href="${esc(u)}">Book direkte i kalenderen her (15 min, gratis)</a>.` : "";
-}
-
-export function day0Mail(sub: SeoTjekSubmission, report: SeoTjekReport, reportUrl: string, sender: SenderId = "lucas"): { subject: string; text: string; html: string } {
-  const signature = formatSignature(sender);
-  const host = hostOfUrl(sub.url);
-  const topFix = report.fixes[0];
-  const unsub = unsubscribeUrl(sub, reportUrl);
-  const fixLines = topFix
-    ? `Den vigtigste ting at fikse først:\n\n${topFix.title}\n${topFix.why}\nSådan løses det: ${topFix.how}`
-    : "Din side klarer sig faktisk fint. Rapporten viser detaljerne.";
-  const subject = `Din SEO-rapport for ${host} er klar`;
-  const text = [
-    `Hej,`,
-    ``,
-    `Tak fordi du bad om et gratis SEO-tjek af ${host}. Rapporten er klar her:`,
-    ``,
-    reportUrl,
-    ``,
-    fixLines,
-    ``,
-    `Vil du have det fikset? Book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineText()}`,
-    ``,
-    signature.text,
-    ``,
-    `Du får denne mail, fordi du bad om et gratis SEO-tjek. Har du ikke bedt om det, kan du bare ignorere mailen. Afmeld: ${unsub}`,
-  ].join("\n");
-  const html = mailHtml(
-    [
-      `Hej,`,
-      `Tak fordi du bad om et gratis SEO-tjek af <strong>${esc(host)}</strong>. Rapporten er klar, og du kan også gemme den som PDF.`,
-      topFix ? `<strong>Den vigtigste ting at fikse først: ${esc(topFix.title)}.</strong> ${esc(topFix.why)}` : `Din side klarer sig faktisk fint. Rapporten viser detaljerne.`,
-      `Vil du have det fikset? Svar på denne mail eller book 15 minutter, så gennemgår vi rapporten sammen. Gratis og uforpligtende. Vi har senest løftet Vida Klinik til 90+ i Googles hastighedstest på alle punkter.${bookingLineHtml()}`,
-      signature.html,
-    ],
-    "Se din rapport",
-    reportUrl,
-    unsub,
-  );
-  return { subject, text, html };
-}
-
-export function day7Mail(sub: SeoTjekSubmission, reportUrl: string, sender: SenderId = "lucas"): { subject: string; text: string; html: string } {
-  const signature = formatSignature(sender);
-  const host = hostOfUrl(sub.url);
-  const unsub = unsubscribeUrl(sub, reportUrl);
-  const subject = `Kom der noget ud af SEO-rapporten for ${host}?`;
-  const text = [
-    `Hej,`,
-    ``,
-    `For en uge siden fik du en SEO-rapport for ${host}. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: Vida Klinik scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
-    ``,
-    `Rapporten ligger stadig her: ${reportUrl}`,
-    ``,
-    `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skulle AI nævne jer 5 gange om ugen, og det giver bare 1 ekstra kunde om ugen, hvad er det så værd om måneden for jer? Skal vi tage 15 minutter om det?${bookingLineText()}`,
-    ``,
-    signature.text,
-    ``,
-    `Afmeld: ${unsub}`,
-  ].join("\n");
-  const html = mailHtml(
-    [
-      `Hej,`,
-      `For en uge siden fik du en SEO-rapport for <strong>${esc(host)}</strong>. Jeg ville bare høre om du fik kigget på den? Et eksempel på hvad den slags gennemgang kan flytte: <strong>Vida Klinik</strong> scorer nu 90+ i Googles hastighedstest på alle punkter efter deres gennemgang.`,
-      `Hvis du vil have en fast hånd om jeres synlighed, tilbyder jeg en månedlig ordning: jeg overvåger siden, retter det der driller og sender en kort rapport hver måned. Skulle AI nævne jer 5 gange om ugen, og det giver bare 1 ekstra kunde om ugen, hvad er det så værd om måneden for jer? Skal vi tage 15 minutter om det?${bookingLineHtml()}`,
-      signature.html,
-    ],
-    "Se rapporten igen",
-    reportUrl,
-    unsub,
-  );
-  return { subject, text, html };
-}
-
-// ---- network: desktop PageSpeed ------------------------------------------------
-
 export async function runDesktopPageSpeed(url: string): Promise<LighthouseScores | null> {
   try {
     const params = new URLSearchParams({ url, strategy: "desktop" });

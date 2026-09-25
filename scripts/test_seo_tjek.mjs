@@ -147,23 +147,6 @@ const report = {
   check("report: reviews line absent when no data", !st.renderReportHtml(report).includes("Jeres Google-anmeldelser"));
 }
 
-// ---- mails ----------------------------------------------------------------
-{
-  const m = st.day0Mail(submission, report, "https://example.com/seo-tjek/rapport/test-1");
-  check("day0: subject mentions rapport", /rapport/i.test(m.subject));
-  check("day0: link included", m.text.includes("https://example.com/seo-tjek/rapport/test-1") && m.html.includes("https://example.com/seo-tjek/rapport/test-1"));
-  check("day0: highlights a fix", m.text.includes("Din side er langsom på mobil"));
-  check("day0: unsubscribe present", /afmeld/i.test(m.text) && /afmeld/i.test(m.html));
-  check("day0: no em-dash", !m.text.includes("—") && !m.subject.includes("—"));
-  check("day0: no emoji", !/[\u{1F300}-\u{1FAFF}]/u.test(m.text + m.subject));
-}
-{
-  const m = st.day7Mail(submission, "https://example.com/seo-tjek/rapport/test-1");
-  check("day7: mentions Vida case", /vida/i.test(m.text));
-  check("day7: unsubscribe present", /afmeld/i.test(m.text));
-  check("day7: no em-dash", !m.text.includes("—"));
-}
-
 console.log(failures.length ? "FAILURES:\n  " + failures.join("\n  ") : "all seo-tjek checks ok");
 console.log(`\ntest_seo_tjek — ${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
