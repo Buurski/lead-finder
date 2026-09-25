@@ -312,13 +312,18 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 Indhold siden 0381ca0: Hermes' blog-backend (0011-0012) + SEO-gates (metaTitle/-beskrivelse/alt) + blog-board-UI med A/B-billedvalg; SEO-tjek-rapportmail (Kinly-design, 10 %-tilbud m. frist, kladde — Lucas sender); nyhedsbrev-snapshot (0013) + dagligt sync fra kundesite (kun aggregater) + Nyhedsbrev-fane; /kunder-billeder fra kinly.dk/projekter (kun kunder); gammel HQ-/seo-tjek-tragt udfaset (auto-mail dag 7 slettet, 308 til kinly.dk). Tests 536/536.
 
 ### DEPLOY-TJEKLISTE 26/9 (rækkefølge er hård)
-1. Codex tilbage 18:05 → Sol-inspektion af `4111f58..6d9fdb4` (R5-rettelser berører senders.ts = send-vej). Fund rettes før deploy.
+1. Codex tilbage 18:05 → Sol-inspektion af `4111f58..9a4ed22` (R5-rettelser i senders.ts = send-vej; kladde-præsentation i send-rute; kalender-sync; GSC 0014 + Opdateringer). Fund rettes før deploy.
 2. `git log HEAD..origin/main` = 0, ellers merge + fuld suite.
 3. git-tag `pre-deploy-2026-09-26`.
-4. Neon: migrationer 0011, 0012, 0013 (migrér FØR deploy). Tjek rækketal company/draft uændret.
+4. Neon: migrationer 0011, 0012, 0013, 0014 (migrér FØR deploy). Tjek rækketal company/draft uændret.
 5. Vercel env (HQ): `NYHEDSBREV_TOKEN_IKAST` fra fil (`--value`, aldrig stdin). Uden den: newsletter-sync 502 hver dag (bevidst rød).
 6. Merge feature → main, push (Vercel deployer). Live-tjek: login 200, /kunder 307 uden session, /api/shot 401, /api/cron/health 200, /seo-tjek 308 → kinly.dk.
 7. Derefter kinly-site: merge `claude/blog-redesign-0925` → main (sender telefon + seoTjek + nyhedsbrev til HQ; HQ skal være oppe først). Live-tjek /blog/, /blog/emne/*, /seo-tjek/, /nyhedsbrev/tak/ (noindex). Kinly-Brevo env (`BREVO_API_KEY`, `BREVO_LIST_ID`, `BREVO_DOI_TEMPLATE_ID`) sættes af nyhedsbrev-sessionen; uden dem springes DOI blødt over.
 7b. Kladde-præsentation (Lucas 25/9: fælles, uden navne): `node --experimental-strip-types --conditions react-server scripts/normalize-disclosures.mts` (tør-kørsel) → `--apply`. Testet på PGlite-kopi: 36/56 åbne kladder rettet, 0 tilbage. Bed derefter Hermes opdatere evt. VPS-checkout der kører daily_engine (ellers laver den gammel tekst).
 7c. Google Kalender: Lucas opretter kalender "Kinly HQ", deler med service-accountens mail ("Foretag ændringer i begivenheder"), sætter `HQ_GCAL_LUCAS` = kalender-id i Vercel (vejledning i /settings). Uden env logger calendar-sync "ikke sat op".
+7d. Search Console: Lucas tilføjer service-accountens mail som "Begrænset bruger" på hver kundes GSC-ejendom (start Ikast). Kør `/api/cron/gsc-snapshot` manuelt én gang (Bearer CRON_SECRET) → kort "Bliver fundet på Google" på profilen; 'ingen adgang' pr. kunde står i health-noten. Opdateringer kommer fra 2. måling (mandagen efter).
 8. Efter deploy: 12 blog-idéer (vault `wiki/kinly/blogideer-2026-09-25.md`) som idé-kort i HQ-board; E2E-test af SEO-tjek-formular med buur.aigro.
+
+## CHECKPOINT 25/9 nat — efter 4a (`9a4ed22`, pushet, IKKE deployet)
+Siden 6d9fdb4: kundeprofil-grafer (fakturering 12 mdr. i penge-kort, abonnent-trend i Nyhedsbrev-fanen); Google Kalender-sync af opgaver (cron hver time, service-account, opsætning i /settings); kladde-præsentation fælles "vi i Kinly" (send-vagt + engangs-normaliseringsscript); SEO 07: `gsc_snapshot` (0014) + mandags-cron + kort "Bliver fundet på Google" (klik/visninger/placering, 90-dages klikgraf med vores 'arbejde'-markeringer, top-søgninger) + "Opdateringer" øverst på /seo (regel-diff → Jev dømmer handling/kunde-nyhed → fald ⇒ opgave). Tests 546/546, eslint 0 fejl, skærmbilleder desktop+mobil (PGlite-kopi, demo-tal kun lokalt).
+Beslutning: GSC via service-account (ikke Hermes/Composio — Composio må ikke i prod, og Hermes' GSC-kobling er nede). /seo-Værktøjer-fanen viser stadig Hermes' GA4-snapshot (uændret).
