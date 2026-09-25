@@ -4,8 +4,9 @@
 //
 // Opbygning (salgspsykologi, men ærlig): personlig tekst først (et menneske
 // skriver), så deres eget tal (ejerskab: "jeres side"), de vigtigste huller
-// konkret (specificitet slår adjektiver), ét tilbud med en rigtig frist og ét
-// klart næste skridt. Ingen falsk knaphed, ingen opdigtede tal.
+// konkret (specificitet slår adjektiver), ét roligt tilbud og ét klart næste
+// skridt. Ingen frist/pres (Kinly-tone, og samtykket dækker 1:1-svar om hvordan
+// vi kan hjælpe — ikke kampagner), ingen opdigtede tal.
 //
 // E-mail-HTML: tabeller + inline styles (Gmail/Outlook), systemfonte med
 // Georgia som serif-fallback — web-fonte loader ikke pålideligt i mail.
@@ -18,11 +19,10 @@ export interface SeoReportInput {
   now?: Date;
 }
 
-// Tilbuddet er en forretningsbeslutning: ændres her ét sted. Fristen regnes fra afsendelsen.
+// Tilbuddet er en forretningsbeslutning: ændres her ét sted.
 export const SEO_REPORT_OFFER = {
   headline: "10 % på den første opgave",
-  text: "Siger I ja inden fristen, trækker vi 10 % fra den faste pris på jeres første opgave hos os, fx at rette punkterne ovenfor. I får prisen skriftligt, før I beslutter noget, og der er ingen binding.",
-  days: 14,
+  text: "Fordi I selv har tjekket jeres side, trækker vi 10 % fra den faste pris på jeres første opgave hos os, fx at rette punkterne ovenfor. I får prisen skriftligt, før I beslutter noget, og der er ingen binding.",
 } as const;
 
 const C = { paper: "#faf6ef", surface: "#f3ede2", ink: "#191713", mid: "#55504a", faded: "#8a847b", ember: "#d4500f", emberDeep: "#a63b05", rule: "#e4dccd", emberLight: "#f08a55" };
@@ -37,11 +37,6 @@ export function scoreLabel(score: number): string {
   return "Kunder har svært ved at finde jer";
 }
 
-export function offerDeadline(now = new Date()): string {
-  const d = new Date(now.getTime() + SEO_REPORT_OFFER.days * 86_400_000);
-  return d.toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "Europe/Copenhagen" });
-}
-
 function paragraphs(text: string): string {
   return esc(text.trim())
     .replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" style="color:${C.emberDeep};">${u}</a>`)
@@ -54,7 +49,6 @@ export function renderSeoReportHtml(i: SeoReportInput): string {
   const { host, score, mangler } = i.seoTjek;
   const pct = Math.max(2, Math.min(100, Math.round(score)));
   const top = mangler.slice(0, 5);
-  const deadline = offerDeadline(i.now);
   const items = top
     .map(
       (m, n) => `<tr><td valign="top" style="padding:6px 12px 6px 0;font-family:${SANS};font-size:12px;font-weight:700;color:${C.emberDeep};">${String(n + 1).padStart(2, "0")}</td><td style="padding:6px 0;font-family:${SANS};font-size:15px;line-height:1.5;color:${C.ink};">${esc(m)}</td></tr>`,
@@ -80,7 +74,7 @@ ${top.length ? `<tr><td style="padding:22px 24px 4px 24px;font-family:${SERIF};f
 </table></td></tr>
 <tr><td style="padding:16px 0 0 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${C.ink}" style="background:${C.ink};border-radius:12px;">
-<tr><td style="padding:24px 24px 6px 24px;font-family:${SANS};font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:${C.emberLight};">Gælder til ${deadline}</td></tr>
+<tr><td style="padding:24px 24px 6px 24px;font-family:${SANS};font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:${C.emberLight};">Til jer, der har taget tjekket</td></tr>
 <tr><td style="padding:0 24px;font-family:${SERIF};font-size:24px;line-height:1.2;color:${C.paper};">${esc(SEO_REPORT_OFFER.headline)}</td></tr>
 <tr><td style="padding:10px 24px 18px 24px;font-family:${SANS};font-size:15px;line-height:1.6;color:#d9d2c5;">${esc(SEO_REPORT_OFFER.text)}</td></tr>
 <tr><td style="padding:0 24px 26px 24px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td bgcolor="${C.emberDeep}" style="background:${C.emberDeep};border-radius:8px;"><a href="https://kinly.dk/kontakt/?ref=seo-rapport" style="display:inline-block;padding:13px 22px;font-family:${SANS};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Book 15 minutter om planen</a></td></tr></table>
@@ -101,7 +95,7 @@ export function renderSeoReportText(i: SeoReportInput): string {
     i.body.trim(),
     `— Jeres resultat for ${host}: ${score}/100 (${scoreLabel(score)})`,
     top ? `Det vigtigste at rette først:\n${top}` : "",
-    `${SEO_REPORT_OFFER.headline} (gælder til ${offerDeadline(i.now)}): ${SEO_REPORT_OFFER.text}`,
+    `${SEO_REPORT_OFFER.headline}: ${SEO_REPORT_OFFER.text}`,
     "Book 15 minutter: https://kinly.dk/kontakt/?ref=seo-rapport — eller svar på denne mail.",
     `Med venlig hilsen\n${i.signatureText}`,
     `Du får denne mail, fordi du bad om hele analysen af ${host} på kinly.dk.`,
