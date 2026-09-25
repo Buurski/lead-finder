@@ -36,7 +36,7 @@ export default async function CalendarCard({ user }: { user: string | null }) {
           </span>
         ) : (
           <ol className="cc-dim" style={{ fontSize: 12.5, margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-            <li>Kør <code>{`node scripts/gcal-setup.mjs ${user}@kinly.dk ${user[0].toUpperCase() + user.slice(1)}`}</code> med service-accountens nøgle. Den opretter kalenderen &quot;Kinly HQ&quot; og deler den ind til dig (Workspace tillader ikke redigering udefra den anden vej).</li>
+            <li>Kør <code>{`node scripts/gcal-setup.mjs <din kalender-mail> ${user[0].toUpperCase() + user.slice(1)}`}</code> med service-accountens nøgle. Den opretter kalenderen &quot;Kinly HQ&quot; og deler den ind til den mail, du bruger kalender på (Lucas: buur.aigro@gmail.com).</li>
             <li>Sæt det udskrevne id som <code>{`HQ_GCAL_${user.toUpperCase()}`}</code> i Vercel, og tilføj kalenderen via mailen fra Google.</li>
           </ol>
         )}

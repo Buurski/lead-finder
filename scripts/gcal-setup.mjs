@@ -3,7 +3,7 @@
 // vender den om: service-accounten ejer kalenderen "Kinly HQ – <navn>" og deler
 // den IND til personen (læseadgang). Idempotent: findes kalenderen, genbruges den.
 //
-//   GOOGLE_KEY_FILE=sa-key.json node scripts/gcal-setup.mjs lucas@kinly.dk Lucas
+//   GOOGLE_KEY_FILE=sa-key.json node scripts/gcal-setup.mjs buur.aigro@gmail.com Lucas
 //
 // Udskriver kalender-id'et, der sættes som HQ_GCAL_<NAVN> i Vercel.
 import { google } from "googleapis";
