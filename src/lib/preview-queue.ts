@@ -18,6 +18,8 @@ export interface PreviewRequestInput {
   channel: PreviewChannel;
   email: string;
   website?: string;
+  /** Telefon fra kinly.dk (fx SEO-tjek-formularen). Valideret af sitet; her kun trimmet. */
+  phone?: string;
   contactName?: string;
   branch?: string;
   questionnaire?: string;
@@ -72,6 +74,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     channel: input.channel,
     email,
     website: input.website?.trim() || undefined,
+    phone: input.phone?.trim().slice(0, 40) || undefined,
     contactName: input.contactName?.trim() || undefined,
     branch: input.branch?.trim() || undefined,
     questionnaire: input.questionnaire?.trim() || undefined,

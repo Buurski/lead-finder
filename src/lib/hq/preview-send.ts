@@ -2,7 +2,7 @@
 // har set udkastet — aldrig automatisk. Ét udkast sendes højst én gang: kravet
 // tages som en unik activity-række i Postgres FØR mailen går, og frigives hvis
 // afsendelsen fejler MED SIKKERHED før Gmail tog mailen (tvetydig fejl ⇒ kravet står og afstemmes).
-import { and, eq, like, sql } from "drizzle-orm";
+import { and, eq, like, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
 import { failedBeforeAccept } from "../send-safety.ts";
@@ -56,8 +56,9 @@ export async function sendPreview(
       companyId: link?.companyId ?? null,
       clientName: r.company,
       actor,
-      type: "udkast_sendt",
-      summary: `Gratis udkast sendt til ${to}`,
+      // Et forsøg — bliver først "udkast_sendt" når Gmail har taget mailen (Sol R6-F2).
+      type: "udkast_forsoeg",
+      summary: `Forsøg på at sende gratis udkast til ${to}`,
       payload: { previewId: id, previewUrl: r.previewUrl, subject, state: "sending" },
     })
     .onConflictDoNothing()
@@ -71,7 +72,7 @@ export async function sendPreview(
     // Kun sikre før-accept-fejl (og vores egne afvisninger før SMTP) frigiver kravet.
     // En timeout efter DATA kan betyde at mailen ER ude — så må et nyt klik ikke sende igen (Sol bølge 2 R2).
     if (err instanceof PreviewSendError || failedBeforeAccept(err)) {
-      await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, claimed[0].id)));
+      await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, claimed[0].id), SENDING));
       throw new PreviewSendError(`mailen kunne ikke sendes: ${msg}`);
     }
     console.error(JSON.stringify({ evt: "preview.uncertain_send", id, to, error: msg }));
@@ -86,8 +87,8 @@ export async function sendPreview(
   // Mailen er ude. Fejler en af de to skrivninger, står kravet låst som "sending" (intet gensend) og kan bekræftes som sendt.
   await db
     .update(activity)
-    .set({ payload: sql`${activity.payload} || '{"state":"sent"}'::jsonb` })
-    .where(eq(activity.id, claimed[0].id))
+    .set({ ...SENT_ROW(to), payload: sql`${activity.payload} || '{"state":"sent"}'::jsonb` })
+    .where(and(eq(activity.id, claimed[0].id), SENDING))
     .catch((err) => console.error(JSON.stringify({ evt: "preview.claim_state_failed", id, error: String(err).slice(0, 200) })));
   await deps.markSent(id, body).catch((err) =>
     console.error(JSON.stringify({ evt: "preview.mark_sent_failed", id, error: String(err).slice(0, 200) })),
@@ -98,7 +99,9 @@ const STATE = sql<string | null>`${activity.payload}->>'state'`;
 const SENDING = sql`${STATE} = 'sending'`;
 // Tvetydigt SMTP-udfald, registreret. (payload.uncertain=true er formen fra b1fd633, aldrig deployet.)
 const UNCERTAIN = sql`(${STATE} = 'uncertain' or (${STATE} is null and ${activity.payload}->>'uncertain' = 'true'))`;
-const OPEN = sql`(${STATE} = 'sending' or ${UNCERTAIN})`;
+// Et "sending"-krav kan kun bekræftes når forsøget ikke kan køre længere (ruten har maxDuration 60 s) — Sol R6-F1.
+export const SETTLE_MS = 2 * 60_000;
+const SENT_ROW = (to?: string) => ({ type: "udkast_sendt", summary: to ? `Gratis udkast sendt til ${to}` : "Gratis udkast sendt" });
 
 /**
  * Afstemning efter et usikkert forsøg: Lucas har tjekket Gmail Sendt.
@@ -111,6 +114,7 @@ export async function reconcilePreview(
   id: string,
   verdict: "sent" | "not-sent",
   markSent: (id: string) => Promise<void>,
+  nowMs = Date.now(),
 ): Promise<void> {
   const legacyId = `preview-sent:${id}`;
   if (verdict === "not-sent") {
@@ -118,14 +122,16 @@ export async function reconcilePreview(
     if (!gone.length) throw new PreviewSendError(await whyNot(db, legacyId));
     return;
   }
+  const settledSending = and(SENDING, lt(activity.at, new Date(nowMs - SETTLE_MS)));
   const done = await db
     .update(activity)
-    .set({ payload: sql`(${activity.payload} - 'uncertain') || '{"state":"sent"}'::jsonb` })
-    .where(and(eq(activity.legacyId, legacyId), OPEN))
+    .set({ ...SENT_ROW(), payload: sql`(${activity.payload} - 'uncertain') || '{"state":"sent"}'::jsonb` })
+    .where(and(eq(activity.legacyId, legacyId), or(UNCERTAIN, settledSending)))
     .returning({ id: activity.id });
   if (!done.length) {
-    const [row] = await db.select({ id: activity.id }).from(activity).where(eq(activity.legacyId, legacyId));
+    const [row] = await db.select({ state: STATE }).from(activity).where(eq(activity.legacyId, legacyId));
     if (!row) throw new PreviewSendError("der er intet afsendelsesforsøg at bekræfte");
+    if (row.state === "sending") throw new PreviewSendError("forsøget kan stadig være i gang — vent 2 minutter og prøv igen");
     // Allerede sendt (eller et ældre krav uden state): gentag bare status-skrivningen.
   }
   await markSent(id);
@@ -152,4 +158,13 @@ export async function previewClaims(db: Db): Promise<Map<string, PreviewClaim>> 
       row.state === "sending" ? "sending" : row.state === "uncertain" || (!row.state && row.uncertain === "true") ? "uncertain" : "sent",
     ]),
   )
+}
+
+/** Uafklaret krav ("sending"/"uncertain") på et udkast: status må ikke ændres før det er afstemt (Sol R6-F3). */
+export async function hasOpenClaim(db: Db, id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: activity.id })
+    .from(activity)
+    .where(and(eq(activity.legacyId, `preview-sent:${id}`), sql`(${STATE} = 'sending' or ${UNCERTAIN})`));
+  return Boolean(row);
 }

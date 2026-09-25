@@ -12,6 +12,7 @@ export interface InboundInput {
   email: string;
   channel: string;
   website?: string;
+  phone?: string;
   contactName?: string;
   branch?: string;
   questionnaire?: string;
@@ -71,6 +72,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
   const legacyId = `preview:${input.id}`;
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
+    const phone = (input.phone ?? "").trim().slice(0, 40);
     const [seen] = await tx.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, legacyId));
     if (seen?.companyId) {
       const [c] = await tx.select({ rowNo: company.rowNo }).from(company).where(eq(company.id, seen.companyId));
@@ -90,6 +92,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
           name: input.company.trim() || input.email.trim(),
           branch: input.branch?.trim() ?? "",
           email: input.email.trim(),
+          phone: phone,
           website: input.website?.trim() ?? "",
           websiteStatus: input.website ? "has" : "none",
           source: "kinly.dk",
@@ -102,6 +105,8 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
     } else {
       // Interesseret — men en kunde forbliver kunde.
       await tx.update(company).set({ leadStatus: "interested" }).where(and(eq(company.id, companyId), ne(company.leadStatus, "client")));
+      // Telefon udfyldes kun hvis virksomheden ingen har — et kendt nummer overskrives aldrig.
+      if (phone) await tx.update(company).set({ phone }).where(and(eq(company.id, companyId), eq(company.phone, "")));
     }
 
     const email = input.email.trim();
@@ -110,7 +115,8 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         .select({ id: contact.id })
         .from(contact)
         .where(and(eq(contact.companyId, companyId), sql`lower(${contact.email}) = ${email.toLowerCase()}`));
-      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, role: "henvendelse" });
+      if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse" });
+      else if (phone) await tx.update(contact).set({ phone }).where(and(eq(contact.id, known.id), eq(contact.phone, "")));
     }
 
     const [co] = await tx.select({ name: company.name, rowNo: company.rowNo }).from(company).where(eq(company.id, companyId));

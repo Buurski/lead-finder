@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { PreviewSendError, previewClaims, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { hasOpenClaim, PreviewSendError, previewClaims, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -100,7 +100,9 @@ test("uafklaret krav (state=sending, fx fejlet registrering) kan ikke frigives �
   const again = deps(r3);
   await assert.rejects(sendPreview(db, r3.id, msg, "lucas", again.d), /allerede sendt/);
   assert.equal(again.sent.length, 0);
-  await reconcilePreview(db, r3.id, "sent", async () => {});
+  // Et "sending"-krav kan være i gang: kan ikke bekræftes før det er afgjort (Sol R6-F1).
+  await assert.rejects(reconcilePreview(db, r3.id, "sent", async () => {}), /vent 2 minutter/);
+  await reconcilePreview(db, r3.id, "sent", async () => {}, Date.now() + 3 * 60_000);
   assert.equal((await previewClaims(db)).get(r3.id), "sent");
 });
 
@@ -109,4 +111,17 @@ test("ældre usikkert krav (uncertain=true uden state) kan stadig frigives", asy
   assert.equal((await previewClaims(db)).get("preview_old1"), "uncertain");
   await reconcilePreview(db, "preview_old1", "not-sent", async () => {});
   assert.equal((await previewClaims(db)).has("preview_old1"), false);
+});
+
+test("forsøg er ikke et sendt udkast før Gmail har taget det (tidslinje-type)", async () => {
+  const r4 = { ...req, id: "preview_x4" };
+  await assert.rejects(sendPreview(db, r4.id, msg, "lucas", deps(r4, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d), /usikkert/);
+  assert.deepEqual((await db.select({ type: activity.type }).from(activity)).map((r) => r.type), ["udkast_forsoeg"]);
+  await reconcilePreview(db, r4.id, "sent", async () => {});
+  assert.deepEqual((await db.select({ type: activity.type }).from(activity)).map((r) => r.type), ["udkast_sendt"]);
+  const r5 = { ...req, id: "preview_x5" };
+  await sendPreview(db, r5.id, msg, "lucas", deps(r5).d);
+  const types = (await db.select({ type: activity.type }).from(activity)).map((r) => r.type).sort();
+  assert.deepEqual(types, ["udkast_sendt", "udkast_sendt"]);
+  assert.equal(await hasOpenClaim(db, r5.id), false);
 });

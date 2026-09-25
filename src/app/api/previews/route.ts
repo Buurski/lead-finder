@@ -41,13 +41,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string };
+  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; phone?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (body.channel !== "formular" && body.channel !== "mail") {
     return NextResponse.json({ error: "channel skal være formular eller mail" }, { status: 400 });
   }
   try {
-    const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey });
+    const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, phone: typeof body.phone === "string" ? body.phone : undefined, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey });
     await linkToCrm(request);
     const { attachProfile } = await import("@/lib/hq/draft-profile");
     await attachProfile(request.id, request);
@@ -77,6 +77,11 @@ export async function PATCH(req: NextRequest) {
   if (!body.id || !body.status || !PREVIEW_STATUSES.includes(body.status)) {
     return NextResponse.json({ error: "id og gyldig status er påkrævet", statuses: PREVIEW_STATUSES }, { status: 400 });
   }
+  // Et uafklaret afsendelseskrav skal afstemmes før status/link ændres (Sol R6-F3).
+  const open = await import("@/lib/hq/preview-send")
+    .then(async (m) => m.hasOpenClaim((await import("@/lib/db/client")).getDb(), body.id!))
+    .catch(() => false);
+  if (open) return NextResponse.json({ error: "afsendelsen er ikke afklaret — afstem den (Gmail Sendt) før udkastet ændres" }, { status: 409 });
   const request = await updatePreviewStatus(body.id, body.status, {
     research: body.research,
     previewUrl: body.previewUrl,

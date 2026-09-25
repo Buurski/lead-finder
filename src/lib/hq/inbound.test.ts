@@ -49,3 +49,17 @@ test("delt mail hæfter ikke en anden forretning på det gamle lead", async () =
   const same = await recordInbound(db, { ...base, id: "p5", company: "Salon Lux ApS", email: "hej@salonlux.dk" });
   assert.equal(same.rowNo, 5);
 });
+
+test("SEO-tjek-henvendelse: telefon lander på ny virksomhed og kontakt; et kendt nummer overskrives aldrig", async () => {
+  const n = await recordInbound(db, { ...base, id: "p9", company: "frisor.dk", email: "ejer@frisor.dk", website: "https://frisor.dk", phone: "+45 23 24 24 82" });
+  const [c] = await db.select().from(company).where(eq(company.id, n.companyId));
+  assert.equal(c.phone, "+45 23 24 24 82");
+  assert.equal(c.website, "https://frisor.dk");
+  const [k] = await db.select().from(contact).where(eq(contact.companyId, n.companyId));
+  assert.equal(k.phone, "+45 23 24 24 82");
+
+  await db.update(company).set({ phone: "11 22 33 44" }).where(eq(company.name, "Salon Lux"));
+  const r = await recordInbound(db, { ...base, id: "p10", company: "Lux", email: "maja@gmail.com", website: "salonlux.dk", phone: "99 88 77 66" });
+  const [lux] = await db.select().from(company).where(eq(company.id, r.companyId));
+  assert.equal(lux.phone, "11 22 33 44");
+});

@@ -265,6 +265,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
   async function send() {
     setSendState("sending");
     setSendErr("");
+    setCleared(undefined); // nyt forsøg ⇒ et nyt krav må ikke skjules af et gammelt (Sol R6-F4)
     try {
       const res = await fetch(`/api/previews/${item.id}/send`, {
         method: "POST",
@@ -437,25 +438,27 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
             {saveMsg && <span className="cc-dim" style={{ fontSize: 12.5 }}>{saveMsg}</span>}
           </div>
           {sendErr && <div className="gu-error-note">{sendErr}</div>}
-          {(claim === "sent" || claim === "sending") && item.status !== "sendt/lukket" && (
-            <div className="gu-actions">
-              <span className="cc-dim" style={{ fontSize: 12.5 }}>
-                {claim === "sent" ? "Mailen er sendt, men status blev ikke opdateret." : "Afsendelsen blev ikke afklaret. Tjek Gmail Sendt."}
-              </span>
-              <button className="cc-btn" onClick={() => void reconcile("sent")}>Markér som sendt</button>
-            </div>
-          )}
-          {(claim === "uncertain" || (!claim && sendErr.includes("usikkert"))) && (
-            <div className="gu-actions">
-              <span className="cc-dim" style={{ fontSize: 12.5 }}>Tjekket Gmail Sendt?</span>
-              <button className="cc-btn" onClick={() => void reconcile("sent")}>Den er sendt</button>
-              <button className="cc-btn" onClick={() => void reconcile("not-sent")}>Den er ikke sendt</button>
-            </div>
-          )}
         </div>
       ) : (
         <div className="gu-actions">
           <button className="cc-btn" onClick={() => void reject()} disabled={rejecting} style={{ color: "var(--red)" }}>Afvis</button>
+        </div>
+      )}
+      {/* Afstemning vises uanset status/link: et uafklaret krav skal altid kunne løses (Sol R6-F3). */}
+      {!sendable && sendErr && <div className="gu-error-note">{sendErr}</div>}
+      {(claim === "sent" || claim === "sending") && item.status !== "sendt/lukket" && (
+        <div className="gu-actions">
+          <span className="cc-dim" style={{ fontSize: 12.5 }}>
+            {claim === "sent" ? "Mailen er sendt, men status blev ikke opdateret." : "Afsendelsen blev ikke afklaret. Tjek Gmail Sendt."}
+          </span>
+          <button className="cc-btn" onClick={() => void reconcile("sent")}>Markér som sendt</button>
+        </div>
+      )}
+      {(claim === "uncertain" || (!claim && sendErr.includes("usikkert"))) && (
+        <div className="gu-actions">
+          <span className="cc-dim" style={{ fontSize: 12.5 }}>Tjekket Gmail Sendt?</span>
+          <button className="cc-btn" onClick={() => void reconcile("sent")}>Den er sendt</button>
+          <button className="cc-btn" onClick={() => void reconcile("not-sent")}>Den er ikke sendt</button>
         </div>
       )}
     </div>

@@ -258,3 +258,13 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - R5-2 ACCEPT (og R4-1 trækkes tilbage): `approve/add` finder modtageren før suppression og tjekker den faktiske adresse; KUN kladdens egen mail gemmes. Sheets-fundet mail slås op friskt ved send (kontakt-status tjekkes); Sheets nede ⇒ kladden kan hverken godkendes eller sendes. Sikker retning vinder over C3-renhed.
 - R5-3 ACCEPT: `uncertain=true` uden state (b1fd633, aldrig deployet) behandles som usikkert.
 - R5-4 ACCEPT: UI afleder kravet af den aktuelle liste; lokalt afstemt krav skjules kun til næste reload.
+
+### Sol bølge 2 R6 — dispositioner (base `6ee69ae`)
+- F1 ACCEPT: "sent"-afstemning af et `sending`-krav kræver alder > 2 min (`SETTLE_MS`; ruten har maxDuration 60 s); før-accept-oprydning, `uncertain`- og `sent`-overgange er alle betinget af `state='sending'`.
+- F2 ACCEPT: kravet indsættes som `type=udkast_forsoeg` ("Forsøg på at sende …"); bliver `udkast_sendt` først ved Gmail-accept eller bekræftelse. Tidslinjen (WORK_TYPES) viser kun sendte.
+- F3 ACCEPT: afstemningsknapper vises uanset status/link; PATCH /api/previews svarer 409 mens et krav er `sending`/`uncertain` (`hasOpenClaim`).
+- F4 ACCEPT: nyt forsøg nulstiller den lokale skjulning.
+
+### SEO-tjek-lead (Lucas 25/9) — HQ-del
+- kinly.dk `SeoTjekTool` → `/api/contact` (kilde=seo-tjek, påkrævet samtykke, valideret host/score/mangler, valgfri tlf) → HQ `POST /api/previews` med `website` + `phone` + resultat/samtykke i questionnaire. Eksisterende kæde: `recordInbound` (virksomhed interesseret, kontakt, aktivitet, stopper kolde kladder) → `attachProfile` (Jev: stil/størrelse/ambition) → Hermes laver udkast + mailkladde → Lucas sender (preview-send). Ingen automatisk mail til kunden.
+- HQ: `phone` gennem PreviewRequestInput → `recordInbound` (ny virksomhed + kontakt; kendt nummer overskrives aldrig). Test i inbound.test.ts.
