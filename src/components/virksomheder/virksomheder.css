@@ -247,7 +247,12 @@
 .kunde-health i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
 .kunde-health[data-state="ok"] i { background: var(--green); }
 .kunde-health[data-state="down"] i { background: var(--red); }
-@media (max-width: 600px) { .kunde-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .kunde-grid { grid-template-columns: 1fr; }
+  /* Faner på én linje: scroll vandret i stedet for at ombryde. */
+  .kunde-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .kunde-tabs > * { flex: none; }
+}
 
 .virk-merge-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .virk-merge-cols { grid-template-columns: 1fr; } }
