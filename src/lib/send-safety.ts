@@ -10,34 +10,58 @@ import { getSenderCreds, type SenderId } from "./senders.ts";
 const LOCK_NAME = "send-lock";
 const KV_LOCK_KEY = "send/lock";
 
-/** Tager låsen hvis den er fri/udløbet. Returnerer et håndtag til release, eller null (optaget). */
-export async function acquireSendLock(ttlMs: number, nowMs = Date.now()): Promise<number | null> {
+const kvKey = (name: string) => (name === LOCK_NAME ? KV_LOCK_KEY : `lock/${name}`);
+
+/** Navngiven lås (CAS i counter). Returnerer et håndtag til release, eller null (optaget). */
+export async function acquireLock(name: string, ttlMs: number, nowMs = Date.now()): Promise<number | null> {
   const until = Math.ceil((nowMs + ttlMs) / 1000);
   const nowSec = Math.floor(nowMs / 1000);
   if (pgEnabled()) {
     // ponytail: epoch-sekunder i counter.value (int4) holder til 2038.
     const rows = await getDb()
       .insert(counter)
-      .values({ name: LOCK_NAME, value: until })
+      .values({ name, value: until })
       .onConflictDoUpdate({ target: counter.name, set: { value: until }, setWhere: lte(counter.value, nowSec) })
       .returning({ name: counter.name });
     return rows.length === 1 ? until : null;
   }
-  const lock = await store.get<{ until: number }>(KV_LOCK_KEY).catch(() => null);
+  const lock = await store.get<{ until: number }>(kvKey(name)).catch(() => null);
   if (lock && typeof lock.until === "number" && lock.until > nowMs) return null;
-  await store.put(KV_LOCK_KEY, { until: until * 1000, startedAt: new Date(nowMs).toISOString() });
+  await store.put(kvKey(name), { until: until * 1000, startedAt: new Date(nowMs).toISOString() });
   return until;
 }
 
 /** Frigiver kun egen lås (samme håndtag) — en overtaget, udløbet lås røres ikke. */
-export async function releaseSendLock(handle: number): Promise<void> {
+export async function releaseLock(name: string, handle: number): Promise<void> {
   if (pgEnabled()) {
-    await getDb().delete(counter).where(and(eq(counter.name, LOCK_NAME), eq(counter.value, handle)));
+    await getDb().delete(counter).where(and(eq(counter.name, name), eq(counter.value, handle)));
     return;
   }
-  const lock = await store.get<{ until: number }>(KV_LOCK_KEY).catch(() => null);
-  if (lock && lock.until === handle * 1000) await store.delete(KV_LOCK_KEY);
+  const lock = await store.get<{ until: number }>(kvKey(name)).catch(() => null);
+  if (lock && lock.until === handle * 1000) await store.delete(kvKey(name));
 }
+
+export class LockBusyError extends Error {}
+
+/** Kør fn under låsen `name`; venter op til waitMs på en optaget lås, ellers LockBusyError. */
+export async function withLock<T>(name: string, fn: () => Promise<T>, opts: { ttlMs?: number; waitMs?: number } = {}): Promise<T> {
+  const { ttlMs = 30_000, waitMs = 8_000 } = opts;
+  const deadline = Date.now() + waitMs;
+  let handle = await acquireLock(name, ttlMs);
+  while (handle === null) {
+    if (Date.now() > deadline) throw new LockBusyError(`optaget (${name}) — prøv igen om lidt`);
+    await new Promise((res) => setTimeout(res, 150));
+    handle = await acquireLock(name, ttlMs);
+  }
+  try {
+    return await fn();
+  } finally {
+    await releaseLock(name, handle).catch(() => {});
+  }
+}
+
+export const acquireSendLock = (ttlMs: number, nowMs = Date.now()) => acquireLock(LOCK_NAME, ttlMs, nowMs);
+export const releaseSendLock = (handle: number) => releaseLock(LOCK_NAME, handle);
 
 /** Er en send-kørsel i gang lige nu? (kun til GET-preflightens "busy"). */
 export async function sendLockHeld(nowMs = Date.now()): Promise<boolean> {

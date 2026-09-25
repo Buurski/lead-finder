@@ -105,8 +105,8 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
     } else {
       // Interesseret — men en kunde forbliver kunde.
       await tx.update(company).set({ leadStatus: "interested" }).where(and(eq(company.id, companyId), ne(company.leadStatus, "client")));
-      // Telefon udfyldes kun hvis virksomheden ingen har — et kendt nummer overskrives aldrig.
-      if (phone) await tx.update(company).set({ phone }).where(and(eq(company.id, companyId), eq(company.phone, "")));
+      // Et indsendt nummer er ubekræftet: det lægges aldrig på en eksisterende virksomhed/kontakt
+      // (formularen er offentlig — Sol R7-04). Det står på henvendelsen, så I kan tjekke det selv.
     }
 
     const email = input.email.trim();
@@ -116,7 +116,6 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         .from(contact)
         .where(and(eq(contact.companyId, companyId), sql`lower(${contact.email}) = ${email.toLowerCase()}`));
       if (!known) await tx.insert(contact).values({ companyId, name: input.contactName?.trim() ?? "", email, phone, role: "henvendelse" });
-      else if (phone) await tx.update(contact).set({ phone }).where(and(eq(contact.id, known.id), eq(contact.phone, "")));
     }
 
     const [co] = await tx.select({ name: company.name, rowNo: company.rowNo }).from(company).where(eq(company.id, companyId));
@@ -128,7 +127,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
       actor: "system",
       type: "henvendelse",
       summary: `Henvendelse via kinly.dk (${input.channel})${what ? `: ${what}` : ""}`,
-      payload: { previewId: input.id, contactName: input.contactName ?? "", email },
+      payload: { previewId: input.id, contactName: input.contactName ?? "", email, ...(phone ? { phone } : {}) },
     });
     return { companyId, created, rowNo: co.rowNo, duplicate: false };
   });

@@ -63,3 +63,12 @@ test("SEO-tjek-henvendelse: telefon lander på ny virksomhed og kontakt; et kend
   const [lux] = await db.select().from(company).where(eq(company.id, r.companyId));
   assert.equal(lux.phone, "11 22 33 44");
 });
+
+test("ubekræftet nummer lægges aldrig på en eksisterende virksomhed uden nummer — kun på henvendelsen (Sol R7-04)", async () => {
+  await db.update(company).set({ phone: "" }).where(eq(company.name, "Salon Lux"));
+  const r = await recordInbound(db, { ...base, id: "p11", company: "Lux", email: "fremmed@gmail.com", website: "salonlux.dk", phone: "99 88 77 66" });
+  const [lux] = await db.select().from(company).where(eq(company.id, r.companyId));
+  assert.equal(lux.phone, "");
+  const [a] = await db.select().from(activity).where(eq(activity.legacyId, "preview:p11"));
+  assert.equal((a.payload as { phone?: string }).phone, "99 88 77 66");
+});

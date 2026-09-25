@@ -5,9 +5,12 @@
 import { and, eq, like, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { failedBeforeAccept } from "../send-safety.ts";
+import { failedBeforeAccept, withLock } from "../send-safety.ts";
 
 export class PreviewSendError extends Error {}
+
+/** Én lås pr. udkast: status-ændring (PATCH) og send-reservation kan ikke flette ind i hinanden (Sol R7-02). */
+export const previewLockName = (id: string) => `preview:${id}`;
 
 export const SENDABLE = ["preview klar", "godkendt", "kladde klar"] as const;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
@@ -33,37 +36,41 @@ export async function sendPreview(
   actor: string,
   deps: SendDeps,
 ): Promise<void> {
-  const r = await deps.get(id);
-  if (!r) throw new PreviewSendError("udkastet findes ikke");
-  if (!(SENDABLE as readonly string[]).includes(r.status)) throw new PreviewSendError(`kan ikke sendes i status "${r.status}"`);
-  if (!r.previewUrl) throw new PreviewSendError("udkastet har intet link endnu");
-  const to = r.email.trim();
-  if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
-  const subject = input.subject.trim();
-  const body = input.body.trim();
-  if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
-  if (!body || body.length > 5000) throw new PreviewSendError("teksten mangler eller er for lang");
-  if (!body.includes(r.previewUrl)) throw new PreviewSendError("mailen skal indeholde linket til udkastet");
+  const { to, subject, legacyId, claimed } = await withLock(previewLockName(id), async () => {
+    const r = await deps.get(id);
+    if (!r) throw new PreviewSendError("udkastet findes ikke");
+    if (!(SENDABLE as readonly string[]).includes(r.status)) throw new PreviewSendError(`kan ikke sendes i status "${r.status}"`);
+    if (!r.previewUrl) throw new PreviewSendError("udkastet har intet link endnu");
+    const to = r.email.trim();
+    if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
+    const subject = input.subject.trim();
+    const body = input.body.trim();
+    if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
+    if (!body || body.length > 5000) throw new PreviewSendError("teksten mangler eller er for lang");
+    if (!body.includes(r.previewUrl)) throw new PreviewSendError("mailen skal indeholde linket til udkastet");
 
-  const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
-  const legacyId = `preview-sent:${id}`;
-  // Kravet fødes som state "sending" og er låst. Kun et UDTRYKKELIGT registreret tvetydigt SMTP-udfald
-  // ("uncertain") kan frigives; fejler den registrering eller "sent"-skrivningen, forbliver kravet låst (Sol R5-1).
-  const claimed = await db
-    .insert(activity)
-    .values({
-      legacyId,
-      companyId: link?.companyId ?? null,
-      clientName: r.company,
-      actor,
-      // Et forsøg — bliver først "udkast_sendt" når Gmail har taget mailen (Sol R6-F2).
-      type: "udkast_forsoeg",
-      summary: `Forsøg på at sende gratis udkast til ${to}`,
-      payload: { previewId: id, previewUrl: r.previewUrl, subject, state: "sending" },
-    })
-    .onConflictDoNothing()
-    .returning({ id: activity.id });
-  if (!claimed.length) throw new PreviewSendError("udkastet er allerede sendt");
+    const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
+    const legacyId = `preview-sent:${id}`;
+    // Kravet fødes som state "sending" og er låst. Kun et UDTRYKKELIGT registreret tvetydigt SMTP-udfald
+    // ("uncertain") kan frigives; fejler den registrering eller "sent"-skrivningen, forbliver kravet låst (Sol R5-1).
+    const claimed = await db
+      .insert(activity)
+      .values({
+        legacyId,
+        companyId: link?.companyId ?? null,
+        clientName: r.company,
+        actor,
+        // Et forsøg — bliver først "udkast_sendt" når Gmail har taget mailen (Sol R6-F2).
+        type: "udkast_forsoeg",
+        summary: `Forsøg på at sende gratis udkast til ${to}`,
+        payload: { previewId: id, previewUrl: r.previewUrl, subject, state: "sending" },
+      })
+      .onConflictDoNothing()
+      .returning({ id: activity.id });
+    if (!claimed.length) throw new PreviewSendError("udkastet er allerede sendt");
+    return { to, subject, legacyId, claimed };
+  });
+  const body = input.body.trim();
 
   try {
     await deps.deliver({ to, subject, body });

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { hasOpenClaim, PreviewSendError, previewClaims, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { acquireLock, releaseLock } from "../send-safety.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -124,4 +125,17 @@ test("forsøg er ikke et sendt udkast før Gmail har taget det (tidslinje-type)"
   const types = (await db.select({ type: activity.type }).from(activity)).map((r) => r.type).sort();
   assert.deepEqual(types, ["udkast_sendt", "udkast_sendt"]);
   assert.equal(await hasOpenClaim(db, r5.id), false);
+});
+
+test("send læser status under udkastets lås: en afvisning lavet mens låsen holdes, stopper afsendelsen (Sol R7-02)", async () => {
+  const r = { ...req, id: "preview_lock1" };
+  const x = deps(r);
+  const h = await acquireLock(previewLockName(r.id), 30_000);
+  assert.ok(h);
+  const pending = sendPreview(db, r.id, msg, "lucas", x.d);
+  await new Promise((res) => setTimeout(res, 300));
+  r.status = "afvist"; // PATCH skriver under låsen
+  await releaseLock(previewLockName(r.id), h!);
+  await assert.rejects(pending, PreviewSendError);
+  assert.equal(x.sent.length, 0);
 });

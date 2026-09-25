@@ -1,4 +1,5 @@
 import { store } from "./store.ts";
+import { withLock } from "./send-safety.ts";
 
 export const PREVIEW_STATUSES = [
   "ny",
@@ -61,6 +62,10 @@ export async function readPreviewRequests(): Promise<PreviewRequest[]> {
   return Array.isArray(value) ? value : [];
 }
 
+// Alle læs-ændr-skriv af KV-arrayet sker under én lås, så samtidige henvendelser ikke
+// overskriver hinanden (Sol R7-03). ponytail: global lås; nøgle pr. id hvis trafikken vokser.
+const QUEUE_LOCK = "preview-queue";
+
 export async function createPreviewRequest(input: PreviewRequestInput): Promise<PreviewRequest> {
   const company = input.company.trim();
   const email = input.email.trim().toLowerCase();
@@ -85,8 +90,10 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     createdAt: now,
     updatedAt: now,
   };
-  const records = await readPreviewRequests();
-  await store.put(KEY, [...records, record]);
+  await withLock(QUEUE_LOCK, async () => {
+    const records = await readPreviewRequests();
+    await store.put(KEY, [...records, record]);
+  });
   return record;
 }
 
@@ -95,31 +102,35 @@ export async function updatePreviewStatus(
   status: PreviewStatus,
   fields: Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey" | "reviewNotes">> = {},
 ): Promise<PreviewRequest | null> {
-  const records = await readPreviewRequests();
-  const index = records.findIndex((item) => item.id === requestId);
-  if (index < 0) return null;
-  const current = records[index];
-  const definedFields = Object.fromEntries(
-    Object.entries(fields).filter(([, value]) => value !== undefined),
-  ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey" | "reviewNotes">>;
-  const next: PreviewRequest = {
-    ...current,
-    ...definedFields,
-    status,
-    ...(status === "godkendt" ? { approvedAt: new Date().toISOString() } : {}),
-    ...(status === "afvist" ? { rejectedAt: new Date().toISOString() } : {}),
-    updatedAt: new Date().toISOString(),
-  };
-  records[index] = next;
-  await store.put(KEY, records);
-  return next;
+  return withLock(QUEUE_LOCK, async () => {
+    const records = await readPreviewRequests();
+    const index = records.findIndex((item) => item.id === requestId);
+    if (index < 0) return null;
+    const current = records[index];
+    const definedFields = Object.fromEntries(
+      Object.entries(fields).filter(([, value]) => value !== undefined),
+    ) as Partial<Pick<PreviewRequest, "research" | "previewUrl" | "screenshotUrl" | "mailDraft" | "contactName" | "branch" | "questionnaire" | "company" | "demoKey" | "reviewNotes">>;
+    const next: PreviewRequest = {
+      ...current,
+      ...definedFields,
+      status,
+      ...(status === "godkendt" ? { approvedAt: new Date().toISOString() } : {}),
+      ...(status === "afvist" ? { rejectedAt: new Date().toISOString() } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    records[index] = next;
+    await store.put(KEY, records);
+    return next;
+  });
 }
 
 /** Gem Jev-profilen uden at røre status. */
 export async function setPreviewProfile(requestId: string, profile: NonNullable<PreviewRequest["profile"]>): Promise<void> {
-  const records = await readPreviewRequests();
-  const r = records.find((item) => item.id === requestId);
-  if (!r) return;
-  r.profile = profile;
-  await store.put(KEY, records);
+  await withLock(QUEUE_LOCK, async () => {
+    const records = await readPreviewRequests();
+    const r = records.find((item) => item.id === requestId);
+    if (!r) return;
+    r.profile = profile;
+    await store.put(KEY, records);
+  });
 }
