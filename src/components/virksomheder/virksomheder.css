@@ -326,3 +326,10 @@
     transition: none !important;
   }
 }
+
+/* Nyhedsbrev-fanen: rolige tabeller med hårfine skillelinjer */
+.nl-table { width: 100%; font-size: 12.5px; border-collapse: collapse; }
+.nl-table th { font-size: 11.5px; font-weight: 600; color: var(--text-muted); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.nl-table td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--border); }
+.nl-table tr:last-child td { border-bottom: 0; }
+.nl-table td[style*="right"], .nl-table th[style*="right"] { white-space: nowrap; }
