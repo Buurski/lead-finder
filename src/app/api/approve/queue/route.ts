@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQueue, updateDraft, writeQueue } from "@/lib/queue";
+import { readQueue, updateDraft, writeQueue, LinkPolicyError } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
 import { registerDraftApproved, unregisterDraftApproved } from "@/lib/datalayer";
@@ -310,6 +310,20 @@ export async function POST(req: Request) {
     return null;
   };
 
+  // Link-politik (Lucas 24/9): køen afviser skrivninger der fjerner link-linjerne.
+  // Oversæt det til et 422 med grunden, så UI'et kan vise hvad der mangler —
+  // kladden er uændret, intet er gemt.
+  const linkGuarded = async <T>(fn: () => Promise<T>): Promise<T | NextResponse> => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof LinkPolicyError) {
+        return NextResponse.json({ error: "link-politik", violations: e.issues }, { status: 422 });
+      }
+      throw e;
+    }
+  };
+
   if (action === "edit") {
     const blocked = await finalBlock();
     if (blocked) return blocked;
@@ -326,11 +340,12 @@ export async function POST(req: Request) {
     // FIX A: "Gem rettelse + godkend" skal lande i godkendt-tab'en, ikke
     // forsvinde som "edited". Status="approved" så den vises under
     // Godkendt og kan sendes uden yderligere klik.
-    const updated = await updateDraft(id, {
+    const updated = await linkGuarded(() => updateDraft(id, {
       status: "approved",
       subject: payload.subject,
       body: payload.body,
-    });
+    }));
+    if (updated instanceof NextResponse) return updated;
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }
@@ -348,7 +363,8 @@ export async function POST(req: Request) {
     if (!check.ok) {
       return NextResponse.json({ error: "voice-guide violation", violations: check.errors }, { status: 422 });
     }
-    const updated = await updateDraft(id, { demoPair: pair, body: payload.body });
+    const updated = await linkGuarded(() => updateDraft(id, { demoPair: pair, body: payload.body }));
+    if (updated instanceof NextResponse) return updated;
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }
@@ -366,7 +382,8 @@ export async function POST(req: Request) {
     }
     // Præsentationen følger afsenderen: Lucas' "salgselev"-historie må aldrig gå ud fra Charlie.
     const { adaptToSender } = await import("@/lib/tone-mixer");
-    const updated = await updateDraft(id, { sender, body: adaptToSender(target.body ?? "", sender) });
+    const updated = await linkGuarded(() => updateDraft(id, { sender, body: adaptToSender(target.body ?? "", sender) }));
+    if (updated instanceof NextResponse) return updated;
     if (!updated) return NextResponse.json({ error: "draft not found" }, { status: 404 });
     return NextResponse.json({ draft: updated });
   }

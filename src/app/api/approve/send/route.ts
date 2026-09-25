@@ -10,6 +10,7 @@ import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
 import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
 import { validateDraft } from "@/lib/draft";
+import { missingReferenceLinks } from "@/lib/demos";
 import { parseIds, onlyIds } from "@/lib/send-ids";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
@@ -425,6 +426,17 @@ export async function POST(req: Request) {
           if (!check.ok) {
             skipped.push({ name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
             send({ type: "skipped", index: processed, total, name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
+            continue;
+          }
+          // 6b. LINK-POLITIK (Lucas 24/9): sidste hegn på de bytes der faktisk
+          // sendes. Mangler kinly.dk-forsiden eller den matchende case/branche-
+          // side, går mailen IKKE ud — også hvis en menneske-edit eller en ældre
+          // kladde er smuttet forbi de tidligere gates. Fail-closed, intet send.
+          const linkIssues = missingReferenceLinks(fresh.body, fresh.branch, fresh.name);
+          if (linkIssues.length) {
+            const reason = `link-politik: ${linkIssues.join("; ")}`;
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;
           }
           if ((finalText.match(/Med venlig hilsen/g) || []).length !== 1) {

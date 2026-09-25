@@ -12,7 +12,7 @@ beforeEach(async () => {
 
 const url = "https://demo.kinly.dk/p/abc";
 const req: PreviewLike = { id: "preview_x1", company: "Salon Lux", email: "maja@salonlux.dk", status: "preview klar", previewUrl: url };
-const msg = { subject: "Jeres udkast", body: `Hej Maja\n\nHer er udkastet: ${url}` };
+const msg = { subject: "Jeres udkast", body: `Hej Maja\n\nHer er udkastet: ${url}\n\nMin egen side: https://kinly.dk/` };
 
 function deps(r: PreviewLike | null, fail = false) {
   const sent: string[] = [];

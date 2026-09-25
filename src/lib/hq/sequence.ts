@@ -7,7 +7,7 @@ import { and, eq, gt, inArray } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, outreach } from "../db/schema.ts";
 import { validateDraft } from "../draft.ts";
-import { pickDemos } from "../demos.ts";
+import { missingReferenceLinks, referenceLines, REFERENCE_INTRO } from "../demos.ts";
 import type { QueueDraft } from "../queue.ts";
 
 export const DEFAULT_TOUCHES = 3;
@@ -62,18 +62,17 @@ export function composeStep(lead: SequenceLead, angle: Angle): { subject: string
         `Vil I have den?`,
       ].join("\n\n");
       break;
-    case "eksempel": {
-      const demo = pickDemos(lead.branch, n)[0];
+    case "eksempel":
+      // Selve linket kommer fra den fælles link-blok nedenfor — ikke et
+      // håndskrevet demo-link her, som førhen kunne pege på noget andet end
+      // casen (og helt mangle på de øvrige vinkler).
       body = [
         `Hej ${n},`,
-        demo
-          ? `Hvis det er nemmere at se end at læse om, er her en side jeg har bygget:\n→ ${demo.url}`
-          : `Hvis det er nemmere at se end at læse om, kan jeg sende et par sider jeg har bygget til andre lokale virksomheder.`,
-        `Den er lavet ud fra deres egne farver og billeder. Jeg kan lave noget tilsvarende til ${n}.`,
+        `Hvis det er nemmere at se end at læse om, kan I se nogle af de sider jeg har bygget her.`,
+        `De er lavet ud fra kundernes egne farver og billeder. Jeg kan lave noget tilsvarende til ${n}.`,
         `Skal jeg sende et udkast?`,
       ].join("\n\n");
       break;
-    }
     case "sidste":
       body = [
         `Hej ${n},`,
@@ -83,8 +82,23 @@ export function composeStep(lead: SequenceLead, angle: Angle): { subject: string
       ].join("\n\n");
       break;
   }
-  const check = validateDraft(body);
-  if (!check.ok) throw new Error(`opfølgning (${angle}) bryder stemme-reglerne: ${check.errors.join("; ")}`);
+  // Link-politik (Lucas 24/9): HVERT trin og hver vinkel bærer kinly.dk-forsiden
+  // plus den matchende case (eller bedste demo) og branche-siden. Linkene lægges
+  // som eget afsnit før det afsluttende spørgsmål, så trin 2..N ikke længere kan
+  // gå ud uden links. Ét sted at ændre politikken: demos.ts.
+  const links = referenceLines(lead.branch, n);
+  if (links.length) {
+    const parts = body.split("\n\n");
+    const last = parts.pop() ?? "";
+    const block = [REFERENCE_INTRO, ...links].join("\n");
+    body = (last ? [...parts, block, last] : [...parts, block]).join("\n\n");
+  }
+
+  const finalCheck = validateDraft(body);
+  const checkLinks = missingReferenceLinks(body, lead.branch, n);
+  if (!finalCheck.ok || checkLinks.length) {
+    throw new Error(`opfølgning (${angle}) bryder stemme-reglerne: ${[...finalCheck.errors, ...checkLinks].join("; ")}`);
+  }
   return { subject: `Re: En lille hilsen til ${n}`, body };
 }
 
