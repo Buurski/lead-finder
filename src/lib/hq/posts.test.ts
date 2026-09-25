@@ -27,6 +27,7 @@ import {
   recordJev,
   revisionOf,
   runChecklist,
+  seoMissing,
   updatePost,
 } from "./posts.ts";
 import type { BlogImages } from "./posts.ts";
@@ -58,7 +59,7 @@ const GREEN_CANDIDATE = (slot: "a" | "b") => ({
   id: `billed-${slot}`,
   url: `https://cdn.kinly.dk/${slot}.jpg`,
   placement: slot === "a" ? "hero" : "inline",
-  alt: `Alt-tekst ${slot}`,
+  alt: `Håndtegnet skitse af en hjemmeside, variant ${slot}`,
   credit: "Foto: Kinly",
   source: "eget skud",
   mobileUrl: `https://cdn.kinly.dk/${slot}-mobil.jpg`,
@@ -482,7 +483,7 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   assert.equal(internalLinks(greenBody()).length, 2);
   assert.equal(bodyLinks(greenBody()).some((l) => l.href.includes(`ref=blog-${GREEN_SLUG}`)), true);
 
-  const post = await createPost(db, { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "Priser" }, "hermes");
+  const post = await createPost(db, { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre." }, "hermes");
   const rød = readChecklist(post.checklist);
   assert.equal(rød.ok, false);
   assert.ok(rød.missing.length >= 5, rød.missing.join("; "));
@@ -493,19 +494,20 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   assert.deepEqual(readChecklist(halv.checklist).missing, [
     "menneskets A/B-valg mangler (A, B, begge eller ingen)",
     "menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)",
+    "et billede skal vælges (A, B eller begge) — uden billede kan opslaget ikke publiceres",
   ]);
 
   // Agenten kan ikke publicere, uanset hvor grønt kortet er.
   await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "hermes"), /agenten må kun/);
 
-  // Mennesket vælger billede (også "ingen" er et valg) og kvitterer faktatjek.
+  // Mennesket vælger billede (A, B eller begge — "ingen" blokerer Publicer) og kvitterer faktatjek.
   // Klientens egne choiceBy/choiceAt ignoreres: stemplet er serverens, sat ud fra
   // aktøren — så et UI kan ikke skrive et falsk menneskestempel på et valg.
   const grøn = await updatePost(
     db,
     post.id,
     {
-      images: { choice: "none", choiceBy: "hermes", choiceAt: "1999-01-01T00:00:00.000Z" },
+      images: { choice: "a", choiceBy: "hermes", choiceAt: "1999-01-01T00:00:00.000Z" },
       proofs: { factcheck: { note: "læst igennem" } },
     },
     "lucas",
@@ -546,7 +548,7 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
 });
 
 test("tjeklistens enkelte punkter: ord, links, CTA, pladsholder og A/B-stempel", async () => {
-  const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "Priser", excerpt: "Kort resume", body: greenBody() };
+  const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre.", body: greenBody() };
   const billeder: BlogImages = { ...GREEN_IMAGES, choice: "both", choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" };
   const beviser = { ...GREEN_PROOFS, factcheck: { by: "lucas", at: "2026-09-25T00:00:00.000Z", note: "", revision: revisionOf({ ...grund, images: billeder }) } };
 
@@ -595,4 +597,24 @@ test("Jev-svaret gemmes på den revision det gjaldt", async () => {
   assert.equal(readJev(efter.jev)?.ready, true);
   assert.notEqual(readJev(efter.jev)?.revision, revisionOf(efter));
   assert.equal(readJev(efter.jev)?.revision, revisionOf(post));
+});
+
+test("SEO-gates (Lucas 25-09): kategori, titel, uddrag, alt-tekst, billedvalg og kundesamtykke", () => {
+  const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre." };
+  const valgt = (choice: "a" | "b" | "both" | "none", a = GREEN_CANDIDATE("a")): BlogImages => ({ a, b: GREEN_CANDIDATE("b"), choice, choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" });
+  assert.deepEqual(seoMissing(grund, valgt("a")), []);
+  const m = (p: object, imgs = valgt("a")) => seoMissing({ ...grund, ...p }, imgs).join(" | ");
+  assert.match(m({ category: "Priser" }), /kategori skal være/);
+  assert.match(m({ title: "x".repeat(61) }), /titlen er 61 tegn/);
+  assert.match(m({ excerpt: "for kort" }), /uddraget er 8 tegn/);
+  assert.match(m({ excerpt: "x".repeat(161) }), /uddraget er 161 tegn/);
+  assert.match(m({}, valgt("none")), /et billede skal vælges/);
+  assert.match(m({}, valgt("a", { ...GREEN_CANDIDATE("a"), alt: "kort" })), /alt-tekst på A er 4 tegn/);
+  assert.match(m({}, valgt("a", { ...GREEN_CANDIDATE("a"), alt: "Billede af en håndværker på et tag i Herning" })), /må ikke starte med/);
+  const kunde = { ...GREEN_CANDIDATE("a"), url: "https://kinly.dk/img/cases/shot-ikast-desktop.webp" };
+  assert.match(m({}, valgt("a", kunde)), /kundens samtykke/);
+  assert.deepEqual(seoMissing(grund, valgt("a", { ...kunde, consentRef: "mail 2026-09-20 fra Allan" })), []);
+  // B tjekkes kun når B er valgt.
+  assert.deepEqual(seoMissing(grund, { ...valgt("a"), b: { ...GREEN_CANDIDATE("b"), alt: "kort" } }), []);
+  assert.match(seoMissing(grund, { ...valgt("both"), b: { ...GREEN_CANDIDATE("b"), alt: "kort" } }).join(" "), /alt-tekst på B/);
 });

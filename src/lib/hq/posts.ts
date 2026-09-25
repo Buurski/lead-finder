@@ -147,6 +147,8 @@ export interface BlogImageCandidate {
   source: string;
   mobileUrl: string;
   desktopUrl: string;
+  /** Kundens samtykke (fx "mail 2026-09-20 fra Allan"). Påkrævet for kundebilleder (Lucas 25-09). */
+  consentRef?: string;
 }
 
 export interface BlogImages {
@@ -162,7 +164,7 @@ export interface BlogImages {
 
 export const NO_IMAGES: BlogImages = { a: null, b: null, choice: "none", choiceBy: "", choiceAt: null };
 
-const IMAGE_FIELDS = ["id", "url", "placement", "alt", "credit", "source", "mobileUrl", "desktopUrl"] as const;
+const IMAGE_FIELDS = ["id", "url", "placement", "alt", "credit", "source", "mobileUrl", "desktopUrl", "consentRef"] as const;
 const HTTP_URL = /^https?:\/\/[^\s]+$/;
 
 /** Valgfri http(s)-url. "" når feltet ikke er sat. */
@@ -193,6 +195,8 @@ function imageCandidate(v: unknown, slot: "a" | "b"): BlogImageCandidate | null 
     source: text(src.source, "Kilde", 300) ?? "",
     mobileUrl: imageUrl(src.mobileUrl, "Mobil-url"),
     desktopUrl: imageUrl(src.desktopUrl, "Desktop-url"),
+    // Kun med når det er sat, så eksisterende kandidater round-tripper uændret.
+    ...(text(src.consentRef, "Samtykke", 200) ? { consentRef: text(src.consentRef, "Samtykke", 200) } : {}),
   };
 }
 
@@ -675,8 +679,45 @@ export function runChecklist(p: {
   if (!proofs.factcheck) missing.push("menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)");
   else if (proofs.factcheck.revision !== revision) missing.push("faktatjekket gælder en ældre version af teksten — det skal laves om");
   if (PLACEHOLDER.test(body)) missing.push("pladsholder eller TODO står stadig i teksten");
+  missing.push(...seoMissing(p, images));
 
   return { revision, ok: missing.length === 0, missing, at: new Date().toISOString() };
+}
+
+// --- SEO-gates (Lucas 25-09): håndhæves her, ikke kun på sitet ----------------
+// Kategorien skal være et af kinly-sitets emner (content/blog/categories.ts).
+export const BLOG_CATEGORIES = ["lokal-synlighed", "ai-soegning", "hjemmeside", "kundecases", "pris", "kinly"] as const;
+export const SEO_LIMITS = { title: 60, excerptMin: 70, excerpt: 160, altMin: 20, alt: 125 } as const;
+const ALT_OPENER = /^(billede|foto|image|picture)\s+af\b/i;
+
+/** Kundebillede = hentet fra en kundes side eller Kinlys case-skud. Kræver registreret samtykke. */
+export function isCustomerImage(k: BlogImageCandidate): boolean {
+  return /\/img\/cases\//.test(k.url) || /^kunde/i.test(k.source.trim());
+}
+
+/** SEO-punkter der mangler. Titlen bliver <title>, excerpt bliver meta description. */
+export function seoMissing(p: { title?: string; category?: string; excerpt?: string }, images: BlogImages): string[] {
+  const out: string[] = [];
+  const title = String(p.title ?? "").trim();
+  const excerpt = String(p.excerpt ?? "").trim();
+  if (!(BLOG_CATEGORIES as readonly string[]).includes(String(p.category ?? ""))) {
+    out.push(`kategori skal være en af: ${BLOG_CATEGORIES.join(", ")}`);
+  }
+  if (!title || title.length > SEO_LIMITS.title) out.push(`titlen er ${title.length} tegn — den skal være 1-${SEO_LIMITS.title} (den bliver sidens <title>)`);
+  if (excerpt.length < SEO_LIMITS.excerptMin || excerpt.length > SEO_LIMITS.excerpt) {
+    out.push(`uddraget er ${excerpt.length} tegn — det skal være ${SEO_LIMITS.excerptMin}-${SEO_LIMITS.excerpt} (det bliver meta description)`);
+  }
+  if (images.choice === "none") out.push("et billede skal vælges (A, B eller begge) — uden billede kan opslaget ikke publiceres");
+  const chosen = images.choice === "both" ? [images.a, images.b] : images.choice === "a" ? [images.a] : images.choice === "b" ? [images.b] : [];
+  for (const [i, k] of chosen.entries()) {
+    if (!k) continue;
+    const label = images.choice === "both" ? (i === 0 ? "A" : "B") : images.choice.toUpperCase();
+    const alt = k.alt.trim();
+    if (alt.length < SEO_LIMITS.altMin || alt.length > SEO_LIMITS.alt) out.push(`alt-tekst på ${label} er ${alt.length} tegn — den skal være ${SEO_LIMITS.altMin}-${SEO_LIMITS.alt}`);
+    else if (ALT_OPENER.test(alt)) out.push(`alt-tekst på ${label} må ikke starte med "billede af"/"foto af" — beskriv motivet`);
+    if (isCustomerImage(k) && !k.consentRef?.trim()) out.push(`billede ${label} er et kundebillede — kundens samtykke skal registreres`);
+  }
+  return out;
 }
 
 const NO_STRUCTURED = { images: NO_IMAGES, scores: {} as BlogScores, proofs: NO_PROOFS };
