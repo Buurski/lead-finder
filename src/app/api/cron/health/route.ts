@@ -26,6 +26,7 @@ const SCHEDULE: Record<string, string> = {
   "newsletter-sync": "20 5 * * *",
   "jev-rescore": "30 3,13 * * *",
   "snapshot": "45 3 * * *",
+  "calendar-sync": "15 * * * *",
 };
 
 function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {
