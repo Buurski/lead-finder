@@ -1,8 +1,8 @@
 // Afsendelse af et færdigt gratis udkast. Kun på klik fra Lucas/Charlie efter de
 // har set udkastet — aldrig automatisk. Ét udkast sendes højst én gang: kravet
 // tages som en unik activity-række i Postgres FØR mailen går, og frigives hvis
-// afsendelsen fejler MED SIKKERHED før Gmail tog mailen (tvetydig fejl ⇒ kravet står som "pending" og afstemmes).
-import { and, eq, like, lt, sql } from "drizzle-orm";
+// afsendelsen fejler MED SIKKERHED før Gmail tog mailen (tvetydig fejl ⇒ kravet står og afstemmes).
+import { and, eq, like, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
 import { failedBeforeAccept } from "../send-safety.ts";
@@ -47,8 +47,8 @@ export async function sendPreview(
 
   const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
   const legacyId = `preview-sent:${id}`;
-  // Kravet fødes som state "pending" — tilstanden er en del af selve kravet (Sol R4-3), ikke en
-  // efterfølgende skrivning der kan fejle. "sent" sættes når Gmail har taget mailen.
+  // Kravet fødes som state "sending" og er låst. Kun et UDTRYKKELIGT registreret tvetydigt SMTP-udfald
+  // ("uncertain") kan frigives; fejler den registrering eller "sent"-skrivningen, forbliver kravet låst (Sol R5-1).
   const claimed = await db
     .insert(activity)
     .values({
@@ -58,7 +58,7 @@ export async function sendPreview(
       actor,
       type: "udkast_sendt",
       summary: `Gratis udkast sendt til ${to}`,
-      payload: { previewId: id, previewUrl: r.previewUrl, subject, state: "pending" },
+      payload: { previewId: id, previewUrl: r.previewUrl, subject, state: "sending" },
     })
     .onConflictDoNothing()
     .returning({ id: activity.id });
@@ -74,11 +74,16 @@ export async function sendPreview(
       await db.delete(activity).where(and(eq(activity.legacyId, legacyId), eq(activity.id, claimed[0].id)));
       throw new PreviewSendError(`mailen kunne ikke sendes: ${msg}`);
     }
-    // Kravet står som "pending" ⇒ usikkert; afstemmes med reconcilePreview.
     console.error(JSON.stringify({ evt: "preview.uncertain_send", id, to, error: msg }));
+    // Registrér udfaldet. Fejler det, står kravet som "sending" (låst) — kan kun bekræftes som sendt.
+    await db
+      .update(activity)
+      .set({ payload: sql`${activity.payload} || '{"state":"uncertain"}'::jsonb` })
+      .where(and(eq(activity.id, claimed[0].id), SENDING))
+      .catch((e) => console.error(JSON.stringify({ evt: "preview.uncertain_mark_failed", id, error: String(e).slice(0, 200) })));
     throw new PreviewSendError(`usikkert om mailen gik ud (${msg}) — tjek Gmail Sendt, og afstem derefter`);
   }
-  // Mailen er ude. Fejler en af de to skrivninger, står kravet stadig (intet gensend) og kan afstemmes som "sendt".
+  // Mailen er ude. Fejler en af de to skrivninger, står kravet låst som "sending" (intet gensend) og kan bekræftes som sendt.
   await db
     .update(activity)
     .set({ payload: sql`${activity.payload} || '{"state":"sent"}'::jsonb` })
@@ -89,56 +94,62 @@ export async function sendPreview(
   );
 }
 
-// Et krav der stadig er "pending" efter dette er ikke i gang (ruten har maxDuration 60 s) — det er usikkert.
-export const RECONCILE_AFTER_MS = 2 * 60_000;
-const PENDING = sql`${activity.payload}->>'state' = 'pending'`;
+const STATE = sql<string | null>`${activity.payload}->>'state'`;
+const SENDING = sql`${STATE} = 'sending'`;
+// Tvetydigt SMTP-udfald, registreret. (payload.uncertain=true er formen fra b1fd633, aldrig deployet.)
+const UNCERTAIN = sql`(${STATE} = 'uncertain' or (${STATE} is null and ${activity.payload}->>'uncertain' = 'true'))`;
+const OPEN = sql`(${STATE} = 'sending' or ${UNCERTAIN})`;
 
 /**
  * Afstemning efter et usikkert forsøg: Lucas har tjekket Gmail Sendt.
- * "not-sent" ⇒ kravet frigives (kun et usikkert krav, og kun ét der ikke kan være i gang).
- * "sent" ⇒ kravet låses som sendt og udkastet markeres sendt; idempotent, så en fejlet status-skrivning kan gentages.
- * Hver overgang er én betinget sætning på state='pending' — modsatte klik kan ikke begge vinde (Sol R4-5).
+ * "not-sent" ⇒ frigiver KUN et registreret usikkert krav (aldrig "sending": dér er udfaldet ukendt).
+ * "sent" ⇒ låser kravet som sendt og markerer udkastet; idempotent, så en fejlet status-skrivning kan gentages.
+ * Hver overgang er én betinget sætning — modsatte klik kan ikke begge vinde (Sol R4-5).
  */
 export async function reconcilePreview(
   db: Db,
   id: string,
   verdict: "sent" | "not-sent",
   markSent: (id: string) => Promise<void>,
-  nowMs = Date.now(),
 ): Promise<void> {
   const legacyId = `preview-sent:${id}`;
-  const settled = lt(activity.at, new Date(nowMs - RECONCILE_AFTER_MS));
-  const mine = and(eq(activity.legacyId, legacyId), PENDING, settled);
   if (verdict === "not-sent") {
-    const gone = await db.delete(activity).where(mine).returning({ id: activity.id });
-    if (!gone.length) throw new PreviewSendError(await whyNot(db, legacyId, "frigive"));
+    const gone = await db.delete(activity).where(and(eq(activity.legacyId, legacyId), UNCERTAIN)).returning({ id: activity.id });
+    if (!gone.length) throw new PreviewSendError(await whyNot(db, legacyId));
     return;
   }
   const done = await db
     .update(activity)
-    .set({ payload: sql`${activity.payload} || '{"state":"sent"}'::jsonb` })
-    .where(mine)
+    .set({ payload: sql`(${activity.payload} - 'uncertain') || '{"state":"sent"}'::jsonb` })
+    .where(and(eq(activity.legacyId, legacyId), OPEN))
     .returning({ id: activity.id });
   if (!done.length) {
-    const [row] = await db.select({ state: sql<string | null>`${activity.payload}->>'state'` }).from(activity).where(eq(activity.legacyId, legacyId));
-    if (!row || row.state === "pending") throw new PreviewSendError(await whyNot(db, legacyId, "bekræfte"));
+    const [row] = await db.select({ id: activity.id }).from(activity).where(eq(activity.legacyId, legacyId));
+    if (!row) throw new PreviewSendError("der er intet afsendelsesforsøg at bekræfte");
     // Allerede sendt (eller et ældre krav uden state): gentag bare status-skrivningen.
   }
   await markSent(id);
 }
 
-async function whyNot(db: Db, legacyId: string, verb: string): Promise<string> {
-  const [row] = await db.select({ state: sql<string | null>`${activity.payload}->>'state'` }).from(activity).where(eq(activity.legacyId, legacyId));
-  if (!row) return `der er intet afsendelsesforsøg at ${verb}`;
-  if (row.state === "pending") return "forsøget kan stadig være i gang — vent 2 minutter og prøv igen";
+async function whyNot(db: Db, legacyId: string): Promise<string> {
+  const [row] = await db.select({ state: STATE }).from(activity).where(eq(activity.legacyId, legacyId));
+  if (!row) return "der er intet afsendelsesforsøg at frigive";
+  if (row.state === "sending") return "udfaldet er ikke registreret (forsøget kan være i gang eller afbrudt) — kan kun bekræftes som sendt; frigivelse kræver manuel afklaring";
   return "udkastet er sendt — det kan ikke frigives";
 }
 
-/** Krav pr. preview-id til UI'et: "pending" = usikkert/i gang, "sent" = sendt. Ældre krav uden state tæller som sendt. */
-export async function previewClaims(db: Db): Promise<Map<string, "pending" | "sent">> {
+export type PreviewClaim = "sending" | "uncertain" | "sent";
+
+/** Krav pr. preview-id til UI'et. Ældre krav uden state tæller som sendt. */
+export async function previewClaims(db: Db): Promise<Map<string, PreviewClaim>> {
   const rows = await db
-    .select({ legacyId: activity.legacyId, state: sql<string | null>`${activity.payload}->>'state'` })
+    .select({ legacyId: activity.legacyId, state: STATE, uncertain: sql<string | null>`${activity.payload}->>'uncertain'` })
     .from(activity)
     .where(like(activity.legacyId, "preview-sent:%"));
-  return new Map(rows.map((r) => [String(r.legacyId).slice("preview-sent:".length), r.state === "pending" ? "pending" : "sent"]));
+  return new Map(
+    rows.map((row): [string, PreviewClaim] => [
+      String(row.legacyId).slice("preview-sent:".length),
+      row.state === "sending" ? "sending" : row.state === "uncertain" || (!row.state && row.uncertain === "true") ? "uncertain" : "sent",
+    ]),
+  )
 }

@@ -252,3 +252,9 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - R4-3 ACCEPT: tilstand fødes i kravet (`payload.state="pending"` ved insert); "sent" sættes efter Gmail-accept. Ingen efterfølgende skrivning der kan fejle stille.
 - R4-4 ACCEPT: "sent"-afstemning er idempotent — gentager status-skrivningen når kravet allerede er sendt.
 - R4-5 ACCEPT: hver overgang er én betinget sætning på `state='pending' AND at < nu-2min` (DELETE/UPDATE … RETURNING); modsatte klik kan ikke begge vinde; et forsøg der kan være i gang kan ikke afstemmes.
+
+### Sol bølge 2 R5 — dispositioner (base `07de55e`)
+- R5-1 ACCEPT: tilstande `sending` (låst, fødes ved insert) → `uncertain` (registreret tvetydigt SMTP-udfald) | `sent`. "not-sent" frigiver KUN `uncertain`; fejler registreringen, står kravet `sending` og kan kun bekræftes som sendt. 2-min-vinduet er fjernet (unødvendigt: `uncertain` sættes først efter deliver returnerede).
+- R5-2 ACCEPT (og R4-1 trækkes tilbage): `approve/add` finder modtageren før suppression og tjekker den faktiske adresse; KUN kladdens egen mail gemmes. Sheets-fundet mail slås op friskt ved send (kontakt-status tjekkes); Sheets nede ⇒ kladden kan hverken godkendes eller sendes. Sikker retning vinder over C3-renhed.
+- R5-3 ACCEPT: `uncertain=true` uden state (b1fd633, aldrig deployet) behandles som usikkert.
+- R5-4 ACCEPT: UI afleder kravet af den aktuelle liste; lokalt afstemt krav skjules kun til næste reload.

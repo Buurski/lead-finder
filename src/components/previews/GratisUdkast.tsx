@@ -24,8 +24,8 @@ interface PreviewRequest {
   screenshotUrl?: string;
   mailDraft?: string;
   reviewNotes?: string;
-  /** Afsendelseskrav fra Postgres: "pending" = usikkert forsøg, "sent" = sendt. */
-  sendClaim?: "pending" | "sent";
+  /** Afsendelseskrav fra Postgres: "sending" = uafklaret/låst, "uncertain" = registreret usikkert, "sent" = sendt. */
+  sendClaim?: "sending" | "uncertain" | "sent";
   createdAt: string;
   updatedAt: string;
 }
@@ -251,7 +251,9 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
     item.status === "sendt/lukket" ? "sent" : "idle",
   );
   const [sendErr, setSendErr] = useState("");
-  const [claim, setClaim] = useState(item.sendClaim);
+  // Afledt af den aktuelle liste (opdateres ved reload); "cleared" skjuler kun det krav vi selv har afstemt (Sol R5-4).
+  const [cleared, setCleared] = useState<string | undefined>();
+  const claim = cleared === item.sendClaim ? undefined : item.sendClaim;
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [rejecting, setRejecting] = useState(false);
@@ -290,7 +292,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || "Kunne ikke afstemme lige nu.");
       setSendErr("");
-      setClaim(undefined);
+      setCleared(item.sendClaim);
       if (verdict === "sent") {
         setSendState("sent");
         setSentAt(new Date().toISOString());
@@ -435,13 +437,15 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
             {saveMsg && <span className="cc-dim" style={{ fontSize: 12.5 }}>{saveMsg}</span>}
           </div>
           {sendErr && <div className="gu-error-note">{sendErr}</div>}
-          {claim === "sent" && item.status !== "sendt/lukket" && (
+          {(claim === "sent" || claim === "sending") && item.status !== "sendt/lukket" && (
             <div className="gu-actions">
-              <span className="cc-dim" style={{ fontSize: 12.5 }}>Mailen er sendt, men status blev ikke opdateret.</span>
+              <span className="cc-dim" style={{ fontSize: 12.5 }}>
+                {claim === "sent" ? "Mailen er sendt, men status blev ikke opdateret." : "Afsendelsen blev ikke afklaret. Tjek Gmail Sendt."}
+              </span>
               <button className="cc-btn" onClick={() => void reconcile("sent")}>Markér som sendt</button>
             </div>
           )}
-          {(claim === "pending" || sendErr.includes("usikkert")) && (
+          {(claim === "uncertain" || (!claim && sendErr.includes("usikkert"))) && (
             <div className="gu-actions">
               <span className="cc-dim" style={{ fontSize: 12.5 }}>Tjekket Gmail Sendt?</span>
               <button className="cc-btn" onClick={() => void reconcile("sent")}>Den er sendt</button>

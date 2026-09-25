@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   // Afsendelseskrav (Postgres) så UI'et kan vise afstemning efter et usikkert forsøg — også efter reload (Sol R4-2).
   const claims = await import("@/lib/hq/preview-send")
     .then(async (m) => m.previewClaims((await import("@/lib/db/client")).getDb()))
-    .catch(() => new Map<string, "pending" | "sent">());
+    .catch(() => new Map<string, "sending" | "uncertain" | "sent">());
   const requests = all.map((r) => (claims.has(r.id) ? { ...r, sendClaim: claims.get(r.id) } : r));
   return NextResponse.json({
     requests: status && PREVIEW_STATUSES.includes(status) ? requests.filter((r) => r.status === status) : requests,

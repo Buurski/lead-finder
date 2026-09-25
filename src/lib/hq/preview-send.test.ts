@@ -67,31 +67,46 @@ test("tvetydig SMTP-fejl (timeout efter DATA) holder kravet — intet dobbelt-se
   assert.equal(x.sent.length, 0);
 });
 
-test("usikkert forsøg kan afstemmes: én vinder, ikke mens det kan være i gang, sikkert sendt kan aldrig låses op", async () => {
-  const later = Date.now() + 3 * 60_000;
-  const amb = () => deps(req, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d;
-  await assert.rejects(sendPreview(db, req.id, msg, "lucas", amb()), /usikkert/);
-  // For tidligt: forsøget kan stadig være i gang.
-  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}), /vent 2 minutter/);
-  await reconcilePreview(db, req.id, "not-sent", async () => {}, later);
+test("afstemning: kun registreret usikkert kan frigives, én vinder, sikkert sendt låses aldrig op", async () => {
+  const amb = (r: PreviewLike) => deps(r, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d;
+  await assert.rejects(sendPreview(db, req.id, msg, "lucas", amb(req)), /usikkert/);
+  assert.equal((await previewClaims(db)).get(req.id), "uncertain");
+  await reconcilePreview(db, req.id, "not-sent", async () => {});
   // Modsat klik efter frigivelse taber.
-  await assert.rejects(reconcilePreview(db, req.id, "sent", async () => {}, later), PreviewSendError);
+  await assert.rejects(reconcilePreview(db, req.id, "sent", async () => {}), PreviewSendError);
   const x = deps(req);
   await sendPreview(db, req.id, msg, "lucas", x.d);
   assert.deepEqual(x.sent, ["maja@salonlux.dk"]);
-  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}, later), /kan ikke frigives/);
-  assert.equal((await db.select().from(activity)).length, 1, "sikkert krav står");
+  assert.equal((await previewClaims(db)).get(req.id), "sent");
+  await assert.rejects(reconcilePreview(db, req.id, "not-sent", async () => {}), /kan ikke frigives/);
 
-  const r2 = { ...req, id: "preview_x2" };
-  await assert.rejects(sendPreview(db, r2.id, msg, "lucas", deps(r2, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d), /usikkert/);
   // "sent" med fejlende status-skrivning kan gentages (idempotent), og derefter kan kravet ikke frigives.
-  await assert.rejects(reconcilePreview(db, r2.id, "sent", async () => { throw new Error("KV nede"); }, later), /KV nede/);
+  const r2 = { ...req, id: "preview_x2" };
+  await assert.rejects(sendPreview(db, r2.id, msg, "lucas", amb(r2)), /usikkert/);
+  await assert.rejects(reconcilePreview(db, r2.id, "sent", async () => { throw new Error("KV nede"); }), /KV nede/);
   const marked: string[] = [];
-  await reconcilePreview(db, r2.id, "sent", async (i) => { marked.push(i); }, later);
+  await reconcilePreview(db, r2.id, "sent", async (i) => { marked.push(i); });
   assert.deepEqual(marked, [r2.id]);
-  await assert.rejects(reconcilePreview(db, r2.id, "not-sent", async () => {}, later), /kan ikke frigives/);
+  await assert.rejects(reconcilePreview(db, r2.id, "not-sent", async () => {}), /kan ikke frigives/);
+});
 
-  const claims = await previewClaims(db);
-  assert.equal(claims.get(req.id), "sent");
-  assert.equal(claims.get(r2.id), "sent");
+test("uafklaret krav (state=sending, fx fejlet registrering) kan ikke frigives — kun bekræftes som sendt", async () => {
+  const r3 = { ...req, id: "preview_x3" };
+  await assert.rejects(sendPreview(db, r3.id, msg, "lucas", deps(r3, Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" })).d), /usikkert/);
+  // Simulér at registreringen af "uncertain" fejlede: kravet står som "sending".
+  await db.update(activity).set({ payload: { previewId: r3.id, state: "sending" } });
+  assert.equal((await previewClaims(db)).get(r3.id), "sending");
+  await assert.rejects(reconcilePreview(db, r3.id, "not-sent", async () => {}), /ikke registreret/);
+  const again = deps(r3);
+  await assert.rejects(sendPreview(db, r3.id, msg, "lucas", again.d), /allerede sendt/);
+  assert.equal(again.sent.length, 0);
+  await reconcilePreview(db, r3.id, "sent", async () => {});
+  assert.equal((await previewClaims(db)).get(r3.id), "sent");
+});
+
+test("ældre usikkert krav (uncertain=true uden state) kan stadig frigives", async () => {
+  await db.insert(activity).values({ legacyId: "preview-sent:preview_old1", type: "udkast_sendt", payload: { previewId: "preview_old1", uncertain: true } });
+  assert.equal((await previewClaims(db)).get("preview_old1"), "uncertain");
+  await reconcilePreview(db, "preview_old1", "not-sent", async () => {});
+  assert.equal((await previewClaims(db)).has("preview_old1"), false);
 });

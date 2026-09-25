@@ -90,14 +90,14 @@ export async function POST(req: NextRequest) {
     const name = (d.name || "").trim();
     const body = (d.body || "").trim();
     if (!name || !body) { skipped.push({ name: name || "(uden navn)", reason: "mangler navn/body" }); continue; }
-    const supp = suppressionReason({ leadId: d.leadId, name, city: d.city, branch: d.branch, email: d.recipientEmail }, blockSets);
+    // C3: ingen kladde i Afventer uden modtager — egen mail eller det matchede Sheets-leads mail.
+    // Modtageren findes FØR suppression, så den faktiske adresse tjekkes mod kontakt-blokken (Sol R5-2).
+    const ownTo = d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : "";
+    const to = ownTo || (matchLead(sheetsLeads ?? [], { leadId: (d.leadId || "").toString(), name, city: d.city })?.email || "").trim();
+    const supp = suppressionReason({ leadId: d.leadId, name, city: d.city, branch: d.branch, email: to || undefined }, blockSets);
     if (supp) { skipped.push({ name, reason: supp }); continue; }
     const check = validateDraft(body);
     if (!check.ok) { skipped.push({ name, reason: `voice: ${check.errors.join(", ")}` }); continue; }
-    // C3: ingen kladde i Afventer uden modtager — egen mail eller det matchede Sheets-leads mail.
-    const ownTo = d.recipientEmail && EMAIL_RE.test(d.recipientEmail.trim()) ? d.recipientEmail.trim() : "";
-    // Den fundne modtager gemmes på kladden, så den ikke afhænger af at Sheets svarer senere (Sol R4-1).
-    const to = ownTo || (matchLead(sheetsLeads ?? [], { leadId: (d.leadId || "").toString(), name, city: d.city })?.email || "").trim();
     if (!hasUsableEmail(to)) {
       skipped.push({ name, reason: "ingen modtager-mail" });
       continue;
@@ -114,7 +114,9 @@ export async function POST(req: NextRequest) {
       professionalism: d.professionalism || "",
       subject: (d.subject || `En idé til ${name}`).trim(),
       body,
-      recipientEmail: to,
+      // Kun egen mail gemmes. En Sheets-fundet mail slås op friskt ved send, så Sheets' kontakt-status
+      // altid tjekkes; er Sheets nede, kan kladden hverken godkendes eller sendes (Sol R5-2 > R4-1).
+      recipientEmail: ownTo || undefined,
       status: "pending",
       source: d.source || "cowork-leadgen",
       ...(d.sender === "charlie" ? { sender: "charlie" as const } : d.sender === "lucas" ? { sender: "lucas" as const } : {}),
@@ -126,7 +128,7 @@ export async function POST(req: NextRequest) {
     if (d.leadId) blockSets.ids.add(d.leadId.toString());
     const k = bizKey(name, d.city);
     if (k) blockSets.keys.add(k);
-    if (d.recipientEmail) addEmailToBlock(blockSets.emailBlock, d.recipientEmail);
+    addEmailToBlock(blockSets.emailBlock, to);
   }
 
   if (valid.length > 0) await appendDrafts(valid);
