@@ -168,15 +168,15 @@ export async function previewClaims(db: Db): Promise<Map<string, PreviewClaim>> 
 }
 
 /** Må udkastets status ændres til `target`? Intet krav ⇒ ja. Et sendt krav er endeligt: kun "sendt/lukket"
- *  (idempotent) er tilladt. Et uafklaret krav ("sending"/"uncertain") skal afstemmes først (Sol R6-F3, R8-02). */
-export async function claimBlocksStatus(db: Db, id: string, target: string): Promise<boolean> {
+ *  uden feltændringer (idempotent) er tilladt. Et uafklaret krav ("sending"/"uncertain") skal afstemmes først (Sol R6-F3, R8-02). */
+export async function claimBlocksStatus(db: Db, id: string, target: string, hasEdits = false): Promise<boolean> {
   const [row] = await db
     .select({ state: STATE, uncertain: sql<string | null>`${activity.payload}->>'uncertain'` })
     .from(activity)
     .where(eq(activity.legacyId, `preview-sent:${id}`));
   if (!row) return false;
   const sent = row.state === "sent" || (!row.state && row.uncertain !== "true");
-  return !(sent && target === "sendt/lukket");
+  return !(sent && target === "sendt/lukket" && !hasEdits); // sendt ⇒ kun status, ingen feltændringer (R9-02)
 }
 
 /** Uafklaret krav ("sending"/"uncertain") på et udkast: status må ikke ændres før det er afstemt (Sol R6-F3). */

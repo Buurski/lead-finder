@@ -147,4 +147,5 @@ test("sendt krav er endeligt: kun 'sendt/lukket' tilladt; intet krav blokerer in
   assert.equal(await claimBlocksStatus(db, r.id, "afvist"), true);
   assert.equal(await claimBlocksStatus(db, r.id, "preview klar"), true);
   assert.equal(await claimBlocksStatus(db, r.id, "sendt/lukket"), false);
+  assert.equal(await claimBlocksStatus(db, r.id, "sendt/lukket", true), true); // feltændring på sendt udkast (R9-02)
 });

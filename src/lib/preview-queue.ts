@@ -57,9 +57,19 @@ function demoKey(): string {
   return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
 
+// Nødlog: kan køens lås ikke tages (Postgres nede), lægges henvendelsen her med atomisk append
+// og foldes ind i arrayet ved næste låste skrivning. Arrayets version vinder altid (Sol R8-03, R9-01).
+const FALLBACK = "preview-requests-fallback";
+
+/** Lageret kunne ikke tage imod henvendelsen — ruten svarer 503 (prøv igen), ikke 400. */
+export class PreviewStorageError extends Error {}
+
 export async function readPreviewRequests(): Promise<PreviewRequest[]> {
   const value = await store.get<PreviewRequest[]>(KEY);
-  return Array.isArray(value) ? value : [];
+  const records = Array.isArray(value) ? value : [];
+  const extra = (await store.readAll(FALLBACK).catch(() => [])) as PreviewRequest[];
+  const known = new Set(records.map((r) => r.id));
+  return [...records, ...extra.filter((r) => r && typeof r.id === "string" && !known.has(r.id))];
 }
 
 // Alle læs-ændr-skriv af KV-arrayet sker under én lås, så samtidige henvendelser ikke
@@ -94,10 +104,13 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     const records = await readPreviewRequests();
     await store.put(KEY, [...records, record]);
   };
-  // En henvendelse må aldrig tabes fordi låsen (Postgres) er nede: så skrives der uden lås (Sol R8-03).
+  // En henvendelse må aldrig tabes fordi låsen (Postgres) er nede: så atomisk append til nødloggen.
+  // Fejler også den, kaster vi — ruten svarer fejl, og formularen beder om at prøve igen.
   await withLock(QUEUE_LOCK, append).catch(async (error) => {
     console.error(JSON.stringify({ evt: "preview.queue_lock_failed", error: String(error).slice(0, 200) }));
-    await append();
+    await store.append(FALLBACK, record).catch((e) => {
+      throw new PreviewStorageError(`kunne ikke gemme henvendelsen: ${String(e).slice(0, 120)}`);
+    });
   });
   return record;
 }

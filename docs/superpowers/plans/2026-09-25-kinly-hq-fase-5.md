@@ -279,3 +279,7 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - R8-01 (high) ACCEPT: lås-levetid 120 s > alle kalderes maxDuration (send 60, previews 30). Vercel dræber ejeren før låsen udløber ⇒ en udløbet lås har ingen levende ejer (platformens timeout er fencingen).
 - R8-02 (medium) ACCEPT: `claimBlocksStatus` — sendt krav er endeligt; kun idempotent "sendt/lukket" tilladt. PATCH bruger den under udkastets lås.
 - R8-03 (medium) ACCEPT: createPreviewRequest skriver uden lås hvis låsen fejler (Postgres nede/optaget) — en henvendelse må aldrig tabes; race er det mindre onde.
+
+### Sol bølge 2 R9 — dispositioner
+- R9-01 (high) ACCEPT: lås-fejl ⇒ atomisk `store.append` til nødlog `preview-requests-fallback` (KV rpush); læsning fletter nødlog ind (arrayet vinder), næste låste skrivning folder den ind. Fejler også append ⇒ PreviewStorageError ⇒ 503 (prøv igen), aldrig 201 uden lagring.
+- R9-02 (medium) ACCEPT: sendt krav ⇒ kun status-only "sendt/lukket"; enhver feltændring afvises (409).

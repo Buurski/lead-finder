@@ -46,3 +46,27 @@ test("inbound preview kan oprettes og skifte status", async () => {
     __setStore(null);
   }
 });
+
+test("låsen nede: henvendelsen går i nødloggen, kan læses og foldes ind ved næste skrivning (Sol R8-03/R9-01)", async () => {
+  let lockDown = true;
+  class LockDownStore extends InMemoryStore {
+    override async put(key: string, value: unknown) {
+      if (lockDown && key.startsWith("lock/")) throw new Error("postgres nede");
+      return super.put(key, value);
+    }
+  }
+  __setStore(new LockDownStore());
+  try {
+    const a = await createPreviewRequest(fixture);
+    const b = await createPreviewRequest({ ...fixture, email: "b@example.com" });
+    assert.deepEqual((await readPreviewRequests()).map((r) => r.id).sort(), [a.id, b.id].sort());
+    lockDown = false;
+    const up = await updatePreviewStatus(a.id, "researcher");
+    assert.equal(up?.status, "researcher");
+    const all = await readPreviewRequests();
+    assert.equal(all.length, 2);
+    assert.equal(all.find((r) => r.id === a.id)?.status, "researcher");
+  } finally {
+    __setStore(new InMemoryStore());
+  }
+});

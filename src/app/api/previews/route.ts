@@ -53,7 +53,9 @@ export async function POST(req: NextRequest) {
     await attachProfile(request.id, request);
     return NextResponse.json({ ok: true, request }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "invalid_request" }, { status: 400 });
+    const { PreviewStorageError } = await import("@/lib/preview-queue");
+    const status = error instanceof PreviewStorageError ? 503 : 400;
+    return NextResponse.json({ error: error instanceof Error ? error.message : "invalid_request" }, { status });
   }
 }
 
@@ -86,7 +88,8 @@ export async function PATCH(req: NextRequest) {
   let result: { busy: true } | { request: Awaited<ReturnType<typeof updatePreviewStatus>> };
   try {
     result = await withLock(previewLockName(id), async () => {
-      if (pgEnabled() && (await claimBlocksStatus(getDb(), id, body.status!))) return { busy: true as const };
+      const edits = (["research", "previewUrl", "screenshotUrl", "mailDraft", "contactName", "branch", "questionnaire", "company", "demoKey", "reviewNotes"] as const).some((k) => body[k] !== undefined);
+      if (pgEnabled() && (await claimBlocksStatus(getDb(), id, body.status!, edits))) return { busy: true as const };
       return { request: await updatePreviewStatus(id, body.status!, {
     research: body.research,
     previewUrl: body.previewUrl,
