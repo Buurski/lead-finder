@@ -24,7 +24,8 @@ const SCHEDULE: Record<string, string> = {
   "engine": "0 * * * *",
   "ingest-leadgen": "30 6 * * *",
   "find-emails": "0 7-10 * * *",
-  "seo-tjek-followup": "15 7 * * *",
+  "newsletter-sync": "20 5 * * *",
+  "jev-rescore": "30 3,13 * * *",
   "snapshot": "45 3 * * *",
   "invoices": "0 5 * * *",
 };

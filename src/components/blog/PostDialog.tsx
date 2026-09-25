@@ -97,22 +97,32 @@ export default function PostDialog({
   }, [onClose]);
 
   async function run(body: Record<string, unknown>) {
-    if (busy) return;
+    if (busy) return null;
     setBusy(true);
     setError("");
     try {
       const next = await patchPost(id, body);
       setPost(next);
       onSaved({ title: next.title, category: next.category, checklist: next.checklist, images: next.images, stage: next.stage });
+      return next;
     } catch (e) {
       setError(e instanceof Error ? e.message : "kunne ikke gemme");
+      return null;
     } finally {
       setBusy(false);
     }
   }
 
-  function saveSeo() {
-    void run({ title, slug, category, excerpt });
+  // Efter gem: felterne sættes til serverens værdier (den trimmer), så "ugemt" ikke hænger
+  // fast — men kun felter brugeren ikke har rettet igen, mens gemningen kørte (Sol w4a-r4 R4-02).
+  async function saveSeo() {
+    const sent = { title, slug, category, excerpt };
+    const next = await run(sent);
+    if (!next) return;
+    setTitle((cur) => (cur === sent.title ? next.title : cur));
+    setSlug((cur) => (cur === sent.slug ? next.slug : cur));
+    setCategory((cur) => (cur === sent.category ? next.category : cur));
+    setExcerpt((cur) => (cur === sent.excerpt ? next.excerpt : cur));
   }
 
   function chooseImage(choice: ImageChoice) {
@@ -204,7 +214,7 @@ export default function PostDialog({
                 <div className="bl-snippet-desc">{excerpt || "(intet uddrag endnu)"}</div>
               </div>
               <div className="bl-dialog-actions">
-                <button type="button" className="cc-btn cc-btn-accent" onClick={saveSeo} disabled={busy || !dirty}>{busy ? "Gemmer…" : "Gem SEO-felter"}</button>
+                <button type="button" className="cc-btn cc-btn-accent" onClick={() => void saveSeo()} disabled={busy || !dirty}>{busy ? "Gemmer…" : "Gem SEO-felter"}</button>
               </div>
             </section>
 

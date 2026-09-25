@@ -21,7 +21,7 @@ export default function NewsletterPanel({ snaps }: { snaps: Snap[] }) {
           <section key={s.account} className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="virk-section-title" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
               <span>Nyhedsbrev · Brevo</span>
-              <span className="cc-dim" style={{ fontSize: 12, fontWeight: 400 }}>Tal fra {(s.generatedAt ?? s.takenAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })} · hentet {s.takenAt.toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })}</span>
+              <span className="cc-dim" style={{ fontSize: 12, fontWeight: 400 }}>Tal fra {s.generatedAt ? s.generatedAt.toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" }) : "ukendt tidspunkt"} · hentet {s.takenAt.toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Copenhagen" })}</span>
             </div>
 
             {i.flags.length > 0 && (

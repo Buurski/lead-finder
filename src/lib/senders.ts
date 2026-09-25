@@ -389,10 +389,14 @@ export function applySignature(body: string, id: SenderId): string {
 export function applySignatureHtml(body: string, id: SenderId): string {
   const sig = formatSignature(id);
   const stripped = _strip(body);
+  // Citationstegn escapes også: URL'er indsættes i href="…", og et " i en formular-
+  // værdi må ikke kunne lukke attributten og tilføje fx onmouseover (Sol w4a-r4 R4-03).
   const escaped = stripped
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
   const linked = escaped.replace(
     /https?:\/\/[^\s<]+/g,
     (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,

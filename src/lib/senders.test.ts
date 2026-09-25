@@ -401,3 +401,11 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });
+
+test("applySignatureHtml: citationstegn i en URL kan ikke bryde ud af href (Sol w4a-r4 R4-03)", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se https://example.test/"onmouseover="alert(1) nu`, "lucas");
+  assert.doesNotMatch(out, /href="[^"]*"onmouseover=/);
+  assert.doesNotMatch(out, / onmouseover=/);
+  assert.match(out, /&quot;onmouseover=&quot;/);
+});
