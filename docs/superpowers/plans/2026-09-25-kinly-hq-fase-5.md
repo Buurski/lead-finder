@@ -268,3 +268,9 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 ### SEO-tjek-lead (Lucas 25/9) — HQ-del
 - kinly.dk `SeoTjekTool` → `/api/contact` (kilde=seo-tjek, påkrævet samtykke, valideret host/score/mangler, valgfri tlf) → HQ `POST /api/previews` med `website` + `phone` + resultat/samtykke i questionnaire. Eksisterende kæde: `recordInbound` (virksomhed interesseret, kontakt, aktivitet, stopper kolde kladder) → `attachProfile` (Jev: stil/størrelse/ambition) → Hermes laver udkast + mailkladde → Lucas sender (preview-send). Ingen automatisk mail til kunden.
 - HQ: `phone` gennem PreviewRequestInput → `recordInbound` (ny virksomhed + kontakt; kendt nummer overskrives aldrig). Test i inbound.test.ts.
+
+### Sol bølge 2 R7 — dispositioner (de08663)
+- R7-01 (high) ACCEPT: PATCH fejler lukket — opslag/lås-fejl ⇒ 503/409, ingen KV-skrivning.
+- R7-02 (high) ACCEPT: navngiven lås `preview:<id>` (samme CAS-mekanisme som send-låsen, `withLock` i send-safety). PATCH (claim-tjek + status-skrivning) og send (status-læsning + claim-insert) sker under samme lås; SMTP ligger uden for låsen, efter claim — derefter giver PATCH 409. Test: afvisning under holdt lås stopper send.
+- R7-03 (medium) ACCEPT: alle KV-array-mutationer i preview-queue under global lås `preview-queue` (ponytail: pr.-id-nøgler hvis trafik vokser).
+- R7-04 (medium) ACCEPT: indsendt telefon lægges kun på NY virksomhed/kontakt; for eksisterende står den kun i henvendelsens payload.phone.
