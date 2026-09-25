@@ -301,3 +301,22 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - Kinly-site `claude/blog-redesign-0925` @ a98e87e (pushet, IKKE merget): blog-redesign + emnesider + SEO-tjek-leadformular + samtykke-værn (consentRef) + pilot-billeder (AI, 1600x900/1200x630 WebP).
 - Næste: bølge 4 = blog-board i HQ (Hermes' B4 a3b2998 + B2 165e6b3 er blokeret/ufærdige → Claude integrerer: A/B-valg=hero, SEO-validering på server, eksport til kinly-site). Derefter kundeprofil-grafer + SEO-sektion.
 - Til Lucas: Café Nohr "(fiktiv intern test)" ligger i Varme i prod-data; seo-tjek-followup-cron sender auto-mail dag 7 (afventer beslutning).
+
+### Opus w4a-r5 (Codex spærret til 26/9 18:05) — dispositioner
+- R5-01 (medium) ACCEPT: find-emails + invoices fjernet fra health (logger ikke; faktura-cron er pengekode og røres ikke for at få logning).
+- R5-02 (medium) ACCEPT: health-test kræver begge veje (logget ⇒ i health; i health ⇒ logger), regex fanger `withCronLog<T>(`, manglende route-fil fejler.
+- R5-03 (low) ACCEPT: URL-link stopper ved `&quot;`/`&#39;`; test for citeret URL.
+- R5-04 (low) ACCEPT: newsletter-sync 502 + rød health ved enhver fejl, også manglende token (ærlig: intet synkes = fejl).
+
+## CHECKPOINT 25/9 aften — bølge 4a KLAR, IKKE DEPLOYET (`6d9fdb4`)
+Indhold siden 0381ca0: Hermes' blog-backend (0011-0012) + SEO-gates (metaTitle/-beskrivelse/alt) + blog-board-UI med A/B-billedvalg; SEO-tjek-rapportmail (Kinly-design, 10 %-tilbud m. frist, kladde — Lucas sender); nyhedsbrev-snapshot (0013) + dagligt sync fra kundesite (kun aggregater) + Nyhedsbrev-fane; /kunder-billeder fra kinly.dk/projekter (kun kunder); gammel HQ-/seo-tjek-tragt udfaset (auto-mail dag 7 slettet, 308 til kinly.dk). Tests 536/536.
+
+### DEPLOY-TJEKLISTE 26/9 (rækkefølge er hård)
+1. Codex tilbage 18:05 → Sol-inspektion af `4111f58..6d9fdb4` (R5-rettelser berører senders.ts = send-vej). Fund rettes før deploy.
+2. `git log HEAD..origin/main` = 0, ellers merge + fuld suite.
+3. git-tag `pre-deploy-2026-09-26`.
+4. Neon: migrationer 0011, 0012, 0013 (migrér FØR deploy). Tjek rækketal company/draft uændret.
+5. Vercel env (HQ): `NYHEDSBREV_TOKEN_IKAST` fra fil (`--value`, aldrig stdin). Uden den: newsletter-sync 502 hver dag (bevidst rød).
+6. Merge feature → main, push (Vercel deployer). Live-tjek: login 200, /kunder 307 uden session, /api/shot 401, /api/cron/health 200, /seo-tjek 308 → kinly.dk.
+7. Derefter kinly-site: merge `claude/blog-redesign-0925` → main (sender telefon + seoTjek + nyhedsbrev til HQ; HQ skal være oppe først). Live-tjek /blog/, /blog/emne/*, /seo-tjek/, /nyhedsbrev/tak/ (noindex). Kinly-Brevo env (`BREVO_API_KEY`, `BREVO_LIST_ID`, `BREVO_DOI_TEMPLATE_ID`) sættes af nyhedsbrev-sessionen; uden dem springes DOI blødt over.
+8. Efter deploy: 12 blog-idéer (vault `wiki/kinly/blog-ideer-2026-09-25.md`) som idé-kort i HQ-board; E2E-test af SEO-tjek-formular med buur.aigro.
