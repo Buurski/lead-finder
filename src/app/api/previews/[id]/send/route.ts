@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { hqWrite, HqInputError, jsonBody } from "@/lib/hq/api";
 import { PreviewSendError, sendPreview } from "@/lib/hq/preview-send";
 import { readPreviewRequests, updatePreviewStatus } from "@/lib/preview-queue";
+import { DAILY_SEND_CAP, takeDailyBudget } from "@/lib/send-safety";
 import { applySignature, applySignatureHtml, formatFrom, getTransporter, isSenderAvailable, type SenderId } from "@/lib/senders";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await sendPreview(getDb(), id, { subject: String(b.subject ?? ""), body: String(b.body ?? "") }, actor, {
         get: async (pid) => (await readPreviewRequests()).find((r) => r.id === pid) ?? null,
         deliver: async ({ to, subject, body }) => {
+          // Samme dagsbudget pr. konto som kold-køen (Sol bølge 2 F2). Kastes før SMTP ⇒ intet sendt.
+          if (!(await takeDailyBudget(sender).catch(() => false))) throw new Error(`dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${sender}) — prøv i morgen`);
           await getTransporter(sender).sendMail({
             from: formatFrom(sender),
             to,

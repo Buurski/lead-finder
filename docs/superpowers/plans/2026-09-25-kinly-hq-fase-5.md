@@ -204,3 +204,29 @@ Loop stoppet efter 3 plan-runder + 4 inspektioner: fundene er gået fra dobbelt-
 - Bølge 2 påbegyndt på feature-grenen (IKKE deployet): C3 — `/api/approve/queue` approve/approve-many kræver brugbar modtager (422 / skippedNoEmail); /approve sorterer kladder uden mail nederst.
 - Næste i bølge 2: daglig send-loft ~20 + List-Unsubscribe-header (mailto) i `approve/send`, nodemailer 8→10 med testmail (samme E2E-opskrift: scratchpad `start-e2e.mjs` + isoleret `pglite-e2e`, Sheets-nøgle genskabes via `sa-keyfile.py`), "standard-kladde"-mærkat (C4), derefter claudex (Sol) + én deploy.
 - Penge-handlinger til Lucas: faktura 010 Jernbanecaféen (kladde, forfald 27/9), faktura 011 KT VVS (kladde); 73 interesseret + 63 svaret i CRM.
+
+## Bølge 2 — send-hygiejne (bygget 25/9, commit `05f7fbf` på feature-grenen, base `5c46bed`)
+
+Leveret:
+- C3 (`5c46bed`): approve/approve-many kræver brugbar modtager (422 / skippedNoEmail).
+- C2 dagligt loft: `DAILY_SEND_CAP=20` pr. mailkonto pr. dansk kalenderdag (`sentTodayBySender` i `src/lib/send-safety.ts`), tæller `sent`+`sending` ud fra `updatedAt`; tjekkes i POST lige før reservation (efter frisk afsender), spejlet i GET-preflight. Ramt loft ⇒ "sprunget over" med grund (ikke "venter"), så UI ikke beder om nyt klik.
+- C2 List-Unsubscribe: **AFVIST efter måling.** A/B-testmail til buur.aigro 25/9 01:33 (samme tekst, samme minut): med header ⇒ `CATEGORY_PROMOTIONS`, uden ⇒ `CATEGORY_PERSONAL`. SPF/DKIM/DMARC pass i begge. Gmails bulk-krav gælder >5000/dag; vi sender ≤20/konto. Kommentar i send-ruten dokumenterer valget.
+- nodemailer 8.0.7 → 10.0.10 (5 high advisories lukket, `npm audit --omit=dev` = 0). Ingen API-brud for os (research: fejlkoder/responseCode uændrede; Node 20+ påkrævet, vi kører 24). `@types/nodemailer` fjernet — typer bundlet. Testmail via samme `senders.ts`-kode: 250 OK, Primær (uden header).
+- C4: "Lav mail-kladde" → "Lav standard-kladde"; kladdens `professionalism` = "Standard-kladde fra skabelon (ikke researchet) — tjek teksten" (vises i /approve-detaljen).
+- Oprydning: slettet døde sideveje uden om send-gaten — `/api/leads/[id]/send-email`, `/api/leads/[id]/email-preview`, `/api/review/approve`, `/api/email/test-send` (enqueuede til Sheets-SendQueue, som ingen afsender læser siden `scripts/send.mjs` blev fjernet i `4d6f05c`), `EmailPanel`/`EmailPreviewModal` (ingen importerer dem), `sendLeadEmail` (ubrugt direkte SMTP-vej). Tag `pre-dead-send-paths-2026-09-25`.
+
+Bevis: tsc grøn, eslint 0 fejl, `npm test` 473/473, `next build --webpack` grøn.
+
+Til Sol-inspektion — fokus: (1) kan loftet omgås eller tælle forkert (tidszone, `sending`, opfølgninger, afsenderskift undervejs)? (2) bryder sletningerne en levende kalder (UI, cron, Hermes)? (3) nodemailer-10-typen `ReturnType<typeof buildTransporter>`.
+
+Kendte, IKKE ændret i denne bølge (flag til Lucas/senere):
+- `cron/seo-tjek-followup` sender automatisk dag-7-mail til personer der selv har bestilt SEO-tjek (opt-in-tragt, eksisterede før). Kolliderer bogstaveligt med "udgående = kladder" → Lucas' beslutning.
+- `invoices/[number]/send` frigiver faktura-låsen ved `ECONNECTION`, mens cold-send behandler det som tvetydigt. Faktura sendes manuelt af Lucas; vurderes i penge-bølgen.
+
+### Sol-inspektion bølge 2, runde 1 (REVISE) — dispositioner
+| Fund | Disposition |
+|---|---|
+| F1 loft tæller via kladdernes updatedAt/sender (legacy uden afsender, afstemning flytter dag) | Accepteret — erstattet af atomisk dagsbudget i `counter` (`send-day:<konto>:<dansk dato>`), taget ved hvert SMTP-forsøg med den faktisk valgte konto; kan ikke flytte dag. DB-fejl ⇒ send ikke. |
+| F2 preview-send bruger samme konti uden loft | Accepteret — `/api/previews/[id]/send` tager samme budget før SMTP. SEO-tjek-mails (dag 0-rapport + dag 7-cron) er opt-in-svar til folk der selv bad om det og holdes UDEN for budgettet (ellers kan kolde mails blokere et svar); dag 7-cronens automatik er flagget til Lucas. |
+| F3 List-Unsubscribe er et krav i 02 | Accepteret — kravet i 02 er opdateret med afgørelsen og A/B-beviset. |
+Data-linse (Sonnet) bekræftede samme huller + at tidszone er korrekt og at `sent`/`sending`-rækker er beskyttet mod hel-kø-skrivninger. Hermes: ingen kaldere af de slettede ruter; 5 gamle `send.mjs`-kopier på VPS kører ikke (ingen cron/timer).

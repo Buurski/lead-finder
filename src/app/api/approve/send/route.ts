@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { finishSend, readQueue, reserveForSend } from "@/lib/queue";
 import { customerForDraft } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
-import { acquireSendLock, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, sentTodayBySender } from "@/lib/send-safety";
+import { acquireSendLock, dailyBudgetUsed, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, takeDailyBudget } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
 
   const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
-  const sentToday = sentTodayBySender(drafts, now);
+  const budgetUsed: Record<string, number> = {};
   let wouldSend = 0;
   let capped = 0;
   const skipped: { name: string; reason: string }[] = [];
@@ -178,7 +178,8 @@ export async function GET(req: Request) {
       continue;
     }
     const sid = resolveSender(d.sender);
-    if ((sentToday[sid] ?? 0) >= DAILY_SEND_CAP) {
+    budgetUsed[sid] ??= await dailyBudgetUsed(sid, now).catch(() => DAILY_SEND_CAP);
+    if (budgetUsed[sid] >= DAILY_SEND_CAP) {
       skipped.push({ name: d.name, reason: dailyCapReason(sid) });
       continue;
     }
@@ -187,7 +188,7 @@ export async function GET(req: Request) {
       continue;
     }
     wouldSend++;
-    sentToday[sid] = (sentToday[sid] ?? 0) + 1;
+    budgetUsed[sid]++;
     if (isFollowUp && d.leadId) followUpsThisRun.add(d.leadId);
     // Spejl send-løkkens in-run ledger så en sibling-draft for samme
     // virksomhed/adresse tælles som skip, præcis som i et rigtigt run.
@@ -209,7 +210,7 @@ export async function GET(req: Request) {
     capped,
     cap: SEND_CAP,
     dailyCap: DAILY_SEND_CAP,
-    sentToday,
+    budgetUsed,
     skipped,
   });
 }
@@ -296,8 +297,6 @@ export async function POST(req: Request) {
 
   const sentLedger = buildSentLedger(drafts);
   const followUpsThisRun = new Set<string>();
-  // Dagligt loft pr. konto (C2). Tæller forsøg i denne kørsel oveni.
-  const sentToday = sentTodayBySender(drafts);
 
   // Hybrid allokering (2026-06-17): en transport pr draft, valgt ud fra
   // draft.sender (sat af engine via pickHybridSender ELLER manuelt via
@@ -474,16 +473,17 @@ export async function POST(req: Request) {
           }
 
           const { id: senderId, transport, from } = transportFor(fresh.sender);
-          if ((sentToday[senderId] ?? 0) >= DAILY_SEND_CAP) {
+          // 9. RESERVATION (Sol 25/9): approved → sending atomisk i DB, med modtageren
+          // låst. Fejler den (afvist/redigeret/taget), sendes intet. En "sending"-kladde
+          // kan ikke overskrives af forældede kø-snapshots og tæller som sendt i ledgers.
+          // Betinget på den version vi har valideret (updatedAt) — en redigering imellem ⇒ intet SMTP.
+          // 9a. Dagligt budget pr. konto (C2) — atomisk, delt med preview-send. DB-fejl ⇒ send ikke.
+          if (!(await takeDailyBudget(senderId).catch(() => false))) {
             const reason = dailyCapReason(senderId);
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;
           }
-          // 9. RESERVATION (Sol 25/9): approved → sending atomisk i DB, med modtageren
-          // låst. Fejler den (afvist/redigeret/taget), sendes intet. En "sending"-kladde
-          // kan ikke overskrives af forældede kø-snapshots og tæller som sendt i ledgers.
-          // Betinget på den version vi har valideret (updatedAt) — en redigering imellem ⇒ intet SMTP.
           const reserved = await reserveForSend(d.id, target, fresh.updatedAt ?? "").catch(() => null);
           if (!reserved) {
             const reason = "ændret lige før afsendelse eller allerede i gang — send igen";
@@ -492,7 +492,6 @@ export async function POST(req: Request) {
             continue;
           }
           attempts++;
-          sentToday[senderId] = (sentToday[senderId] ?? 0) + 1;
           send({ type: "sending", index: processed, total, name: d.name, n: sent + 1, sender: senderId });
           try {
             await transport.sendMail({

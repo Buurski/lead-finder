@@ -1,11 +1,10 @@
 // Send-vejens to atomiske værn (Sol-review 25/9):
 // 1) én send-kørsel ad gangen — compare-and-set i Postgres, ikke KV get→put;
 // 2) en SMTP-fejl gør kun kladden sendbar igen, når serveren med sikkerhed IKKE tog mailen.
-import { and, eq, gt, lte } from "drizzle-orm";
+import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import { getDb, pgEnabled } from "./db/client.ts";
 import { counter } from "./db/schema.ts";
 import { store } from "./store.ts";
-import { countsAsSent } from "./draft-status.ts";
 
 const LOCK_NAME = "send-lock";
 const KV_LOCK_KEY = "send/lock";
@@ -63,23 +62,39 @@ export function failedBeforeAccept(err: unknown): boolean {
   return typeof e.code === "string" && BEFORE_ACCEPT.has(e.code);
 }
 
-// Dagligt loft pr. mailkonto (plan C2): nyt domæne ⇒ max ~20 kolde mails pr. konto pr.
-// dansk kalenderdag. Tæller sendt + sending (et tvetydigt forsøg kan være gået ud).
-// ponytail: dagen udledes af updatedAt (= send-tidspunkt; sendte kladder redigeres ikke).
+// Dagligt budget pr. mailkonto (plan C2 + Sol-inspektion bølge 2): nyt domæne ⇒ max 20
+// prospekt-mails pr. konto pr. dansk kalenderdag, delt af kold-køen og preview-send.
+// Tages atomisk ved hvert SMTP-forsøg (et tvetydigt forsøg kan være gået ud) og kan
+// aldrig flytte dag bagefter — i modsætning til en optælling ud fra kladdernes updatedAt.
+// Et forsøg der bagefter afvises af reservationen bruger stadig en plads (sikker retning).
 export const DAILY_SEND_CAP = 20;
 const cphDay = (ms: number) => new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
-export function sentTodayBySender(
-  drafts: { status: string; updatedAt?: string; sender?: string; sentBy?: string }[],
-  nowMs = Date.now(),
-): Record<string, number> {
-  const today = cphDay(nowMs);
-  const counts: Record<string, number> = {};
-  for (const d of drafts) {
-    if (!countsAsSent(d.status) || !d.updatedAt) continue;
-    const t = Date.parse(d.updatedAt);
-    if (!Number.isFinite(t) || cphDay(t) !== today) continue;
-    const who = d.sentBy || d.sender || "lucas";
-    counts[who] = (counts[who] ?? 0) + 1;
+const budgetKey = (sender: string, nowMs: number) => `send-day:${sender}:${cphDay(nowMs)}`;
+
+/** Tager én plads i dagens budget. false = loftet er nået (send ikke). */
+export async function takeDailyBudget(sender: string, nowMs = Date.now(), cap = DAILY_SEND_CAP): Promise<boolean> {
+  const name = budgetKey(sender, nowMs);
+  if (pgEnabled()) {
+    const rows = await getDb()
+      .insert(counter)
+      .values({ name, value: 1 })
+      .onConflictDoUpdate({ target: counter.name, set: { value: sql`${counter.value} + 1` }, setWhere: lt(counter.value, cap) })
+      .returning({ value: counter.value });
+    return rows.length === 1;
   }
-  return counts;
+  // ponytail: KV-udgaven er læs-ændr-skriv (kun lokal/test); prod kører pg.
+  const used = (await store.get<number>(name).catch(() => null)) ?? 0;
+  if (used >= cap) return false;
+  await store.put(name, used + 1);
+  return true;
+}
+
+/** Hvor mange pladser er brugt i dag (kun til GET-preflight). */
+export async function dailyBudgetUsed(sender: string, nowMs = Date.now()): Promise<number> {
+  const name = budgetKey(sender, nowMs);
+  if (pgEnabled()) {
+    const rows = await getDb().select({ value: counter.value }).from(counter).where(eq(counter.name, name));
+    return rows[0]?.value ?? 0;
+  }
+  return (await store.get<number>(name).catch(() => null)) ?? 0;
 }

@@ -143,17 +143,15 @@ test("customerForDraft: kunde med mailen kun på kontaktpersonen", async () => {
   assert.equal(await customerForDraft({ leadId: "ChIJandet", name: "Hansens Rør", city: "Brande" }, "ukendt@x.dk"), false);
 });
 
-test("dagligt loft: tæller sendt/sending i dag (København) pr. faktisk afsender", async () => {
-  const { sentTodayBySender } = await import("./send-safety.ts");
-  const now = Date.parse("2026-09-25T10:00:00Z");
-  const d = (status: string, updatedAt: string, sender?: string, sentBy?: string) =>
-    ({ status, updatedAt, sender, sentBy }) as unknown as QueueDraft;
-  const counts = sentTodayBySender([
-    d("sent", "2026-09-25T08:00:00Z", "lucas", "charlie"), // sentBy vinder
-    d("sending", "2026-09-25T09:00:00Z", "lucas"),
-    d("sent", "2026-09-24T22:30:00Z", undefined, "lucas"), // 00:30 dansk tid = i dag
-    d("sent", "2026-09-24T21:30:00Z", undefined, "lucas"), // 23:30 dansk tid = i går
-    d("approved", "2026-09-25T09:00:00Z", "lucas"),
-  ], now);
-  assert.deepEqual(counts, { lucas: 2, charlie: 1 });
+test("dagligt budget: atomisk pr. konto og dansk dag; samtidige forsøg overskrider aldrig loftet", async () => {
+  await freshTestDb();
+  const { takeDailyBudget, dailyBudgetUsed } = await import("./send-safety.ts");
+  const noon = Date.parse("2026-09-25T10:00:00Z");
+  const got = await Promise.all(Array.from({ length: 8 }, () => takeDailyBudget("lucas", noon, 5)));
+  assert.equal(got.filter(Boolean).length, 5);
+  assert.equal(await dailyBudgetUsed("lucas", noon), 5);
+  assert.equal(await takeDailyBudget("charlie", noon, 5), true, "egen konto, eget budget");
+  // 23:30 dansk tid samme dag deler budget; 00:30 næste dag er et nyt budget.
+  assert.equal(await takeDailyBudget("lucas", Date.parse("2026-09-25T21:30:00Z"), 5), false);
+  assert.equal(await takeDailyBudget("lucas", Date.parse("2026-09-25T22:30:00Z"), 5), true);
 });
