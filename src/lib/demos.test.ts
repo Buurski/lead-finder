@@ -59,6 +59,9 @@ test("link-politikken kræver forside + case/branche-side på tværs af brancher
     // Kravene matcher præcis de linjer politikken selv skriver...
     const body = referenceLines(c.branch, "Test Test").join("\n");
     assert.deepEqual(missingReferenceLinks(body, c.branch, "Test Test"), [], c.branch);
+    // ...og et case-link må kun optræde når branchen FAKTISK har en case
+    // (fail-closed: ingen fremmed branches case, fx Ikast-casen for ukendt branche).
+    assert.ok(c.caseUrl || !body.includes("/case/"), `fremmed case-link for ${c.branch}`);
     // ...og en tekst uden links afvises (forsiden kræves altid).
     assert.ok(missingReferenceLinks("Hej, her er ingen links.", c.branch, "Test Test").length > 0, c.branch);
     // Aldrig kundens eget domæne — kun kinly.dk og vores egne demoer.

@@ -219,8 +219,13 @@ export function referenceLines(branch: string, name = ""): string[] {
   // Branchens primære demo ER dens reference. Er den en rigtig kundes egen side
   // (KT VVS-previewet), linkes der ingen: en anden branches demo ville være en
   // fremmed reference. Kladden flagges i stedet — caseMissing = true.
+  // Demo-slot'et er KUN til demo-sites: en kinly.dk-URL er enten forsiden, en
+  // case eller en branche-side og har sin egen rolle ovenfor. Uden ægte case
+  // (fx ukendt branche, hvor pickDemos falder tilbage til Ikast-casen) er svaret
+  // derfor fail-closed: intet case-link, ingen fremmed reference.
   const primary = pickDemos(branch, name)[0]?.url ?? null;
-  const demoFallback = l.caseUrl || !primary || CUSTOMER_SITES.has(primary) ? null : primary;
+  const demoFallback =
+    l.caseUrl || !primary || CUSTOMER_SITES.has(primary) || primary.startsWith(KINLY_FRONT) ? null : primary;
   const urls: string[] = [];
   for (const u of [l.front, l.caseUrl ?? demoFallback, l.verticalUrl]) {
     if (u && !urls.includes(u)) urls.push(u);
