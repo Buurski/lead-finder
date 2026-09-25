@@ -3,7 +3,7 @@ import { desc, eq, isNull } from "drizzle-orm";
 import PageHeader from "@/components/shell/PageHeader";
 import SeoChart from "@/components/seo/SeoChart";
 import { getDb } from "@/lib/db/client";
-import { seoSnapshot } from "@/lib/db/schema";
+import { activity, company, seoSnapshot } from "@/lib/db/schema";
 import { customerSites, type SeoPoint } from "@/lib/hq/seo-history";
 import MeasureButton from "./MeasureButton";
 
@@ -27,9 +27,37 @@ export default async function SeoHistoryPage() {
     cards.push({ target, rows });
   }
   const latest = own[0];
+  // Ugentlige GSC-opdateringer (se lib/hq/gsc-updates.ts): regel finder ændringer, Jev dømmer.
+  const updates = await db.select({ id: activity.id, at: activity.at, summary: activity.summary, payload: activity.payload, companyId: activity.companyId, name: company.name })
+    .from(activity).innerJoin(company, eq(company.id, activity.companyId))
+    .where(eq(activity.type, "seo-opdatering")).orderBy(desc(activity.at)).limit(15);
   return <div className="cc-fade kinly-page" style={{ display: "grid", gap: 18 }}>
-    <PageHeader icon="Search" title="SEO" subtitle="Mobilmålinger fra PageSpeed og tjek af sidens indhold." />
+    <PageHeader icon="Search" title="SEO" subtitle="Ugentlige Google-opdateringer, mobilmålinger fra PageSpeed og tjek af sidens indhold." />
     <nav aria-label="SEO-faner" style={{ display: "flex", gap: 8 }}><Link className="cc-btn cc-btn-accent" href="/seo">Historik</Link><Link className="cc-btn" href="/seo?tab=vaerktoejer">Værktøjer</Link></nav>
+    <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 10 }} aria-labelledby="seo-opd">
+      <h2 id="seo-opd" style={{ fontSize: 17, margin: 0 }}>Opdateringer</h2>
+      {updates.length === 0 ? (
+        <p className="cc-dim" style={{ margin: 0, fontSize: 12.5 }}>Ingen endnu. Hver mandag sammenlignes kundernes Search Console-tal med ugen før; væsentlige ændringer lander her (fald ⇒ opgave).</p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid" }}>
+          {updates.map((u) => {
+            const p = (u.payload ?? {}) as { changes?: { text: string; good: boolean }[]; handling?: boolean; kunde?: boolean; jev?: boolean };
+            return <li key={u.id} style={{ borderTop: "1px solid var(--border)", padding: "10px 0", display: "grid", gap: 4 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                <Link href={`/virksomheder/${u.companyId}`} className="cc-link" style={{ fontWeight: 700 }}>{u.name}</Link>
+                <span className="cc-dim" style={{ fontSize: 11.5 }}>{date(u.at)}</span>
+                {p.handling && <span className="cc-chip" style={{ background: "var(--red-dim)", color: "var(--red)", fontWeight: 700 }}>Kræver handling</span>}
+                {p.kunde && <span className="cc-chip" style={{ background: "var(--accent-soft)", fontWeight: 700 }}>God nyhed til kunden</span>}
+                <span className="cc-dim" style={{ fontSize: 11 }}>{p.jev ? "vurderet af Jev" : "vurderet efter regel"}</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12.5 }}>
+                {(p.changes ?? []).map((c, i) => <li key={i} style={{ color: c.good ? "inherit" : "var(--red)" }}>{c.text}</li>)}
+              </ul>
+            </li>;
+          })}
+        </ul>
+      )}
+    </section>
     <section className="cc-card cc-card-pad" style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div><h2 style={{ fontSize: 18, margin: 0 }}>kinly.dk</h2><span className="cc-dim" style={{ fontSize: 12 }}>{latest ? `Senest målt ${date(latest.takenAt)}` : "Ingen måling endnu"}</span></div>

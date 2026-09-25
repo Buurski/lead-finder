@@ -4,6 +4,7 @@
 import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, gscSnapshot } from "../db/schema.ts";
+import { jevJudge, recordGscUpdate, type Judge } from "./gsc-updates.ts";
 
 export interface GscRow { keys?: string[]; clicks: number; impressions: number; position: number }
 /** Én searchanalytics.query. Kaster { code: 403|404 } når ejendommen ikke findes/ikke er delt. */
@@ -85,7 +86,7 @@ function fillDays(rows: GscRow[], start: string, end: string) {
 export interface GscSyncResult { company: string; ok: boolean; property?: string; error?: string }
 
 /** Alle aktive kunder med website. Ingen adgang ⇒ springes over (noteret); andre fejl samles. */
-export async function syncGsc(db: Db, q: GscQuery, today: string): Promise<GscSyncResult[]> {
+export async function syncGsc(db: Db, q: GscQuery, today: string, judge: Judge = jevJudge): Promise<GscSyncResult[]> {
   const rows = await db
     .select({ id: company.id, name: company.name, website: company.website })
     .from(company)
@@ -100,8 +101,11 @@ export async function syncGsc(db: Db, q: GscQuery, today: string): Promise<GscSy
         out.push({ company: c.name, ok: true, error: "ingen adgang" });
         continue;
       }
+      const [prev] = await db.select().from(gscSnapshot).where(eq(gscSnapshot.companyId, c.id)).orderBy(desc(gscSnapshot.takenAt)).limit(1);
       await db.insert(gscSnapshot).values({ companyId: c.id, ...snap });
       out.push({ company: c.name, ok: true, property: snap.property });
+      // Opdateringen er ikke kritisk: fejler den, er målingen stadig gemt.
+      if (prev) await recordGscUpdate(db, c, prev, snap, today, judge).catch((e) => console.warn("[gsc] opdatering", e instanceof Error ? e.message : e));
     } catch (err) {
       out.push({ company: c.name, ok: false, error: err instanceof Error ? err.message.slice(0, 200) : String(err) });
     }

@@ -41,3 +41,23 @@ test("syncGsc: gemmer for kunder med adgang, 'ingen adgang' er ikke en fejl, ikk
   assert.equal(latest?.clicks, 100);
   assert.equal(previous, null);
 });
+
+test("syncGsc: anden måling laver 'seo-opdatering' + opgave ved fald (dommer injiceret)", async () => {
+  const db = await freshTestDb();
+  const { activity, task } = await import("../db/schema.ts");
+  const { diffGsc } = await import("./gsc-updates.ts");
+  await db.insert(company).values({ rowNo: 1, name: "Ikast", clientNo: 7, website: "https://ikast.dk" });
+  const judge = async () => ({ handling: true, kunde: false, jev: false });
+  await syncGsc(db, fake, "2026-09-18", judge);
+  assert.equal((await db.select().from(activity)).length, 0, "første måling: intet at sammenligne med");
+  const worse: GscQuery = async (p, b) => (b.dimensions ? fake(p, b) : (await fake(p, b)).map((r) => ({ ...r, clicks: 60, position: 9.1 })));
+  await syncGsc(db, worse, "2026-09-25", judge);
+  const [a] = await db.select().from(activity);
+  assert.equal(a.type, "seo-opdatering");
+  assert.match(a.summary ?? "", /Klik faldt 40 %/);
+  const [t] = await db.select().from(task);
+  assert.match(t.title, /^SEO: Ikast — Klik faldt/);
+  // Støj filtreres fra: små udsving giver ingen ændringer.
+  const base = { clicks: 100, impressions: 2000, position: 5, topQueries: [] };
+  assert.deepEqual(diffGsc(base, { ...base, clicks: 108, position: 5.3 }), []);
+});
