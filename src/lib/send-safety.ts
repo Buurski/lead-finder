@@ -43,9 +43,12 @@ export async function releaseLock(name: string, handle: number): Promise<void> {
 
 export class LockBusyError extends Error {}
 
-/** Kør fn under låsen `name`; venter op til waitMs på en optaget lås, ellers LockBusyError. */
+/** Kør fn under låsen `name`; venter op til waitMs på en optaget lås, ellers LockBusyError.
+ *  Levetiden (120 s) er LÆNGERE end alle kalderes maxDuration (send 60 s, previews 30 s): platformen
+ *  dræber ejeren før låsen kan udløbe, så en udløbet lås har ingen levende ejer (Sol R8-01). */
+export const LOCK_TTL_MS = 120_000;
 export async function withLock<T>(name: string, fn: () => Promise<T>, opts: { ttlMs?: number; waitMs?: number } = {}): Promise<T> {
-  const { ttlMs = 30_000, waitMs = 8_000 } = opts;
+  const { ttlMs = LOCK_TTL_MS, waitMs = 8_000 } = opts;
   const deadline = Date.now() + waitMs;
   let handle = await acquireLock(name, ttlMs);
   while (handle === null) {

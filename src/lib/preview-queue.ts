@@ -90,9 +90,14 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     createdAt: now,
     updatedAt: now,
   };
-  await withLock(QUEUE_LOCK, async () => {
+  const append = async () => {
     const records = await readPreviewRequests();
     await store.put(KEY, [...records, record]);
+  };
+  // En henvendelse må aldrig tabes fordi låsen (Postgres) er nede: så skrives der uden lås (Sol R8-03).
+  await withLock(QUEUE_LOCK, append).catch(async (error) => {
+    console.error(JSON.stringify({ evt: "preview.queue_lock_failed", error: String(error).slice(0, 200) }));
+    await append();
   });
   return record;
 }

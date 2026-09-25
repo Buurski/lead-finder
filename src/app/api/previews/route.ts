@@ -81,12 +81,12 @@ export async function PATCH(req: NextRequest) {
   // sker under udkastets lås, så en send ikke kan reservere imellem (R7-02); fejler opslaget, afvises (R7-01).
   const id = body.id;
   const { getDb, pgEnabled } = await import("@/lib/db/client");
-  const { hasOpenClaim, previewLockName } = await import("@/lib/hq/preview-send");
+  const { claimBlocksStatus, previewLockName } = await import("@/lib/hq/preview-send");
   const { withLock, LockBusyError } = await import("@/lib/send-safety");
   let result: { busy: true } | { request: Awaited<ReturnType<typeof updatePreviewStatus>> };
   try {
     result = await withLock(previewLockName(id), async () => {
-      if (pgEnabled() && (await hasOpenClaim(getDb(), id))) return { busy: true as const };
+      if (pgEnabled() && (await claimBlocksStatus(getDb(), id, body.status!))) return { busy: true as const };
       return { request: await updatePreviewStatus(id, body.status!, {
     research: body.research,
     previewUrl: body.previewUrl,
@@ -105,7 +105,7 @@ export async function PATCH(req: NextRequest) {
     console.error(JSON.stringify({ evt: "preview.patch_failed", id, error: String(error).slice(0, 200) }));
     return NextResponse.json({ error: busy ? "udkastet er ved at blive sendt — prøv igen om lidt" : "kunne ikke tjekke afsendelsen — prøv igen" }, { status: busy ? 409 : 503 });
   }
-  if ("busy" in result) return NextResponse.json({ error: "afsendelsen er ikke afklaret — afstem den (Gmail Sendt) før udkastet ændres" }, { status: 409 });
+  if ("busy" in result) return NextResponse.json({ error: "udkastet har et afsendelsesforsøg — er det uafklaret, så afstem det (Gmail Sendt); er det sendt, kan status ikke ændres" }, { status: 409 });
   const request = result.request;
   return request ? NextResponse.json({ ok: true, request }) : NextResponse.json({ error: "request_not_found" }, { status: 404 });
 }

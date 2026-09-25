@@ -274,3 +274,8 @@ Inspektion R4: kun diff `8fed51a..b1fd633`.
 - R7-02 (high) ACCEPT: navngiven lås `preview:<id>` (samme CAS-mekanisme som send-låsen, `withLock` i send-safety). PATCH (claim-tjek + status-skrivning) og send (status-læsning + claim-insert) sker under samme lås; SMTP ligger uden for låsen, efter claim — derefter giver PATCH 409. Test: afvisning under holdt lås stopper send.
 - R7-03 (medium) ACCEPT: alle KV-array-mutationer i preview-queue under global lås `preview-queue` (ponytail: pr.-id-nøgler hvis trafik vokser).
 - R7-04 (medium) ACCEPT: indsendt telefon lægges kun på NY virksomhed/kontakt; for eksisterende står den kun i henvendelsens payload.phone.
+
+### Sol bølge 2 R8 — dispositioner
+- R8-01 (high) ACCEPT: lås-levetid 120 s > alle kalderes maxDuration (send 60, previews 30). Vercel dræber ejeren før låsen udløber ⇒ en udløbet lås har ingen levende ejer (platformens timeout er fencingen).
+- R8-02 (medium) ACCEPT: `claimBlocksStatus` — sendt krav er endeligt; kun idempotent "sendt/lukket" tilladt. PATCH bruger den under udkastets lås.
+- R8-03 (medium) ACCEPT: createPreviewRequest skriver uden lås hvis låsen fejler (Postgres nede/optaget) — en henvendelse må aldrig tabes; race er det mindre onde.

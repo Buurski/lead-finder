@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { claimBlocksStatus, hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
 import { acquireLock, releaseLock } from "../send-safety.ts";
 
 let db: Db;
@@ -138,4 +138,13 @@ test("send læser status under udkastets lås: en afvisning lavet mens låsen ho
   await releaseLock(previewLockName(r.id), h!);
   await assert.rejects(pending, PreviewSendError);
   assert.equal(x.sent.length, 0);
+});
+
+test("sendt krav er endeligt: kun 'sendt/lukket' tilladt; intet krav blokerer intet (Sol R8-02)", async () => {
+  const r = { ...req, id: "preview_final1" };
+  assert.equal(await claimBlocksStatus(db, r.id, "afvist"), false);
+  await sendPreview(db, r.id, msg, "lucas", deps(r).d);
+  assert.equal(await claimBlocksStatus(db, r.id, "afvist"), true);
+  assert.equal(await claimBlocksStatus(db, r.id, "preview klar"), true);
+  assert.equal(await claimBlocksStatus(db, r.id, "sendt/lukket"), false);
 });
