@@ -120,10 +120,14 @@ export async function classifyCities(cities: string[], deadline?: number): Promi
   const batch = missing.slice(0, MAX_NEW_CITIES_PER_RUN);
   let added = 0;
   let i = 0;
+  // 5 Jev-kald i træk uden svar (429/5xx/timeout) = stop fase 0 (Codex 25/9);
+  // byerne caches ikke ved fejl og prøves igen næste kørsel.
+  let failStreak = 0;
   const worker = async () => {
-    while (i < batch.length && !(deadline && Date.now() > deadline)) {
+    while (failStreak < 5 && i < batch.length && !(deadline && Date.now() > deadline)) {
       const key = batch[i++];
       const res = await jevAsk({ by: key }, REGION_QUESTION, { timeoutMs: 10_000 });
+      failStreak = res ? 0 : failStreak + 1;
       const h = noul(res?.answers, "hovedstaden");
       if (typeof h !== "number" || !Number.isFinite(h) || h < 0 || h > 1) continue;
       const o = noul(res?.answers, "oest_for_storebaelt");

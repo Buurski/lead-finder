@@ -1,6 +1,6 @@
 // GET /api/cron/jev-rescore — shadow rescoring of leads with Jev, 03:30 + 13:30 UTC
 // (two slots since 25/9 to clear a ~1.000-lead backlog; drop the 13:30 slot once
-// `remaining` is ~0 — expected ~27-28/9).
+// `remaining` in the cron-log is ~0 — throughput per run is deadline-bound, not 250).
 // OBSERVES ONLY: writes to the jev-shadow/* store namespace, never to the
 // Sheet, never to Lead.enrichedInfo, never sends/deletes/changes status.
 // Skips quietly when TYPESAFE_API_KEY isn't set.

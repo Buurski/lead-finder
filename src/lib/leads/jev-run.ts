@@ -109,8 +109,16 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   let judged = 0;
   let firstTime = 0;
   let errors = 0;
+  // Én breaker for alle faser: 5 Jev-svar i træk uden dom stopper resten af kørslen.
   let jevFailStreak = 0;
   let tripped = false;
+  const noteJev = (error: string | undefined, phase: string) => {
+    jevFailStreak = nextFailStreak(jevFailStreak, error);
+    if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
+      tripped = true;
+      console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase, streak: jevFailStreak }));
+    }
+  };
   let i = 0;
   async function worker() {
     while (!tripped && i < batch.length && Date.now() + LEAD_WORST_MS < leadDeadline) {
@@ -120,15 +128,13 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       judged++;
       if (!prev) firstTime++;
       if (rec.error) errors++;
-      jevFailStreak = nextFailStreak(jevFailStreak, rec.error);
-      if (jevFailStreak >= JEV_FAIL_TRIP && !tripped) {
-        tripped = true;
-        console.error(JSON.stringify({ evt: "jev-run.circuit_open", phase: "leads", streak: jevFailStreak }));
-      }
+      noteJev(rec.error, "leads");
       // En fejlet GENvurdering må ikke overskrive en god dom (badget forsvandt i
       // /godkendelse). Den gamle dom gemmes med nyt judgedAt, så leadet går bagerst
       // i ældst-først-køen i stedet for at blive valgt forrest hver kørsel.
-      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt });
+      // `prev!` er sikker: shouldSave er kun false når prev.judgment findes.
+      // keptFrom gør audit-loggen ærlig (dommen er fra prev.judgedAt, ikke i dag).
+      await saveShadow(shouldSave(rec, prev) ? rec : { ...prev!, judgedAt: rec.judgedAt, keptFrom: prev!.judgedAt });
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batch.length) }, worker));
@@ -166,6 +172,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       await saveDraftShadow(rec);
       draftsJudged++;
       if (rec.error) draftsErrors++;
+      noteJev(rec.error, "drafts");
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, draftBatch.length) }, draftWorker));
@@ -193,7 +200,12 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
   // least one candidate lacks a snippet, so Jev judges the actual reply.
   const needsLive = repliedLeads.some((l) => !digestByLead.get(l.id)?.snippet && (!replyJudgedAt.has(l.id) || noTextYet.has(l.id)));
   if (needsLive && Date.now() < deadline - 30_000) {
-    const live = await liveScanDigest().catch(() => null);
+    // IMAP har ingen egen timeout — begræns den til vinduet før fase 3's reserve.
+    const budget = Math.max(0, deadline - 30_000 - Date.now());
+    const live = await Promise.race([
+      liveScanDigest().catch(() => null),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), budget).unref?.()),
+    ]);
     for (const it of live?.digest?.items ?? []) {
       if (it.leadId && it.snippet && !digestByLead.get(it.leadId)?.snippet) digestByLead.set(it.leadId, it);
     }
@@ -223,6 +235,7 @@ export async function runJevBatch(opts: { limit: number; deadlineMs?: number; in
       await saveReplyShadow(rec);
       repliesJudged++;
       if (rec.error) repliesErrors++;
+      if (rec.error !== "no-reply-text") noteJev(rec.error, "replies");
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, replyBatch.length) }, replyWorker));

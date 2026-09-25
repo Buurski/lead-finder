@@ -36,6 +36,8 @@ export interface JevShadowRecord {
   judgedAt: string;
   inputFingerprint: string | null;
   error?: string;
+  /** Sat når en fejlet genvurdering beholdt den gamle dom: hvornår dommen er fra. */
+  keptFrom?: string;
 }
 
 export const SHADOW_PREFIX = "jev-shadow/";
@@ -104,6 +106,9 @@ export function pickBatch(leads: Lead[], existing: JevShadowRecord[], max: numbe
   // spørgsmålssæt (lignerKunde) springer IKKE køen over. Før 25/9 gjorde de det
   // hver nat, så de ~225 kladde-leads blev genvurderet i ring (40-74/nat) og
   // 1.015 af 1.291 leads aldrig blev vurderet.
+  // ponytail: et kladde-lead med en dom fra før lignerKunde OG en nu død side
+  // ranker 0 hver kørsel (højst ~5 leads, ~9 s hver) indtil kladden forlader
+  // pending — accepteret rest (kritiker 25/9); løs med lastAttemptAt hvis det vokser.
   const needsJudging = (id: string) => {
     const r = byId.get(id);
     // En fejl-post (fetch/thin-page) har aldrig lignerKunde — den må ikke holde
