@@ -41,3 +41,15 @@ test("insights: 6 på et år skubber næste tilladte til den ældstes årsdag", 
   assert.equal(i.sentLastYear, 6);
   assert.equal(i.nextAllowedAt, "2026-10-20T08:00:00.000Z");
 });
+
+test("abonnenter: batch-lister og Brevos standardlister dobbelttælles ikke", async () => {
+  const { newsletterInsights } = await import("./newsletter.ts");
+  const lists = [
+    { id: 1, name: "Kunder A+B (navneskift 2026)", subscribers: 1558 },
+    { id: 2, name: "Tilmeldt via hjemmeside", subscribers: 2 },
+    { id: 3, name: "[service] Mail1 navneskift batch 7", subscribers: 300 },
+    { id: 4, name: "identified_contacts", subscribers: 0 },
+    { id: 5, name: "Your first list", subscribers: 1 },
+  ];
+  assert.equal(newsletterInsights({ lists, campaigns: [], domain: null }).subscribers, 1560);
+});

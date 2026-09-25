@@ -123,6 +123,8 @@ export interface NewsletterInsight {
 }
 
 const DAY = 86_400_000;
+// Batch-lister er delmængder af hovedlisten, og Brevos egne standardlister er støj — tælles ikke med (ellers dobbelttælling).
+export const isAudienceList = (name: string) => !/\bbatch\s*\d+\s*$/i.test(name) && !/^(identified_contacts|your first list)$/i.test(name.trim());
 const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
 export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "campaigns" | "domain">, now = new Date()): NewsletterInsight {
@@ -159,7 +161,7 @@ export function newsletterInsights(s: Pick<NewsletterSnapshotInput, "lists" | "c
   const byType = { seo: 0, nyhedsbrev: 0, service: 0, andet: 0 } as Record<CampaignType, number>;
   for (const c of lastYear) byType[c.type]++;
   return {
-    subscribers: s.lists.reduce((sum, l) => sum + l.subscribers, 0),
+    subscribers: s.lists.filter((l) => isAudienceList(l.name)).reduce((sum, l) => sum + l.subscribers, 0),
     sentLastYear: lastYear.length,
     lastSentAt: last,
     daysSinceLast,
