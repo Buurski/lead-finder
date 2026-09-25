@@ -30,7 +30,7 @@ const LEAD_PHASE_SHARE = 0.6;
 // og deadline sat til 270 s: worst case pr. lead er fetch 9 s + Jev 15 s = 24 s,
 // og med CONCURRENCY 8 når et hold altid at returnere inden for maxDuration.
 // Resten bliver "remaining" og tages i næste kørsel (ældst-vurderet først).
-const MAX_BATCH = 250;
+export const MAX_BATCH = 250;
 const CONCURRENCY = 8;
 const DEADLINE_MS = 270_000;
 const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;

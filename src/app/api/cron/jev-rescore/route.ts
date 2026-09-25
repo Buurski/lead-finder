@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { withCronLog } from "@/lib/cron-log";
 import { jevEnabled } from "@/lib/jev";
-import { runJevBatch, clampBatch } from "@/lib/leads/jev-run";
+import { runJevBatch, clampBatch, MAX_BATCH } from "@/lib/leads/jev-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,7 +34,10 @@ export async function GET(req: Request): Promise<NextResponse> {
       }
       const url = new URL(req.url);
       const limitParam = url.searchParams.get("limit");
-      const max = clampBatch(limitParam ?? process.env.JEV_RESCORE_BATCH);
+      // Cronen tager hele loftet; deadline (270 s, fase 1 = 60 %) stopper den i tide.
+      // Før 25/9 faldt den på DEFAULT_BATCH 40 (knappens hold) — 40 leads på ~40 s
+      // hver nat, mens 975 leads ventede.
+      const max = clampBatch(limitParam ?? process.env.JEV_RESCORE_BATCH ?? MAX_BATCH);
       const r = await runJevBatch({ limit: max });
       return {
         result: r,
