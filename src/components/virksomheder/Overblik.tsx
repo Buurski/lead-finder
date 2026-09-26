@@ -27,7 +27,7 @@ type Site = CustomerOverview["site"];
 const SITE_STATUS_LABEL: Record<string, string> = { demo: "Demo", "in progress": "I gang", live: "Live", pause: "Pause" };
 const SITE_STATUS_OPTIONS = Object.keys(SITE_STATUS_LABEL);
 const MISSING_LABEL: Record<string, string> = {
-  "aftale/pris": "Aftale/pris mangler",
+  "aftale/pris": "Fast abonnement til fakturering mangler",
   "kontakt-mail": "Kontakt-mail mangler",
   domæne: "Domæne mangler",
   "hvad vi leverer": "Hvad vi leverer mangler",
@@ -268,8 +268,8 @@ function MoneyCard({
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <p className="cc-dim" style={{ fontSize: 12.5, margin: 0 }}>Ingen aftale registreret.</p>
-          <button className="cc-btn cc-btn-accent virk-btn-press" onClick={() => onEdit(true)}>Tilføj aftale</button>
+          <p className="cc-dim" style={{ fontSize: 12.5, margin: 0 }}>Intet fast abonnement til fakturering.</p>
+          <button className="cc-btn cc-btn-accent virk-btn-press" onClick={() => onEdit(true)}>Sæt abonnement op</button>
         </div>
       )}
 

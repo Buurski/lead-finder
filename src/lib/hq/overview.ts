@@ -130,6 +130,11 @@ export function buildOverview(
   } else if (health && typeof health.sslDaysLeft === "number" && health.sslDaysLeft < 14) {
     attention.push({ level: "obs", text: `SSL-certifikatet udløber om ${dage(Math.max(0, health.sslDaysLeft))}` });
   }
+  // E2E 26/9: aftalt månedspris i pipeline betyder intet før den faktureres.
+  const agreedMrr = d.deals.filter((x) => ["aftalt", "i_gang", "leveret", "betalt"].includes(normalizeStage(x.stage))).reduce((s, x) => s + (x.mrrDkk ?? 0), 0);
+  if (d.company.clientNo !== null && !d.company.clientRemoved && agreedMrr > 0 && !plan?.active) {
+    attention.push({ level: "haster", text: `Aftalt ${kr(agreedMrr)}/md, men intet aktivt abonnement faktureres` });
+  }
   if (extra.unbilled > 0) attention.push({ level: "obs", text: `${kr(extra.unbilled)} arbejde er ikke faktureret` });
   for (const x of openDeals) {
     if (!x.nextStep?.trim()) attention.push({ level: "obs", text: `"${x.title || "Aftale"}" har intet næste skridt` });

@@ -283,7 +283,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
               {c.jevGrade && <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {c.jevGrade}</span>}
               <span>{[c.city, c.branch].filter(Boolean).join(" · ") || "–"}</span>
               {c.clientNo !== null && <span>· Kunde #{c.clientNo}</span>}
-              {mrrSum > 0 && <span>· MRR {mrrSum.toLocaleString("da-DK")} kr</span>}
+              {mrrSum > 0 && <span>· Aftalt {mrrSum.toLocaleString("da-DK")} kr/md</span>}
             </span>
             <span className="virk-header-links">
               {c.website && <a href={websiteHref(c.website)} target="_blank" rel="noreferrer">{c.website}</a>}
