@@ -1,7 +1,8 @@
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
-import { SUBSCRIPTIONS, computeSplit, monthlyDkk, personalFor, earliestSharedRenewal, type Share, type Subscription } from "@/lib/subscriptions";
+import { SUBSCRIPTIONS, computeSplit, monthlyDkk, personalFor, type Share, type Subscription } from "@/lib/subscriptions";
 import PaymentsClient from "./PaymentsClient";
+import ExpensesClient from "./ExpensesClient";
 
 export const metadata = { title: "Udgifter · Command Center" };
 export const dynamic = "force-dynamic";
@@ -116,10 +117,13 @@ export default function OkonomiPage() {
       <PageHeader
         icon="Wallet"
         title="Udgifter"
-        subtitle="Fælles abonnementer, split og overførsler."
+        subtitle="Hvad Charlie skylder (fra kvitteringer), overførsler og fælles abonnementer."
       />
 
       <div style={{ display: "grid", gap: 18, gridTemplateColumns: "minmax(0, 1fr)" }}>
+        {/* Faktisk gæld (fra kvitteringer) — det vigtigste først */}
+        <ExpensesClient />
+
         {/* Fælles total */}
         <section className="cc-card cc-card-pad">
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
@@ -140,10 +144,10 @@ export default function OkonomiPage() {
         <section className="cc-card cc-card-pad" style={{ border: "1px solid var(--accent)", background: "var(--accent-soft)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <Icon name="ArrowUpRight" style={{ width: 20, height: 20, color: "var(--kinly-signal)" }} />
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Charlies månedlige overførsel</h2>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>Forventet pr. måned (skøn)</h2>
           </div>
           <div style={{ fontSize: 34, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--accent-ink)" }}>{kr(split.owedCharlie - charlieCredits)}</div>
-          <div className="cc-dim" style={{ fontSize: 13, marginTop: 5 }}>Det er beløbet efter hans normale 50/50-andel og modregning af ChatGPT.</div>
+          <div className="cc-dim" style={{ fontSize: 13, marginTop: 5 }}>Skøn ud fra abonnementerne nedenfor — til planlægning. Den rigtige gæld står under “Hvad Charlie skylder nu”.</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, fontSize: 12.5 }}>
             <span className="cc-chip">Normal andel: {kr(split.owedCharlie)}</span>
             <span className="cc-chip" style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid var(--amber)" }}>− ChatGPT-halvdel: {kr(charlieCredits)}</span>
@@ -151,7 +155,7 @@ export default function OkonomiPage() {
         </section>
 
         {/* Overførsler */}
-        <PaymentsClient owedPerMonth={split.owedCharlie - charlieCredits} dueDay={earliestSharedRenewal()} />
+        <PaymentsClient />
 
         {/* Tjenester */}
         <section className="cc-card cc-card-pad">
@@ -169,7 +173,7 @@ export default function OkonomiPage() {
           {personal.map((s) => <SubRow key={s.name} s={s} max={max} />)}
 
           <p className="cc-dim" style={{ fontSize: 12, marginTop: 12 }}>
-            Faste beløb verificeret mod kvitteringer 4/7; DeepSeek-forbrug opdateret 11/9 (Lucas).
+            Skøn — gælden regnes fra udgiftsloggen, ikke herfra. Mailtjek 26/9: Vercel, Contabo, Google verificeret; OpenRouter udgået.
             Kurser: 1 USD ≈ 6,90 kr · 1 EUR ≈ 7,46 kr. Kie.ai er holdt ude (uregelmæssige
             kredit-køb — tages op hvis det bliver fast).
           </p>
