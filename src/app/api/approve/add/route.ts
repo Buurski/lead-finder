@@ -3,6 +3,7 @@ import { appendDrafts, newDraftId, readQueue } from "@/lib/queue";
 import type { QueueDraft } from "@/lib/queue";
 import type { Demo } from "@/lib/demos";
 import { validateDraft } from "@/lib/draft";
+import { missingReferenceLinks } from "@/lib/demos";
 import { getLeads } from "@/lib/sheets";
 import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress";
 import { addEmailToBlock } from "@/lib/leads/contactable";
@@ -92,6 +93,10 @@ export async function POST(req: NextRequest) {
     if (supp) { skipped.push({ name, reason: supp }); continue; }
     const check = validateDraft(body);
     if (!check.ok) { skipped.push({ name, reason: `voice: ${check.errors.join(", ")}` }); continue; }
+    // Link-politik (Lucas 24/9): samme krav som køen håndhæver — afvis her, så
+    // den der kalder endepunktet får en konkret grund i stedet for en tavs drop.
+    const linkIssues = missingReferenceLinks(body, d.branch || "", name);
+    if (linkIssues.length) { skipped.push({ name, reason: `link-politik: ${linkIssues.join(", ")}` }); continue; }
     const pair = Array.isArray(d.demoPair) ? d.demoPair.filter((x) => x && typeof x.url === "string" && x.url) : [];
     valid.push({
       id: newDraftId(),
