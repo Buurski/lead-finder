@@ -13,6 +13,12 @@ export class CompetitorInputError extends Error {}
 export type Country = "DK" | "andet";
 export type BlogQuality = "høj" | "mellem" | "lav";
 export type GapKind = "indhold" | "ydelse" | "pris" | "synlighed";
+export type CompetitorKind = "bureau" | "freelancer" | "ai-bygger";
+export type MessagingAngle = "pris" | "hastighed" | "ai" | "lokal" | "garanti";
+export type FindingCategory = "ydelse" | "pris-budskab" | "seo" | "geo" | "alternativ" | "forbedring";
+export type FindingSuggest = "blog" | "annonce" | "kinly-dk" | "salg";
+export const FINDING_CATEGORIES = ["ydelse", "pris-budskab", "seo", "geo", "alternativ", "forbedring"] as const;
+export const FINDING_SUGGESTS = ["blog", "annonce", "kinly-dk", "salg"] as const;
 
 export interface CompetitorGoogle {
   rating: number;
@@ -39,6 +45,22 @@ export interface CompetitorSocial {
 export interface CompetitorGeo {
   mentionedBy: string[];
 }
+export interface CompetitorMessaging {
+  angles: MessagingAngle[];
+}
+export interface CompetitorSeoExtra {
+  faqVisible?: boolean;
+  reviewsAsText?: boolean;
+}
+export interface CompetitorGeoExtra {
+  citableAnswers?: boolean;
+}
+export interface CompetitorAiBuilder {
+  priceFromText?: string;
+  aiFeatures?: boolean;
+  danish?: boolean;
+  codeExport?: boolean;
+}
 export interface Competitor {
   name: string;
   url: string;
@@ -53,6 +75,12 @@ export interface Competitor {
   geo?: CompetitorGeo;
   strengths?: string[];
   weaknesses?: string[];
+  kind?: CompetitorKind;
+  uniqueServices?: string[];
+  messaging?: CompetitorMessaging;
+  seoExtra?: CompetitorSeoExtra;
+  geoExtra?: CompetitorGeoExtra;
+  aiBuilder?: CompetitorAiBuilder;
 }
 export interface CompetitorPattern {
   title: string;
@@ -64,11 +92,23 @@ export interface CompetitorGap {
   detail: string;
   kind: GapKind;
 }
+/** Ny, mere brugbar erstatning for CompetitorGap — kategoriseret, vurderet og med
+ *  en foreslået handling. Gaps lever videre (bagudkompatibilitet); UI'et fletter
+ *  begge sammen (se KonkurrenterBoard). */
+export interface CompetitorFinding {
+  id: string;
+  category: FindingCategory;
+  title: string;
+  detail: string;
+  rating: number;
+  evidence: string[];
+  suggest: FindingSuggest;
+}
 /** Billig LLM-læsning af Jevs tal (søndag efter scannet). Sættes kun via saveAnalysis. */
 export interface CompetitorAnalysis {
   at: string;
   model: string;
-  points: { title: string; detail: string }[];
+  points: { title: string; detail: string; category?: FindingCategory; suggest?: FindingSuggest }[];
 }
 export interface CompetitorReport {
   generatedAt: string;
@@ -76,12 +116,14 @@ export interface CompetitorReport {
   competitors: Competitor[];
   patterns: CompetitorPattern[];
   gaps: CompetitorGap[];
+  findings?: CompetitorFinding[];
   analysis?: CompetitorAnalysis;
 }
 
 const MAX_COMPETITORS = 40;
 const MAX_PATTERNS = 12;
 const MAX_GAPS = 12;
+const MAX_FINDINGS = 20;
 const MAX_HISTORY = 12;
 const PREFIX = "competitors/report/";
 const KEY_LATEST = `${PREFIX}latest`;
@@ -224,6 +266,40 @@ function parseGeo(v: unknown): CompetitorGeo | undefined {
   noUnknownKeys(o, ["mentionedBy"], "geo");
   return { mentionedBy: strArray(o.mentionedBy, "geo.mentionedBy", 5, 80) ?? [] };
 }
+function parseMessaging(v: unknown): CompetitorMessaging | undefined {
+  if (v === undefined || v === null) return undefined;
+  const o = obj(v, "messaging");
+  noUnknownKeys(o, ["angles"], "messaging");
+  if (!Array.isArray(o.angles)) throw new CompetitorInputError("messaging.angles skal være en liste");
+  const angles = o.angles.map((a, i) => enumOf(a, `messaging.angles[${i}]`, ["pris", "hastighed", "ai", "lokal", "garanti"] as const, true)!);
+  return { angles };
+}
+function parseSeoExtra(v: unknown): CompetitorSeoExtra | undefined {
+  if (v === undefined || v === null) return undefined;
+  const o = obj(v, "seoExtra");
+  noUnknownKeys(o, ["faqVisible", "reviewsAsText"], "seoExtra");
+  return {
+    faqVisible: bool(o.faqVisible, "seoExtra.faqVisible", false),
+    reviewsAsText: bool(o.reviewsAsText, "seoExtra.reviewsAsText", false),
+  };
+}
+function parseGeoExtra(v: unknown): CompetitorGeoExtra | undefined {
+  if (v === undefined || v === null) return undefined;
+  const o = obj(v, "geoExtra");
+  noUnknownKeys(o, ["citableAnswers"], "geoExtra");
+  return { citableAnswers: bool(o.citableAnswers, "geoExtra.citableAnswers", false) };
+}
+function parseAiBuilder(v: unknown): CompetitorAiBuilder | undefined {
+  if (v === undefined || v === null) return undefined;
+  const o = obj(v, "aiBuilder");
+  noUnknownKeys(o, ["priceFromText", "aiFeatures", "danish", "codeExport"], "aiBuilder");
+  return {
+    priceFromText: str(o.priceFromText, "aiBuilder.priceFromText", 40),
+    aiFeatures: bool(o.aiFeatures, "aiBuilder.aiFeatures", false),
+    danish: bool(o.danish, "aiBuilder.danish", false),
+    codeExport: bool(o.codeExport, "aiBuilder.codeExport", false),
+  };
+}
 
 function parseCompetitor(v: unknown, i: number): Competitor {
   const label = `competitors[${i}]`;
@@ -231,6 +307,7 @@ function parseCompetitor(v: unknown, i: number): Competitor {
   noUnknownKeys(o, [
     "name", "url", "city", "country", "google", "site", "services",
     "positioning", "blog", "social", "geo", "strengths", "weaknesses",
+    "kind", "uniqueServices", "messaging", "seoExtra", "geoExtra", "aiBuilder",
   ], label);
   return {
     name: str(o.name, `${label}.name`, 120, true)!,
@@ -246,6 +323,12 @@ function parseCompetitor(v: unknown, i: number): Competitor {
     geo: parseGeo(o.geo),
     strengths: strArray(o.strengths, `${label}.strengths`, 5, 120),
     weaknesses: strArray(o.weaknesses, `${label}.weaknesses`, 5, 120),
+    kind: enumOf(o.kind, `${label}.kind`, ["bureau", "freelancer", "ai-bygger"] as const, false),
+    uniqueServices: strArray(o.uniqueServices, `${label}.uniqueServices`, 6, 40),
+    messaging: parseMessaging(o.messaging),
+    seoExtra: parseSeoExtra(o.seoExtra),
+    geoExtra: parseGeoExtra(o.geoExtra),
+    aiBuilder: parseAiBuilder(o.aiBuilder),
   };
 }
 function parsePattern(v: unknown, i: number): CompetitorPattern {
@@ -268,11 +351,25 @@ function parseGap(v: unknown, i: number): CompetitorGap {
     kind: enumOf(o.kind, `${label}.kind`, ["indhold", "ydelse", "pris", "synlighed"] as const, true)!,
   };
 }
+function parseFinding(v: unknown, i: number): CompetitorFinding {
+  const label = `findings[${i}]`;
+  const o = obj(v, label);
+  noUnknownKeys(o, ["id", "category", "title", "detail", "rating", "evidence", "suggest"], label);
+  return {
+    id: str(o.id, `${label}.id`, 40, true)!,
+    category: enumOf(o.category, `${label}.category`, FINDING_CATEGORIES, true)!,
+    title: str(o.title, `${label}.title`, 80, true)!,
+    detail: str(o.detail, `${label}.detail`, 240, true)!,
+    rating: intRange(o.rating, `${label}.rating`, 1, 5, true)!,
+    evidence: strArray(o.evidence, `${label}.evidence`, 6, 80) ?? [],
+    suggest: enumOf(o.suggest, `${label}.suggest`, FINDING_SUGGESTS, true)!,
+  };
+}
 
 /** Streng validering (kastes CompetitorInputError ved fejl). Lister klippes til deres loft i stedet for at blive afvist. */
 export function validateReport(raw: unknown): CompetitorReport {
   const o = obj(raw, "rapport");
-  noUnknownKeys(o, ["generatedAt", "jevCalls", "competitors", "patterns", "gaps"], "rapport");
+  noUnknownKeys(o, ["generatedAt", "jevCalls", "competitors", "patterns", "gaps", "findings"], "rapport");
   const generatedAt = isoDate(o.generatedAt, "generatedAt");
   const jevCalls = int(o.jevCalls, "jevCalls", 0, true)!;
   if (!Array.isArray(o.competitors)) throw new CompetitorInputError("competitors skal være en liste");
@@ -281,7 +378,12 @@ export function validateReport(raw: unknown): CompetitorReport {
   const competitors = o.competitors.slice(0, MAX_COMPETITORS).map(parseCompetitor);
   const patterns = o.patterns.slice(0, MAX_PATTERNS).map(parsePattern);
   const gaps = o.gaps.slice(0, MAX_GAPS).map(parseGap);
-  return { generatedAt, jevCalls, competitors, patterns, gaps };
+  let findings: CompetitorFinding[] | undefined;
+  if (o.findings !== undefined) {
+    if (!Array.isArray(o.findings)) throw new CompetitorInputError("findings skal være en liste");
+    findings = o.findings.slice(0, MAX_FINDINGS).map(parseFinding);
+  }
+  return { generatedAt, jevCalls, competitors, patterns, gaps, ...(findings ? { findings } : {}) };
 }
 
 function dateKeyOf(generatedAt: string): string {
@@ -307,8 +409,13 @@ export async function saveAnalysis(raw: unknown): Promise<CompetitorAnalysis> {
   if (!Array.isArray(o.points) || o.points.length === 0) throw new CompetitorInputError("analysis.points skal være en ikke-tom liste");
   const points = o.points.slice(0, 6).map((v, i) => {
     const p = obj(v, `points[${i}]`);
-    noUnknownKeys(p, ["title", "detail"], `points[${i}]`);
-    return { title: str(p.title, `points[${i}].title`, 80, true)!, detail: str(p.detail, `points[${i}].detail`, 400, true)! };
+    noUnknownKeys(p, ["title", "detail", "category", "suggest"], `points[${i}]`);
+    return {
+      title: str(p.title, `points[${i}].title`, 80, true)!,
+      detail: str(p.detail, `points[${i}].detail`, 400, true)!,
+      category: enumOf(p.category, `points[${i}].category`, FINDING_CATEGORIES, false),
+      suggest: enumOf(p.suggest, `points[${i}].suggest`, FINDING_SUGGESTS, false),
+    };
   });
   const latest = await loadLatestReport();
   if (!latest) throw new CompetitorInputError("ingen rapport at analysere endnu");

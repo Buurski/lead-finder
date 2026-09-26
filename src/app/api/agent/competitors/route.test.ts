@@ -70,6 +70,20 @@ test("for stor body afvises med 413 uden at røre HMAC", async () => {
   assert.equal(res.status, 413);
 });
 
+test("rapport med de nye felter (kind, findings) gemmes end-to-end via agent-ruten", async () => {
+  const r = await call({
+    action: "save",
+    report: validReport({
+      competitors: [{ name: "Bygger AS", url: "https://bygger.dk", country: "DK", kind: "ai-bygger", aiBuilder: { priceFromText: "99 kr/md", aiFeatures: true } }],
+      findings: [{ id: "f1", category: "alternativ", title: "AI-byggere er billigere", detail: "Fra 99 kr/md.", rating: 5, evidence: ["Bygger AS"], suggest: "kinly-dk" }],
+    }),
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const latest = await loadLatestReport();
+  assert.equal(latest?.competitors[0].kind, "ai-bygger");
+  assert.equal(latest?.findings?.[0].suggest, "kinly-dk");
+});
+
 test("ugyldig JSON afvises med 400", async () => {
   const ts = String(Math.floor(Date.now() / 1000));
   const body = "{not json";

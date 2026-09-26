@@ -98,6 +98,67 @@ test("historik holdes på maks 12 — ældste rydes ud", async () => {
   assert.equal(history.at(-1)!.generatedAt.slice(0, 10), "2026-01-03");
 });
 
+test("nye valgfrie felter (kind, uniqueServices, messaging, seoExtra, geoExtra, aiBuilder, findings) accepteres og bevares", async () => {
+  const raw = validRaw({
+    competitors: [
+      {
+        ...validRaw().competitors[0],
+        kind: "ai-bygger",
+        uniqueServices: ["Dansk support", "Kode-eksport"],
+        messaging: { angles: ["pris", "ai"] },
+        seoExtra: { faqVisible: true, reviewsAsText: false },
+        geoExtra: { citableAnswers: true },
+        aiBuilder: { priceFromText: "99 kr/md", aiFeatures: true, danish: true, codeExport: false },
+      },
+    ],
+    findings: [
+      { id: "f1", category: "pris-budskab", title: "Ingen viser pris", detail: "Kun 1 ud af 5.", rating: 4, evidence: ["Bureau A", "Bureau B"], suggest: "blog" },
+    ],
+  });
+  const report = await saveReport(raw);
+  assert.equal(report.competitors[0].kind, "ai-bygger");
+  assert.deepEqual(report.competitors[0].uniqueServices, ["Dansk support", "Kode-eksport"]);
+  assert.deepEqual(report.competitors[0].messaging, { angles: ["pris", "ai"] });
+  assert.deepEqual(report.competitors[0].seoExtra, { faqVisible: true, reviewsAsText: false });
+  assert.deepEqual(report.competitors[0].geoExtra, { citableAnswers: true });
+  assert.deepEqual(report.competitors[0].aiBuilder, { priceFromText: "99 kr/md", aiFeatures: true, danish: true, codeExport: false });
+  assert.equal(report.findings?.[0].title, "Ingen viser pris");
+  const latest = await loadLatestReport();
+  assert.deepEqual(latest, report);
+});
+
+test("rapport uden de nye felter valideres stadig (bagudkompatibel)", () => {
+  const report = validateReport(validRaw());
+  assert.equal(report.competitors[0].kind, undefined);
+  assert.equal(report.findings, undefined);
+});
+
+test("ukendt nøgle i de nye nestede objekter afvises", () => {
+  const base = validRaw().competitors[0];
+  assert.throws(() => validateReport(validRaw({ competitors: [{ ...base, messaging: { angles: ["pris"], ekstra: 1 } }] })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ competitors: [{ ...base, seoExtra: { faqVisible: true, ekstra: 1 } }] })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ competitors: [{ ...base, kind: "bureaukrati" }] })), CompetitorInputError);
+});
+
+test("finding uden for rating 1-5 afvises; ukendt kategori/suggest afvises; >20 findings klippes", () => {
+  const goodFinding = { id: "f1", category: "seo" as const, title: "t", detail: "d", rating: 3, evidence: [], suggest: "blog" as const };
+  assert.throws(() => validateReport(validRaw({ findings: [{ ...goodFinding, rating: 0 }] })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ findings: [{ ...goodFinding, rating: 6 }] })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ findings: [{ ...goodFinding, category: "ukendt" }] })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ findings: [{ ...goodFinding, suggest: "ukendt" }] })), CompetitorInputError);
+  const many = Array.from({ length: 25 }, (_, i) => ({ ...goodFinding, id: `f${i}` }));
+  const report = validateReport(validRaw({ findings: many }));
+  assert.equal(report.findings?.length, 20);
+});
+
+test("analyse-punkter kan bære valgfri kategori/suggest", async () => {
+  await saveReport(validRaw());
+  const analysis = await saveAnalysis({ model: "m", points: [{ title: "t", detail: "d", category: "geo", suggest: "annonce" }] });
+  assert.equal(analysis.points[0].category, "geo");
+  assert.equal(analysis.points[0].suggest, "annonce");
+  await assert.rejects(saveAnalysis({ model: "m", points: [{ title: "t", detail: "d", category: "ukendt" }] }), CompetitorInputError);
+});
+
 test("analyse hæftes på nyeste rapport; nyt scan fjerner den; validering holder", async () => {
   await assert.rejects(saveAnalysis({ model: "m", points: [{ title: "t", detail: "d" }] }), CompetitorInputError);
   await saveReport(validRaw());
