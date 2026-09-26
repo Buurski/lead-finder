@@ -18,6 +18,7 @@ export default function PhaseSelect({ companyId }: { companyId: string }) {
   async function change(fase: string) {
     if (!fase) return;
     if ((fase === "tabt" || fase === "ikke_egnet") && !window.confirm("Åbne kolde kladder til virksomheden stoppes. Fortsæt?")) return;
+    if (fase === "ny" && !window.confirm("Virksomheden bliver et aktivt lead igen, og motoren kan skrive kladder til den. Fortsæt?")) return;
     setBusy(true);
     setErr("");
     try {

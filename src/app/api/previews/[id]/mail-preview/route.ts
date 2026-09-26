@@ -3,6 +3,7 @@ import { authorizedRead, jsonBody } from "@/lib/hq/api";
 import { readPreviewRequests } from "@/lib/preview-queue";
 import { composePreviewMail, type SenderId } from "@/lib/senders";
 import { previewBodyError } from "@/lib/hq/preview-send";
+import { wrongPersonText } from "@/lib/tone-mixer";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const rec = (await readPreviewRequests()).find((r) => r.id === id);
   if (!rec) return NextResponse.json({ error: "findes ikke" }, { status: 404 });
   const body = String(b.body ?? "");
-  const invalid = previewBodyError(body, rec.previewUrl, Boolean(rec.seoTjek));
+  const invalid = wrongPersonText(sender, body)
+    ? "teksten nævner den anden person som afsender — ret den eller skift afsender"
+    : previewBodyError(body, rec.previewUrl, Boolean(rec.seoTjek));
   if (invalid) return NextResponse.json({ error: invalid }, { status: 422 });
   const { html } = composePreviewMail(body.trim(), sender, rec.seoTjek);
   return NextResponse.json({ html, report: Boolean(rec.seoTjek) });

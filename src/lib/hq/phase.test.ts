@@ -31,3 +31,19 @@ test("kunder, ukendte faser og prototype-nøgler afvises", async () => {
   const [c] = await db.insert(company).values({ rowNo: 8, name: "X" }).returning();
   for (const bad of ["kunde", "constructor", "toString", 1, null]) await assert.rejects(setPhase(db, c.id, bad, "lucas"), PhaseError);
 });
+
+test("arkiveret virksomhed sat til Interesseret kommer faktisk tilbage i tragten (Opus 26/9)", async () => {
+  const [c] = await db.insert(company).values({ rowNo: 9, name: "Arkiv", archived: true }).returning();
+  const r = await setPhase(db, c.id, "interesseret", "lucas");
+  assert.equal(r.lifecycle, "interesseret");
+  const [a] = await db.select().from(activity);
+  assert.match(a.summary, /→ interesseret/);
+});
+
+test("'sagt nej' kan ikke vaskes til ny med ét klik; gammel status gemmes i loggen", async () => {
+  const [c] = await db.insert(company).values({ rowNo: 10, name: "Nej tak", leadStatus: "not-interested" }).returning();
+  await assert.rejects(setPhase(db, c.id, "ny", "lucas"), /sagt nej/);
+  await setPhase(db, c.id, "interesseret", "lucas");
+  const [a] = await db.select().from(activity);
+  assert.equal((a.payload as { fromLeadStatus: string }).fromLeadStatus, "not-interested");
+});

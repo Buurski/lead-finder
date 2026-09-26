@@ -9,7 +9,8 @@ export class PhaseError extends Error {}
 
 export const PHASES = { ny: "new", interesseret: "interested", tabt: "not-interested", ikke_egnet: "skip" } as const;
 export type ManualPhase = keyof typeof PHASES;
-const LABEL: Record<ManualPhase, string> = { ny: "aktiv igen", interesseret: "interesseret", tabt: "tabt", ikke_egnet: "ikke egnet" };
+/** "Sagt nej" må ikke vaskes væk med ét klik til "ny" — så kan motoren skrive koldt igen (Opus 26/9). */
+const SAID_NO = new Set(["not-interested", "ikke-interesseret", "ikke interesseret", "nej"]);
 
 /** Returnerer rækkenummeret, så kalderen kan stoppe åbne kolde kladder ved tabt/ikke egnet. */
 export async function setPhase(
@@ -24,9 +25,12 @@ export async function setPhase(
     const [c] = await tx.select().from(company).where(eq(company.id, companyId)).for("update");
     if (!c) throw new PhaseError("virksomheden findes ikke");
     if (c.clientNo != null) throw new PhaseError(c.clientRemoved ? "tidligere kunde står altid som tabt" : "virksomheden er kunde — fjern kundestatus først");
+    if (p === "ny" && SAID_NO.has((c.leadStatus || "").trim().toLowerCase())) {
+      throw new PhaseError("virksomheden har sagt nej — vælg Interesseret, hvis de selv har ombestemt sig");
+    }
     const [after] = await tx
       .update(company)
-      .set({ leadStatus: PHASES[p], archived: p === "ny" ? false : c.archived, lastUpdated: new Date().toISOString(), updatedAt: new Date() })
+      .set({ leadStatus: PHASES[p], archived: p === "ikke_egnet" ? c.archived : false, lastUpdated: new Date().toISOString(), updatedAt: new Date() })
       .where(eq(company.id, companyId))
       .returning({ lifecycle: company.lifecycle });
     await tx.insert(activity).values({
@@ -34,8 +38,8 @@ export async function setPhase(
       clientName: c.name,
       actor,
       type: "fase",
-      summary: `Fase sat til ${LABEL[p]} (var ${c.lifecycle.replace("_", " ")})`,
-      payload: { from: c.lifecycle, to: after.lifecycle, leadStatus: PHASES[p] },
+      summary: `Fase: ${c.lifecycle.replace("_", " ")} → ${after.lifecycle.replace("_", " ")}`,
+      payload: { from: c.lifecycle, to: after.lifecycle, fromLeadStatus: c.leadStatus, leadStatus: PHASES[p] },
     });
     return { rowNo: c.rowNo, lifecycle: after.lifecycle, stopDrafts: p === "tabt" || p === "ikke_egnet" };
   });

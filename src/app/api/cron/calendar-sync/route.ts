@@ -23,6 +23,8 @@ export async function GET(req: Request) {
   try {
     const results = await withCronLog("calendar-sync", async () => {
       if (!calendars.length) return { result: [] as SyncResult[], note: "ikke sat op — HQ_GCAL_LUCAS mangler" };
+      // Samme kalender til begge ville få hver sync til at slette den andens begivenheder.
+      if (calendars.length === 2 && calendars[0].id === calendars[1].id) throw new Error("HQ_GCAL_LUCAS og HQ_GCAL_CHARLIE peger på samme kalender");
       const { date } = copenhagenNow();
       const items = await listMyDay(getDb(), { today: date });
       const api = await googleCalApi();

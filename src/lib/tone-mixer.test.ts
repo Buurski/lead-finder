@@ -57,3 +57,15 @@ test("wrongPersonText fanger Charlie-formuleringer i en Lucas-mail (Hermes-audit
   }
   assert.equal(wrongPersonText("lucas", "Hej, jeg hedder Lucas og driver Kinly"), false);
 });
+
+test("afsender-værn fanger AI-tekst skrevet til den anden person (Opus 26/9)", () => {
+  for (const t of ["Hej, det er Charlie fra Kinly.", "Charlie Nielsen her.", "Ring på 42 25 32 62", "Mvh Charlie"]) {
+    assert.equal(wrongPersonText("lucas", t), true, t);
+  }
+  for (const t of ["Hej, det er Lucas fra Kinly.", "Mvh Lucas", "Venlig hilsen,\nLucas", "Tak for i dag\n\nLucas\n", "Lucas her."]) {
+    assert.equal(wrongPersonText("charlie", t), true, t);
+  }
+  assert.equal(wrongPersonText("charlie", "Jeg driver Kinly sammen med Lucas."), false);
+  for (const line of DISCLOSURES.lucas) assert.equal(wrongPersonText("lucas", line), false, line);
+  for (const line of DISCLOSURES.charlie) assert.equal(wrongPersonText("charlie", line), false, line);
+});
