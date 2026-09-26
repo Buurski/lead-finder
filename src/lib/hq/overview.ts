@@ -8,6 +8,9 @@ import { invoiceTotal, type Subscription } from "../invoices.ts";
 import type { UnbilledItem } from "./billing.ts";
 
 export type MailDir = "ud" | "ind";
+export type WaitingOn = "os" | "kunden" | "ingen";
+
+const WAITING_LABEL: Record<WaitingOn, string> = { os: "kunden venter på os", kunden: "vi venter på kunden", ingen: "ingen venter" };
 
 // Hermes' mail-resuméer er skrevet som "Svar sendt til Allan: …" / "Lene svarer på …".
 const OUT =
@@ -44,6 +47,8 @@ export interface CustomerOverview {
   services: string[];
   site: { status: string; domain: string | null; cmsUrl: string | null; lastDeployAt: string | null; health: Record<string, unknown> | null } | null;
   missing: string[];
+  /** Seneste "status"-aktivitet fra mail-sync (spec §D) — kun sat når der findes én. */
+  status: { at: string; waitingOn: WaitingOn; nextStep: string; text: string } | null;
 }
 
 const WORK_TYPES = new Set(["arbejde", "note", "deploy", "kundeopdatering", "udkast_sendt", "faktura", "fase", "moede", "opkald"]);
@@ -91,7 +96,12 @@ export function buildOverview(
 ): CustomerOverview {
   const { now } = extra;
   const acts = [...d.activities].sort((a, b) => b.at.getTime() - a.at.getTime());
-  const mails = acts.filter((a) => a.type === "email").map((a) => ({ at: a.at.toISOString(), dir: mailDirection(a.summary), summary: a.summary }));
+  const mails = acts.filter((a) => a.type === "email").map((a) => {
+    // Hermes' mail-sync skriver retningen eksplicit (payload.dir); ellers gæt på resuméet.
+    const explicitDir = (a.payload as { dir?: string } | null)?.dir;
+    const dir: MailDir = explicitDir === "ud" || explicitDir === "ind" ? explicitDir : mailDirection(a.summary);
+    return { at: a.at.toISOString(), dir, summary: a.summary };
+  });
   const work = acts
     // Systemets egne noter/fase-skift (flet, data udfyldt) er ikke "arbejde for kunden".
     .filter((a) => WORK_TYPES.has(a.type) && !((a.type === "note" || a.type === "fase") && ["system", "claude", "codex"].includes(a.actor)))
@@ -106,15 +116,35 @@ export function buildOverview(
     ? { lines: sub.lines, perMonth: sub.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0), dayOfMonth: sub.dayOfMonth, active: sub.active }
     : null;
 
+  // Seneste "status"-aktivitet (mail-sync's billige venter-på-vurdering, spec §D).
+  const statusAct = acts.find((a) => a.type === "status");
+  const status: CustomerOverview["status"] = statusAct
+    ? (() => {
+        const p = (statusAct.payload as { waitingOn?: string; nextStep?: string } | null) ?? {};
+        const waitingOn: WaitingOn = p.waitingOn === "os" || p.waitingOn === "kunden" ? p.waitingOn : "ingen";
+        const nextStep = typeof p.nextStep === "string" ? p.nextStep.trim() : "";
+        return { at: statusAct.at.toISOString(), waitingOn, nextStep, text: `Status (fra mails, ${statusAct.at.toISOString().slice(0, 10)}): ${nextStep || WAITING_LABEL[waitingOn]}` };
+      })()
+    : null;
+
   const attention: Attention[] = [];
   const last = mails[0];
-  if (last) {
+  // Statussen vinder kun når den er nyere end den seneste mail — ellers er mailen facit.
+  const statusIsNewer = status !== null && (!last || Date.parse(status.at) > Date.parse(last.at));
+  const openDeals = d.deals.filter((x) => OPEN_DEAL.has(normalizeStage(x.stage)));
+  if (statusIsNewer && status) {
+    const n = daysSince(status.at, now);
+    if (status.waitingOn === "os") attention.push({ level: "haster", text: `Kunden venter på svar fra os (${dage(n)})` });
+    else if (status.waitingOn === "kunden" && openDeals.length && n >= 7) {
+      const betaltIkkeLeveret = paid.length > 0 ? " — har betalt, men leverancen er ikke færdig" : "";
+      attention.push({ level: "haster", text: `Intet svar fra kunden i ${dage(n)}${betaltIkkeLeveret}` });
+    }
+  } else if (last) {
     const n = daysSince(last.at, now);
     if (last.dir === "ind" && n >= 1) attention.push({ level: "haster", text: `Kunden venter på svar fra os (${dage(n)})` });
   }
-  const openDeals = d.deals.filter((x) => OPEN_DEAL.has(normalizeStage(x.stage)));
   if (d.balance.overdue > 0) attention.push({ level: "haster", text: `${kr(d.balance.overdue)} forfaldent` });
-  if (last && last.dir === "ud" && openDeals.length) {
+  if (!statusIsNewer && last && last.dir === "ud" && openDeals.length) {
     const n = daysSince(last.at, now);
     if (n >= 7) {
       const betaltIkkeLeveret = paid.length > 0 ? " — har betalt, men leverancen er ikke færdig" : "";
@@ -182,6 +212,7 @@ export function buildOverview(
       ? { status: d.site.status, domain: d.site.domain, cmsUrl: d.site.cmsUrl, lastDeployAt: d.site.lastDeployAt?.toISOString() ?? null, health: (d.site.health as Record<string, unknown> | null) ?? null }
       : null,
     missing,
+    status,
   };
 }
 

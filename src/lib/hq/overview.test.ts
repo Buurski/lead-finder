@@ -87,6 +87,55 @@ test("website i headeren dækker for manglende site.domain", () => {
   assert.ok(!o.missing.includes("domæne"));
 });
 
+test("payload.dir vinder over resumé-gæt", () => {
+  const o = buildOverview(
+    dossier({
+      // Teksten ligner "ind" (ingen af OUT-mønstrene), men payload siger "ud".
+      activities: [{ type: "email", summary: "Allan spørger om vi kan lave et nyhedsbrev", payload: { dir: "ud" }, at: at("2026-09-21T09:00:00Z"), actor: "hermes" } as never],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.equal(o.lastMails[0].dir, "ud");
+});
+
+test("status-aktivitet nyere end sidste mail styrer 'venter på os'", () => {
+  const o = buildOverview(
+    dossier({
+      activities: [
+        { type: "email", summary: "Lene svarer på faktura 009", at: at("2026-09-10T09:00:00Z"), actor: "hermes" } as never,
+        { type: "status", summary: "Mail-status", payload: { waitingOn: "os", nextStep: "" }, at: at("2026-09-22T09:00:00Z"), actor: "hermes" } as never,
+      ],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.equal(o.status?.waitingOn, "os");
+  assert.ok(o.attention.some((a) => /Kunden venter på svar fra os/.test(a.text)));
+});
+
+test("gammel status-aktivitet (ældre end sidste mail) ignoreres", () => {
+  const o = buildOverview(
+    dossier({
+      deals: [{ title: "Hjemmeside", stage: "i_gang" } as never],
+      activities: [
+        { type: "status", summary: "Mail-status", payload: { waitingOn: "os", nextStep: "" }, at: at("2026-09-01T09:00:00Z"), actor: "hermes" } as never,
+        { type: "email", summary: "Påmindelse sendt til Kasper", at: at("2026-09-14T09:00:00Z"), actor: "hermes" } as never,
+      ],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.ok(o.attention.some((a) => /Intet svar fra kunden i 9 dage/.test(a.text)));
+});
+
+test("status med nextStep viser 'Status (fra mails, ...)'-tekst", () => {
+  const o = buildOverview(
+    dossier({
+      activities: [{ type: "status", summary: "x", payload: { waitingOn: "kunden", nextStep: "Aftale mødedato" }, at: at("2026-09-20T09:00:00Z"), actor: "hermes" } as never],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.equal(o.status?.text, "Status (fra mails, 2026-09-20): Aftale mødedato");
+});
+
 test("'Lucas modtog svar' er indgående", () => {
   assert.equal(mailDirection("Lucas modtog svar fra Henrik om tidsplanen"), "ind");
 });
