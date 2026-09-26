@@ -230,7 +230,7 @@ test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", as
   const { validateMessengerDraft } = await import("./messenger/compose.ts");
   const links = referenceLines("vvs", "KT VVS Test");
   assert.deepEqual(missingReferenceLinks(links.join("\n"), "vvs", "KT VVS Test"), []);
-  for (const u of ["https://ktvvs.vercel.app/path?x=y", "//ktvvs.vercel.app/path", "ktvvs.vercel.app/path"]) {
+  for (const u of ["https://ktvvs.vercel.app/path?x=y", "//ktvvs.vercel.app/path", "ktvvs.vercel.app/path", "**https://ktvvs.vercel.app/**"]) {
     const withPreview = [...links, `→ ${u}`].join("\n");
     assert.ok(missingReferenceLinks(withPreview, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")), u);
     assert.equal(validateDraft(withPreview).ok, false, u);
@@ -263,6 +263,7 @@ test("værnet matcher host præcist — port, tegnsætning, lookalike og case", 
     assert.deepEqual(customerSiteLinks(t), [], t);
   }
   assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
+  for (const t of ["→https://ktvvs.vercel.app/", "se,https://ktvvs.vercel.app/", "**https://ktvvs.vercel.app/**", "///ktvvs.vercel.app"]) assert.equal(customerSiteLinks(t).length, 1, t);
   assert.ok(missingReferenceLinks("Se https://ktvvs.vercel.app. herfra", "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
 });
 

@@ -113,7 +113,6 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "professional": return [D.midtadvokaterne, D.ikastCase];
     case "auto": return [D.ikastCase, D.denlillemaler];
     case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
-    // craft/service: kun en faktisk maler får maler-demoen; ellers [] (fail-closed).
     case "craft": return PAINTER.test(`${name} ${branch}`) ? [D.denlillemaler] : [];
     case "service": return [];
     // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
@@ -147,26 +146,22 @@ export function hasKinlyFront(text: string): boolean {
  */
 const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
 
-/** hostname uden www./tegnsætning. */
 function hostKey(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
 }
 
 const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
 
-/** Kundens side kun via sin kinly.dk-case (Lucas 23/9). */
 export function isCustomerSiteUrl(url: string): boolean {
   return CUSTOMER_HOSTS.has(hostKey(url));
 }
 
-/** Kunde-links i fri tekst, også bare domæner og //-links. */
+// Kandidat uden whitespace-krav (→https://x, se,https://x); (?<!@) = e-mail.
 export function customerSiteLinks(text: string): string[] {
   const hits: string[] = [];
-  for (const m of text.matchAll(/[^\s<>"'()\]]+/g)) {
-    // e-mail-tokens er ikke links.
-    if (m[0].includes("@") && !/^https?:/i.test(m[0])) continue;
-    const url = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
-    if (isCustomerSiteUrl(url) && !hits.includes(m[0])) hits.push(m[0]);
+  for (const m of text.matchAll(/(?<!@)(?:https?:\/\/|\/\/)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
+    const u = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
+    if (isCustomerSiteUrl(u) && !hits.includes(m[0])) hits.push(m[0]);
   }
   return hits;
 }
