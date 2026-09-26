@@ -92,7 +92,9 @@ async function fetchHtml(url, ms = 7000) {
 }
 
 // ---- query plan: skin + restaurant weighted heaviest, 1 barber/city ----
-const SKIN_Q = ["skønhedsklinik", "kosmetolog", "hudpleje", "permanent makeup", "skønhedssalon"];
+// 26/9: "hudpleje" (overlapper kosmetolog/skønhedsklinik) byttet til "skønhedssalon" — samme antal
+// Places-kald (Lucas' budget ~100 kr./md.); de friske leads kommer fra de 30 nye byer, ikke flere kald.
+const SKIN_Q = ["skønhedsklinik", "kosmetolog", "skønhedssalon", "permanent makeup"];
 // Exclude hotels, public pools, sports/leisure centres, resorts and obvious
 // non-clinic chains that the generic "spa wellness" query used to drag in.
 const EXCLUDE_NAME = /hudlæge|hudlaege|dermatolog|hudlæger|tandlæge|tandlaege|hotel|strandhotel|kurhotel|svømmehal|svømmehall|svømmebad|badeland|vandland|aquadventure|idrætscenter|idraetscenter|fritidscenter|sportscenter|sportcenter|kulturhus|gigantium|kurbad|\bresort\b|comwell|scandic|best western|radisson|seaside|slot copenhagen|feriecenter|camping/i;
@@ -105,7 +107,7 @@ const FULL_PLAN = [
   // 0 udvalgte af 40 kald i første VPS-kørsel, elektriker 2,8 % svar (n=36) mod
   // café 19 % / salon 17 %. Sparer ~40 Places-kald/dag. Sæt dem ind igen her
   // hvis håndværk skal tilbage — DIV_MIN nedenfor skal så også op.
-]; // ~8 queries/city (var 11; skønhedssalon +1 26/9). barber/neglesalon/bistro dropped from daily plan (backlog full; negle still caught by name-categorisation).
+]; // ~7 queries/city (var 11). barber/neglesalon/bistro dropped from daily plan (backlog full; negle still caught by name-categorisation).
 // Copenhagen kept deliberately light (geo rule: <=20% of batch).
 const CPH_PLAN = [
   { q: "skønhedsklinik", cat: "skin" }, { q: "populær restaurant", cat: "mad" },
