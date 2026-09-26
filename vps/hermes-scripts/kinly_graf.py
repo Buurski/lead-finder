@@ -129,11 +129,12 @@ def validate_spec(spec: dict) -> list[str]:
 
 def format_number(bar: dict) -> str:
     value = bar["value"]
+    # Dansk talformat: punktum som tusindtalsskilletegn, komma som decimal.
     if float(value) == int(value):
-        num = str(int(value))
+        num = f"{int(value):,}".replace(",", ".")
     else:
-        num = f"{value:.1f}".replace(".", ",")
-    unit = bar.get("unit") or ""
+        num = f"{value:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    unit = (bar.get("unit") or "").strip()
     if unit == "%":
         return f"{num} %"
     if unit:
@@ -289,60 +290,46 @@ def render_bars_vertical(draw: ImageDraw.ImageDraw, spec: dict, content_top: int
 # ─── "barh": vandrette søjler med spor (Kinly "pris er ikke værdi"-stil) ───
 
 def render_bars_horizontal(draw: ImageDraw.ImageDraw, spec: dict, content_top: int) -> None:
+    # Fast række-layout (rettet 26/9: det gamle flydende layout løb ud over
+    # footeren ved 4 søjler). Label højrestillet i venstre kolonne, bjælke i
+    # sporet, tal lige efter bjælken. Hver række får en lige stor "slot".
     bars = spec["bars"]
     n = len(bars)
-    track_x0 = MARGIN
-    track_x1 = W - MARGIN
+    label_col = 400
+    track_x0 = MARGIN + label_col + 30
+    track_x1 = W - MARGIN - 230  # plads til tallet efter den længste bjælke
     track_w = track_x1 - track_x0
     max_value = max(float(b["value"]) for b in bars) or 1
 
-    available_h = (H - 14 - 60) - content_top
-    row_h = min(100, int(available_h / n) - 30)
-    row_gap = int((available_h - row_h * n) / max(1, n))
-    y = content_top + row_gap // 2
+    bottom = H - 14 - (110 if spec.get("note") else 80)
+    slot = (bottom - content_top) / n
+    bar_h = int(min(64, slot * 0.5))
+    radius = int(bar_h * 0.28)
+    num_font = font("spacegrotesk-700.ttf", 38 if bar_h >= 56 else 30)
 
-    label_font = font("archivo-400.ttf", 26)
-    num_font = font("spacegrotesk-700.ttf", 40)
-    radius = int(row_h * 0.28)  # rundet rektangel, ikke en pille — matcher referencen
-
-    for b in bars:
-        rrect(draw, [track_x0, y, track_x1, y + row_h], radius=radius, fill=SURFACE)
+    for i, b in enumerate(bars):
+        cy = content_top + slot * i + slot / 2
+        y0, y1 = int(cy - bar_h / 2), int(cy + bar_h / 2)
+        rrect(draw, [track_x0, y0, track_x0 + track_w, y1], radius=radius, fill=SURFACE)
         frac = max(0.03, float(b["value"]) / max_value)
-        fill_w = max(int(row_h * 0.9), int(track_w * frac))
+        fill_w = max(bar_h, int(track_w * frac))
         color = EMBER if b.get("highlight") else FADED
-        rrect(draw, [track_x0, y, track_x0 + fill_w, y + row_h], radius=radius, fill=color)
+        rrect(draw, [track_x0, y0, track_x0 + fill_w, y1], radius=radius, fill=color)
 
         num_text = format_number(b)
-        nw = text_width(draw, num_text, num_font)
-        label = b["label"]
-        caption_below = None
+        draw.text((track_x0 + fill_w + 20, cy - num_font.size * 0.62), num_text, font=num_font,
+                  fill=EMBER if b.get("highlight") else INK)
 
-        if fill_w >= nw + 60 and frac > 0.35:
-            # Tal passer inde i den fyldte bjælke — sæt det til højre inde i den, lys tekst.
-            # Labelen er typisk for lang til at stå inde i bjælken, så den bliver en billedtekst under.
-            tx = track_x0 + fill_w - nw - 24
-            draw.text((tx, y + row_h / 2 - num_font.size / 2), num_text, font=num_font, fill=PAPER)
-            caption_below = label
-        else:
-            # Bjælken er for smal — tal + label uden for, til højre for bjælken.
-            tx = track_x0 + fill_w + 24
-            draw.text((tx, y + row_h / 2 - num_font.size / 2), num_text, font=num_font, fill=color)
-            draw.text((tx + nw + 20, y + row_h / 2 - label_font.size / 2), label, font=label_font, fill=INK)
-
-        y += row_h + 16
-
-        if caption_below:
-            cf, clines = fit_lines(draw, caption_below, "archivo-400.ttf", 24, track_w, min_size=16, max_lines=2)
-            for ln in clines:
-                draw.text((track_x0, y), ln, font=cf, fill=INK)
-                y += int(cf.size * 1.3)
-
+        lf, llines = fit_lines(draw, b["label"], "spacegrotesk-500.ttf", 32, label_col, min_size=20, max_lines=1)
         sub = b.get("sublabel")
-        if sub:
-            draw.text((track_x0, y + 4), sub, font=font("archivo-400.ttf", 22), fill=FADED)
-            y += 36
-
-        y += row_gap
+        sf, slines = (fit_lines(draw, sub, "archivo-400.ttf", 20, label_col, min_size=14, max_lines=1) if sub else (None, []))
+        block_h = lf.size * 1.15 + (sf.size * 1.35 if sf else 0)
+        ty = cy - block_h / 2
+        lw = text_width(draw, llines[0], lf)
+        draw.text((track_x0 - 30 - lw, ty), llines[0], font=lf, fill=EMBER if b.get("highlight") else INK)
+        if sf:
+            sw = text_width(draw, slines[0], sf)
+            draw.text((track_x0 - 30 - sw, ty + lf.size * 1.2), slines[0], font=sf, fill=FADED)
 
 
 # ─── "stat": ét stort tal ───

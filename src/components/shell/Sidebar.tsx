@@ -22,9 +22,9 @@ function RailItem({ item, active, badge }: { item: (typeof NAV_PRIMARY)[number];
       data-active={active}
       aria-current={active ? "page" : undefined}
       aria-label={item.label}
-      title={item.label}
     >
       <Icon name={item.icon} />
+      <span className="cc-rail-label" aria-hidden="true">{item.label}</span>
       {!!badge && <span className="cc-rail-badge">{badge > 99 ? "99+" : badge}</span>}
     </Link>
   );
