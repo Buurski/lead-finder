@@ -1,4 +1,4 @@
-import { DEMO_SITES, REFERENCE_INTRO, referenceLinks, withReferenceLinks } from "./demos.ts";
+import { DEMO_SITES, REFERENCE_INTRO, customerSiteLinks, referenceLinks, withReferenceLinks } from "./demos.ts";
 import { applySignature, applySignatureHtml, defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
@@ -784,6 +784,17 @@ export async function sendLeadEmail(
     subject = template.subject;
     text = template.text;
     html = template.html;
+  }
+
+  // 26/9: composedBody-genvejen gik direkte til SMTP uden at røre link-værnet,
+  // så et lead hvis body indeholdt kundens eget preview/domæne (ktvvs.vercel.app,
+  // vida-klinik.dk, …) kunne sendes. Kundens egen side linkes kun via sin
+  // kinly.dk-case (Lucas 23/9). Gaten tjekker begge de bytes der faktisk sendes
+  // (text OG html) og står FØR transporten, så en afvist mail hverken rører
+  // creds eller SMTP.
+  for (const part of [text, html]) {
+    const bad = customerSiteLinks(part)[0];
+    if (bad) throw new Error(`kundens egen side må ikke sendes (${bad}) — brug kinly.dk-casen`);
   }
 
   // Pick the sender: explicit lead.sender wins; otherwise fall back to whichever

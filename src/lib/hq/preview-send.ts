@@ -5,7 +5,7 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { hasKinlyFront } from "../demos.ts";
+import { customerSiteLinks, hasKinlyFront } from "../demos.ts";
 
 export class PreviewSendError extends Error {}
 
@@ -47,6 +47,12 @@ export async function sendPreview(
   // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
   // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
   if (!hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
+  // 26/9: kundens egen side/preview må aldrig linkes — kun via sin kinly.dk-case.
+  // Gaten står FØR activity-kravet, så en afvist mail hverken rører db eller SMTP.
+  const customerLinks = customerSiteLinks(body);
+  if (customerLinks.length) {
+    throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);
+  }
 
   const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
   const legacyId = `preview-sent:${id}`;

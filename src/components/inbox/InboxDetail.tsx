@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MAIL_LINKS, suggestMailLinks } from "@/lib/demos";
+import { MAIL_LINKS, isCustomerSiteUrl, suggestMailLinks } from "@/lib/demos";
 import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import Icon from "@/components/shell/Icon";
 import { GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
@@ -312,7 +312,15 @@ export default function InboxDetail({
           <div className="inbox-cardrow">
             {(decided ? draft.demoPair : demos).map((d, i) => (
               <div key={i} className="inbox-democard" data-active={!decided && i === activeSlot ? "true" : undefined} onFocusCapture={() => setActiveSlot(i)} onClick={() => setActiveSlot(i)}>
-                {decided ? (
+                {/* Gamle kladder kan have kundens eget preview/domæne i demoPair
+                    (sat før 26/9). Det må hverken vises som klikbart link eller
+                    kunne vælges: kun kundens kinly.dk-case er et lovligt link.
+                    Slottet kan stadig skiftes via forslagene nedenfor. */}
+                {isCustomerSiteUrl(d.url) ? (
+                  <span className="cc-dim" style={{ fontSize: 12 }} title={d.url}>
+                    Kunde-link — vises ikke. Kundens egen side linkes kun via kinly.dk-casen.
+                  </span>
+                ) : decided ? (
                   <a href={d.url} target="_blank" rel="noopener noreferrer">{d.label} — {prettyUrl(d.url)} ↗</a>
                 ) : (
                   <>

@@ -8,7 +8,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { missingReferenceLinks, referenceLines } from "./demos.ts";
+import { customerSiteLinks, missingReferenceLinks, referenceLines } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
@@ -69,6 +69,12 @@ export function validateDraft(text: string): ValidationResult {
   }
   for (const dead of DEAD_DEMO_HOSTS) {
     if (text.includes(dead)) errors.push(`dødt demo-link: ${dead} — vælg andre demoer`);
+  }
+  // Kunde-link (kundens eget domæne eller vores upublicerede preview) må aldrig
+  // stå i et udkast — kunden linkes kun via sin kinly.dk-case (Lucas 23/9).
+  // Samme værn som sendegaten bruger (demos.ts#customerSiteLinks).
+  for (const u of customerSiteLinks(text)) {
+    errors.push(`kunde-link: ${u} — brug kinly.dk-casen, ikke kundens egen side`);
   }
   return { ok: errors.length === 0, errors };
 }

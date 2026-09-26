@@ -39,7 +39,6 @@ const D = {
   underKlippen: { label: "Café / dansk", url: DEMO_SITES.underKlippen },
   zaytoon: { label: "Restaurant / takeaway", url: DEMO_SITES.zaytoon },
   denlillemaler: { label: "Maler / håndværk", url: DEMO_SITES.denlillemaler },
-  ktvvs: { label: "VVS / el", url: DEMO_SITES.ktvvs },
   buurfoto: { label: "Fotograf", url: DEMO_SITES.buurfoto },
   streetcut: { label: "Barber", url: DEMO_SITES.streetcut },
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
@@ -67,7 +66,6 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.vida, branch: "skønhed" },
   { ...D.streetcut, branch: "skønhed" },
   { ...D.denlillemaler, branch: "håndværk" },
-  { ...D.ktvvs, branch: "håndværk" },
   { ...D.ikastAutoservice, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   // vestfjends.vercel.app svarer 404 (verificeret 2026-09-23) — fjernet fra
@@ -92,6 +90,9 @@ const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
+// Maler-faget (til maler-demoen). Kun her findes en ægte håndværks-demo uden
+// kunde-case — en tømrer/murer får ingen, se pickDemos.
+const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
 const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
@@ -107,6 +108,7 @@ const PROFESSIONAL = /advokat|jurist|jura|revisor|revision|bogholder|regnskab|ej
 // Rigtige kunder linkes via kinly.dk-casesiden (Lucas 23/9), aldrig direkte til
 // kundens eget domæne. VIDA-casen er altid hovedpunktet for skønhed/klinik.
 // Andre demos er supplement — rækkefølgen i array er den rækkefølge de vises i.
+// [] er et gyldigt svar: hellere ingen demo end en fremmed reference.
 export function pickDemos(branch: string, name: string): Demo[] {
   switch (branchKind(branch, name)) {
     case "clinic": return [D.vidaCase, D.salonArtec];
@@ -117,11 +119,14 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "food": return [D.jernbanecafeenCase, D.underKlippen];
     case "professional": return [D.midtadvokaterne, D.ikastCase];
     case "auto": return [D.ikastCase, D.denlillemaler];
-    // VVS/el: casen er kladdens (og kundens) reference — previewet er upubliceret
-    // og må ikke optræde som demo nogen steder (demos.ts#CUSTOMER_SITES).
+    // VVS/el: casen er kladdens (og kundens) reference. Kundens preview er
+    // upubliceret og optræder ikke som demo nogen steder (demos.ts#CUSTOMER_SITES).
     case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
-    case "craft": return [D.ktvvs, D.denlillemaler];
-    case "service": return [D.ktvvs, D.denlillemaler];
+    // craft/service: den ENESTE ægte demo her er maleren, og den bruges KUN når
+    // lead'et faktisk er maler. Alt andet er fail-closed = [] — ingen fremmed
+    // reference, og ingen kundeside som "demo".
+    case "craft": return PAINTER.test(`${name} ${branch}`) ? [D.denlillemaler] : [];
+    case "service": return [];
     // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
     default: return [D.ikastCase, D.underKlippen];
   }
@@ -152,6 +157,40 @@ export function hasKinlyFront(text: string): boolean {
  * er privacy-reviewet, det er preview-linket ikke.
  */
 const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
+
+/** Host-nøgle for et link (uden www. og afsluttende punktum, så www.<kunde>.dk
+ *  og FQDN-roden rammer samme værn). */
+function hostKey(url: string): string {
+  try {
+    // hostname frem for host: host indeholder porten, så
+    // https://ktvvs.vercel.app:8080 slap uden om værn­et.
+    return new URL(url).hostname.replace(/^www\./, "").replace(/\.$/, "");
+  } catch {
+    return "";
+  }
+}
+
+const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
+
+/**
+ * Ét genbrugt værn: kundens egen side eller vores upublicerede preview må aldrig
+ * stå som link i et udkast — kunden linkes kun via sin kinly.dk-case (Lucas
+ * 23/9). Host sammenlignes PRÆCIST efter new URL, så en lookalike
+ * (ktvvs.vercel.app.evil) hverken fanges eller smugler kunden igennem.
+ */
+export function isCustomerSiteUrl(url: string): boolean {
+  const h = hostKey(url);
+  return h !== "" && CUSTOMER_HOSTS.has(h);
+}
+
+/** Kunde-links fundet i fri tekst (URL'er parset med new URL). Tom = ok. */
+export function customerSiteLinks(text: string): string[] {
+  const hits: string[] = [];
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"'()\]]+/gi)) {
+    if (isCustomerSiteUrl(m[0]) && !hits.includes(m[0])) hits.push(m[0]);
+  }
+  return hits;
+}
 
 export type BranchKind =
   | "clinic" | "barber" | "beauty" | "photo" | "foodIntl" | "food"
@@ -266,6 +305,11 @@ export const REFERENCE_INTRO = "Her kan I se min egen side og et par eksempler:"
 export function missingReferenceLinks(body: string, branch: string, name = ""): string[] {
   const l = referenceLinks(branch, name);
   const issues: string[] = [];
+  // Kunde-linket tjekkes først: det er den fejl der ellers slap igennem, fordi
+  // alle tre links godt kunne være til stede samtidig med kundens egen side.
+  for (const u of customerSiteLinks(body)) {
+    issues.push(`kundens egen side må ikke linkes (${u}) — brug kinly.dk-casen`);
+  }
   if (!hasKinlyFront(body)) issues.push(`mangler kinly.dk-forside (${l.front})`);
   if (l.caseUrl && !body.includes(l.caseUrl)) issues.push(`mangler case-link (${l.caseUrl})`);
   if (l.verticalUrl && !body.includes(l.verticalUrl)) issues.push(`mangler branche-side (${l.verticalUrl})`);
