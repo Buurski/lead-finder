@@ -95,10 +95,16 @@ test("reserveForSend: redigeret efter frisk læsning (ny version) ⇒ ingen rese
 
 test("updateDraft (pg): ét række-UPDATE, rører ikke andre kladder og nægter endelige", async () => {
   await freshTestDb();
+  // Link-politikken (queue.ts updateDraft) gælder også her: kroppene skal bære
+  // reference-linjerne, ellers afvises skrivningen før række-UPDATEN. Testen
+  // handler om række-UPDATE-sikkerhed, ikke om link-politik (den ligger i queue.test.ts).
+  const { referenceLines } = await import("./demos.ts");
+  const bodyA = ["Hej", "ny a", "", ...referenceLines("café", "Kagehuset"), "", "Mvh"].join("\n");
+  const bodyB = ["Hej", "ny b", "", ...referenceLines("café", "Kagehuset"), "", "Mvh"].join("\n");
   await writeQueue([draft({ id: "a" }), draft({ id: "b", body: "original" })]);
-  await Promise.all([updateDraft("a", { body: "ny a" }), updateDraft("b", { body: "ny b" })]);
+  await Promise.all([updateDraft("a", { body: bodyA }), updateDraft("b", { body: bodyB })]);
   const q = await readQueue();
-  assert.deepEqual(q.map((d) => d.body), ["ny a", "ny b"], "samtidige redigeringer overskriver ikke hinanden");
+  assert.deepEqual(q.map((d) => d.body), [bodyA, bodyB], "samtidige redigeringer overskriver ikke hinanden");
   await reserveForSend("a", "x@firma.dk", q[0].updatedAt!);
   assert.equal(await updateDraft("a", { status: "rejected" }), null, "sending kan ikke afvises");
   assert.equal((await readQueue())[0].status, "sending");
