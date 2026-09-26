@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, hasKinlyFront } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -149,7 +149,7 @@ export function validateMessengerDraft(text: string, sender: "lucas" | "charlie"
   if (text.length > 650) issues.push(`too long (${text.length} chars)`);
   if (/\d+\s*k(?:r|R)\b|\d+\.\d{3}\s*kr|alt\s+inklusiv|\bfra\s+\d|prisvenlig/.test(text)) issues.push("contains price/kr");
   if (/skriv\s+bare|send\s+(?:mig\s+)?mockup|svar\s+ja|\b200\+\s*kund/i.test(text)) issues.push("hard-sell CTA");
-  if (!text.includes(KINLY_FRONT)) issues.push("mangler kinly.dk-link");
+  if (!hasKinlyFront(text)) issues.push("mangler kinly.dk-link");
   if (!text.endsWith(`Mvh, ${messengerSignatureName(sender)}`)) issues.push("missing signature");
   return issues;
 }

@@ -5,7 +5,7 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
-import { KINLY_FRONT } from "../demos.ts";
+import { hasKinlyFront } from "../demos.ts";
 
 export class PreviewSendError extends Error {}
 
@@ -46,7 +46,7 @@ export async function sendPreview(
   if (!body.includes(r.previewUrl)) throw new PreviewSendError("mailen skal indeholde linket til udkastet");
   // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
   // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
-  if (!body.includes(KINLY_FRONT)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
+  if (!hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
 
   const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
   const legacyId = `preview-sent:${id}`;

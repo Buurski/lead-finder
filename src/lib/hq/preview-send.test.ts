@@ -57,3 +57,13 @@ test("fejlet afsendelse frigiver kravet; forkerte input afvises før afsendelse"
   const z = deps({ ...req, id: "preview_z" });
   await assert.rejects(sendPreview(db, "preview_z", { ...msg, body: "uden link" }, "lucas", z.d), PreviewSendError);
 });
+
+// Link-politik (Lucas 24/9): et case-link er ikke forsiden. Den løse
+// includes("https://kinly.dk/")-test lod /case/... slippe igennem — gaten skal
+// bruge samme strenge kontrol som missingReferenceLinks i demos.ts.
+test("et case-link tæller ikke som forsiden (streng front-gate)", async () => {
+  const x = deps({ ...req, id: "preview_s" });
+  const body = `Hej Maja\n\nHer er udkastet: ${url}\n\nVi har bygget https://kinly.dk/case/vida-klinik/`;
+  await assert.rejects(sendPreview(db, "preview_s", { subject: msg.subject, body }, "lucas", x.d), PreviewSendError);
+  assert.equal(x.sent.length, 0);
+});

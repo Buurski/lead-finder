@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { safeHref } from "@/lib/safe-href";
+import { KINLY_FRONT } from "@/lib/demos";
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { timeAgo } from "@/components/hq/time";
@@ -48,7 +49,9 @@ const DEFAULT_SUBJECT = "Jeres gratis udkast fra Kinly";
 function defaultBody(item: PreviewRequest): string {
   const hilsen = item.contactName ? `Hej ${item.contactName},` : "Hej,";
   const link = item.previewUrl ?? "";
-  return `${hilsen}\n\nTak fordi I spurgte. Her er et første udkast til en ny hjemmeside til ${item.company}:\n${link}\n\nDet er et udkast — alt kan rettes. Sig til hvad I synes, så tager vi den derfra.`;
+  // Link-politikken kræver kinly.dk-forsiden også i det gratis udkast; sendPreview
+  // afviser mailen uden den, så standardteksten skal indeholde den.
+  return `${hilsen}\n\nTak fordi I spurgte. Her er et første udkast til en ny hjemmeside til ${item.company}:\n${link}\n\nMin egen side: ${KINLY_FRONT}\n\nDet er et udkast — alt kan rettes. Sig til hvad I synes, så tager vi den derfra.`;
 }
 
 function groupOf(status: Status): "ready" | "working" | "sent" | "rejected" {
