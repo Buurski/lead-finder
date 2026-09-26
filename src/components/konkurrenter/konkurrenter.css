@@ -1,0 +1,79 @@
+/* /konkurrenter — samme udtryk som /pipeline og /blog: kun cc-card/cc-chip
+   fra globals.css, ingen skygger, ingen gradients. */
+
+.konk-page { display: flex; flex-direction: column; gap: 22px; }
+.konk-dim { color: var(--text-dim); }
+
+.konk-summary { display: flex; gap: 14px; flex-wrap: wrap; }
+.konk-summary-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); padding: 12px 18px; min-width: 140px;
+}
+.konk-summary-label { font-size: 12px; color: var(--text-muted); }
+.konk-summary-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+
+.konk-table-card { padding: 0; overflow: hidden; }
+
+.konk-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.konk-table th {
+  text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-muted);
+  padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.konk-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.konk-table tr:last-child td { border-bottom: 0; }
+.konk-row-kinly { background: var(--accent-soft); }
+.konk-us-chip { background: var(--text); color: #fff; font-weight: 700; margin-right: 6px; }
+.konk-name-link { font-weight: 600; }
+.konk-city { font-size: 12px; }
+
+.konk-sort-row { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.konk-sort-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; font-size: 12.5px; }
+
+.konk-cards { display: none; }
+
+@media (max-width: 780px) {
+  .konk-table, .konk-sort-row { display: none; }
+  .konk-cards { display: flex; flex-direction: column; }
+  .konk-card { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .konk-card:last-child { border-bottom: 0; }
+  .konk-card-kinly { background: var(--accent-soft); }
+  .konk-card-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: 14.5px; }
+  .konk-card-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  .konk-card-kv dt { color: var(--text-muted); }
+  .konk-card-kv dd { margin: 0; overflow-wrap: anywhere; }
+}
+
+.konk-section { display: flex; flex-direction: column; gap: 12px; }
+.konk-section-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+
+.konk-pattern-grid, .konk-gap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+
+.konk-pattern-card {
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+  padding: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.konk-pattern-title { font-size: 14.5px; font-weight: 600; }
+.konk-pattern-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+.konk-pattern-evidence { display: flex; flex-wrap: wrap; gap: 10px; }
+.konk-evidence-link { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; }
+
+.konk-gap-card {
+  border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 12px;
+  background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.konk-gap-card[data-kind="indhold"] { border-left-color: var(--blue); }
+.konk-gap-card[data-kind="ydelse"] { border-left-color: var(--green); }
+.konk-gap-card[data-kind="pris"] { border-left-color: var(--amber); }
+.konk-gap-card[data-kind="synlighed"] { border-left-color: var(--red); }
+
+.konk-gap-head { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.konk-gap-chip { font-size: 11px; font-weight: 700; }
+.konk-gap-chip[data-kind="indhold"] { background: var(--blue-dim); color: var(--blue); }
+.konk-gap-chip[data-kind="ydelse"] { background: var(--green-dim); color: var(--green); }
+.konk-gap-chip[data-kind="pris"] { background: var(--amber-dim); color: var(--amber); }
+.konk-gap-chip[data-kind="synlighed"] { background: var(--red-dim); color: var(--red); }
+.konk-gap-title { font-size: 14.5px; font-weight: 600; margin: 0; }
+.konk-gap-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+.konk-gap-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.konk-gap-error { font-size: 12px; color: var(--red); }
