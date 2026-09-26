@@ -25,10 +25,26 @@ export function mailDirection(summary: string): MailDir {
   return OUT.test(t) || OUT_PASSIVE.test(t) ? "ud" : "ind";
 }
 
+/** Et-kliks-handling på et opmærksomhedspunkt (Lucas 27/9: "jeg skal bare kunne trykke betalt/klaret herfra").
+ *  Peger altid på en eksisterende UI-rute — samme auth/Origin-tjek som resten af UI'et. */
+export interface AttentionAction {
+  label: string;
+  method: "POST" | "PATCH";
+  url: string;
+  body: Record<string, unknown>;
+}
 export interface Attention {
   level: "haster" | "obs";
   text: string;
+  action?: AttentionAction;
 }
+export const markPaidAction = (number: string): AttentionAction => ({
+  label: "Markér betalt", method: "POST", url: `/api/invoices/${encodeURIComponent(number)}/status`, body: { status: "betalt" },
+});
+export const taskDoneAction = (id: string): AttentionAction => ({
+  // id: uuid eller "deal:<uuid>" — ruten læser præfikset rå, derfor ingen encodeURIComponent.
+  label: "Klaret", method: "PATCH", url: `/api/opgaver/${id}`, body: { done: true },
+});
 
 export interface CustomerOverview {
   attention: Attention[];
@@ -174,8 +190,20 @@ export function buildOverview(
   const unpaidInvoices = invoices.filter((i) => ["sendt", "forfalden", "rykket"].includes(i.status));
   if (unpaidInvoices.length && d.deals.some((x) => normalizeStage(x.stage) === "betalt")) {
     for (const inv of unpaidInvoices) {
-      attention.push({ level: "haster", text: `Aftalen står som betalt, men faktura ${inv.number} er ikke betalt` });
+      attention.push({ level: "haster", text: `Aftalen står som betalt, men faktura ${inv.number} er ikke betalt`, action: markPaidAction(inv.number) });
     }
+  }
+  // Kundens egne opgaver der er forfaldne eller til i dag — kan krydses af direkte herfra.
+  const today = new Date(now).toISOString().slice(0, 10);
+  for (const t of d.openTasks) {
+    if (!t.due || t.due > today) continue;
+    attention.push({ level: t.due < today ? "haster" : "obs", text: `Opgave: ${t.title}${t.due < today ? ` (siden ${t.due})` : " (i dag)"}`, action: taskDoneAction(t.id) });
+  }
+  // Samme for aftalernes næste skridt (fx "Send CMS-videoguide til Lene") — også når aftalen står som betalt.
+  for (const x of d.deals) {
+    const due = x.nextStepDue ?? "";
+    if (!x.nextStep?.trim() || !due || due > today) continue;
+    attention.push({ level: due < today ? "haster" : "obs", text: `Næste skridt: ${x.nextStep}${due < today ? ` (siden ${due})` : " (i dag)"}`, action: taskDoneAction(`deal:${x.id}`) });
   }
   // Ufaktureret arbejde der har ligget for længe — en pr. linje, så det ikke drukner i totalen ovenfor.
   const UNBILLED_STALE_DAYS = 14;

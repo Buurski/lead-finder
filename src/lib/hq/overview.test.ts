@@ -153,6 +153,35 @@ test("aftale står betalt, men en faktura er stadig ubetalt → haster pr. faktu
   );
   assert.ok(o.attention.some((a) => a.level === "haster" && a.text === "Aftalen står som betalt, men faktura 011 er ikke betalt"));
   assert.equal(o.attention.filter((a) => a.text.includes("faktura 012")).length, 0);
+  const hit = o.attention.find((a) => a.text.includes("faktura 011"))!;
+  assert.deepEqual(hit.action, { label: "Markér betalt", method: "POST", url: "/api/invoices/011/status", body: { status: "betalt" } });
+});
+
+test("kundens forfaldne/dagens opgaver kan krydses af fra overblikket; fremtidige vises ikke", () => {
+  const o = buildOverview(
+    dossier({
+      openTasks: [
+        { id: "t1", title: "Send video til Lene", due: "2026-09-22" },
+        { id: "t2", title: "Ring", due: "2026-09-23" },
+        { id: "t3", title: "Senere", due: "2026-10-01" },
+        { id: "t4", title: "Uden dato", due: "" },
+      ] as never,
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  const tasks = o.attention.filter((a) => a.text.startsWith("Opgave:"));
+  assert.deepEqual(tasks.map((a) => [a.level, a.action?.url]), [["haster", "/api/opgaver/t1"], ["obs", "/api/opgaver/t2"]]);
+  assert.deepEqual(tasks[0].action?.body, { done: true });
+});
+
+test("aftalens forfaldne næste skridt kan krydses af — også på en betalt aftale", () => {
+  const o = buildOverview(
+    dossier({ deals: [{ id: "d1", title: "Hjemmeside", stage: "betalt", nextStep: "Send CMS-videoguide til Lene", nextStepDue: "2026-09-22" } as never] }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  const step = o.attention.find((a) => a.text.startsWith("Næste skridt:"))!;
+  assert.equal(step.level, "haster");
+  assert.equal(step.action?.url, "/api/opgaver/deal:d1");
 });
 
 test("ingen betalt-aftale → ingen advarsel selvom en faktura er ubetalt", () => {

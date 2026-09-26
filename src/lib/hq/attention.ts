@@ -12,6 +12,7 @@ import { listMyDay, type Owner } from "./tasks.ts";
 import { getDossier } from "./dossier.ts";
 import { unhandledReplyWhere } from "./summary.ts";
 import { loadOverview } from "./overview-load.ts";
+import { markPaidAction, taskDoneAction, type AttentionAction } from "./overview.ts";
 
 export type AttentionLevel = "haster" | "obs";
 
@@ -22,6 +23,7 @@ export interface AttentionItem {
   href: string;
   companyId?: string;
   at?: string;
+  action?: AttentionAction;
 }
 
 const MAX_ITEMS = 30;
@@ -54,6 +56,7 @@ export async function getAttention(
       href: it.companyId ? `/virksomheder/${it.companyId}` : "/opgaver",
       companyId: it.companyId ?? undefined,
       at: it.due || undefined,
+      action: taskDoneAction(it.id),
     });
   }
 
@@ -83,7 +86,8 @@ export async function getAttention(
     const overview = await loadOverview(db, dossier, now);
     for (const a of overview.attention) {
       if (a.level !== "haster") continue;
-      items.push({ level: "haster", kind: "kunde", text: `${dossier.company.name}: ${a.text}`, href: `/virksomheder/${c.id}`, companyId: c.id });
+      if (a.action?.url.startsWith("/api/opgaver/")) continue; // opgaver + næste skridt er allerede med fra punkt 1
+      items.push({ level: "haster", kind: "kunde", text: `${dossier.company.name}: ${a.text}`, href: `/virksomheder/${c.id}`, companyId: c.id, action: a.action });
     }
   }
 
@@ -101,6 +105,7 @@ export async function getAttention(
       href: inv.companyId ? `/virksomheder/${inv.companyId}` : "/fakturaer",
       companyId: inv.companyId ?? undefined,
       at: inv.dueDate,
+      action: markPaidAction(inv.number),
     });
   }
   const draftInvoices = await db

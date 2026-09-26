@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Icon from "./Icon";
+import AttentionActionButton from "./AttentionActionButton";
 import type { AttentionItem } from "@/lib/hq/attention";
 import "./attention.css";
 
@@ -59,10 +60,13 @@ export default function AttentionPanel({
             <>
               <div className="cc-palette-group-label">Haster</div>
               {haster.map((it, i) => (
-                <Link key={`h${i}`} href={it.href} className="cc-navlink" data-level="haster" onClick={onClose}>
-                  <Icon name={ATTENTION_KIND_ICON[it.kind]} />
-                  <span>{it.text}</span>
-                </Link>
+                <div key={`h${i}`} className="attn-row">
+                  <Link href={it.href} className="cc-navlink" data-level="haster" onClick={onClose}>
+                    <Icon name={ATTENTION_KIND_ICON[it.kind]} />
+                    <span>{it.text}</span>
+                  </Link>
+                  {it.action && <AttentionActionButton action={it.action} />}
+                </div>
               ))}
             </>
           )}
@@ -70,10 +74,13 @@ export default function AttentionPanel({
             <>
               <div className="cc-palette-group-label">Til opfølgning</div>
               {obs.map((it, i) => (
-                <Link key={`o${i}`} href={it.href} className="cc-navlink" data-level="obs" onClick={onClose}>
-                  <Icon name={ATTENTION_KIND_ICON[it.kind]} />
-                  <span>{it.text}</span>
-                </Link>
+                <div key={`o${i}`} className="attn-row">
+                  <Link href={it.href} className="cc-navlink" data-level="obs" onClick={onClose}>
+                    <Icon name={ATTENTION_KIND_ICON[it.kind]} />
+                    <span>{it.text}</span>
+                  </Link>
+                  {it.action && <AttentionActionButton action={it.action} />}
+                </div>
               ))}
             </>
           )}

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/shell/Icon";
 import RelationsPanel from "./RelationsPanel";
+import AttentionActionButton from "@/components/shell/AttentionActionButton";
 import Link from "next/link";
 import SeoChart from "@/components/seo/SeoChart";
 import { BarChart } from "@/components/finance/FinanceUI";
@@ -80,7 +81,8 @@ function AttentionStrip({ items }: { items: CustomerOverview["attention"] }) {
           {items.map((a, i) => (
             <li key={i} className="ov-attention-item" data-level={a.level}>
               <span className="ov-dot" aria-hidden="true" />
-              {a.text}
+              <span style={{ flex: 1 }}>{a.text}</span>
+              {a.action && <AttentionActionButton action={a.action} />}
             </li>
           ))}
         </ul>
@@ -626,8 +628,8 @@ export default function Overblik({
 
   return (
     <div className="ov-grid">
-      <StamdataCard companyId={companyId} company={company} editing={editingStamdata} onEdit={setEditingStamdata} onSaved={() => router.refresh()} />
       <AttentionStrip items={overview.attention} />
+      <StamdataCard companyId={companyId} company={company} editing={editingStamdata} onEdit={setEditingStamdata} onSaved={() => router.refresh()} />
       <RelationsPanel companyId={companyId} relations={relations} />
 
       {showOpstart && <OpstartCard companyId={companyId} items={onboarding} onSaved={() => router.refresh()} />}
