@@ -1,79 +1,151 @@
 /* /konkurrenter — samme udtryk som /pipeline og /blog: kun cc-card/cc-chip
-   fra globals.css, ingen skygger, ingen gradients. */
+   fra globals.css, ingen skygger, ingen gradients. Diskret bevægelse (120-160ms,
+   ease-out) — CRM'et skal føles roligt, ikke sjovt. */
 
-.konk-page { display: flex; flex-direction: column; gap: 22px; }
+.konk-page { display: flex; flex-direction: column; gap: 26px; }
 .konk-dim { color: var(--text-dim); }
 
 .konk-summary { display: flex; gap: 14px; flex-wrap: wrap; }
 .konk-summary-stat {
   display: flex; flex-direction: column; gap: 2px;
   border: 1px solid var(--border); border-radius: 12px;
-  background: var(--surface); padding: 12px 18px; min-width: 140px;
+  background: var(--surface); padding: 12px 18px; min-width: 130px;
 }
 .konk-summary-label { font-size: 12px; color: var(--text-muted); }
-.konk-summary-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
-
-.konk-table-card { padding: 0; overflow: hidden; }
-
-.konk-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.konk-table th {
-  text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-  padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap;
-}
-.konk-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
-.konk-table tr:last-child td { border-bottom: 0; }
-.konk-row-kinly { background: var(--accent-soft); }
-.konk-us-chip { background: var(--text); color: #fff; font-weight: 700; margin-right: 6px; }
-.konk-name-link { font-weight: 600; }
-.konk-city { font-size: 12px; }
-
-.konk-sort-row { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
-.konk-sort-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; font-size: 12.5px; }
-
-.konk-cards { display: none; }
-
-@media (max-width: 780px) {
-  .konk-table, .konk-sort-row { display: none; }
-  .konk-cards { display: flex; flex-direction: column; }
-  .konk-card { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-  .konk-card:last-child { border-bottom: 0; }
-  .konk-card-kinly { background: var(--accent-soft); }
-  .konk-card-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: 14.5px; }
-  .konk-card-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
-  .konk-card-kv dt { color: var(--text-muted); }
-  .konk-card-kv dd { margin: 0; overflow-wrap: anywhere; }
-}
+.konk-summary-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 
 .konk-section { display: flex; flex-direction: column; gap: 12px; }
-.konk-section-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.konk-section-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 
-.konk-pattern-grid, .konk-gap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+/* ---- kategori-tokens (delt af badge, filter-chip og kort-kant) ---- */
+.konk-finding-card[data-category="ydelse"], .konk-finding-chip[data-category="ydelse"] { --konk-ink: var(--green); --konk-dim: var(--green-dim); }
+.konk-finding-card[data-category="pris-budskab"], .konk-finding-chip[data-category="pris-budskab"] { --konk-ink: #8a5a12; --konk-dim: var(--amber-dim); }
+.konk-finding-card[data-category="seo"], .konk-finding-chip[data-category="seo"] { --konk-ink: var(--blue); --konk-dim: var(--blue-dim); }
+.konk-finding-card[data-category="geo"], .konk-finding-chip[data-category="geo"] { --konk-ink: var(--red); --konk-dim: var(--red-dim); }
+.konk-finding-card[data-category="alternativ"], .konk-finding-chip[data-category="alternativ"] { --konk-ink: var(--text); --konk-dim: var(--pastel-lav); }
+.konk-finding-card[data-category="forbedring"], .konk-finding-chip[data-category="forbedring"] { --konk-ink: var(--text); --konk-dim: var(--pastel-sand); }
 
-.konk-pattern-card {
+/* ---- Denne uge ---- */
+.konk-week-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.konk-finding-big { padding: 20px; }
+.konk-finding-big .konk-finding-title { font-size: 16.5px; }
+
+/* ---- filter-chips (vandret scroll-række på mobil — eneste tilladte vandrette scroll) ---- */
+.konk-filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.konk-filter-chip {
+  height: 30px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: background 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+  white-space: nowrap;
+}
+.konk-filter-chip:hover { border-color: var(--border-strong); }
+.konk-filter-chip[data-on="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); font-weight: 600; }
+
+/* ---- Handlingskø ---- */
+.konk-finding-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.konk-finding-card {
+  border: 1px solid var(--border); border-left: 3px solid var(--konk-ink, var(--border-strong)); border-radius: 12px;
+  background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 120ms ease-out;
+}
+.konk-finding-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.konk-finding-chip { font-size: 11px; font-weight: 700; background: var(--konk-dim); color: var(--konk-ink); }
+.konk-finding-title { font-size: 14.5px; font-weight: 600; margin: 0; }
+.konk-finding-detail {
+  font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.konk-finding-detail-open { -webkit-line-clamp: unset; overflow: visible; }
+.konk-finding-more {
+  align-self: flex-start; background: none; border: none; padding: 0; margin-top: -4px;
+  font-size: 12px; font-weight: 600; color: var(--text-dim); cursor: pointer; text-decoration: underline;
+}
+.konk-finding-more:hover { color: var(--text); }
+.konk-finding-evidence { display: flex; flex-wrap: wrap; gap: 6px; }
+.konk-evidence-chip {
+  font-size: 11px; color: var(--text-dim); background: var(--surface-2); border-radius: 999px; padding: 2px 9px;
+}
+.konk-finding-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.konk-finding-actions .cc-btn { height: 30px; padding: 0 11px; font-size: 12px; transition: transform 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out; }
+.konk-finding-actions .cc-btn:active { transform: scale(0.97); }
+.konk-action-done { color: var(--green); border-color: var(--green-dim); background: var(--green-dim); text-decoration: none; display: inline-flex; align-items: center; }
+.konk-action-dismiss { color: var(--text-dim); }
+.konk-finding-error { font-size: 12px; color: var(--red); flex-basis: 100%; }
+
+/* ---- rating: 5 prikker, ikke stjerner ---- */
+.konk-dots { display: inline-flex; gap: 3px; align-items: center; }
+.konk-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--border-strong); display: inline-block; }
+.konk-dot[data-on="true"] { background: var(--text); }
+
+/* ---- Gemte idéer ---- */
+.konk-saved-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.konk-saved-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.konk-saved-row:last-child { border-bottom: none; }
+.konk-saved-chip { font-size: 10.5px; font-weight: 700; background: var(--bg-3); color: var(--text-muted); flex-shrink: 0; }
+.konk-saved-chip[data-ad="true"] { background: var(--amber-dim); color: #8a5a12; }
+.konk-saved-title { font-size: 13px; flex: 1; min-width: 140px; }
+.konk-saved-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.konk-saved-actions .cc-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+
+/* ---- Konkurrenter ---- */
+.konk-comp-kind-group { margin-top: 6px; display: flex; flex-direction: column; gap: 10px; }
+.konk-comp-kind-title { font-size: 13.5px; font-weight: 700; color: var(--text-muted); margin: 0; }
+.konk-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.konk-comp-card {
   border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.konk-comp-kinly { background: var(--accent-soft); border-color: var(--accent); }
+.konk-comp-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.konk-comp-name { font-weight: 700; font-size: 14.5px; }
+.konk-comp-city { font-size: 12px; }
+.konk-comp-positioning { font-size: 12.5px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+.konk-comp-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; }
+.konk-comp-chips, .konk-comp-unique { display: flex; flex-wrap: wrap; gap: 6px; }
+.konk-comp-unique { flex-direction: column; align-items: flex-start; gap: 5px; }
+.konk-comp-unique-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+.konk-angle-chip { background: var(--bg-3); color: var(--text-muted); font-size: 11px; }
+.konk-unique-chip { background: var(--green-dim); color: var(--green); font-size: 11px; }
+.konk-comp-flags { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.konk-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-dim); }
+.konk-flag-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--border-strong); flex-shrink: 0; }
+.konk-flag[data-on="true"] { color: var(--text); }
+.konk-flag[data-on="true"] .konk-flag-dot { background: var(--green); }
+.konk-comp-ads { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.konk-ad-btn { font-size: 11.5px; height: 28px; padding: 0 10px; }
+.konk-us-chip { background: var(--text); color: #fff; font-weight: 700; }
+
+/* ---- Mønstre (foldet) ---- */
+.konk-patterns-details { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 14px 16px; }
+.konk-patterns-summary { cursor: pointer; list-style: none; }
+.konk-patterns-summary::-webkit-details-marker { display: none; }
+.konk-patterns-details[open] .konk-patterns-summary { margin-bottom: 12px; }
+.konk-pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.konk-pattern-card {
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
   padding: 16px; display: flex; flex-direction: column; gap: 8px;
 }
-.konk-pattern-title { font-size: 14.5px; font-weight: 600; }
+.konk-pattern-title { font-size: 14.5px; font-weight: 600; margin: 0; }
 .konk-pattern-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
 .konk-pattern-evidence { display: flex; flex-wrap: wrap; gap: 10px; }
 .konk-evidence-link { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; }
 
-.konk-gap-card {
-  border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 12px;
-  background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 8px;
+@media (prefers-reduced-motion: reduce) {
+  .konk-finding-card, .konk-filter-chip, .konk-finding-actions .cc-btn { transition: none !important; }
+  .konk-finding-actions .cc-btn:active { transform: none; }
 }
-.konk-gap-card[data-kind="indhold"] { border-left-color: var(--blue); }
-.konk-gap-card[data-kind="ydelse"] { border-left-color: var(--green); }
-.konk-gap-card[data-kind="pris"] { border-left-color: var(--amber); }
-.konk-gap-card[data-kind="synlighed"] { border-left-color: var(--red); }
 
-.konk-gap-head { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.konk-gap-chip { font-size: 11px; font-weight: 700; }
-.konk-gap-chip[data-kind="indhold"] { background: var(--blue-dim); color: var(--blue); }
-.konk-gap-chip[data-kind="ydelse"] { background: var(--green-dim); color: var(--green); }
-.konk-gap-chip[data-kind="pris"] { background: var(--amber-dim); color: var(--amber); }
-.konk-gap-chip[data-kind="synlighed"] { background: var(--red-dim); color: var(--red); }
-.konk-gap-title { font-size: 14.5px; font-weight: 600; margin: 0; }
-.konk-gap-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
-.konk-gap-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.konk-gap-error { font-size: 12px; color: var(--red); }
+/* ---- mobil 390px: ingen vandret scroll udover filter-chips ---- */
+@media (max-width: 480px) {
+  .konk-page { gap: 20px; }
+  .konk-summary { gap: 8px; }
+  .konk-summary-stat { min-width: 0; flex: 1 1 calc(50% - 8px); padding: 10px 12px; }
+  .konk-filter-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+  .konk-week-grid, .konk-finding-grid, .konk-comp-grid, .konk-pattern-grid { grid-template-columns: 1fr; }
+  .konk-saved-row { flex-direction: column; align-items: flex-start; }
+  .konk-saved-actions { width: 100%; }
+  .konk-saved-actions .cc-btn { flex: 1; }
+}
