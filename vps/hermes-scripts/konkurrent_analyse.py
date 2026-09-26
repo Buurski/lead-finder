@@ -100,7 +100,7 @@ def analyse(report: dict, inspiration: list[dict] | None = None) -> tuple[dict, 
     body = json.dumps({
         "model": MODEL,
         "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": compact(report, inspiration)}],
-        "max_tokens": 1500 if inspiration else 900, "temperature": 0.3, "response_format": {"type": "json_object"},
+        "max_tokens": 3000 if inspiration else 1200, "temperature": 0.3, "response_format": {"type": "json_object"},
         **NO_THINKING,
     }).encode("utf-8")
     req = Request(URL, data=body, method="POST",

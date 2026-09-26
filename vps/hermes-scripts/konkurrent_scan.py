@@ -418,7 +418,7 @@ def places_lookup(competitor: dict, state: dict, no_places: bool) -> dict | None
     cache_key = competitor["id"]
     cached = cache_get(state, "places", cache_key)
     if cached is not None:
-        return cached or None
+        return clean_google(cached)
     key = load_places_key()
     if not key:
         return None
@@ -442,7 +442,14 @@ def places_lookup(competitor: dict, state: dict, no_places: bool) -> dict | None
     except Exception:
         return None
     cache_set(state, "places", cache_key, result)
-    return result
+    return clean_google(result)
+
+
+def clean_google(d: dict | None) -> dict | None:
+    """HQ kræver rating (tal). Firma uden Google-rating -> intet google-felt (ikke rating: null, som vælter hele rapporten)."""
+    if not d or not isinstance(d.get("rating"), (int, float)):
+        return None
+    return {"rating": d["rating"], "reviews": int(d.get("reviews") or 0), "source": d.get("source") or "places"}
 
 
 # ---------------------------------------------------------------- Facebook (kun hvis helper + url findes)
@@ -952,6 +959,8 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         with VAULT_NOTE.open("a", encoding="utf-8") as fh:
             fh.write(section)
         print(f"Skrevet til {VAULT_NOTE}")
+        # Sidste rapport gemmes lokalt, så en HQ-afvisning kan eftervises (valideres mod src/lib/hq/competitors.ts).
+        jev_lib.atomic_write_json(Path("/root/.hermes/state/konkurrent-last-report.json"), report)
         resp = crm_posts.call({"action": "save", "report": report}, POST_PATH)
         print(json.dumps(resp, ensure_ascii=False)[:500])
         if resp.get("ok") and analysis:
