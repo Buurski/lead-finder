@@ -172,18 +172,13 @@ export async function appendDrafts(
     if (k) blockedBizKeys.add(k);
     deduped.push(d);
   }
-  // Link-politik (Lucas 24/9): en kladde uden kinly.dk-forside/matchende case
-  // lægges IKKE i køen. Fail-closed — hellere tabe kladden her end at den står
-  // sendbar i /godkendelse uden links. Rettes ét sted: demos.ts.
-  const compliant = deduped.filter((d) => {
-    const issues = missingReferenceLinks(d.body ?? "", d.branch ?? "", d.name ?? "");
-    if (issues.length) {
-      console.warn(JSON.stringify({ evt: "queue.draft_skipped_link_policy", id: d.id, issues }));
-      return false;
-    }
-    return true;
-  });
-  const merged = [...existing, ...compliant];
+  // Link-politik (Lucas 24/9) håndhæves IKKE her: køen må gerne indeholde en kladde
+  // der endnu mangler links — Lucas' body-backfill (jf. de ventende kladder) retter
+  // netop dem. Værnene sidder der hvor et lead ikke tabes: compose
+  // (draft_personal_message), redigering (updateDraft) og sidste hegn før
+  // afsendelse (approve/send). Ellers ville en ingest-kladde uden links forsvinde
+  // tavst, og main's bizKey-dedupe-tests (queue.test.ts) holde op med at gælde.
+  const merged = [...existing, ...deduped];
   await writeQueue(merged);
   return merged;
 }
@@ -194,6 +189,18 @@ export async function updateDraft(
   id: string,
   patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId; website?: string; reviewsCount?: number; businessStatus?: string }
 ): Promise<QueueDraft | null> {
+  // Link-politik (Lucas 24/9): enhver skrivning der ÆNDRER teksten skal stadig
+  // leve op til kravene. Status-/mail-opdateringer (sent, recipientEmail) rører
+  // ikke body og går uhindret igennem, så gamle kladder ikke låser uden grund.
+  // Tjekket ligger FØR backend-grenene: pg-stien (prod) returnerer tidligt, så et
+  // tjek efter den ville aldrig køre i produktion.
+  if (patch.body !== undefined) {
+    const current = (await readQueue()).find((d) => d.id === id);
+    if (current) {
+      const issues = missingReferenceLinks(patch.body, current.branch ?? "", current.name ?? "");
+      if (issues.length) throw new LinkPolicyError(issues);
+    }
+  }
   if (pgEnabled()) {
     // Ét betinget række-UPDATE: to samtidige redigeringer kan ikke overskrive hinanden
     // med et forældet hel-kø-snapshot, og endelige kladder (sendt/sending) røres ikke (Sol 25/9).

@@ -76,3 +76,21 @@ test("appendDrafts blokerer IKKE opfølgnings-kladder mod en allerede sendt før
   assert.equal(merged.length, 2, "opfølgningen skal komme igennem");
   assert.ok(merged.some((d) => d.id === "d_step2"));
 });
+
+// Link-politik (Lucas 24/9): en body-redigering skal afvises i BEGGE backends.
+// Filen kører med DATA_BACKEND=pg, så testen dækker prod-stien (pg/queue.ts) —
+// ellers lå tjekket efter det tidlige return i updateDraft og kørte aldrig i drift.
+test("updateDraft afviser en body uden reference-links — også i pg-stien", async () => {
+  await freshTestDb();
+  const { updateDraft, LinkPolicyError } = await import("./queue.ts");
+  const { referenceLines } = await import("./demos.ts");
+  await appendDrafts([draft({ id: "d_edit", leadId: "1", name: "Kagehuset", branch: "café", city: "Herning" })]);
+  await assert.rejects(
+    () => updateDraft("d_edit", { body: "Hej\n\nJeg laver hjemmesider.\n\nMvh" }),
+    (e: unknown) => e instanceof LinkPolicyError,
+    "en body uden links skal afvises",
+  );
+  const okBody = ["Hej", "", ...referenceLines("café", "Kagehuset"), "", "Mvh"].join("\n");
+  const updated = await updateDraft("d_edit", { body: okBody });
+  assert.equal(updated?.body, okBody, "en komplet body skal gemmes");
+});
