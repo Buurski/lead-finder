@@ -212,4 +212,15 @@ test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
   assert.equal(dm.demoUrl, DEMO_SITES.ktvvsCase);
   assert.ok(!dm.text.includes(DEMO_SITES.ktvvs), "previewet står i DM'en");
   assert.deepEqual(validateMessengerDraft(dm.text), []);
+  // Kunde-previewet må heller ikke kunne VÆLGES i godkendelses-UI'et: intet
+  // preview i kataloget (MAIL_LINKS → dropdown + forslag), og ikke i demo-parret
+  // for de brancher hvor casen er kundens reference (VVS/el og auto).
+  const { MAIL_LINKS, suggestMailLinks, pickDemos } = await import("./demos.ts");
+  assert.ok(!MAIL_LINKS.some((l) => l.url === DEMO_SITES.ktvvs), "previewet står i kataloget");
+  assert.equal(pickDemos("vvs", "VVS Test")[0].url, DEMO_SITES.ktvvsCase);
+  assert.ok(!pickDemos("autoværksted", "Bilerne").some((d) => d.url === DEMO_SITES.ktvvs));
+  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["automekaniker", "Bilerne"]]) {
+    assert.ok(!suggestMailLinks(branch, name).some((l) => l.url === DEMO_SITES.ktvvs), `previewet foreslås for ${branch}`);
+  }
+  assert.ok(suggestMailLinks("vvs", "VVS Test").some((l) => l.url === DEMO_SITES.ktvvsCase));
 });

@@ -116,8 +116,10 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "foodIntl": return [D.zaytoon, D.underKlippen];
     case "food": return [D.jernbanecafeenCase, D.underKlippen];
     case "professional": return [D.midtadvokaterne, D.ikastCase];
-    case "auto": return [D.ikastCase, D.ktvvs];
-    case "craftUtility": return [D.ktvvs, D.denlillemaler];
+    case "auto": return [D.ikastCase, D.denlillemaler];
+    // VVS/el: casen er kladdens (og kundens) reference — previewet er upubliceret
+    // og må ikke optræde som demo nogen steder (demos.ts#CUSTOMER_SITES).
+    case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
     case "craft": return [D.ktvvs, D.denlillemaler];
     case "service": return [D.ktvvs, D.denlillemaler];
     // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
@@ -296,6 +298,8 @@ export function withReferenceLinks(text: string, branch: string, name = ""): Ref
 // Valgbare links i godkendelsen: kinly.dk-cases (rigtige kunder) først, så
 // kinly.dk-branchesider, så levende demoer. Kun sider der svarer 200 (tjekket
 // 23/9) — døde demoer (vestfjends) og kundernes egne domæner er med vilje ude.
+// KT VVS-previewet er også ude (26/9): kataloget er den vej et preview kunne
+// blive sat ind i en kladde med hånden, og en kunde må kun optræde via sin case.
 export interface MailLink extends Demo {
   group: "Kinly-cases" | "Kinly-branchesider" | "Demoer";
 }
@@ -316,7 +320,6 @@ export const MAIL_LINKS: MailLink[] = [
   { group: "Demoer", ...D.zaytoon },
   { group: "Demoer", ...D.salonArtec },
   { group: "Demoer", ...D.streetcut },
-  { group: "Demoer", ...D.ktvvs },
   { group: "Demoer", ...D.denlillemaler },
   { group: "Demoer", ...D.buurfoto },
   { group: "Demoer", ...D.midtadvokaterne },
