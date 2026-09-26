@@ -14,10 +14,26 @@ import { pgEnabled } from "./db/client.ts";
 import { bizKey } from "./leads/suppress.ts";
 
 import type { Demo } from "./demos.ts";
+import { missingReferenceLinks } from "./demos.ts";
 import type { SenderId } from "./senders.ts";
 
 // "sending" = reserveret lige før SMTP (se reserveForSend). Kun send-ruten flytter den videre.
 export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sending" | "sent";
+
+/**
+ * Kastes når en prospekt-kladde skrives med en tekst der bryder link-politikken
+ * (kinly.dk-forside + matchende case + branche-side, se demos.ts). Køen er
+ * fail-closed: hellere afvise skrivningen end at gemme en kladde der ikke må
+ * sendes. Kundesvar bruger ikke denne kø.
+ */
+export class LinkPolicyError extends Error {
+  readonly issues: string[];
+  constructor(issues: string[]) {
+    super(`link-politik: ${issues.join("; ")}`);
+    this.name = "LinkPolicyError";
+    this.issues = issues;
+  }
+}
 
 export interface QueueDraft {
   id: string;
@@ -156,7 +172,18 @@ export async function appendDrafts(
     if (k) blockedBizKeys.add(k);
     deduped.push(d);
   }
-  const merged = [...existing, ...deduped];
+  // Link-politik (Lucas 24/9): en kladde uden kinly.dk-forside/matchende case
+  // lægges IKKE i køen. Fail-closed — hellere tabe kladden her end at den står
+  // sendbar i /godkendelse uden links. Rettes ét sted: demos.ts.
+  const compliant = deduped.filter((d) => {
+    const issues = missingReferenceLinks(d.body ?? "", d.branch ?? "", d.name ?? "");
+    if (issues.length) {
+      console.warn(JSON.stringify({ evt: "queue.draft_skipped_link_policy", id: d.id, issues }));
+      return false;
+    }
+    return true;
+  });
+  const merged = [...existing, ...compliant];
   await writeQueue(merged);
   return merged;
 }
@@ -176,6 +203,13 @@ export async function updateDraft(
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
   if (idx === -1) return null;
+  // Link-politik (Lucas 24/9): enhver skrivning der ÆNDRER teksten skal stadig
+  // leve op til kravene. Status-/mail-opdateringer (sent, recipientEmail) rører
+  // ikke body og går uhindret igennem, så gamle kladder ikke låser uden grund.
+  if (patch.body !== undefined) {
+    const issues = missingReferenceLinks(patch.body, drafts[idx].branch ?? "", drafts[idx].name ?? "");
+    if (issues.length) throw new LinkPolicyError(issues);
+  }
   const next = {
     ...drafts[idx],
     ...(patch.status ? { status: patch.status } : {}),

@@ -1,4 +1,4 @@
-import { DEMO_SITES } from "./demos.ts";
+import { DEMO_SITES, REFERENCE_INTRO, withReferenceLinks } from "./demos.ts";
 import { applySignature, applySignatureHtml, defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
@@ -634,6 +634,13 @@ ${signature.html}`),
   },
 };
 
+/** Indsætter et afsnit før signaturen (eller til sidst hvis den ikke findes). */
+function insertBefore(text: string, marker: string, block: string): string {
+  const at = marker ? text.lastIndexOf(marker) : -1;
+  if (at < 0) return `${text.replace(/\s+$/, "")}\n\n${block}`;
+  return `${text.slice(0, at).replace(/\s+$/, "")}\n\n${block}\n\n${text.slice(at)}`;
+}
+
 export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
@@ -648,7 +655,23 @@ export function getEmailTemplate(
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const branchDisplay = getBranchDisplay(branch);
   const result = template({ ...vars, branchDisplay, sender });
-  return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
+  // Link-politik (Lucas 24/9): legacy-skabelonerne her har demo-/case-links, men
+  // ikke altid kinly.dk-forsiden og branche-siden. Samme politik som køen
+  // (demos.ts#withReferenceLinks) lægges på her, så SendQueue-vejene
+  // (bulk-send, review/approve, send-email, preview) ikke kan sende uden links.
+  // Blokken sættes FØR signaturen — links efter "Med venlig hilsen" læser skævt.
+  const fix = withReferenceLinks(result.text, branch, vars.name);
+  if (fix.added.length === 0) return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
+  const sig = formatSignature(sender);
+  return {
+    ...result,
+    text: insertBefore(result.text, sig.text, [REFERENCE_INTRO, ...fix.added.map((u) => `→ ${u}`)].join("\n")) + UNSUBSCRIBE_TEXT,
+    html: insertBefore(
+      result.html,
+      sig.html,
+      [`<p>${REFERENCE_INTRO}<br>`, ...fix.added.map((u) => `→ <a href="${u}">${u}</a><br>`), `</p>`].join(""),
+    ),
+  };
 }
 
 // Thrown when no template group resolves for a lead. The command-center email.ts
