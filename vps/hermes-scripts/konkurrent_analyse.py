@@ -18,6 +18,8 @@ from urllib.request import Request, urlopen
 
 MODEL = "deepseek-v4-flash"
 URL = "https://api.deepseek.com/chat/completions"
+# deepseek-v4-flash tænker som standard (27/9: alle 1500 tokens gik til reasoning, tomt svar). Slå fra.
+NO_THINKING = {"thinking": {"type": "disabled"}}
 MAX_INPUT_CHARS = 12_000  # ponytail: hårdt loft på input ≈ 4k tokens; hæv kun hvis rapporten vokser forbi 40 konkurrenter
 
 # Samme enums som konkurrent_scan.py's findings — duplikeret bevidst (to selvstændige scripts, ingen
@@ -99,6 +101,7 @@ def analyse(report: dict, inspiration: list[dict] | None = None) -> tuple[dict, 
         "model": MODEL,
         "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": compact(report, inspiration)}],
         "max_tokens": 1500 if inspiration else 900, "temperature": 0.3, "response_format": {"type": "json_object"},
+        **NO_THINKING,
     }).encode("utf-8")
     req = Request(URL, data=body, method="POST",
                   headers={"Content-Type": "application/json", "Authorization": f"Bearer {load_key()}"})

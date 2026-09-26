@@ -106,7 +106,7 @@ def diagnose(state: dict) -> str:
     import konkurrent_analyse  # genbruger nøgle-indlæsning; ét kort kald
     from urllib.request import Request, urlopen
     # max_tokens 500: modellen tænker før den svarer; for lavt loft = tom linje.
-    body = json.dumps({"model": konkurrent_analyse.MODEL, "max_tokens": 900, "temperature": 0.2, "messages": [
+    body = json.dumps({"model": konkurrent_analyse.MODEL, "max_tokens": 900, "temperature": 0.2, **konkurrent_analyse.NO_THINKING, "messages": [
         {"role": "system", "content": DIAG_PROMPT},
         {"role": "user", "content": json.dumps(state, ensure_ascii=False)[:3000]}]}).encode()
     req = Request(konkurrent_analyse.URL, data=body, method="POST",
