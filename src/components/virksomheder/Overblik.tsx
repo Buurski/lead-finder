@@ -235,6 +235,77 @@ function AftaleEditor({
   );
 }
 
+interface StamdataFields { name: string; phone: string; email: string; website: string; city: string; branch: string }
+
+function StamdataEditor({ companyId, initial, onDone, onCancel }: { companyId: string; initial: StamdataFields; onDone: () => void; onCancel: () => void }) {
+  const [name, setName] = useState(initial.name);
+  const [phone, setPhone] = useState(initial.phone);
+  const [email, setEmail] = useState(initial.email);
+  const [website, setWebsite] = useState(initial.website);
+  const [city, setCity] = useState(initial.city);
+  const [branch, setBranch] = useState(initial.branch);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function save() {
+    if (!name.trim()) { setErr("Navn må ikke være tomt."); return; }
+    setBusy(true); setErr("");
+    try {
+      await patchProfil(companyId, { name: name.trim(), phone: phone.trim(), email: email.trim(), website: website.trim(), city: city.trim(), branch: branch.trim() });
+      onDone();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "kunne ikke gemme");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="ov-editor">
+      <input className="virk-inline-input" style={{ height: 34 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="Navn" aria-label="Navn" />
+      <input className="virk-inline-input" style={{ height: 34 }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon" aria-label="Telefon" />
+      <input className="virk-inline-input" style={{ height: 34 }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" aria-label="E-mail" />
+      <input className="virk-inline-input" style={{ height: 34 }} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website" aria-label="Website" />
+      <input className="virk-inline-input" style={{ height: 34 }} value={city} onChange={(e) => setCity(e.target.value)} placeholder="By" aria-label="By" />
+      <input className="virk-inline-input" style={{ height: 34 }} value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="Branche" aria-label="Branche" />
+      {err && <span style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="cc-btn cc-btn-accent virk-btn-press" onClick={save} disabled={busy}>{busy ? "Gemmer…" : "Gem"}</button>
+        <button className="cc-btn virk-btn-press" onClick={onCancel} disabled={busy}>Annullér</button>
+      </div>
+    </div>
+  );
+}
+
+function StamdataCard({
+  companyId, company, editing, onEdit, onSaved,
+}: {
+  companyId: string;
+  company: StamdataFields;
+  editing: boolean;
+  onEdit: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  return (
+    <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="virk-section-title">
+        <span>Stamdata</span>
+        {!editing && <button className="cc-btn virk-btn-press" onClick={() => onEdit(true)}>Ret</button>}
+      </div>
+      {editing ? (
+        <StamdataEditor companyId={companyId} initial={company} onDone={() => { onEdit(false); onSaved(); }} onCancel={() => onEdit(false)} />
+      ) : (
+        <dl className="virk-kv">
+          <div className="virk-kv-row"><dt>Navn</dt><dd>{company.name || "–"}</dd></div>
+          <div className="virk-kv-row"><dt>Telefon</dt><dd>{company.phone || "–"}</dd></div>
+          <div className="virk-kv-row"><dt>E-mail</dt><dd>{company.email || "–"}</dd></div>
+          <div className="virk-kv-row"><dt>Website</dt><dd>{company.website || "–"}</dd></div>
+          <div className="virk-kv-row"><dt>By</dt><dd>{company.city || "–"}</dd></div>
+          <div className="virk-kv-row"><dt>Branche</dt><dd>{company.branch || "–"}</dd></div>
+        </dl>
+      )}
+    </div>
+  );
+}
+
 function MoneyCard({
   companyId, money, editing, onEdit, onSaved,
 }: {
@@ -511,7 +582,7 @@ function MissingPills({ missing, onOpen }: { missing: string[]; onOpen: (key: st
 }
 
 export default function Overblik({
-  companyId, overview, cms, servicesCatalog, onboarding, relations, seoPoints,
+  companyId, overview, cms, servicesCatalog, onboarding, relations, seoPoints, company,
 }: {
   companyId: string;
   overview: CustomerOverview;
@@ -520,10 +591,12 @@ export default function Overblik({
   onboarding: OnboardingTaskRow[];
   relations: Array<{ id: string; otherId: string; name: string; label: string }>;
   seoPoints: Array<{ takenAt: string; performance: number | null; seo: number | null; accessibility: number | null; onpage: number | null }>;
+  company: StamdataFields;
 }) {
   const router = useRouter();
   const [editingAftale, setEditingAftale] = useState(false);
   const [editingSite, setEditingSite] = useState(false);
+  const [editingStamdata, setEditingStamdata] = useState(false);
 
   function openFor(key: string) {
     if (key === "aftale/pris") setEditingAftale(true);
@@ -534,6 +607,7 @@ export default function Overblik({
 
   return (
     <div className="ov-grid">
+      <StamdataCard companyId={companyId} company={company} editing={editingStamdata} onEdit={setEditingStamdata} onSaved={() => router.refresh()} />
       <AttentionStrip items={overview.attention} />
       <RelationsPanel companyId={companyId} relations={relations} />
 

@@ -11,6 +11,7 @@ export async function loadOverview(db: Db, d: Dossier, now = Date.now()): Promis
   const want = canonicalClientName(d.company.name);
   // Sekventielt: lokalt tåler pglite kun én forbindelse; i prod er det to små opslag.
   const subscription = (await getSubscriptions()).find((s) => canonicalClientName(s.clientName) === want) ?? null;
-  const unbilled = (await unbilledWork(db, d.company.id)).reduce((s, i) => s + i.amount, 0);
-  return buildOverview(d, { subscription, unbilled, now });
+  const unbilledItems = await unbilledWork(db, d.company.id);
+  const unbilled = unbilledItems.reduce((s, i) => s + i.amount, 0);
+  return buildOverview(d, { subscription, unbilled, now, unbilledItems });
 }

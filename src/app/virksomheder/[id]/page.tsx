@@ -20,6 +20,8 @@ import { invoiceTotal, isOverdue, type InvoiceStatus } from "@/lib/invoices";
 import PageHeader from "@/components/shell/PageHeader";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
 import DealsSection from "@/components/virksomheder/DealsSection";
+import ContactsEditor from "@/components/virksomheder/ContactsEditor";
+import { listContacts } from "@/lib/crm";
 import Timeline from "@/components/virksomheder/Timeline";
 import MergePanel from "@/components/virksomheder/MergePanel";
 import MakeCustomerButton from "@/components/virksomheder/MakeCustomerButton";
@@ -146,6 +148,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   const relations = await listRelations(db, id);
   const cms = await cmsUsageFor(c, dossier.site?.cmsUrl);
   const onboarding = c.clientNo !== null ? await getOnboardingChecklist(db, c.id) : [];
+  const crmContacts = c.clientNo !== null ? await listContacts(c.name).catch(() => []) : [];
   const seoRows = c.clientNo !== null
     ? await db.select().from(seoSnapshot).where(eq(seoSnapshot.companyId, c.id)).orderBy(desc(seoSnapshot.takenAt)).limit(12)
     : [];
@@ -159,7 +162,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   } : null;
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
+    { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} company={{ name: c.name, phone: real(c.phone), email: real(c.email), website: c.website, city: c.city, branch: c.branch }} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} currentUser={user} /> },
     {
       key: "aftaler",
@@ -182,21 +185,25 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             )}
           </div>
 
-          <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="virk-section-title"><span>Kontakter</span></div>
-            {dossier.contacts.length === 0 ? (
-              <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen kontakter tilføjet.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {dossier.contacts.map((ct) => (
-                  <div key={ct.id} style={{ fontSize: 13 }}>
-                    <div style={{ fontWeight: 600 }}>{ct.name || ct.clientName || "(uden navn)"}{ct.role ? ` · ${ct.role}` : ""}</div>
-                    <div className="cc-dim" style={{ fontSize: 12 }}>{[real(ct.email), real(ct.phone)].filter(Boolean).join(" · ") || "–"}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {c.clientNo !== null ? (
+            <ContactsEditor clientName={c.name} initial={crmContacts} />
+          ) : (
+            <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="virk-section-title"><span>Kontakter</span></div>
+              {dossier.contacts.length === 0 ? (
+                <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen kontakter tilføjet.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {dossier.contacts.map((ct) => (
+                    <div key={ct.id} style={{ fontSize: 13 }}>
+                      <div style={{ fontWeight: 600 }}>{ct.name || ct.clientName || "(uden navn)"}{ct.role ? ` · ${ct.role}` : ""}</div>
+                      <div className="cc-dim" style={{ fontSize: 12 }}>{[real(ct.email), real(ct.phone)].filter(Boolean).join(" · ") || "–"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <CompanyTasks
             companyId={c.id}

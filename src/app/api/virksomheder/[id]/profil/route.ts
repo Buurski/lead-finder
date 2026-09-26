@@ -5,6 +5,7 @@ import { HqInputError, hqWrite, jsonBody, uuid } from "@/lib/hq/api";
 import { SERVICES } from "@/lib/hq/overview";
 import { canonicalClientName } from "@/lib/client-alias";
 import { getSubscriptions, saveSubscriptions, validInvoiceLines, type Subscription } from "@/lib/invoices";
+import { updateStamdata } from "@/lib/hq/stamdata";
 
 export const runtime = "nodejs";
 
@@ -16,15 +17,19 @@ function text(v: unknown, label: string, max = 200): string | null {
   return v.trim();
 }
 
-// PATCH { services?: string[], site?: { domain?, cmsUrl?, vercelProject?, status? }, aftale?: { lines, dayOfMonth, active } | null }
+// PATCH { name?, phone?, email?, website?, city?, branch?, services?: string[], site?: { domain?, cmsUrl?, vercelProject?, status? }, aftale?: { lines, dayOfMonth, active } | null }
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  return hqWrite(req, async () => {
+  return hqWrite(req, async (actor) => {
     const { id } = await ctx.params;
     const companyId = uuid(id, "virksomheds-id");
     const b = await jsonBody(req);
     const db = getDb();
     const [co] = await db.select().from(company).where(eq(company.id, companyId));
     if (!co) throw new HqInputError("virksomheden findes ikke");
+
+    if (b.name !== undefined || b.phone !== undefined || b.email !== undefined || b.website !== undefined || b.city !== undefined || b.branch !== undefined) {
+      await updateStamdata(db, companyId, b, actor);
+    }
 
     if (b.services !== undefined) {
       if (!Array.isArray(b.services) || b.services.some((s) => typeof s !== "string" || !(s in SERVICES))) throw new HqInputError("ukendt ydelse");
