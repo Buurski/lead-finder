@@ -59,3 +59,12 @@ test("ingen ændring → ingen hændelse logges", async () => {
   const rows = await db.select().from(activity);
   assert.equal(rows.length, 0);
 });
+
+test("en kundes navn kan ikke rettes (fakturaer/kontakter hænger på navnet)", async () => {
+  const [c] = await db.insert(company).values({ rowNo: 2, name: "Kunde ApS", clientNo: 9 }).returning();
+  await assert.rejects(updateStamdata(db, c.id, { name: "Nyt Navn" }, "lucas"), StamdataError);
+  await updateStamdata(db, c.id, { name: "Kunde ApS", phone: "12345678" }, "lucas");
+  const [after] = await db.select().from(company).where(eq(company.id, c.id));
+  assert.equal(after.name, "Kunde ApS");
+  assert.equal(after.phone, "12345678");
+});

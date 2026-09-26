@@ -53,6 +53,11 @@ export async function updateStamdata(db: Db, companyId: string, patch: StamdataP
   const name = text(patch.name, "navn", 200);
   if (name !== null) {
     if (!name) throw new StamdataError("navn må ikke være tomt");
+    // Kunders fakturaer, abonnementer og kontakter er nøglet på navnet (clientName) —
+    // et navneskift her ville klippe dem af. Kun leads kan omdøbes.
+    if (name !== co.name && co.clientNo != null) {
+      throw new StamdataError("en kundes navn kan ikke rettes her — fakturaer og kontakter hænger på navnet");
+    }
     set.name = name;
   }
   const phone = text(patch.phone, "telefon", 40);
