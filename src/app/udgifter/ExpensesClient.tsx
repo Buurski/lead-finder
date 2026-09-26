@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
 import { LEDGER_START, activePayments, charlieBalance, charlieDelta, type Expense, type LedgerPayment } from "@/lib/expenses";
 
+const LEDGER_MIN = new Date(Date.parse(LEDGER_START + "T00:00:00Z") + 86_400_000).toISOString().slice(0, 10);
 const kr = (n: number) => `${n.toLocaleString("da-DK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kr`;
 const dk = (iso: string) => iso.split("-").reverse().join("/");
 
@@ -26,7 +27,7 @@ export default function ExpensesClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => new Date().toLocaleDateString("sv-SE")); // lokal dato, ikke UTC
   const [vendor, setVendor] = useState("");
   const [amount, setAmount] = useState("");
   const [split, setSplit] = useState<SplitKey>("selskab-lucas");
@@ -49,7 +50,8 @@ export default function ExpensesClient() {
   }, [load]);
 
   async function add() {
-    const val = Number(amount.replace(/\./g, "").replace(",", "."));
+    // "1.234,50" (dansk) eller "12.50" — punktum er kun tusindtal når der også er komma.
+    const val = Number(amount.includes(",") ? amount.replace(/\./g, "").replace(",", ".") : amount);
     if (!vendor.trim()) { setError("Skriv hvad det er"); return; }
     if (!Number.isFinite(val) || val <= 0) { setError("Skriv et beløb i kr"); return; }
     setBusy(true);
@@ -103,7 +105,7 @@ export default function ExpensesClient() {
 
       {/* Tilføj */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-        <input type="date" aria-label="Dato" value={date} min={LEDGER_START} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, width: 150 }} />
+        <input type="date" aria-label="Dato" value={date} min={LEDGER_MIN} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, width: 150 }} />
         <input aria-label="Hvad" placeholder="Hvad (fx Vercel)" value={vendor} onChange={(e) => setVendor(e.target.value)} style={{ ...inputStyle, flex: "1 1 130px" }} />
         <input aria-label="Beløb i kr" placeholder="Beløb (kr)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...inputStyle, width: 110 }} />
         <select aria-label="Hvem betalte" value={split} onChange={(e) => setSplit(e.target.value as SplitKey)} style={{ ...inputStyle, flex: "1 1 190px" }}>

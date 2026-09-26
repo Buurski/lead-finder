@@ -44,21 +44,44 @@ export function parseExpense(input: unknown, source: Expense["source"]): Expense
   const b = (input ?? {}) as Record<string, unknown>;
   const date = typeof b.date === "string" && ISO.test(b.date) ? b.date : "";
   if (!date) throw new ExpenseError("dato skal være YYYY-MM-DD");
+  if (date <= LEDGER_START) throw new ExpenseError(`dato skal være efter ${LEDGER_START} (alt før er afregnet)`);
   const vendor = typeof b.vendor === "string" ? b.vendor.trim().slice(0, 80) : "";
   if (!vendor) throw new ExpenseError("leverandør mangler");
   const amount = Math.round(Number(b.amount) * 100) / 100;
   if (!Number.isFinite(amount) || amount <= 0 || amount > 50_000) throw new ExpenseError("beløb skal være 0–50.000 kr");
-  const share: ExpenseShare = b.share === "lucas" || b.share === "charlie" ? b.share : "selskab";
-  const payer: Person = b.payer === "charlie" ? "charlie" : "lucas";
+  // Ukendte værdier afvises — et stille fallback ville vende fortegnet på hele beløbet.
+  const norm = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : v);
+  const shareIn = norm(b.share) ?? "selskab";
+  const payerIn = norm(b.payer) ?? "lucas";
+  if (shareIn !== "selskab" && shareIn !== "lucas" && shareIn !== "charlie") throw new ExpenseError("share skal være selskab/lucas/charlie");
+  if (payerIn !== "lucas" && payerIn !== "charlie") throw new ExpenseError("payer skal være lucas/charlie");
+  const share = shareIn as ExpenseShare;
+  const payer = payerIn as Person;
   const str = (v: unknown, n: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : undefined);
   return { id: newExpenseId(), date, vendor, amount, original: str(b.original, 40), share, payer, ref: str(b.ref, 120), source, note: str(b.note, 200) };
 }
 
-/** Fjerner tombstones (og selve tombstone-posterne). */
+/** Fjerner tombstones og dubletter på ref (første vinder — værn mod samtidige append). */
 export function activeExpenses(all: unknown[]): Expense[] {
   const list = all as Expense[];
   const deleted = new Set(list.filter((e) => e.deleted).map((e) => e.id));
-  return list.filter((e) => !e.deleted && !deleted.has(e.id) && e.amount > 0);
+  const refs = new Set<string>();
+  return list.filter((e) => {
+    if (e.deleted || deleted.has(e.id) || !(e.amount > 0)) return false;
+    if (e.ref) { if (refs.has(e.ref)) return false; refs.add(e.ref); }
+    return true;
+  });
+}
+
+/** Alle refs der nogensinde er set — også slettede, så en slettet kvittering ikke genimporteres. */
+export function knownRefs(all: unknown[]): Set<string> {
+  return new Set((all as Expense[]).filter((e) => !e.deleted && e.ref).map((e) => e.ref!));
+}
+
+/** Samme træk indtastet i hånden (uden ref)? ±3 dage og under 1 kr forskel. */
+export function looksLikeManualDuplicate(e: Expense, existing: Expense[]): boolean {
+  const day = (iso: string) => Date.parse(iso + "T00:00:00Z") / 86_400_000;
+  return existing.some((x) => !x.ref && Math.abs(x.amount - e.amount) < 1 && Math.abs(day(x.date) - day(e.date)) <= 3);
 }
 
 /** Hvad en post flytter Charlies gæld med (+ = han skylder mere). */

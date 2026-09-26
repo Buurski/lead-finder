@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import { assertWriteRequest } from "@/lib/cc-auth.ts";
-import { EXPENSES_KEY, ExpenseError, activeExpenses, parseExpense } from "@/lib/expenses.ts";
+import { EXPENSES_KEY, ExpenseError, activeExpenses, knownRefs, parseExpense } from "@/lib/expenses.ts";
 
 // GET/POST/DELETE — udgiftsloggen fra /udgifter (bag login). Hermes skriver via /api/agent/expenses.
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const msg = err instanceof ExpenseError ? err.message : "ugyldig JSON";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  if (expense.ref && activeExpenses(await store.readAll(EXPENSES_KEY)).some((e) => e.ref === expense.ref)) {
+  if (expense.ref && knownRefs(await store.readAll(EXPENSES_KEY)).has(expense.ref)) {
     return NextResponse.json({ error: "posten er allerede registreret" }, { status: 409 });
   }
   await store.append(EXPENSES_KEY, expense);

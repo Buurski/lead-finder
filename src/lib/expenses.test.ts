@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeExpenses, charlieBalance, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
+import { activeExpenses, charlieBalance, knownRefs, looksLikeManualDuplicate, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
 
 const e = (date: string, amount: number, share: Expense["share"] = "selskab", payer: Expense["payer"] = "lucas"): Expense =>
   ({ id: `${date}-${amount}`, date, vendor: "x", amount, share, payer, source: "manual" });
@@ -36,9 +36,26 @@ test("parseExpense afviser skrald og runder til øre", () => {
   assert.throws(() => parseExpense({ date: "1/8", vendor: "V", amount: 1 }, "manual"), ExpenseError);
   assert.throws(() => parseExpense({ date: "2026-08-01", vendor: " ", amount: 1 }, "manual"), ExpenseError);
   assert.throws(() => parseExpense({ date: "2026-08-01", vendor: "V", amount: -5 }, "manual"), ExpenseError);
-  const x = parseExpense({ date: "2026-08-01", vendor: "Vercel", amount: "220.734", share: "hack", payer: "hack" }, "hermes");
+  assert.throws(() => parseExpense({ date: "2026-07-26", vendor: "V", amount: 1 }, "manual"), ExpenseError); // afregnet
+  assert.throws(() => parseExpense({ date: "2026-08-01", vendor: "V", amount: 1, payer: "hack" }, "hermes"), ExpenseError);
+  assert.throws(() => parseExpense({ date: "2026-08-01", vendor: "V", amount: 1, share: "hack" }, "hermes"), ExpenseError);
+  const x = parseExpense({ date: "2026-08-01", vendor: "Vercel", amount: "220.734", payer: " Charlie " }, "hermes");
   assert.equal(x.amount, 220.73);
   assert.equal(x.share, "selskab");
-  assert.equal(x.payer, "lucas");
+  assert.equal(x.payer, "charlie");
   assert.equal(x.source, "hermes");
+});
+
+test("samme ref to gange tælles kun én gang; slettet ref forbliver kendt", () => {
+  const a = { ...e("2026-08-01", 100), id: "a", ref: "m1" };
+  const b = { ...e("2026-08-01", 100), id: "b", ref: "m1" }; // samtidig dobbelt-append
+  assert.equal(activeExpenses([a, b]).length, 1);
+  assert.ok(knownRefs([a, { id: "a", deleted: true }]).has("m1"));
+});
+
+test("manuel post ±3 dage og <1 kr fanges som mulig dublet", () => {
+  const manual = e("2026-09-03", 222);
+  assert.ok(looksLikeManualDuplicate({ ...e("2026-09-05", 221.5), ref: "m" }, [manual]));
+  assert.ok(!looksLikeManualDuplicate({ ...e("2026-09-10", 222), ref: "m" }, [manual]));
+  assert.ok(!looksLikeManualDuplicate({ ...e("2026-09-03", 222), ref: "m" }, [{ ...manual, ref: "x" }]));
 });
