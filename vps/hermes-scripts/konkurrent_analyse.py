@@ -20,33 +20,27 @@ MODEL = "deepseek-v4-flash"
 URL = "https://api.deepseek.com/chat/completions"
 MAX_INPUT_CHARS = 12_000  # ponytail: hårdt loft på input ≈ 4k tokens; hæv kun hvis rapporten vokser forbi 40 konkurrenter
 
+# Samme enums som konkurrent_scan.py's findings — duplikeret bevidst (to selvstændige scripts, ingen
+# cirkulær import) frem for at dele en konstant hen over en dynamisk `import konkurrent_analyse`.
+FINDING_CATEGORIES = ("ydelse", "pris-budskab", "seo", "geo", "alternativ", "forbedring")
+SUGGEST_KINDS = ("blog", "annonce", "kinly-dk", "salg")
+
 PROMPT = """Du er strateg for Kinly (lille webbureau i Herning/Ikast: håndkodede hjemmesider fra 3.997 kr. fast pris, kunde-CMS, du ejer koden, lokal SEO/GEO).
-Nedenfor er Jevs ugentlige målinger af konkurrenter (tal, mønstre, huller). Brug KUN disse data — opfind ingen tal, navne eller priser.
-Skriv 3-6 punkter om hvad det betyder for Kinly: hvor vi kan vinde (salg, SEO, GEO/AI-søgning, blogemner), og hvad vi skal passe på.
+Nedenfor er Jevs ugentlige findings om konkurrenterne (allerede prioriteret med rating 1-5) — ikke rå sidetekst. Brug KUN disse data — opfind ingen tal, navne eller priser.
+Skriv max 5 punkter om hvad det betyder for Kinly: hvor vi kan vinde (salg, SEO, GEO/AI-søgning, blogemner, AI-byggere som Wix/Framer), og hvad vi skal passe på.
+Sæt det VIGTIGSTE punkt (én konkret ting Kinly kan gøre denne uge) først.
 Hvert punkt: konkret, nævn tallet fra data, max 2 sætninger. Dansk, jordnært, ingen buzzwords.
-Svar KUN med JSON: {"points":[{"title":"max 70 tegn","detail":"max 350 tegn"}]}"""
+Sæt "category" til én af: ydelse, pris-budskab, seo, geo, alternativ, forbedring. Sæt "suggest" til én af: blog, annonce, kinly-dk, salg.
+Svar KUN med JSON: {"points":[{"title":"max 70 tegn","detail":"max 350 tegn","category":"...","suggest":"..."}]}"""
 
 
 def compact(report: dict) -> str:
-    comps = []
-    for c in report.get("competitors", []):
-        g = c.get("google") or {}
-        s = c.get("site") or {}
-        b = c.get("blog") or {}
-        comps.append({
-            "navn": c.get("name"), "by": c.get("city"),
-            "google": [g.get("rating"), g.get("reviews")],
-            "priser_synlige": s.get("hasPrices"), "pagespeed_mobil": s.get("pagespeedMobile"), "cms": s.get("cms"),
-            "ydelser": c.get("services"), "position": c.get("positioning"),
-            "blog_30d": b.get("posts30d"), "blog_kvalitet": b.get("quality"),
-            "geo": (c.get("geo") or {}).get("mentioned"),
-            "styrker": c.get("strengths"), "svagheder": c.get("weaknesses"),
-        })
-    data = {
-        "konkurrenter": comps,
-        "moenstre": [{"t": p.get("title"), "d": p.get("detail")} for p in report.get("patterns", [])],
-        "huller": [{"t": g.get("title"), "d": g.get("detail"), "type": g.get("kind")} for g in report.get("gaps", [])],
-    }
+    findings = [
+        {"cat": f.get("category"), "t": f.get("title"), "d": f.get("detail"),
+         "rating": f.get("rating"), "suggest": f.get("suggest"), "evidence": f.get("evidence")}
+        for f in (report.get("findings") or [])[:15]
+    ]
+    data = {"antal_konkurrenter": len(report.get("competitors", [])), "findings": findings}
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))[:MAX_INPUT_CHARS]
 
 
@@ -55,11 +49,19 @@ def parse_points(text: str) -> list[dict]:
     if not m:
         raise ValueError("intet JSON i svaret")
     pts = json.loads(m.group(0)).get("points") or []
-    out = [{"title": str(p["title"]).strip()[:80], "detail": str(p["detail"]).strip()[:400]}
-           for p in pts if isinstance(p, dict) and p.get("title") and p.get("detail")]
+    out = []
+    for p in pts:
+        if not (isinstance(p, dict) and p.get("title") and p.get("detail")):
+            continue
+        point = {"title": str(p["title"]).strip()[:80], "detail": str(p["detail"]).strip()[:400]}
+        if p.get("category") in FINDING_CATEGORIES:
+            point["category"] = p["category"]
+        if p.get("suggest") in SUGGEST_KINDS:
+            point["suggest"] = p["suggest"]
+        out.append(point)
     if not out:
         raise ValueError("ingen gyldige punkter")
-    return out[:6]
+    return out[:5]
 
 
 def load_key() -> str:
@@ -89,18 +91,29 @@ def analyse(report: dict) -> dict:
 
 
 def _selftest() -> None:
-    rep = {"competitors": [{"name": "A", "google": {"rating": 4.6, "reviews": 17}, "site": {"hasPrices": False},
-                            "blog": {"posts30d": 2}, "services": ["seo"]}] * 60,
-           "patterns": [{"title": "FAQ", "detail": "64% har FAQ"}], "gaps": [{"title": "Pris", "detail": "13/18 skjuler pris", "kind": "pris"}]}
+    rep = {"competitors": [{"name": "A"}] * 60,
+           "findings": [{"category": "seo", "title": "FAQ", "detail": "64% har FAQ", "rating": 4,
+                         "suggest": "kinly-dk", "evidence": ["A", "B"]}] * 20}
     s = compact(rep)
     assert len(s) <= MAX_INPUT_CHARS and "sidetekst" not in s
-    assert parse_points('snak {"points":[{"title":"x","detail":"y"},{"title":"","detail":"z"}]}') == [{"title": "x", "detail": "y"}]
+    assert json.loads(s)["antal_konkurrenter"] == 60
+    assert len(json.loads(s)["findings"]) == 15  # capped
+
+    ok = parse_points('snak {"points":[{"title":"x","detail":"y","category":"seo","suggest":"blog"},'
+                       '{"title":"","detail":"z"},{"title":"a","detail":"b","category":"gis-om-katte"}]}')
+    assert ok[0] == {"title": "x", "detail": "y", "category": "seo", "suggest": "blog"}
+    assert ok[1] == {"title": "a", "detail": "b"}  # ugyldig category droppes, punktet beholdes
+    assert len(ok) == 2
+
     for bad in ("ingen json", '{"points":[]}'):
         try:
             parse_points(bad)
             raise AssertionError(bad)
         except ValueError:
             pass
+
+    many = json.dumps({"points": [{"title": f"t{i}", "detail": "d"} for i in range(8)]})
+    assert len(parse_points(many)) == 5  # max 5 nu (var 6)
     print("selftest ok")
 
 
@@ -108,4 +121,5 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:
         _selftest()
     elif "--probe" in sys.argv:  # ét minimalt live-kald for at bevise model-id + nøgle
-        print(analyse({"competitors": [], "patterns": [{"title": "FAQ", "detail": "64% af stærke blogs har FAQ"}], "gaps": []}))
+        print(analyse({"competitors": [], "findings": [{"category": "seo", "title": "FAQ",
+              "detail": "64% af stærke blogs har FAQ", "rating": 4, "suggest": "kinly-dk", "evidence": []}]}))

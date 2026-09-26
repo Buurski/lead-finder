@@ -5,6 +5,7 @@ Run: python3 test_konkurrent_scan.py
 """
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -48,25 +49,38 @@ title: x
 | bred | webbureau i Aarhus | Kinly | ja | nej | — | lundhjemmesider.dk, apparat.dk, klartstudio.dk |
 """
 
+def _ja(choice="ja", confidence=0.9):
+    return {"type": "choice", "choice": choice, "confidence": confidence}
+
+
 JEV_RAW_OK = {
     "answers": {
         "positionering": {"type": "choice", "choice": "lokal", "confidence": 0.8},
-        "styrke_pris": {"type": "choice", "choice": "ja"},
-        "styrke_hurtig-levering": {"type": "choice", "choice": "nej"},
-        "styrke_lokalt-kendskab": {"type": "choice", "choice": "ja"},
-        "styrke_seo-fokus": {"type": "choice", "choice": "nej"},
-        "styrke_design": {"type": "choice", "choice": "nej"},
-        "styrke_kundeservice": {"type": "choice", "choice": "nej"},
-        "styrke_teknisk-dybde": {"type": "choice", "choice": "nej"},
-        "styrke_branche-specialist": {"type": "choice", "choice": "nej"},
-        "svaghed_dyrt": {"type": "choice", "choice": "nej"},
-        "svaghed_langsom-levering": {"type": "choice", "choice": "nej"},
-        "svaghed_utydelige-priser": {"type": "choice", "choice": "ja"},
-        "svaghed_generisk-design": {"type": "choice", "choice": "nej"},
-        "svaghed_begraenset-support": {"type": "choice", "choice": "nej"},
-        "svaghed_daarligt-vedligeholdt-blog": {"type": "choice", "choice": "nej"},
-        "svaghed_svag-mobilvisning": {"type": "choice", "choice": "nej"},
-        "svaghed_ingen-lokal-forankring": {"type": "choice", "choice": "nej"},
+        "styrke_pris": _ja("ja"),
+        "styrke_hurtig-levering": _ja("nej"),
+        "styrke_lokalt-kendskab": _ja("ja"),
+        "styrke_seo-fokus": _ja("nej"),
+        "styrke_design": _ja("nej"),
+        "styrke_kundeservice": _ja("nej"),
+        "styrke_teknisk-dybde": _ja("nej"),
+        "styrke_branche-specialist": _ja("nej"),
+        "svaghed_dyrt": _ja("nej"),
+        "svaghed_langsom-levering": _ja("nej"),
+        "svaghed_utydelige-priser": _ja("ja"),
+        "svaghed_generisk-design": _ja("nej"),
+        "svaghed_begraenset-support": _ja("nej"),
+        "svaghed_daarligt-vedligeholdt-blog": _ja("nej"),
+        "svaghed_svag-mobilvisning": _ja("nej"),
+        "svaghed_ingen-lokal-forankring": _ja("nej"),
+        "ydelse_ikke_kinly": _ja("ja"),
+        "seo_faq_synlig": _ja("ja"),
+        "seo_anmeldelser_tekst": _ja("nej"),
+        "geo_citerbare_svar": _ja("ja"),
+        "budskab_pris": _ja("ja"),
+        "budskab_hastighed": _ja("nej"),
+        "budskab_ai": _ja("nej"),
+        "budskab_lokal": _ja("ja"),
+        "budskab_garanti": _ja("nej"),
     }
 }
 
@@ -137,6 +151,179 @@ class ClassifyJevTests(unittest.TestCase):
     def test_invalid_positioning_falls_back_safely(self):
         bad = {"answers": {"positionering": {"type": "choice", "choice": "gis-om-katte"}}}
         self.assertFalse(scan.classify_competitor_jev(bad)["ok"])
+
+    def test_low_confidence_positioning_falls_back_safely(self):
+        bad = {"answers": {"positionering": {"type": "choice", "choice": "lokal", "confidence": 0.4}}}
+        self.assertFalse(scan.classify_competitor_jev(bad)["ok"])
+
+    def test_low_confidence_answer_is_hidden_not_counted_as_ja_or_nej(self):
+        raw = json.loads(json.dumps(JEV_RAW_OK))  # deep copy
+        raw["answers"]["styrke_pris"] = {"type": "choice", "choice": "ja", "confidence": 0.59}
+        result = scan.classify_competitor_jev(raw)
+        self.assertNotIn("pris", result["strengths"])
+
+    def test_missing_confidence_treated_as_hidden(self):
+        raw = json.loads(json.dumps(JEV_RAW_OK))
+        del raw["answers"]["styrke_pris"]["confidence"]
+        result = scan.classify_competitor_jev(raw)
+        self.assertNotIn("pris", result["strengths"])
+
+    def test_new_bundled_flags_parsed(self):
+        result = scan.classify_competitor_jev(JEV_RAW_OK)
+        self.assertEqual(result["ydelse_ikke_kinly"], True)
+        self.assertEqual(result["seo_faq_synlig"], True)
+        self.assertEqual(result["seo_anmeldelser_tekst"], False)
+        self.assertEqual(result["geo_citerbare_svar"], True)
+        self.assertEqual(set(result["messaging_angles"]), {"pris", "lokal"})
+
+    def test_one_jev_call_bundles_all_new_questions(self):
+        # spec: stadig ét Jev-HTTP-kald pr. konkurrent -- alle nye spørgsmål i samme dict.
+        qs = scan._questions_for_competitor("Testbureau")
+        for qid in ("ydelse_ikke_kinly", "seo_faq_synlig", "seo_anmeldelser_tekst", "geo_citerbare_svar",
+                    "budskab_pris", "budskab_hastighed", "budskab_ai", "budskab_lokal", "budskab_garanti"):
+            self.assertIn(qid, qs)
+
+
+class ExtraServiceKeywordTests(unittest.TestCase):
+    def test_detects_known_extra_service(self):
+        self.assertEqual(scan.detect_extra_service("vi tilbyder branding og visuel identitet"), "branding")
+        self.assertEqual(scan.detect_extra_service("book erhvervsfoto hos os"), "foto")
+
+    def test_no_match_returns_none(self):
+        self.assertIsNone(scan.detect_extra_service("vi laver hjemmesider og seo"))
+
+
+class AiBuilderSignalTests(unittest.TestCase):
+    def test_extracts_price_ai_danish_codeexport(self):
+        html = "<html><body>Byg din hjemmeside med AI fra 79 kr/md. Du ejer din kode og kan altid eksportere koden.</body></html>"
+        sig = scan.extract_ai_builder_signals(html)
+        self.assertEqual(sig["priceFromText"], "79 kr")
+        self.assertTrue(sig["aiFeatures"])
+        self.assertTrue(sig["danish"])
+        self.assertTrue(sig["codeExport"])
+
+    def test_no_signals_present(self):
+        html = "<html><body>Build your website today. No pricing shown here.</body></html>"
+        sig = scan.extract_ai_builder_signals(html)
+        self.assertIsNone(sig["priceFromText"])
+        self.assertFalse(sig["aiFeatures"])
+        self.assertFalse(sig["danish"])
+        self.assertFalse(sig["codeExport"])
+
+    def test_dollar_and_euro_prices_detected(self):
+        self.assertEqual(scan.extract_ai_builder_signals("<p>Plans from $12/mo</p>")["priceFromText"], "$12")
+        self.assertEqual(scan.extract_ai_builder_signals("<p>Ab 9€ im Monat</p>")["priceFromText"], "9€")
+
+
+class RunAiBuildersTests(unittest.TestCase):
+    def test_fetch_failure_is_skipped_not_crashed(self):
+        original = scan.fetch_site
+        scan.fetch_site = lambda url: None
+        try:
+            out = scan.run_ai_builders([{"name": "Ghost", "url": "https://ghost.example/"}])
+        finally:
+            scan.fetch_site = original
+        self.assertEqual(out, [])
+
+    def test_successful_fetch_produces_entry_with_kind_and_signals(self):
+        original = scan.fetch_site
+        scan.fetch_site = lambda url: "<html><body>AI hjemmeside fra 99 kr. Eksporter kode.</body></html>"
+        try:
+            out = scan.run_ai_builders([{"name": "Wix", "url": "https://www.wix.com/"}])
+        finally:
+            scan.fetch_site = original
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["kind"], "ai-bygger")
+        self.assertEqual(out[0]["name"], "Wix")
+        self.assertIn("aiBuilder", out[0])
+        self.assertTrue(out[0]["aiBuilder"]["aiFeatures"])
+
+
+class RatingFormulaTests(unittest.TestCase):
+    def test_full_prevalence_gives_top_rating(self):
+        self.assertEqual(scan._rating_from_prevalence(1.0), 5)
+
+    def test_zero_prevalence_gives_floor_rating(self):
+        self.assertEqual(scan._rating_from_prevalence(0.0), 1)
+
+    def test_conf_rating_matches_spec_formula(self):
+        # spec: rating = clamp(round(1 + 4*(conf-0.6)/0.4), 1, 5)
+        self.assertEqual(scan._conf_rating(0.6), 1)
+        self.assertEqual(scan._conf_rating(1.0), 5)
+        self.assertEqual(scan._conf_rating(0.8), 3)
+
+
+class FindingsTests(unittest.TestCase):
+    def _bureau(self, name, has_prices=True, has_schema=True, faq=None, reviews_text=None,
+                geo=None, angles=None, unique_services=None):
+        c = {"name": name, "url": f"https://{name}.dk", "kind": "bureau",
+             "site": {"hasPrices": has_prices, "schemaLocalBusiness": has_schema, "services": []}}
+        seo_extra = {}
+        if faq is not None:
+            seo_extra["faqVisible"] = faq
+        if reviews_text is not None:
+            seo_extra["reviewsAsText"] = reviews_text
+        if seo_extra:
+            c["seoExtra"] = seo_extra
+        if geo is not None:
+            c["geoExtra"] = {"citableAnswers": geo}
+        if angles is not None:
+            c["messaging"] = {"angles": angles}
+        if unique_services is not None:
+            c["uniqueServices"] = unique_services
+        return c
+
+    def test_no_price_finding_reflects_kinly_profile(self):
+        comps = [self._bureau(f"c{i}", has_prices=False) for i in range(3)]
+        findings = scan.build_findings(comps, [])
+        f = next(x for x in findings if x["category"] == "pris-budskab" and "skjuler prisen" in x["title"])
+        self.assertIn("Så gør vi", f["detail"])
+        self.assertEqual(f["rating"], 5)  # 3/3 = fuld prævalens
+
+    def test_finding_shape_has_required_keys(self):
+        comps = [self._bureau("a", has_prices=False)]
+        findings = scan.build_findings(comps, [])
+        f = findings[0]
+        for key in ("id", "category", "title", "detail", "rating", "evidence", "suggest"):
+            self.assertIn(key, f)
+        self.assertLessEqual(len(f["id"]), 40)
+        self.assertIn(f["category"], scan.FINDING_CATEGORIES)
+        self.assertIn(f["suggest"], scan.SUGGEST_KINDS)
+        self.assertLessEqual(len(f["title"]), 80)
+        self.assertLessEqual(len(f["detail"]), 240)
+
+    def test_findings_sorted_by_rating_desc(self):
+        comps = [self._bureau(f"c{i}", has_prices=False, has_schema=False) for i in range(5)]
+        findings = scan.build_findings(comps, [])
+        ratings = [f["rating"] for f in findings]
+        self.assertEqual(ratings, sorted(ratings, reverse=True))
+
+    def test_capped_at_20(self):
+        comps = [self._bureau(f"c{i}", has_prices=False) for i in range(3)]
+        ideas = [{"title": f"idea{i}", "note": "n"} for i in range(30)]
+        findings = scan.build_findings(comps, ideas)
+        self.assertLessEqual(len(findings), 20)
+
+    def test_ai_builder_alternativ_finding(self):
+        comps = [
+            {"name": "Wix", "kind": "ai-bygger", "aiBuilder": {"codeExport": True, "aiFeatures": True}},
+            {"name": "Framer", "kind": "ai-bygger", "aiBuilder": {"codeExport": True, "aiFeatures": False}},
+        ]
+        findings = scan.build_findings(comps, [])
+        alt = [f for f in findings if f["category"] == "alternativ"]
+        self.assertTrue(alt)
+        self.assertTrue(any("eje/eksportere koden" in f["title"] for f in alt))
+
+    def test_unique_service_prevalence_produces_ydelse_finding(self):
+        comps = [self._bureau(f"c{i}", unique_services=["annoncer"]) for i in range(4)]
+        findings = scan.build_findings(comps, [])
+        self.assertTrue(any(f["category"] == "ydelse" and "annoncer" in f["title"] for f in findings))
+
+    def test_content_idea_becomes_forbedring_finding(self):
+        comps = [self._bureau("a")]
+        ideas = [{"title": "Hvad koster en hjemmeside", "note": "note her"}]
+        findings = scan.build_findings(comps, ideas)
+        self.assertTrue(any(f["category"] == "forbedring" and f["title"] == "Hvad koster en hjemmeside" for f in findings))
 
 
 class PatternsAndGapsTests(unittest.TestCase):

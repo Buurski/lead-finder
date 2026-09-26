@@ -31,12 +31,14 @@ Brug:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import statistics
 import sys
 import time
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -100,6 +102,38 @@ POSITION_LABEL = {
 KINLY_SERVICES = {"hjemmeside", "seo", "kunde-cms", "hosting", "vedligehold"}
 GAP_CATEGORY = {"indhold": "hjemmeside", "ydelse": "hjemmeside", "pris": "pris", "synlighed": "lokal-synlighed"}
 
+# ---------------------------------------------------------------- v2: budskab/seo/geo/ydelse-spørgsmål
+CONF_THRESHOLD = 0.6  # fund under denne skjules (spec 26/9)
+MESSAGE_ANGLES = ["pris", "hastighed", "ai", "lokal", "garanti"]
+
+# ponytail: fast keyword-liste, ikke NLP — nok til at navngive den ydelse Jev allerede har sagt "ja" til.
+EXTRA_SERVICE_KEYWORDS = [
+    ("branding", r"branding|visuel identitet|brandstrateg"),
+    ("foto", r"fotografering|erhvervsfoto|videoproduktion|foto-?shoot"),
+    ("apps", r"app-udvikling|mobilapp|native app"),
+    ("annoncer", r"annoncering|facebook-?annoncer|google-?annoncer|paid ads|mediek(?:ø|oe)b"),
+    ("raadgivning", r"r[åa]dgivning|konsulentydelse|strategisk sparring"),
+]
+
+# Kinly-profilen: læst direkte på kinly.dk's forside 2026-09-27 (Sonnet 5) til brug for
+# "det gør vi allerede / det gør vi ikke"-vurderinger i findings. Opdatér datoen hvis siden ændres.
+KINLY_PROFILE = {
+    "hasPricesVisible": True,      # sektion #priser + FAQ nævner 3.997/4.997/8.449 kr
+    "schemaLocalBusiness": True,   # FAQPage-schema + LocalBusiness/Organization på forsiden
+    "hasFaqOnFront": True,         # <section id="faq"> med 7 spørgsmål
+    "reviewsAsText": True,         # kundecitat "Jeg kan varmt anbefale Lukas!" — Lene, VIDA Skønhedsklinik
+    "geoCitableAnswers": True,     # FAQ-svarene er allerede korte, citerbare svar på kundespørgsmål
+}
+
+FINDING_CATEGORIES = ("ydelse", "pris-budskab", "seo", "geo", "alternativ", "forbedring")
+SUGGEST_KINDS = ("blog", "annonce", "kinly-dk", "salg")
+
+# ---------------------------------------------------------------- v2: AI-bygger-alternativer (regex, ingen Jev)
+PRICE_ANY_RE = re.compile(r"(?:\$\s?\d[\d.,]*|€\s?\d[\d.,]*|\d[\d.,]*\s?(?:kr\.?|€))", re.I)
+AI_FEATURE_RE = re.compile(r"\bAI\b|kunstig intelligens|artificial intelligence", re.I)
+DANISH_TEXT_RE = re.compile(r"[æøåÆØÅ]|\bog\b|\bikke\b|\bhjemmeside\b", re.I)
+CODE_EXPORT_RE = re.compile(r"eksporter\w*\s+kode|export\w*\s+code|own your code|ejer?\s+din\s+kode|download.{0,20}code", re.I)
+
 
 def _questions_for_competitor(name: str) -> dict:
     q = {
@@ -128,20 +162,119 @@ def _questions_for_competitor(name: str) -> dict:
             "instructions": f"Tyder forsideteksten på risikoen '{label}' hos '{name}' (fravær af modsat signal er IKKE nok — kræv et konkret tegn)?",
             "criteria": {"ja": "Ja, konkret tegn i teksten", "nej": "Nej, intet konkret tegn"},
         }
+    q["ydelse_ikke_kinly"] = {
+        "type": "choice",
+        "instructions": f"Tilbyder '{name}' (ifølge forsideteksten) en konkret ydelse ud over hjemmeside/webshop/SEO/hosting/drift — fx branding, foto, apps, annoncering eller rådgivning?",
+        "criteria": {"ja": "Ja, en konkret ekstra ydelse er nævnt", "nej": "Nej, eller for uklart"},
+    }
+    q["seo_faq_synlig"] = {
+        "type": "choice",
+        "instructions": f"Har '{name}'s forside en synlig FAQ/Ofte stillede spørgsmål-sektion?",
+        "criteria": {"ja": "Ja, en FAQ-sektion er synlig", "nej": "Nej, ingen FAQ set"},
+    }
+    q["seo_anmeldelser_tekst"] = {
+        "type": "choice",
+        "instructions": f"Viser '{name}'s forside kundecitater som skrevet tekst (ikke kun en stjernescore/tal)?",
+        "criteria": {"ja": "Ja, et skrevet kundecitat er synligt", "nej": "Nej, kun evt. stjerner/tal"},
+    }
+    q["geo_citerbare_svar"] = {
+        "type": "choice",
+        "instructions": f"Er noget af '{name}'s tekst skrevet som korte, citerbare svar på konkrete kundespørgsmål (fx en FAQ med præcise svar)?",
+        "criteria": {"ja": "Ja, korte citerbare svar findes", "nej": "Nej, teksten er ikke skrevet sådan"},
+    }
+    for angle in MESSAGE_ANGLES:
+        q[f"budskab_{angle}"] = {
+            "type": "choice",
+            "instructions": f"Er '{angle}' hovedbudskabet/USP'en hos '{name}' ifølge forsideteksten?",
+            "criteria": {"ja": "Ja, det er tydeligt et hovedbudskab", "nej": "Nej, eller for uklart"},
+        }
     return q
 
 
+def _conf_rating(conf: float) -> int:
+    """confidence 0.6-1.0 -> rating 1-5 (spec 26/9)."""
+    return max(1, min(5, round(1 + 4 * (conf - CONF_THRESHOLD) / (1 - CONF_THRESHOLD))))
+
+
+def _choice(answers: dict, qid: str) -> tuple[str | None, float]:
+    ans = answers.get(qid) or {}
+    if ans.get("type") != "choice":
+        return None, 0.0
+    try:
+        return ans.get("choice"), float(ans.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        return ans.get("choice"), 0.0
+
+
+def _yes(answers: dict, qid: str) -> bool | None:
+    """True/False kun ved gyldigt ja/nej OG confidence >= CONF_THRESHOLD, ellers None (skjult fund)."""
+    choice, conf = _choice(answers, qid)
+    if choice not in ("ja", "nej") or conf < CONF_THRESHOLD:
+        return None
+    return choice == "ja"
+
+
 def classify_competitor_jev(raw: dict | None) -> dict:
+    empty = {"ok": False, "positioning": None, "positioning_confidence": None,
+              "strengths": [], "weaknesses": [], "messaging_angles": [],
+              "ydelse_ikke_kinly": None, "seo_faq_synlig": None,
+              "seo_anmeldelser_tekst": None, "geo_citerbare_svar": None}
     try:
         answers = (raw or {}).get("answers", {})
-        pos = answers["positionering"]
-        if pos.get("type") != "choice" or pos.get("choice") not in POSITION_LABEL:
-            raise ValueError("ugyldig positionering")
-        strengths = [l for l in STRENGTH_LABELS if answers.get(f"styrke_{l}", {}).get("choice") == "ja"][:5]
-        weaknesses = [l for l in WEAKNESS_LABELS if answers.get(f"svaghed_{l}", {}).get("choice") == "ja"][:5]
-        return {"ok": True, "positioning": pos["choice"], "strengths": strengths, "weaknesses": weaknesses}
+        pos_choice, pos_conf = _choice(answers, "positionering")
+        if pos_choice not in POSITION_LABEL or pos_conf < CONF_THRESHOLD:
+            raise ValueError("ugyldig eller usikker positionering")
+        strengths = [l for l in STRENGTH_LABELS if _yes(answers, f"styrke_{l}")][:5]
+        weaknesses = [l for l in WEAKNESS_LABELS if _yes(answers, f"svaghed_{l}")][:5]
+        angles = [a for a in MESSAGE_ANGLES if _yes(answers, f"budskab_{a}")]
+        return {
+            "ok": True,
+            "positioning": pos_choice,
+            "positioning_confidence": round(pos_conf, 2),
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "messaging_angles": angles,
+            "ydelse_ikke_kinly": _yes(answers, "ydelse_ikke_kinly"),
+            "seo_faq_synlig": _yes(answers, "seo_faq_synlig"),
+            "seo_anmeldelser_tekst": _yes(answers, "seo_anmeldelser_tekst"),
+            "geo_citerbare_svar": _yes(answers, "geo_citerbare_svar"),
+        }
     except (KeyError, TypeError, ValueError, AttributeError):
-        return {"ok": False, "positioning": None, "strengths": [], "weaknesses": []}
+        return empty
+
+
+def detect_extra_service(text_lower: str) -> str | None:
+    """Deterministisk keyword-match for hvilken ekstra ydelse Jev sagde 'ja' til (ingen ekstra Jev-kald)."""
+    for name, pat in EXTRA_SERVICE_KEYWORDS:
+        if re.search(pat, text_lower, re.I):
+            return name
+    return None
+
+
+def extract_ai_builder_signals(raw_html: str) -> dict:
+    """Regex-only signaler for AI-bygger-alternativer — ingen Jev nødvendig."""
+    text = blogscan._strip_tags(raw_html)
+    price_m = PRICE_ANY_RE.search(text)
+    return {
+        "priceFromText": price_m.group(0).strip()[:40] if price_m else None,
+        "aiFeatures": bool(AI_FEATURE_RE.search(text)),
+        "danish": bool(DANISH_TEXT_RE.search(text)),
+        "codeExport": bool(CODE_EXPORT_RE.search(text)),
+    }
+
+
+def run_ai_builders(alt_in: list[dict]) -> list[dict]:
+    """Letvægtsspor for kind=='ai-bygger': kun fetch + regex, ingen Places/Jev/GEO/blog."""
+    out: list[dict] = []
+    for comp in alt_in:
+        entry: dict = {"name": comp["name"], "url": comp["url"], "kind": "ai-bygger"}
+        raw_html = fetch_site(comp["url"])
+        if not raw_html:
+            continue
+        signals = extract_ai_builder_signals(raw_html)
+        entry["aiBuilder"] = {k: v for k, v in signals.items() if v is not None}
+        out.append(entry)
+    return out
 
 
 # ---------------------------------------------------------------- polite fetch (1 req/sek pr. domæne)
@@ -484,11 +617,148 @@ def build_patterns_and_gaps(competitors: list[dict], content_ideas: list[dict]) 
     return patterns[:12], gaps[:12]
 
 
+# ---------------------------------------------------------------- v2: findings (ny, ved siden af patterns/gaps)
+
+def _rating_from_prevalence(frac: float, conf: float = 1.0) -> int:
+    """Prevalens (0-1) x gennemsnitlig confidence (0-1) -> rating 1-5, via samme clamp-formel som _conf_rating.
+    ponytail: booleanske Jev-fund er allerede confidence-filtreret (>=0.6) inden de når hertil, så conf=1.0
+    som standard er en rimelig proxy for 'gennemsnitlig confidence' — hæv til rigtig gennemsnit hvis et
+    finding nogensinde skal skelne mellem fx 0.65 og 0.95 confidence."""
+    combined = CONF_THRESHOLD + (1 - CONF_THRESHOLD) * max(0.0, min(1.0, frac * conf))
+    return _conf_rating(combined)
+
+
+def _finding_id(category: str, title: str) -> str:
+    h = hashlib.sha1(f"{category}|{title}".encode("utf-8")).hexdigest()[:10]
+    return f"{category[:3]}-{h}"[:40]
+
+
+def _finding(category: str, title: str, detail: str, rating: int, evidence: list[str], suggest: str) -> dict:
+    return {
+        "id": _finding_id(category, title),
+        "category": category,
+        "title": title[:80],
+        "detail": detail[:240],
+        "rating": rating,
+        "evidence": evidence[:6],
+        "suggest": suggest,
+    }
+
+
+def _judged_flag(c: dict, group: str, key: str) -> bool | None:
+    g = c.get(group)
+    return g.get(key) if isinstance(g, dict) and key in g else None
+
+
+def build_findings(competitors: list[dict], content_ideas: list[dict]) -> list[dict]:
+    """Deterministisk, i build_patterns_and_gaps-stil: prevalens x confidence -> rating 1-5.
+    'vi gør ikke' afgøres mod KINLY_PROFILE (læst på kinly.dk 2026-09-27, se konstant ovenfor)."""
+    findings: list[dict] = []
+    bureaus = [c for c in competitors if c.get("kind") != "ai-bygger"]
+    with_site = [c for c in bureaus if c.get("site")]
+    n_site = len(with_site)
+
+    if n_site:
+        no_price = [c for c in with_site if not c["site"].get("hasPrices")]
+        if no_price:
+            detail = ("Så gør vi: Kinly viser fast pris åbent — bliv ved med det i salg og annoncer." if KINLY_PROFILE["hasPricesVisible"]
+                       else "Så gør vi ikke endnu: overvej at vise en fast pris, hvor konkurrenterne gemmer den.")
+            findings.append(_finding("pris-budskab", f"{len(no_price)}/{n_site} konkurrenter skjuler prisen bag 'kontakt os'",
+                                      detail, _rating_from_prevalence(len(no_price) / n_site),
+                                      [c["name"] for c in no_price], "kinly-dk"))
+
+        no_schema = [c for c in with_site if not c["site"].get("schemaLocalBusiness")]
+        if no_schema:
+            detail = ("Så gør vi: Kinly har allerede LocalBusiness-schema — en nem teknisk fordel til lokal synlighed." if KINLY_PROFILE["schemaLocalBusiness"]
+                       else "Så gør vi ikke endnu: tilføj LocalBusiness-schema, det er billigt og hurtigt.")
+            findings.append(_finding("seo", f"{len(no_schema)}/{n_site} konkurrenter mangler LocalBusiness/Organization-schema",
+                                      detail, _rating_from_prevalence(len(no_schema) / n_site),
+                                      [c["name"] for c in no_schema], "kinly-dk"))
+
+    faq = [(c, _judged_flag(c, "seoExtra", "faqVisible")) for c in bureaus]
+    faq = [(c, v) for c, v in faq if v is not None]
+    if faq:
+        yes = [c for c, v in faq if v]
+        detail = ("Så gør vi: Kinlys forside har allerede en FAQ-sektion." if KINLY_PROFILE["hasFaqOnFront"]
+                   else "Så gør vi ikke endnu: en synlig FAQ er en nem vinding for AI-søgning.")
+        findings.append(_finding("seo", f"{len(yes)}/{len(faq)} konkurrenter har en synlig FAQ på forsiden",
+                                  detail, _rating_from_prevalence(len(yes) / len(faq)),
+                                  [c["name"] for c in yes], "kinly-dk"))
+
+    rev = [(c, _judged_flag(c, "seoExtra", "reviewsAsText")) for c in bureaus]
+    rev = [(c, v) for c, v in rev if v is not None]
+    if rev:
+        yes = [c for c, v in rev if v]
+        detail = ("Så gør vi: Kinly har allerede et kundecitat med navn og virksomhed på forsiden." if KINLY_PROFILE["reviewsAsText"]
+                   else "Så gør vi ikke endnu: tilføj et kundecitat som tekst, ikke kun en stjernescore.")
+        findings.append(_finding("seo", f"{len(yes)}/{len(rev)} konkurrenter viser kundecitater som tekst, ikke kun stjerner",
+                                  detail, _rating_from_prevalence(len(yes) / len(rev)),
+                                  [c["name"] for c in yes], "kinly-dk"))
+
+    geo = [(c, _judged_flag(c, "geoExtra", "citableAnswers")) for c in bureaus]
+    geo = [(c, v) for c, v in geo if v is not None]
+    if geo:
+        yes = [c for c, v in geo if v]
+        detail = ("Så gør vi: Kinlys FAQ-svar er allerede skrevet som korte, citerbare svar." if KINLY_PROFILE["geoCitableAnswers"]
+                   else "Så gør vi ikke endnu: skriv korte, citerbare svar-afsnit på konkrete kundespørgsmål.")
+        findings.append(_finding("geo", f"{len(yes)}/{len(geo)} konkurrenter skriver citerbare svar til AI-søgning",
+                                  detail, _rating_from_prevalence(len(yes) / len(geo)),
+                                  [c["name"] for c in yes], "blog"))
+
+    msg_judged = [c for c in bureaus if c.get("messaging") is not None]
+    if msg_judged:
+        n_msg = len(msg_judged)
+        for angle in MESSAGE_ANGLES:
+            with_angle = [c for c in msg_judged if angle in c["messaging"]["angles"]]
+            if len(with_angle) >= max(2, n_msg // 4):
+                findings.append(_finding(
+                    "pris-budskab", f"{len(with_angle)}/{n_msg} konkurrenter bruger '{angle}' som hovedbudskab",
+                    f"Overvej om Kinlys egen tekst/annoncer skal møde eller bevidst undgå budskabet '{angle}'.",
+                    _rating_from_prevalence(len(with_angle) / n_msg), [c["name"] for c in with_angle], "annonce"))
+
+    with_services = [c for c in bureaus if c.get("uniqueServices") is not None]
+    if with_services:
+        n_svc = len(with_services)
+        counts = Counter(s for c in with_services for s in c["uniqueServices"])
+        for service, cnt in counts.most_common(5):
+            if cnt >= max(2, n_svc // 4):
+                evidence = [c["name"] for c in with_services if service in c["uniqueServices"]]
+                findings.append(_finding(
+                    "ydelse", f"{cnt}/{n_svc} konkurrenter tilbyder '{service}' — Kinly gør ikke i dag",
+                    f"Vurdér om '{service}' er en ydelse Kinly bevidst skal tilbyde, eller bevidst fravælge i salgssamtaler.",
+                    _rating_from_prevalence(cnt / n_svc), evidence, "salg"))
+
+    ai_builders = [c for c in competitors if c.get("kind") == "ai-bygger" and c.get("aiBuilder")]
+    if ai_builders:
+        n_ab = len(ai_builders)
+        with_export = [c for c in ai_builders if c["aiBuilder"].get("codeExport")]
+        if with_export:
+            findings.append(_finding(
+                "alternativ", f"{len(with_export)}/{n_ab} AI-byggere reklamerer med at eje/eksportere koden",
+                "Kinly bygger allerede håndkodet, og kunden ejer koden fra dag ét — brug det direkte mod AI-byggerne i salg.",
+                _rating_from_prevalence(len(with_export) / n_ab), [c["name"] for c in with_export], "salg"))
+        with_ai = [c for c in ai_builders if c["aiBuilder"].get("aiFeatures")]
+        if with_ai:
+            findings.append(_finding(
+                "alternativ", f"{len(with_ai)}/{n_ab} AI-byggere sælger sig selv på AI-generering",
+                "Overvej om Kinly skal svare på AI-bølgen i tekst/annoncer eller bevidst positionere sig som det menneskelige, lokale alternativ.",
+                _rating_from_prevalence(len(with_ai) / n_ab), [c["name"] for c in with_ai], "annonce"))
+
+    for idea in content_ideas:
+        findings.append(_finding("forbedring", idea["title"], idea.get("note", ""), 3, [], "blog"))
+
+    findings.sort(key=lambda f: f["rating"], reverse=True)
+    return findings[:20]
+
+
 # ---------------------------------------------------------------- rendering
 
 def render_section(now: datetime, competitors: list[dict], patterns: list[dict], gaps: list[dict], jev_calls: int, errors: list[str]) -> str:
+    n_dk = sum(1 for c in competitors if c.get("kind") != "ai-bygger")
+    n_alt = len(competitors) - n_dk
     lines = [f"## Scan {now.strftime('%Y-%m-%d')}", ""]
-    lines.append(f"- Konkurrenter: {len(competitors)} DK. Jev-kald denne kørsel: {jev_calls}.")
+    extra = f" + {n_alt} AI-byggere" if n_alt else ""
+    lines.append(f"- Konkurrenter: {n_dk} DK{extra}. Jev-kald denne kørsel: {jev_calls}.")
     for p in patterns:
         lines.append(f"- **Mønster:** {p['title']} — {p['detail']}")
     for g in gaps:
@@ -530,7 +800,7 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
     out_competitors: list[dict] = []
 
     for comp in competitors_in:
-        entry: dict = {"name": comp["name"], "url": comp["url"], "country": "DK"}
+        entry: dict = {"name": comp["name"], "url": comp["url"], "country": "DK", "kind": comp.get("kind", "bureau")}
         if comp.get("city"):
             entry["city"] = comp["city"]
 
@@ -562,6 +832,7 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         if geo:
             entry["geo"] = geo
 
+        jev_extra_service = None
         if jev_calls < max_jev and entry.get("site"):
             excerpt = blogscan._strip_tags(raw_html)[:2000]
             raw = jev_lib.ask({"site": {"name": comp["name"], "excerpt": excerpt}}, _questions_for_competitor(comp["name"]))
@@ -573,6 +844,24 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
                     entry["strengths"] = jr["strengths"]
                 if jr["weaknesses"]:
                     entry["weaknesses"] = jr["weaknesses"]
+                entry["messaging"] = {"angles": jr["messaging_angles"]}
+                seo_extra = {}
+                if jr["seo_faq_synlig"] is not None:
+                    seo_extra["faqVisible"] = jr["seo_faq_synlig"]
+                if jr["seo_anmeldelser_tekst"] is not None:
+                    seo_extra["reviewsAsText"] = jr["seo_anmeldelser_tekst"]
+                if seo_extra:
+                    entry["seoExtra"] = seo_extra
+                if jr["geo_citerbare_svar"] is not None:
+                    entry["geoExtra"] = {"citableAnswers": jr["geo_citerbare_svar"]}
+                if jr["ydelse_ikke_kinly"]:
+                    jev_extra_service = detect_extra_service(excerpt.lower())
+
+        if entry.get("site"):
+            extra_services = [s for s in entry["site"].get("services") or [] if s not in KINLY_SERVICES]
+            if jev_extra_service and jev_extra_service not in extra_services:
+                extra_services.append(jev_extra_service)
+            entry["uniqueServices"] = extra_services[:6]
 
         out_competitors.append(entry)
 
@@ -582,6 +871,11 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
             e["site"] = {k: v for k, v in e["site"].items() if v is not None}
             if not e["site"]:
                 del e["site"]
+
+    # letvægtsspor: AI-bygger-alternativer (Wix/one.com/Framer/Lovable/Squarespace) — kun fetch+regex,
+    # ingen Places/Jev/GEO/blog, tæller ikke mod jev_calls eller Places-budgettet.
+    alt_in = [c for c in data.get("competitors", []) if c.get("kind") == "ai-bygger"]
+    out_competitors.extend(run_ai_builders(alt_in))
 
     prune_state(state)
     jev_lib.atomic_write_json(SITE_STATE_PATH, state)
@@ -595,6 +889,7 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
     content_ideas = blogscan.pick_top_ideas(rows, existing_titles, limit=3) if rows else []
 
     patterns, gaps = build_patterns_and_gaps(out_competitors, content_ideas)
+    findings = build_findings(out_competitors, content_ideas)
 
     now = datetime.now(timezone.utc)
     report = {
@@ -603,6 +898,7 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         "competitors": out_competitors,
         "patterns": patterns,
         "gaps": gaps,
+        "findings": findings,
     }
 
     section = render_section(now, out_competitors, patterns, gaps, jev_calls, errors)
