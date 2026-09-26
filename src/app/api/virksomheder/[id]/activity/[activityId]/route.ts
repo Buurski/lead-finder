@@ -6,16 +6,16 @@ export const runtime = "nodejs";
 
 // PATCH { summary } — kun egne "note"-hændelser.
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; activityId: string }> }) {
-  return hqWrite(req, async () => {
+  return hqWrite(req, async (actor) => {
     const { id, activityId } = await ctx.params;
     const b = await jsonBody(req);
-    return { activity: await updateNote(getDb(), uuid(activityId, "note-id"), uuid(id, "virksomheds-id"), b.summary) };
+    return { activity: await updateNote(getDb(), uuid(activityId, "note-id"), uuid(id, "virksomheds-id"), b.summary, actor) };
   });
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string; activityId: string }> }) {
-  return hqWrite(req, async () => {
+  return hqWrite(req, async (actor) => {
     const { id, activityId } = await ctx.params;
-    return await deleteNote(getDb(), uuid(activityId, "note-id"), uuid(id, "virksomheds-id"));
+    return await deleteNote(getDb(), uuid(activityId, "note-id"), uuid(id, "virksomheds-id"), actor);
   });
 }
