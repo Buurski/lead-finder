@@ -32,6 +32,7 @@ export default function ExpensesClient() {
   const [amount, setAmount] = useState("");
   const [split, setSplit] = useState<SplitKey>("selskab-lucas");
   const [note, setNote] = useState("");
+  const [editing, setEditing] = useState<string | null>(null); // id på posten der rettes
 
   const load = useCallback(() => {
     Promise.all([
@@ -59,19 +60,37 @@ export default function ExpensesClient() {
     try {
       const { share, payer } = SPLITS[split];
       const res = await fetch("/api/udgifter/expenses", {
-        method: "POST",
+        method: editing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, vendor, amount: val, share, payer, note: note || undefined }),
+        body: JSON.stringify({ id: editing ?? undefined, date, vendor, amount: val, share, payer, note: note || "" }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "fejl");
-      setExpenses((x) => [...x, d.expense]);
-      setVendor(""); setAmount(""); setNote("");
+      setExpenses((x) => [...x.filter((e) => e.id !== editing), d.expense]);
+      resetForm();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Kunne ikke gemme");
     } finally {
       setBusy(false);
     }
+  }
+
+  function resetForm() {
+    setEditing(null);
+    setVendor(""); setAmount(""); setNote("");
+    setSplit("selskab-lucas");
+    setDate(new Date().toLocaleDateString("sv-SE"));
+  }
+
+  function startEdit(e: Expense) {
+    setEditing(e.id);
+    setDate(e.date);
+    setVendor(e.vendor);
+    setAmount(String(e.amount).replace(".", ","));
+    setSplit(`${e.share}-${e.payer}` in SPLITS ? (`${e.share}-${e.payer}` as SplitKey) : "selskab-lucas");
+    setNote(e.note ?? "");
+    setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function remove(id: string) {
@@ -112,7 +131,8 @@ export default function ExpensesClient() {
           {Object.entries(SPLITS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <input aria-label="Note" placeholder="Note (valgfri)" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} style={{ ...inputStyle, flex: "1 1 140px" }} />
-        <button type="button" className="cc-btn cc-btn-accent" onClick={add} disabled={busy}>{busy ? "Gemmer…" : "Tilføj udgift"}</button>
+        <button type="button" className="cc-btn cc-btn-accent" onClick={add} disabled={busy}>{busy ? "Gemmer…" : editing ? "Gem ændring" : "Tilføj udgift"}</button>
+        {editing && <button type="button" className="cc-btn" onClick={resetForm}>Annullér</button>}
       </div>
       {error && <p style={{ color: "var(--red)", fontSize: 12.5, marginBottom: 8 }}>{error}</p>}
 
@@ -131,6 +151,9 @@ export default function ExpensesClient() {
             <span className="cc-dim" style={{ fontSize: 11.5, minWidth: 90, textAlign: "right" }}>
               {d === 0 ? "påvirker ikke" : `${d > 0 ? "+" : "−"}${kr(Math.abs(d))} Charlie`}
             </span>
+            <button type="button" onClick={() => startEdit(e)} aria-label={`Ret ${e.vendor}`} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", padding: 2 }}>
+              <Icon name="NotebookPen" style={{ width: 14, height: 14 }} />
+            </button>
             <button type="button" onClick={() => remove(e.id)} aria-label={`Slet ${e.vendor}`} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", padding: 2 }}>
               <Icon name="X" style={{ width: 14, height: 14 }} />
             </button>
