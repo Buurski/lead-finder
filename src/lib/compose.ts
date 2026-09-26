@@ -82,7 +82,7 @@ function pickVariant(seed: string, variants: string[]): string {
 // (no price/kr/gratis/robot-CTA) — composeColdEmail validates the whole body.
 function valueLine(name: string): string {
   return pickVariant(name + "v", [
-    `En virksomhed med jeres kundebase, erfaring og drive fortjener en ny og fungerende hjemmeside. En der skaber flere kunder, ikke bare beholder de nuværende.`,
+    `En virksomhed med jeres kunder og erfaring fortjener en ny og fungerende hjemmeside. En der skaber flere kunder, ikke bare beholder de nuværende.`,
     `Med det ry og de anmeldelser I har bygget op, fortjener I et website der matcher niveauet. Et der henter nye kunder ind, frem for bare at vise de nuværende vej.`,
     `Med den kundebase I har, giver det god mening med en side der er lige så stærk som jeres ry. En der skaber nye henvendelser, ikke bare bevarer det I allerede har.`,
   ]);

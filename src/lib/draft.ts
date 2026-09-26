@@ -155,7 +155,7 @@ function buildOpener(lead: ResearchLead, research: ResearchResult): string {
   //    the dead "bygget noget særligt op" phrasing.
   if (lead.reviewsCount >= 50) {
     return pick(lead.name, [
-      `jeg sad og kiggede på jer i ${lead.city}, og ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
+      `jeg sad og kiggede på jer i ${lead.city} og så jeres ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
       `jeg lagde mærke til hvor mange gode anmeldelser I har her i ${lead.city}.`,
     ]);
   }

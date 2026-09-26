@@ -176,7 +176,7 @@ function eligibleOpeners(lead: MixLead): OpenerCandidate[] {
     out.push({
       kind: "review-volume",
       text: pick(seed + "r", [
-        `jeg sad og kiggede på jer i ${city}, og ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
+        `jeg sad og kiggede på jer i ${city} og så jeres ${lead.reviewsCount} anmeldelser. Det er folk der kommer tilbage.`,
         `${lead.reviewsCount} anmeldelser for en ${safeBranchNoun(lead.branch)} af jeres størrelse er ærlig talt flot. Det siger noget om jer.`,
       ]),
     });
