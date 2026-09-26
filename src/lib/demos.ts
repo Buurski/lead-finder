@@ -51,6 +51,7 @@ const D = {
   ikastCase: { label: "Kunde: Ikast AutoService (autoværksted)", url: DEMO_SITES.ikastCase },
   jernbanecafeenCase: { label: "Kunde: Jernbanecaféen (café)", url: DEMO_SITES.jernbanecafeenCase },
   lejEnKokCase: { label: "Kunde: Lej en Kok (catering/mad)", url: DEMO_SITES.lejEnKokCase },
+  ktvvsCase: { label: "Kunde: KT VVS (VVS/el)", url: DEMO_SITES.ktvvsCase },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
@@ -304,6 +305,7 @@ export const MAIL_LINKS: MailLink[] = [
   { group: "Kinly-cases", ...D.ikastCase },
   { group: "Kinly-cases", ...D.jernbanecafeenCase },
   { group: "Kinly-cases", ...D.lejEnKokCase },
+  { group: "Kinly-cases", ...D.ktvvsCase },
   { group: "Kinly-cases", label: "Alle projekter på kinly.dk", url: "https://kinly.dk/projekter/" },
   { group: "Kinly-branchesider", label: "Hjemmeside til skønhedsklinik", url: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   { group: "Kinly-branchesider", label: "Hjemmeside til frisør", url: "https://kinly.dk/hjemmeside-til-frisoer/" },
@@ -330,6 +332,9 @@ export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[
   if (vertical) urls.push(vertical);
   if (FOOD.test(t) || FOOD_INTL.test(t)) urls.push(DEMO_SITES.jernbanecafeenCase, DEMO_SITES.lejEnKokCase);
   else if (CLINIC.test(t) || BEAUTY.test(t) || BARBER.test(t)) urls.push(DEMO_SITES.vidaCase);
+  // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
+  // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
+  else if (CRAFT_UTIL.test(t)) urls.push(DEMO_SITES.ktvvsCase);
   else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
   urls.push("https://kinly.dk/projekter/");
   const out: MailLink[] = [];

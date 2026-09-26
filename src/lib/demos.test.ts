@@ -167,5 +167,11 @@ test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async (
   assert.ok(cafe.some((l) => l.url === "https://kinly.dk/hjemmeside-til-restaurant-cafe/"));
   const klinik = suggestMailLinks("skønhedsklinik", "Frederiksberg Skønhedsklinik");
   assert.equal(klinik[0].url, "https://kinly.dk/case/vida-klinik/");
+  // 26/9: VVS-kladder kræver KT VVS-casen (CASE_FOR.craftUtility) — den skal
+  // både stå i kataloget og komme med i forslaget, uden at sprænge loftet på 5.
+  assert.ok(MAIL_LINKS.some((l) => l.url === DEMO_SITES.ktvvsCase));
+  const vvs = suggestMailLinks("vvs", "VVS Test");
+  assert.ok(vvs.some((l) => l.url === DEMO_SITES.ktvvsCase));
+  assert.ok(vvs.length <= 5 && vvs.every((l) => known.has(l.url)));
   assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
 });
