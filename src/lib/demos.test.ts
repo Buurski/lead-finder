@@ -33,8 +33,10 @@ test("verticalPageFor(tandlæge) → null (ingen branche-side, medicinsk-eksklud
 
 // ---- Link-politik (Lucas 24/9) -------------------------------------------
 // Alle udkastveje skal bære kinly.dk-forsiden + den matchende case (når branchen
-// har en) + branche-siden (når den findes). VVS-casen er bevidst null: /case/
-// kt-vvs/ svarede 404 ved verifikation 25/9 — ingen død URL i et udkast.
+// har en) + branche-siden (når den findes). Cases er reelle kinly.dk-sider;
+// brancher uden ægte case (barber, fotograf, tandlæge) er null — ingen fremmed
+// reference. KT VVS-casen er live (200 + i sitemap, verificeret 26/9), så VVS
+// har en case nu; foodIntl deler Jernbanecaféen-casen med food.
 const BRANCH_CASES: { branch: string; caseUrl: string | null; vertical: string | null }[] = [
   { branch: "skønhedsklinik", caseUrl: DEMO_SITES.vidaCase, vertical: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   // BEAUTY-rækken (frisør/salon) får VIDA-casen som case-rolle — samme mapping som
@@ -42,8 +44,10 @@ const BRANCH_CASES: { branch: string; caseUrl: string | null; vertical: string |
   { branch: "frisør", caseUrl: DEMO_SITES.vidaCase, vertical: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   { branch: "barber", caseUrl: null, vertical: "https://kinly.dk/hjemmeside-til-frisoer/" },
   { branch: "café", caseUrl: DEMO_SITES.jernbanecafeenCase, vertical: "https://kinly.dk/hjemmeside-til-restaurant-cafe/" },
+  { branch: "pizzeria", caseUrl: DEMO_SITES.jernbanecafeenCase, vertical: "https://kinly.dk/hjemmeside-til-restaurant-cafe/" },
   { branch: "autoværksted", caseUrl: DEMO_SITES.ikastCase, vertical: "https://kinly.dk/hjemmeside-til-automekaniker/" },
-  { branch: "vvs", caseUrl: null, vertical: "https://kinly.dk/hjemmeside-til-vvs/" },
+  { branch: "vvs", caseUrl: DEMO_SITES.ktvvsCase, vertical: "https://kinly.dk/hjemmeside-til-vvs/" },
+  { branch: "fotograf", caseUrl: null, vertical: null },
   { branch: "tandlæge", caseUrl: null, vertical: null },
 ];
 
@@ -111,10 +115,31 @@ test("withReferenceLinks tilføjer det der mangler og rører ikke en komplet tek
   const r = withReferenceLinks("Hej\n\nMed venlig hilsen\nLucas", "café", "Bodega Test");
   assert.equal(r.added.length, 3);
   assert.deepEqual(missingReferenceLinks(r.body, "café", "Bodega Test"), []);
-  // VVS: ingen case findes → kun forside + branche-side tilføjes, ingen falsk case.
+  // VVS har nu en case (KT VVS, live 26/9) → forside + case + branche-side.
   const v = withReferenceLinks("Hej", "vvs", "VVS Test");
-  assert.deepEqual(v.added, [KINLY_FRONT, "https://kinly.dk/hjemmeside-til-vvs/"]);
-  assert.equal(v.caseMissing, true);
+  assert.deepEqual(v.added, [KINLY_FRONT, DEMO_SITES.ktvvsCase, "https://kinly.dk/hjemmeside-til-vvs/"]);
+  assert.equal(v.caseMissing, false);
+  // Branche uden case (tandlæge) → kun forsiden; ingen falsk case (fail-closed).
+  const t = withReferenceLinks("Hej", "tandlæge", "Test Test");
+  assert.deepEqual(t.added, [KINLY_FRONT]);
+  assert.equal(t.caseMissing, true);
+});
+
+test("26/9: vvs → KT VVS-casen og intl restaurant → Jernbanecaféen; foto/barber er stadig caseløse", () => {
+  const vvs = referenceLinks("vvs", "VVSøren Rasmussen I/S");
+  assert.equal(vvs.caseUrl, DEMO_SITES.ktvvsCase);
+  assert.equal(vvs.caseMissing, false);
+  const intl = referenceLinks("populær restaurant", "Panya Thai");
+  assert.equal(intl.caseUrl, DEMO_SITES.jernbanecafeenCase);
+  assert.equal(intl.caseMissing, false);
+  // Demo-paret for foodIntl er uændret — kun case-rollen fik en post.
+  assert.equal(pickDemos("populær restaurant", "Panya Thai")[0].url, DEMO_SITES.zaytoon);
+  // Ingen case for foto/barber → udkastet flagges, ikke pyntes med en fremmed case.
+  for (const [branch, name] of [["fotograf", "kajsfoto.dk - fotograf"], ["barbershop", "Qosay Barber"]]) {
+    const r = referenceLinks(branch, name);
+    assert.equal(r.caseUrl, null, branch);
+    assert.equal(r.caseMissing, true, branch);
+  }
 });
 
 test("case-link og branche-side tæller ikke som link til forsiden", () => {

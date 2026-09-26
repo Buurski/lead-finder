@@ -31,6 +31,8 @@ export const DEMO_SITES = {
   ikastCase: "https://kinly.dk/case/ikast-autoservice/",
   jernbanecafeenCase: "https://kinly.dk/case/jernbanecafeen/",
   lejEnKokCase: "https://kinly.dk/case/lej-en-kok/",
+  // KT VVS-casen er live: 200 + i kinly.dk/sitemap.xml (verificeret med curl 26/9).
+  ktvvsCase: "https://kinly.dk/case/kt-vvs/",
 } as const;
 
 const D = {
@@ -174,9 +176,18 @@ const CASE_FOR: Partial<Record<BranchKind, { url: string; label: string }>> = {
   clinic: { url: DEMO_SITES.vidaCase, label: "VIDA Klinik" },
   beauty: { url: DEMO_SITES.vidaCase, label: "VIDA Klinik" },
   food: { url: DEMO_SITES.jernbanecafeenCase, label: "Jernbanecaféen" },
+  // foodIntl er samme spisested-familie som food; kun demo-stilen er en anden
+  // (zaytoon/underKlippen). Danske restauranter med udenlandsk køkken (thai,
+  // sushi, pizza) får derfor samme case — præcis som suggestMailLinks allerede
+  // tilbyder den for FOOD_INTL-leads.
+  foodIntl: { url: DEMO_SITES.jernbanecafeenCase, label: "Jernbanecaféen" },
   auto: { url: DEMO_SITES.ikastCase, label: "Ikast AutoService" },
-  // craftUtility (VVS/el) mangler bevidst: /case/kt-vvs/ svarer 404 (verificeret
-  // 25/9). Ingen død URL i et udkast — VVS er case_missing indtil den er live.
+  // KT VVS-casen er live (verificeret 26/9). Den gamle 404-antagelse fra 25/9
+  // er død; uden denne post blev VVS-kladder fejlagtigt case_missing.
+  craftUtility: { url: DEMO_SITES.ktvvsCase, label: "KT VVS" },
+  // craft og service har bevidst ingen case: KT VVS er VVS/el, ikke maler eller
+  // rengøring. Brancher uden ægte match forbliver case_missing (fail-closed).
+  // photo og barber er også uden case — der findes ingen case-side for dem.
 };
 
 // Branche-sider på kinly.dk.
