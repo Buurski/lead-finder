@@ -149,6 +149,10 @@ test("forsiden tælles med tegnsætning efter og uden afsluttende slash", () => 
     "https://kinly.dk/projekter/",
     "https://kinly.dk/case",
     "https://kinly.dkk/",
+    // Lookalike-domæne (fund fra kode.sh-review 26/9): et punktum efter domænet
+    // må ikke gøre en fremmed adresse til forsiden.
+    "https://kinly.dk.eksempel.dk/",
+    "https://kinly.dk.eksempel",
   ]) {
     assert.equal(hasKinlyFront(nej), false, nej);
   }
