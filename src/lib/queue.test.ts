@@ -95,9 +95,8 @@ test("updateDraft afviser en body uden reference-links — også i pg-stien", as
   assert.equal(updated?.body, okBody, "en komplet body skal gemmes");
 });
 
-// 26/9: link-kravet alene var ikke nok. En body med ALLE tre VVS-links PLUS
-// kunde-previewet (ktvvs.vercel.app) gik igennem gaten. Kunde-linket skal
-// afvises i pg-stien (prod) — og kladden må ikke gemmes med det.
+// 26/9: link-kravet alene var ikke nok — en body med alle tre links PLUS
+// kunde-previewet slap igennem. Kladden må hverken gemmes eller slippe i pg-stien.
 test("updateDraft afviser kunde-previewet selvom alle tre links er der — også i pg-stien", async () => {
   await freshTestDb();
   const { updateDraft, LinkPolicyError } = await import("./queue.ts");
@@ -107,8 +106,7 @@ test("updateDraft afviser kunde-previewet selvom alle tre links er der — også
   await assert.rejects(
     () => updateDraft("d_prev", { body }),
     (e: unknown) => e instanceof LinkPolicyError,
-    "en komplet body MED kunde-previewet skal afvises",
   );
   const stored = (await readQueue()).find((d) => d.id === "d_prev");
-  assert.ok(!(stored?.body ?? "").includes("ktvvs.vercel.app"), "kladden må ikke være gemt med previewet");
+  assert.ok(!(stored?.body ?? "").includes("ktvvs.vercel.app"));
 });

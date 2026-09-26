@@ -70,9 +70,8 @@ export function validateDraft(text: string): ValidationResult {
   for (const dead of DEAD_DEMO_HOSTS) {
     if (text.includes(dead)) errors.push(`dødt demo-link: ${dead} — vælg andre demoer`);
   }
-  // Kunde-link (kundens eget domæne eller vores upublicerede preview) må aldrig
-  // stå i et udkast — kunden linkes kun via sin kinly.dk-case (Lucas 23/9).
-  // Samme værn som sendegaten bruger (demos.ts#customerSiteLinks).
+  // Kunde-link (kundens domæne eller vores preview) må aldrig i et udkast —
+  // samme værn som sendegaten (demos.ts#customerSiteLinks).
   for (const u of customerSiteLinks(text)) {
     errors.push(`kunde-link: ${u} — brug kinly.dk-casen, ikke kundens egen side`);
   }

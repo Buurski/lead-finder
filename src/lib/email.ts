@@ -786,12 +786,7 @@ export async function sendLeadEmail(
     html = template.html;
   }
 
-  // 26/9: composedBody-genvejen gik direkte til SMTP uden at røre link-værnet,
-  // så et lead hvis body indeholdt kundens eget preview/domæne (ktvvs.vercel.app,
-  // vida-klinik.dk, …) kunne sendes. Kundens egen side linkes kun via sin
-  // kinly.dk-case (Lucas 23/9). Gaten tjekker begge de bytes der faktisk sendes
-  // (text OG html) og står FØR transporten, så en afvist mail hverken rører
-  // creds eller SMTP.
+  // 26/9: composedBody-genvejen gik uden om link-værnet — tjek begge bytes FØR SMTP.
   for (const part of [text, html]) {
     const bad = customerSiteLinks(part)[0];
     if (bad) throw new Error(`kundens egen side må ikke sendes (${bad}) — brug kinly.dk-casen`);

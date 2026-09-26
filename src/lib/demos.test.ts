@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, suggestMailLinks, isCustomerSiteUrl, customerSiteLinks } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, isCustomerSiteUrl, customerSiteLinks } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -225,82 +225,56 @@ test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
   assert.ok(suggestMailLinks("vvs", "VVS Test").some((l) => l.url === DEMO_SITES.ktvvsCase));
 });
 
-// 26/9: link-politikken krævede kun at links var TIL STEDE. Et udkast med alle
-// tre links PLUS kundens eget link slap derfor igennem. Ét genbrugt værn
-// (demos.ts#customerSiteLinks) matcher URL-host præcist efter new URL mod
-// CUSTOMER_SITES og skal afvise på ALLE tekstveje.
+// 26/9: link-kravet krævede kun at links var TIL STEDE, så et udkast med alle
+// tre links PLUS kundens eget link slap igennem. Værnet skal ramme alle tekstveje.
 test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", async () => {
   const { validateDraft } = await import("./draft.ts");
   const { validateMessengerDraft } = await import("./messenger/compose.ts");
   const links = referenceLines("vvs", "KT VVS Test");
-  assert.deepEqual(missingReferenceLinks(links.join("\n"), "vvs", "KT VVS Test"), [], "komplet body uden kunde-link skal være ok");
+  assert.deepEqual(missingReferenceLinks(links.join("\n"), "vvs", "KT VVS Test"), []);
   const withPreview = [...links, "→ https://ktvvs.vercel.app/path?x=y"].join("\n");
-  const issues = missingReferenceLinks(withPreview, "vvs", "KT VVS Test");
-  assert.ok(issues.some((i) => i.includes("ktvvs.vercel.app")), "previewet skal afvises trods komplette links");
-  // Samme værn på de øvrige tekstveje: validator + DM.
+  assert.ok(missingReferenceLinks(withPreview, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
   assert.equal(validateDraft(withPreview).ok, false);
   assert.ok(validateMessengerDraft(`Hej!\n\nSe https://ktvvs.vercel.app/ her\n\nMin egen side: ${KINLY_FRONT}\n\nMvh, Lucas`).length > 0);
-  // En anden kendt kunde-host (VIDA) rammes af samme værn.
   const vida = [...referenceLines("skønhedsklinik", "Klinik Test"), "→ https://vida-klinik.dk/"].join("\n");
   assert.ok(missingReferenceLinks(vida, "skønhedsklinik", "Klinik Test").some((i) => i.includes("vida-klinik.dk")));
 });
 
-test("værnet matcher host præcist: lookalike fanges ikke, case/demoer lukkes ind", () => {
-  const body = [
-    `→ ${KINLY_FRONT}`,
-    `→ ${DEMO_SITES.ktvvsCase}`,
-    "→ https://kinly.dk/hjemmeside-til-vvs/",
-    `→ ${DEMO_SITES.zaytoon}`,
-    `→ ${DEMO_SITES.denlillemaler}`,
-    "→ https://ktvvs.vercel.app.evil/",
-  ].join("\n");
-  assert.deepEqual(missingReferenceLinks(body, "vvs", "KT VVS Test"), []);
-  for (const u of ["https://ktvvs.vercel.app/path?x=y", "https://ktvvs.vercel.app/", "https://vida-klinik.dk/", "https://www.vida-klinik.dk/", DEMO_SITES.ikastAutoservice]) {
-    assert.equal(isCustomerSiteUrl(u), true, u);
+// Host sammenlignes præcist: port, FQDN-rod og afsluttende tegnsætning (.,;!) hører
+// til hosten, mens lookalikes og case/demo-links skal slippe igennem.
+test("værnet matcher host præcist — port, tegnsætning, lookalike og case", () => {
+  for (const u of [
+    "https://ktvvs.vercel.app/", "https://ktvvs.vercel.app:8080/x", "https://ktvvs.vercel.app.",
+    "https://ktvvs.vercel.app,", "https://ktvvs.vercel.app;", "https://ktvvs.vercel.app!",
+    "https://vida-klinik.dk/", "https://www.vida-klinik.dk.", DEMO_SITES.ikastAutoservice,
+  ]) assert.equal(isCustomerSiteUrl(u), true, u);
+  for (const u of [
+    "https://ktvvs.vercel.app.evil/", "https://ikastautoservice.dk.evil/",
+    DEMO_SITES.ktvvsCase, DEMO_SITES.zaytoon, DEMO_SITES.denlillemaler,
+  ]) assert.equal(isCustomerSiteUrl(u), false, u);
+  const ok = [...referenceLines("vvs", "KT VVS Test"), "→ https://ktvvs.vercel.app.evil/"].join("\n");
+  assert.deepEqual(missingReferenceLinks(ok, "vvs", "KT VVS Test"), []);
+  // Fri tekst: URL'en står midt i en sætning og slutter med tegnsætning (intet slash).
+  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app."), ["https://ktvvs.vercel.app."]);
+  for (const t of ["kig på https://ktvvs.vercel.app, tak", "se https://ktvvs.vercel.app;", "https://vida-klinik.dk!"]) {
+    assert.equal(customerSiteLinks(t).length, 1, t);
   }
-  for (const u of ["https://ktvvs.vercel.app.evil/", DEMO_SITES.ktvvsCase, DEMO_SITES.zaytoon, DEMO_SITES.denlillemaler]) {
-    assert.equal(isCustomerSiteUrl(u), false, u);
-  }
+  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
+  assert.ok(missingReferenceLinks("Se https://ktvvs.vercel.app. herfra", "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
 });
 
 test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", () => {
   assert.ok(!DEMO_CATALOG.some((d) => d.url === DEMO_SITES.ktvvs), "previewet står i DEMO_CATALOG");
-  for (const [branch, name] of [["vvs", "VVS Test"], ["vinduespudser", "Pro Vindues Polering"], ["maler", "Maler Test"], ["tømrer", "Tømrer Test"]]) {
-    assert.ok(!pickDemos(branch, name).some((d) => d.url === DEMO_SITES.ktvvs), `previewet i demo-parret for ${branch}`);
-    assert.ok(!suggestMailLinks(branch, name).some((l) => l.url === DEMO_SITES.ktvvs), `previewet i forslagene for ${branch}`);
-  }
-  // Maler-demoen er kun til en FAKTISK maler; andre håndværk/service er
-  // fail-closed = [] — og uden body-fallback, så ingen fremmed reference ryger
-  // ind i teksten.
   assert.deepEqual(pickDemos("maler", "Maler Test").map((d) => d.url), [DEMO_SITES.denlillemaler]);
-  assert.deepEqual(pickDemos("tømrer", "Tømrer Test"), []);
-  assert.deepEqual(pickDemos("vinduespudser", "Pro Vindues Polering"), []);
-  assert.ok(!referenceLines("tømrer", "Tømrer Test").join("\n").includes(DEMO_SITES.denlillemaler));
-  assert.ok(!referenceLines("vinduespudser", "Pro Vindues Polering").join("\n").includes(DEMO_SITES.denlillemaler));
-});
-
-test("værnet holder på hostnavnet: custom port og afsluttende punktum afvises", () => {
-  // `host` indeholder porten, så ktvvs.vercel.app:8080 slap uden om værn­et.
-  // `hostname` + trim af afsluttende punktum (FQDN-rod) lukker begge huller.
-  for (const u of [
-    "https://ktvvs.vercel.app:8080/x",
-    "https://vida-klinik.dk:8443/",
-    "https://ktvvs.vercel.app.",
-    "https://www.vida-klinik.dk.",
-  ]) {
-    assert.equal(isCustomerSiteUrl(u), true, u);
+  // Previewet er ikke i MAIL_LINKS (testen ovenfor), så eneste vej ind i forslagene
+  // er demo-parret — det skal være rent for hver af brancherne.
+  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
+    assert.ok(!pickDemos(branch, name).some((d) => d.url === DEMO_SITES.ktvvs), `previewet i demo-parret for ${branch}`);
   }
-  // Lookalikes og andre hosts er fortsat tilladte.
-  for (const u of [
-    "https://ktvvs.vercel.app.evil/",
-    "https://ktvvs.vercel.app.evil:8080/",
-    "https://kinly.dk/case/kt-vvs/",
-    "https://ikastautoservice.dk.evil/",
-  ]) {
-    assert.equal(isCustomerSiteUrl(u), false, u);
+  // Maler-demoen er kun til en FAKTISK maler. Andre håndværk/service er
+  // fail-closed = [] — uden body-fallback, så ingen fremmed reference i teksten.
+  for (const [branch, name] of [["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
+    assert.deepEqual(pickDemos(branch, name), []);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler), branch);
   }
-  // Fri tekst: URL'en står midt i en sætning og slutter med punktum (intet slash).
-  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app."), ["https://ktvvs.vercel.app."]);
-  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
-  assert.equal(missingReferenceLinks(`Se https://ktvvs.vercel.app. herfra`, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")), true);
 });

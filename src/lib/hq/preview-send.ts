@@ -47,8 +47,7 @@ export async function sendPreview(
   // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
   // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
   if (!hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
-  // 26/9: kundens egen side/preview må aldrig linkes — kun via sin kinly.dk-case.
-  // Gaten står FØR activity-kravet, så en afvist mail hverken rører db eller SMTP.
+  // 26/9: kundens egen side må kun linkes via sin kinly.dk-case — gaten står FØR db.
   const customerLinks = customerSiteLinks(body);
   if (customerLinks.length) {
     throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);

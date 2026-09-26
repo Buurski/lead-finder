@@ -68,13 +68,11 @@ test("et case-link tæller ikke som forsiden (streng front-gate)", async () => {
   assert.equal(x.sent.length, 0);
 });
 
-// 26/9: kundens egen side/preview (KT VVS-previewet, VIDA) må aldrig linkes i
-// udkastmailen. Gaten står FØR activity-kravet, så hverken db eller deliver
-// bliver kaldt.
+// 26/9: kundens egen side må aldrig linkes i udkastmailen — gaten står FØR db/deliver.
 test("kunde-link i mailen afvises før db og afsendelse", async () => {
   const x = deps(req);
-  const body = `Hej Maja\n\nHer er udkastet: ${url}\n\nMin egen side: https://kinly.dk/\n\nSe også https://ktvvs.vercel.app/path?x=y`;
+  const body = `Her er udkastet: ${url} — se min egen side https://kinly.dk/ og https://ktvvs.vercel.app/path?x=y`;
   await assert.rejects(sendPreview(db, req.id, { subject: msg.subject, body }, "lucas", x.d), PreviewSendError);
-  assert.equal(x.sent.length, 0, "deliver må ikke kaldes");
+  assert.equal(x.sent.length, 0);
   assert.equal((await db.select().from(activity)).length, 0, "intet db-krav må oprettes");
 });

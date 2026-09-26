@@ -312,13 +312,11 @@ export default function InboxDetail({
           <div className="inbox-cardrow">
             {(decided ? draft.demoPair : demos).map((d, i) => (
               <div key={i} className="inbox-democard" data-active={!decided && i === activeSlot ? "true" : undefined} onFocusCapture={() => setActiveSlot(i)} onClick={() => setActiveSlot(i)}>
-                {/* Gamle kladder kan have kundens eget preview/domæne i demoPair
-                    (sat før 26/9). Det må hverken vises som klikbart link eller
-                    kunne vælges: kun kundens kinly.dk-case er et lovligt link.
-                    Slottet kan stadig skiftes via forslagene nedenfor. */}
+                {/* Gamle kladder kan have kundens preview i demoPair (sat før 26/9):
+                    ikke link, ikke valgbart — kun kinly.dk-casen linkes. */}
                 {isCustomerSiteUrl(d.url) ? (
-                  <span className="cc-dim" style={{ fontSize: 12 }} title={d.url}>
-                    Kunde-link — vises ikke. Kundens egen side linkes kun via kinly.dk-casen.
+                  <span className="cc-dim" style={{ fontSize: 12 }}>
+                    Kunde-link — vises ikke. Kun kundens kinly.dk-case linkes.
                   </span>
                 ) : decided ? (
                   <a href={d.url} target="_blank" rel="noopener noreferrer">{d.label} — {prettyUrl(d.url)} ↗</a>

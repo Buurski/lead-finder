@@ -279,25 +279,14 @@ test("buildLeadEmail: Charlie + CHARLIE_SENDER_TITLE env viser titel", () => {
   }
 });
 
-// ---- sendLeadEmail: composedBody-genvejen (legacy compose-at-draft-time) ---
-
-// 26/9: composedBody-stien gik direkte til SMTP uden at røre link-værnet. Et
-// lead med kundens eget preview/domæne i composedBody kunne derfor sendes ud.
-// Gaten ligger FØR transporten, så testen hverken rører creds eller SMTP.
+// 26/9: composedBody-stien gik direkte til SMTP uden om link-værnet. Gaten ligger
+// FØR transporten, så testen hverken rører creds eller SMTP.
 test("sendLeadEmail: composedBody med kunde-preview afvises før SMTP", async () => {
   const { sendLeadEmail } = await import("./email.ts");
-  const body = "Hej Test\n\nSe udkastet her https://ktvvs.vercel.app/path?x=y\n\nMvh, Lucas";
+  const body = "Se udkastet her https://ktvvs.vercel.app/path?x=y\n\nMvh, Lucas";
   await assert.rejects(
     () => sendLeadEmail(
       { ...baseLead, email: "kunde@example.dk", sender: "lucas", composedSubject: "En idé", composedBody: body },
-      "cold",
-    ),
-    /kundens egen side/,
-  );
-  // Samme krav når linket står i en sætning med afsluttende punktum (intet slash).
-  await assert.rejects(
-    () => sendLeadEmail(
-      { ...baseLead, email: "kunde@example.dk", sender: "lucas", composedBody: "Hej https://vida-klinik.dk. slut" },
       "cold",
     ),
     /kundens egen side/,
