@@ -112,7 +112,6 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "food": return [D.jernbanecafeenCase, D.underKlippen];
     case "professional": return [D.midtadvokaterne, D.ikastCase];
     case "auto": return [D.ikastCase, D.denlillemaler];
-    // VVS/el: casen er kladden og kundens reference; previewet er ikke en demo.
     case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
     // craft/service: kun en faktisk maler får maler-demoen; ellers [] (fail-closed).
     case "craft": return PAINTER.test(`${name} ${branch}`) ? [D.denlillemaler] : [];
@@ -148,28 +147,26 @@ export function hasKinlyFront(text: string): boolean {
  */
 const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
 
-/** hostname uden www. og afsluttende tegnsætning (host porten med). */
+/** hostname uden www./tegnsætning. */
 function hostKey(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, "");
-  } catch {
-    return "";
-  }
+  try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
 }
 
 const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
 
-/** Kundens side kun via sin kinly.dk-case (Lucas 23/9); host sammenlignes præcist. */
+/** Kundens side kun via sin kinly.dk-case (Lucas 23/9). */
 export function isCustomerSiteUrl(url: string): boolean {
-  const h = hostKey(url);
-  return h !== "" && CUSTOMER_HOSTS.has(h);
+  return CUSTOMER_HOSTS.has(hostKey(url));
 }
 
-/** Kunde-links i fri tekst. Tom = ok. */
+/** Kunde-links i fri tekst, også bare domæner og //-links. */
 export function customerSiteLinks(text: string): string[] {
   const hits: string[] = [];
-  for (const m of text.matchAll(/https?:\/\/[^\s<>"'()\]]+/gi)) {
-    if (isCustomerSiteUrl(m[0]) && !hits.includes(m[0])) hits.push(m[0]);
+  for (const m of text.matchAll(/[^\s<>"'()\]]+/g)) {
+    // e-mail-tokens er ikke links.
+    if (m[0].includes("@") && !/^https?:/i.test(m[0])) continue;
+    const url = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
+    if (isCustomerSiteUrl(url) && !hits.includes(m[0])) hits.push(m[0]);
   }
   return hits;
 }

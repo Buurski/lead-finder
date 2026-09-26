@@ -225,21 +225,21 @@ test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
   assert.ok(suggestMailLinks("vvs", "VVS Test").some((l) => l.url === DEMO_SITES.ktvvsCase));
 });
 
-// 26/9: et udkast med alle tre links PLUS kundens eget link slap igennem.
 test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", async () => {
   const { validateDraft } = await import("./draft.ts");
   const { validateMessengerDraft } = await import("./messenger/compose.ts");
   const links = referenceLines("vvs", "KT VVS Test");
   assert.deepEqual(missingReferenceLinks(links.join("\n"), "vvs", "KT VVS Test"), []);
-  const withPreview = [...links, "→ https://ktvvs.vercel.app/path?x=y"].join("\n");
-  assert.ok(missingReferenceLinks(withPreview, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
-  assert.equal(validateDraft(withPreview).ok, false);
+  for (const u of ["https://ktvvs.vercel.app/path?x=y", "//ktvvs.vercel.app/path", "ktvvs.vercel.app/path"]) {
+    const withPreview = [...links, `→ ${u}`].join("\n");
+    assert.ok(missingReferenceLinks(withPreview, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")), u);
+    assert.equal(validateDraft(withPreview).ok, false, u);
+  }
   assert.ok(validateMessengerDraft(`Hej!\n\nSe https://ktvvs.vercel.app/ her\n\nMin egen side: ${KINLY_FRONT}\n\nMvh, Lucas`).length > 0);
   const vida = [...referenceLines("skønhedsklinik", "Klinik Test"), "→ https://vida-klinik.dk/"].join("\n");
   assert.ok(missingReferenceLinks(vida, "skønhedsklinik", "Klinik Test").some((i) => i.includes("vida-klinik.dk")));
 });
 
-// Host præcist: port og afsluttende tegnsætning hører til hosten; lookalikes slipper.
 test("værnet matcher host præcist — port, tegnsætning, lookalike og case", () => {
   for (const u of [
     "https://ktvvs.vercel.app/", "https://ktvvs.vercel.app:8080/x", "https://ktvvs.vercel.app.",
@@ -256,23 +256,25 @@ test("værnet matcher host præcist — port, tegnsætning, lookalike og case", 
   for (const t of ["kig på https://ktvvs.vercel.app, tak", "se https://ktvvs.vercel.app;", "https://vida-klinik.dk!"]) {
     assert.equal(customerSiteLinks(t).length, 1, t);
   }
+  for (const t of [
+    "→ ktvvs.vercel.app/path", "→ //ktvvs.vercel.app/path", "se www.vida-klinik.dk, tak", "→ KTVVS.Vercel.app/x",
+  ]) assert.equal(customerSiteLinks(t).length, 1, t);
+  for (const t of ["skriv til info@ktvvs.vercel.app", "se ktvvs.vercel.app.evil/x", "ved kinly.dk og zaytoon-six.vercel.app"]) {
+    assert.deepEqual(customerSiteLinks(t), [], t);
+  }
   assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
   assert.ok(missingReferenceLinks("Se https://ktvvs.vercel.app. herfra", "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
 });
 
 test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", async () => {
-  // 26/9: hele kataloget og link-listen — ikke kun KT VVS.
   const { MAIL_LINKS } = await import("./demos.ts");
   for (const l of [...DEMO_CATALOG, ...MAIL_LINKS]) {
     assert.equal(isCustomerSiteUrl(l.url), false, `kunde-side i kataloget: ${l.url}`);
   }
   assert.deepEqual(pickDemos("maler", "Maler Test").map((d) => d.url), [DEMO_SITES.denlillemaler]);
-  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
+  for (const [branch, name, n] of [["vvs", "VVS Test", 2], ["maler", "Maler Test", 1], ["tømrer", "Tømrer Test", 0], ["vinduespudser", "Pro Vindues Polering", 0]]) {
+    assert.equal(pickDemos(branch, name).length, n, branch);
     assert.ok(!pickDemos(branch, name).some((d) => isCustomerSiteUrl(d.url)), `kunde-side i demo-parret for ${branch}`);
-  }
-  // Maler-demoen er kun til en FAKTISK maler; andre håndværk/service er [] (fail-closed).
-  for (const [branch, name] of [["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
-    assert.deepEqual(pickDemos(branch, name), []);
-    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler), branch);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler) || n > 0, branch);
   }
 });
