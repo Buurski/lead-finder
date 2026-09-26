@@ -578,7 +578,10 @@ export function revisionOf(p: {
   body?: string;
   images?: unknown;
 }): string {
-  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", readImages(p.images)];
+  // Billedvalget (choice/choiceBy/choiceAt) er ikke en del af teksten: et valg må ikke ugyldiggøre faktatjekket (E2E 25/9).
+  // I Publicer er valget låst separat i updatePost.
+  const img = readImages(p.images);
+  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", { a: img.a, b: img.b }];
   return crypto.createHash("sha256").update(JSON.stringify(parts), "utf-8").digest("hex").slice(0, 16);
 }
 
@@ -672,9 +675,9 @@ export function runChecklist(p: {
   if (candidates.some((k) => !k || !k.alt || !k.credit || !k.source || !k.placement)) {
     missing.push("to A/B-billeder med placering, alt-tekst, kredit og kilde");
   }
-  // "none" er et gyldigt menneskevalg — men kun når et menneske faktisk valgte det.
+  // Valget skal være truffet af et menneske ("ingen" afvises nedenfor: uden billede kan intet publiceres).
   if (!HUMAN_ACTORS.has(images.choiceBy) || !images.choiceAt) {
-    missing.push("menneskets A/B-valg mangler (A, B, begge eller ingen)");
+    missing.push("menneskets A/B-valg mangler (A, B eller begge)");
   }
   if (!proofs.factcheck) missing.push("menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)");
   else if (proofs.factcheck.revision !== revision) missing.push("faktatjekket gælder en ældre version af teksten — det skal laves om");
@@ -851,7 +854,11 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       const moving = fields.stage !== undefined && fields.stage !== before.stage;
 
       if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
-      if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes af udgiver-jobbet — brug markPublished");
+      if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes automatisk, når opslaget er live på kinly.dk");
+      if (!moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg er låst — ret det direkte på kinly.dk");
+      if (!moving && from === "publicer" && patch.images !== undefined) {
+        throw new BlogInputError("indlægget står i Publicer — flyt det tilbage til Klar før du skifter billede");
+      }
       // Ud af Publicer er en aftale om udgivelse — den må kun aflyses af et menneske.
       if (moving && from === "publicer" && !HUMAN_ACTORS.has(actor)) {
         throw new BlogInputError("kun Lucas eller Charlie kan flytte et indlæg ud af Publicer");
@@ -977,10 +984,12 @@ export async function markPublished(db: Db, id: string, p: { url?: unknown; note
   }
   const url = p.url.trim();
   const note = text(p.note, "Note", 300);
+  const slugOk = (slug: string) => slug && (url === `https://kinly.dk/blog/${slug}/` || url === `https://kinly.dk/blog/${slug}`);
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
     if (!before) throw new BlogInputError("indlægget findes ikke");
     if (before.stage !== "publicer") throw new BlogInputError("indlægget står ikke i Publicer");
+    if (!slugOk(before.slug)) throw new BlogInputError(`url skal være https://kinly.dk/blog/${before.slug}/`);
     const stored = readChecklist(before.checklist);
     if (!stored.ok || stored.revision !== revisionOf(before)) throw new BlogInputError("tjeklisten er ikke grøn for den nuværende tekst — kan ikke meldes udgivet");
     const set: Partial<typeof blogPost.$inferInsert> = {

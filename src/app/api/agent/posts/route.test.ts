@@ -17,7 +17,6 @@ process.env.DATA_BACKEND = "pg";
 delete process.env.TYPESAFE_API_KEY;
 
 const PATH = "/api/agent/posts";
-const LIVE_URL = "https://kinly.dk/blog/hvad-koster-en-hjemmeside";
 const IMAGE_CANDIDATES = {
   a: {
     id: "billed-a",
@@ -288,7 +287,7 @@ test("agenten må ikke flytte til Publicer eller Udgivet", async () => {
 
   const udgivet = await post({ actor: "hermes", action: "move", id: created.post.id, stage: "udgivet" });
   assert.equal(udgivet.status, 400);
-  assert.match((await udgivet.json()).error, /markPublished/);
+  assert.match((await udgivet.json()).error, /automatisk/);
 
   const [after] = await db.select().from(blogPost).where(eq(blogPost.id, created.post.id));
   assert.equal(after.stage, "klar");
@@ -346,6 +345,7 @@ test("move uden stage og update uden felter afvises — ingen tavse no-ops", asy
 test("published kræver url-bevis fra kinly.dk/blog og stage Publicer", async () => {
   const created = await (await post({ actor: "hermes", action: "create", title: "Klar til live" })).json();
   const id = created.post.id;
+  const LIVE_URL = `https://kinly.dk/blog/${created.post.slug}/`;
 
   // Forkert kolonne: kortet står i Idéer.
   const forTidligt = await post({ actor: "hermes", action: "published", id, url: LIVE_URL });
@@ -375,7 +375,7 @@ test("update afviser de forbudte felter — stage og udgivelses-felter kan ikke 
 
   const forbudte: Array<[string, unknown]> = [
     ["stage", "publicer"],
-    ["publishedUrl", LIVE_URL],
+    ["publishedUrl", "https://kinly.dk/blog/x/"],
     ["publishedAt", "2026-09-24T00:00:00.000Z"],
     ["publishRequestedAt", "2026-09-24T00:00:00.000Z"],
     ["createdBy", "lucas"],

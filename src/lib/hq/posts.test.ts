@@ -37,7 +37,7 @@ beforeEach(async () => {
   db = await freshTestDb();
 });
 
-const LIVE_URL = "https://kinly.dk/blog/hvad-koster-en-hjemmeside";
+const liveUrl = (p: { slug: string }) => `https://kinly.dk/blog/${p.slug}/`;
 
 /**
  * Gør kortet RIGTIGT grønt (agentens indhold + menneskets valg og faktatjek) og
@@ -170,7 +170,7 @@ test("validering afviser rod", async () => {
 test("agenten må ikke sætte Publicer eller Udgivet", async () => {
   const post = await seed();
   await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "hermes"), /agenten må kun/);
-  await assert.rejects(updatePost(db, post.id, { stage: "udgivet" }, "hermes"), /markPublished/);
+  await assert.rejects(updatePost(db, post.id, { stage: "udgivet" }, "hermes"), /automatisk/);
   const [after] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
   assert.equal(after.stage, "ide");
   assert.equal(after.publishRequestedAt, null);
@@ -249,7 +249,7 @@ test("stage-skift lægger kortet bagerst i målkolonnen", async () => {
 
 test("markPublished kræver Publicer og en kinly.dk/blog-url", async () => {
   const post = await seed();
-  await assert.rejects(markPublished(db, post.id, { url: LIVE_URL }, "hermes"), /står ikke i Publicer/);
+  await assert.rejects(markPublished(db, post.id, { url: liveUrl(post) }, "hermes"), /står ikke i Publicer/);
 
   await publish(post.id);
   await assert.rejects(markPublished(db, post.id, { url: "https://kinly.dk/om-os" }, "hermes"), /kinly\.dk\/blog/);
@@ -257,9 +257,9 @@ test("markPublished kræver Publicer og en kinly.dk/blog-url", async () => {
   await assert.rejects(markPublished(db, post.id, { url: "https://evil.dk/blog/x" }, "hermes"), /kinly\.dk\/blog/);
   await assert.rejects(markPublished(db, post.id, { url: "" }, "hermes"), /kinly\.dk\/blog/);
 
-  const live = await markPublished(db, post.id, { url: LIVE_URL, note: "live" }, "hermes");
+  const live = await markPublished(db, post.id, { url: liveUrl(post), note: "live" }, "hermes");
   assert.equal(live.stage, "udgivet");
-  assert.equal(live.publishedUrl, LIVE_URL);
+  assert.equal(live.publishedUrl, liveUrl(post));
   assert.ok(live.publishedAt instanceof Date);
   assert.equal(live.note, "live");
 });
@@ -267,7 +267,7 @@ test("markPublished kræver Publicer og en kinly.dk/blog-url", async () => {
 test("et udgivet indlæg kan ikke flyttes tilbage", async () => {
   const post = await seed();
   await publish(post.id);
-  await markPublished(db, post.id, { url: LIVE_URL }, "hermes");
+  await markPublished(db, post.id, { url: liveUrl(post) }, "hermes");
   await assert.rejects(updatePost(db, post.id, { stage: "klar" }, "lucas"), /kan ikke flyttes tilbage/);
   await assert.rejects(updatePost(db, post.id, { stage: "ide" }, "hermes"), /kan ikke flyttes tilbage/);
   const [after] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
@@ -293,7 +293,7 @@ test("sletning kræver menneske og kun i Idéer eller Arbejder", async () => {
 
   const udgivet = await seed("Bliver udgivet");
   await publish(udgivet.id, "charlie");
-  await markPublished(db, udgivet.id, { url: LIVE_URL }, "hermes");
+  await markPublished(db, udgivet.id, { url: liveUrl(udgivet) }, "hermes");
   await assert.rejects(deletePost(db, udgivet.id, "lucas"), /Idéer eller Arbejder/);
 
   await assert.rejects(deletePost(db, "00000000-0000-0000-0000-000000000000", "lucas"), /findes ikke/);
@@ -491,7 +491,7 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   // Agenten kan levere alt undtagen de to menneske-punkter.
   const halv = await updatePost(db, post.id, { body: greenBody(), proofs: { ...GREEN_PROOFS }, images: GREEN_IMAGES }, "hermes");
   assert.deepEqual(readChecklist(halv.checklist).missing, [
-    "menneskets A/B-valg mangler (A, B, begge eller ingen)",
+    "menneskets A/B-valg mangler (A, B eller begge)",
     "menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)",
     "et billede skal vælges (A, B eller begge) — uden billede kan opslaget ikke publiceres",
   ]);
