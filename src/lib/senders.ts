@@ -391,10 +391,24 @@ export function applySignatureHtml(body: string, id: SenderId): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const linked = escaped.replace(
-    /https?:\/\/[^\s<]+/g,
-    (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,
-  );
+  // Auto-linker brødteksten. Klippende tegnsætning (— . , ; : ! ?) hører til
+  // sætningen, ikke adressen: ellers bliver href "https://kinly.dk—" og
+  // klikket dødt. Ubalancerede lukke-klammer ryger samme vej, mens balancerede
+  // par (fx /wiki/Foo_(bar)) bliver i adressen. Anførselstegn matches slet
+  // ikke, så et råt " kan ikke bryde ud af href-attributten.
+  const linked = escaped.replace(/https?:\/\/[^\s<"]+/g, (u) => {
+    let href = u;
+    let tail = "";
+    while (href.length > 0) {
+      const last = href.slice(-1);
+      const open = last === ")" ? "(" : last === "]" ? "[" : null;
+      const balanced = open !== null && href.split(last).length <= href.split(open).length;
+      if (balanced || (open === null && !/[.,;:!?—…]/.test(last))) break;
+      tail = last + tail;
+      href = href.slice(0, -1);
+    }
+    return `<a href="${href}" style="color:#1a5fb4;">${href}</a>${tail}`;
+  });
   const paragraphs = linked
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, "<br>")}</p>`)

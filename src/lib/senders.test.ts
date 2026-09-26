@@ -401,3 +401,43 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });
+
+// ---- Auto-linker i HTML-alternativet (t_3b843dd0) --------------------------
+// Læsende probe 26/09 på e4fced2: tegnsætning direkte efter URL blev trukket
+// ind i href ("https://kinly.dk—"), så modtageren fik døde links.
+
+test("applySignatureHtml: klippende tegnsætning efter URL står uden for <a>", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://kinly.dk— og https://kinly.dk/.", "lucas");
+  assert.equal(/href="https:\/\/kinly\.dk"[^>]*>https:\/\/kinly\.dk<\/a>—/.test(out), true);
+  assert.equal(/href="https:\/\/kinly\.dk\/"[^>]*>https:\/\/kinly\.dk\/<\/a>\./.test(out), true);
+  assert.equal(/href="https:\/\/kinly\.dk[—.,;:!?…]/.test(out), false);
+});
+
+test("applySignatureHtml: path/query/fragment og case bevares i href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://demo.dk/p/12?a=1&b=2#top og https://Demo.dk/Path", "lucas");
+  const hrefs = [...out.matchAll(/<a href="([^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(hrefs.slice(0, 2), [
+    "https://demo.dk/p/12?a=1&amp;b=2#top",
+    "https://Demo.dk/Path",
+  ]);
+  assert.equal(out.includes("&amp;amp;"), false);
+});
+
+test("applySignatureHtml: balanceret parentes bliver i href, ubalanceret ryger ud", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://demo.dk/wiki/Foo_(bar) og (https://demo.dk/p)", "lucas");
+  const hrefs = [...out.matchAll(/<a href="([^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(hrefs.slice(0, 2), ["https://demo.dk/wiki/Foo_(bar)", "https://demo.dk/p"]);
+  assert.equal(out.includes(">https://demo.dk/p</a>)"), true);
+});
+
+test("applySignatureHtml: råt anførselstegn kan ikke bryde ud af href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml('Se https://demo.dk/x?a=1&b=2"onmouseover="alert(1)', "lucas");
+  const m = out.match(/<a href="([^"]*)" style="color:#1a5fb4;">([^<]*)<\/a>/);
+  assert.equal(m?.[1], "https://demo.dk/x?a=1&amp;b=2");
+  assert.equal(m?.[2], "https://demo.dk/x?a=1&amp;b=2");
+  assert.equal(out.includes('onmouseover="alert(1)'), true);
+});
