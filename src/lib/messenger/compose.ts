@@ -16,7 +16,9 @@ const DEMO_URLS = {
   foodInter: DEMO_SITES.zaytoon,
   foodCafe: DEMO_SITES.jernbanecafeenCase,
   photo: DEMO_SITES.buurfoto,
-  craftUtility: DEMO_SITES.ktvvs,
+  // VVS/el: KT VVS er en rigtig kunde. DM'en linker casen på kinly.dk — aldrig
+  // kundens eget preview/domæne (demos.ts#CUSTOMER_SITES, Lucas 23/9).
+  craftUtility: DEMO_SITES.ktvvsCase,
   craft: DEMO_SITES.denlillemaler,
   service: DEMO_SITES.ikastCase,
 };

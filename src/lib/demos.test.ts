@@ -179,3 +179,37 @@ test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async (
   assert.ok(!auto.some((l) => l.url === DEMO_SITES.ktvvsCase));
   assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
 });
+
+// 26/9: link-politikken sad kun på demos.ts-vejen. DM- og legacy-skabelon-vejen
+// sendte stadig KT VVS-PREVIEWET (CUSTOMER_SITES kalder det ikke-linkbart), og
+// sendegaten (missingReferenceLinks) kræver kun links — den afviser ikke et
+// kunde-preview. Derfor pinnes begge veje her.
+test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
+  const { getEmailTemplate } = await import("./email.ts");
+  const { buildMessengerDraft, validateMessengerDraft } = await import("./messenger/compose.ts");
+  const vars = (name: string, branch: string) => ({
+    leadId: "1", name, branch, city: "Ikast", websiteStatus: "old", websiteQualityTier: "old", daysSince: 7, sender: "lucas" as const,
+  });
+  // Legacy-skabelonen (craft-gruppen rammer vvs): casen står i mailen, previewet gør ikke.
+  for (const type of ["cold", "followup"] as const) {
+    const t = getEmailTemplate("vvs", type, vars("KT VVS Test", "vvs"));
+    assert.ok(t.text.includes(DEMO_SITES.ktvvsCase), `casen mangler i ${type}`);
+    assert.ok(t.html.includes(DEMO_SITES.ktvvsCase), `casen mangler i ${type}-html`);
+    assert.ok(!t.text.includes(DEMO_SITES.ktvvs), `previewet står i ${type}`);
+    assert.ok(!t.html.includes(DEMO_SITES.ktvvs), `previewet står i ${type}-html`);
+    assert.deepEqual(missingReferenceLinks(t.text, "vvs", "KT VVS Test"), [], type);
+  }
+  // Autoværksted rammer samme craft-gruppe, men har sin egen case (Ikast).
+  const auto = getEmailTemplate("autoværksted", "cold", vars("Bilerne", "autoværksted"));
+  assert.ok(auto.text.includes(DEMO_SITES.ikastCase));
+  assert.ok(!auto.text.includes(DEMO_SITES.ktvvs));
+  // Maler/tømrer har ingen case → den rigtige demo (maler) er stadig linket.
+  const maler = getEmailTemplate("maler", "cold", vars("Maler Test", "maler"));
+  assert.ok(maler.text.includes(DEMO_SITES.denlillemaler));
+  assert.ok(!maler.text.includes(DEMO_SITES.ktvvs));
+  // DM-vejen: samme politik, og DM'en består stadig sin egen validator.
+  const dm = buildMessengerDraft({ name: "VVS Test", branch: "vvs", city: "Ikast", reviews: 60, pattern: "A" });
+  assert.equal(dm.demoUrl, DEMO_SITES.ktvvsCase);
+  assert.ok(!dm.text.includes(DEMO_SITES.ktvvs), "previewet står i DM'en");
+  assert.deepEqual(validateMessengerDraft(dm.text), []);
+});
