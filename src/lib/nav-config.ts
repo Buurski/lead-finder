@@ -18,8 +18,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/", label: "HQ", icon: "Home", hint: "Dagens overblik" },
   { href: "/kunder", label: "Kunder", icon: "Building2", hint: "Aktive kunder" },
   { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
-  { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
-  { href: "/blog", label: "Blog", icon: "Rss", hint: "Blog, konkurrenter og SEO" },
+  { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals, blog, konkurrenter og SEO" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
@@ -41,10 +40,10 @@ export const NAV_MORE: NavItem[] = [
   { href: "/settings", label: "Indstillinger", icon: "Settings", hint: "Din konto, adgangskode og motoren" },
 ];
 
-// Sektions-faner der ikke selv er rail- eller "Mere"-punkter (fx SEO og
-// Konkurrenter, som kun bor under /blog-sektionen), men som ⌘K stadig skal
-// kunne finde — se SECTIONS' "/blog"-sektion nedenfor.
+// Sektions-faner der ikke selv er rail- eller "Mere"-punkter (Blog, Konkurrenter
+// og SEO bor som faner under Pipeline), men som ⌘K stadig skal kunne finde.
 const NAV_SEARCHABLE_EXTRA: NavItem[] = [
+  { href: "/blog", label: "Blog", icon: "Rss", hint: "Blogindlæg: idé til udgivet" },
   { href: "/konkurrenter", label: "Konkurrenter", icon: "Users", hint: "Konkurrentanalyse, mønstre og huller" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
 ];
@@ -114,8 +113,10 @@ export const SECTIONS: Section[] = [
     ],
   },
   {
-    root: "/blog",
+    // Lucas 26/9: Blog + Konkurrenter + SEO er faner under Pipeline (vækst-sektionen).
+    root: "/pipeline",
     tabs: [
+      { href: "/pipeline", label: "Pipeline" },
       { href: "/blog", label: "Blog" },
       { href: "/konkurrenter", label: "Konkurrenter" },
       { href: "/seo", label: "SEO" },
