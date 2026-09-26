@@ -129,13 +129,19 @@ export interface BlogPatch {
   source?: unknown;
 }
 
-// --- A/B-billedkontrakt ----------------------------------------------------
-// Hvert kort kan bære to selvstændige kandidater (a og b) og ét eksplicit valg.
-// Ren CRM-data: url'erne peger på billeder der allerede findes — ingen upload og
-// ingen publicering her. Agenten lægger kandidaterne ind; valget er menneskets
-// (se guardChoice).
-export const IMAGE_CHOICES = ["a", "b", "both", "none"] as const;
-export type ImageChoice = (typeof IMAGE_CHOICES)[number];
+// --- Billedkontrakt (A/B/C) ------------------------------------------------
+// Hvert kort kan bære op til tre selvstændige kandidater (a, b, c) og ét
+// eksplicit valg. Ren CRM-data: url'erne peger på billeder der allerede findes —
+// ingen upload og ingen publicering her. Agenten lægger kandidaterne ind;
+// valget er menneskets (se imagesPatch).
+export const IMAGE_SLOTS = ["a", "b", "c"] as const;
+export type ImageSlot = (typeof IMAGE_SLOTS)[number];
+/**
+ * Valget er en ordnet liste af 1-2 slots, gemt kommasepareret: "c", "b,a".
+ * Første = topbillede (cover), andet = billede inde i teksten. "none" = intet valgt.
+ * Gamle rækker kan stå med "both" — det læses som "a,b".
+ */
+export type ImageChoice = string;
 
 /** De otte felter en kandidat bærer. Altid alle otte ud; de valgfrie som "". */
 export interface BlogImageCandidate {
@@ -154,6 +160,7 @@ export interface BlogImageCandidate {
 export interface BlogImages {
   a: BlogImageCandidate | null;
   b: BlogImageCandidate | null;
+  c: BlogImageCandidate | null;
   choice: ImageChoice;
   // Menneskets valg, stemplet serverside: hvem valgte, og hvornår. Tom betyder
   // "endnu ikke valgt" — "none" er altså kun et gyldigt menneskevalg når det
@@ -162,7 +169,7 @@ export interface BlogImages {
   choiceAt: string | null;
 }
 
-export const NO_IMAGES: BlogImages = { a: null, b: null, choice: "none", choiceBy: "", choiceAt: null };
+export const NO_IMAGES: BlogImages = { a: null, b: null, c: null, choice: "none", choiceBy: "", choiceAt: null };
 
 const IMAGE_FIELDS = ["id", "url", "placement", "alt", "credit", "source", "mobileUrl", "desktopUrl", "consentRef"] as const;
 const HTTP_URL = /^https?:\/\/[^\s]+$/;
@@ -175,7 +182,7 @@ function imageUrl(v: unknown, label: string): string {
 }
 
 /** Én kandidat. null = slotten er tom (eller bliver tømt). */
-function imageCandidate(v: unknown, slot: "a" | "b"): BlogImageCandidate | null {
+function imageCandidate(v: unknown, slot: ImageSlot): BlogImageCandidate | null {
   if (v === undefined || v === null) return null;
   if (typeof v !== "object" || Array.isArray(v)) throw new BlogInputError(`kandidat ${slot} skal være et objekt`);
   const src = v as Record<string, unknown>;
@@ -200,24 +207,46 @@ function imageCandidate(v: unknown, slot: "a" | "b"): BlogImageCandidate | null 
   };
 }
 
-/** Læser jsonb-kolonnen tolerant ind i BlogImages (legacy/ukendt valg → "none"). */
+/**
+ * Valget som ordnet slot-liste. "none"/"" = [], legacy "both" = ["a","b"], ellers
+ * 1-2 forskellige slots kommasepareret. Kaster ved alt andet (dubletter, >2, ukendt slot).
+ */
+function parseChoice(v: unknown): ImageSlot[] {
+  if (typeof v !== "string") throw new BlogInputError('valget skal være tekst, fx "a", "c,a" eller "none"');
+  const raw = v.trim().toLowerCase();
+  if (raw === "" || raw === "none") return [];
+  if (raw === "both") return ["a", "b"];
+  const slots = raw.split(",").map((s) => s.trim());
+  if (!slots.every((s): s is ImageSlot => (IMAGE_SLOTS as readonly string[]).includes(s))) {
+    throw new BlogInputError('valget må kun indeholde a, b og c — fx "a", "c,a" eller "none"');
+  }
+  if (new Set(slots).size !== slots.length) throw new BlogInputError("det samme billede kan ikke vælges to gange");
+  if (slots.length > 2) throw new BlogInputError("højst to billeder kan vælges (topbillede + ét i teksten)");
+  return slots;
+}
+
+const choiceOf = (slots: readonly ImageSlot[]): ImageChoice => (slots.length ? slots.join(",") : "none");
+
+/** De valgte slots i rækkefølge: [topbillede, billede i teksten]. */
+export function chosenSlots(images: Pick<BlogImages, "choice">): ImageSlot[] {
+  try {
+    return parseChoice(images.choice);
+  } catch {
+    return [];
+  }
+}
+
+/** Læser jsonb-kolonnen tolerant ind i BlogImages (legacy "both" → "a,b", ukendt valg → "none"). */
 export function readImages(v: unknown): BlogImages {
   const o = (v ?? {}) as Partial<BlogImages>;
-  const raw = String(o.choice ?? "none");
   return {
     a: (o.a as BlogImageCandidate | null) ?? null,
     b: (o.b as BlogImageCandidate | null) ?? null,
-    choice: (IMAGE_CHOICES as readonly string[]).includes(raw) ? (raw as ImageChoice) : "none",
+    c: (o.c as BlogImageCandidate | null) ?? null,
+    choice: choiceOf(chosenSlots({ choice: String(o.choice ?? "none") })),
     choiceBy: typeof o.choiceBy === "string" ? o.choiceBy : "",
     choiceAt: typeof o.choiceAt === "string" && o.choiceAt ? o.choiceAt : null,
   };
-}
-
-function imageChoice(v: unknown): ImageChoice {
-  if (typeof v !== "string" || !(IMAGE_CHOICES as readonly string[]).includes(v)) {
-    throw new BlogInputError(`valget skal være ${IMAGE_CHOICES.join(", ")}`);
-  }
-  return v as ImageChoice;
 }
 
 /**
@@ -231,36 +260,39 @@ function imagesPatch(v: unknown, before: BlogImages, actor: string): BlogImages 
     // choiceBy/choiceAt er serverens stempel. Et UI der runder et læst kort sender
     // dem med tilbage, så de accepteres — men værdien læses aldrig herfra, og
     // stemplet sættes udelukkende ud fra aktøren længere nede (server, aldrig klient).
-    if (key !== "a" && key !== "b" && key !== "choice" && key !== "choiceBy" && key !== "choiceAt") {
+    if (!(IMAGE_SLOTS as readonly string[]).includes(key) && key !== "choice" && key !== "choiceBy" && key !== "choiceAt") {
       throw new BlogInputError(`billedfeltet "${key}" kendes ikke`);
     }
   }
-  const a = "a" in src ? imageCandidate(src.a, "a") : before.a;
-  const b = "b" in src ? imageCandidate(src.b, "b") : before.b;
-  const choice = src.choice === undefined ? before.choice : imageChoice(src.choice);
+  const next = { a: before.a, b: before.b, c: before.c };
+  for (const slot of IMAGE_SLOTS) if (slot in src) next[slot] = imageCandidate(src[slot], slot);
+  const { a, b, c } = next;
+  const slots = src.choice === undefined ? chosenSlots(before) : parseChoice(src.choice);
+  const choice = choiceOf(slots);
   // Fail-closed: valget må ikke pege på en tom kandidat — det ville give et kort
   // hvor nogen tror der er valgt et billede.
-  if ((choice === "a" && !a) || (choice === "b" && !b)) throw new BlogInputError(`valget ${choice} kræver en kandidat i ${choice}`);
-  if (choice === "both" && (!a || !b)) throw new BlogInputError("valget both kræver både a og b");
-  // A/B-valget sættes af et menneske. Agenten leverer kandidater, ikke beslutningen.
+  for (const slot of slots) {
+    if (!next[slot]) throw new BlogInputError(`valget ${slot.toUpperCase()} kræver en kandidat i ${slot}`);
+  }
+  // Billedvalget sættes af et menneske. Agenten leverer kandidater, ikke beslutningen.
   if (choice !== before.choice && !HUMAN_ACTORS.has(actor)) {
-    throw new BlogInputError("kun Lucas eller Charlie kan vælge A/B-billedet");
+    throw new BlogInputError("kun Lucas eller Charlie kan vælge billedet");
   }
   const human = HUMAN_ACTORS.has(actor);
   // Kundens samtykke er et menneskes udsagn (Opus-council 26/9): agenten må runde det
   // uændret, men ikke sætte eller ændre det.
-  for (const slot of ["a", "b"] as const) {
-    const now = slot === "a" ? a : b;
+  for (const slot of IMAGE_SLOTS) {
+    const now = next[slot];
     if (!human && now?.consentRef && now.consentRef !== before[slot]?.consentRef) {
       throw new BlogInputError("kun Lucas eller Charlie kan registrere kundens samtykke til et billede");
     }
   }
   let choiceBy = before.choiceBy;
   let choiceAt = before.choiceAt;
-  for (const slot of ["a", "b"] as const) {
-    const now = slot === "a" ? a : b;
-    const chosen = before.choice === slot || before.choice === "both";
-    if (!chosen || !IMAGE_FIELDS.some((field) => now?.[field] !== before[slot]?.[field])) continue;
+  const beforeSlots = chosenSlots(before);
+  for (const slot of IMAGE_SLOTS) {
+    const now = next[slot];
+    if (!beforeSlots.includes(slot) || !IMAGE_FIELDS.some((field) => now?.[field] !== before[slot]?.[field])) continue;
     // Et valgt billede må kun skiftes af et menneske — og så kræves der et nyt
     // valg, for stemplet hørte til den kandidat der lå der før (spec §4).
     if (!human) throw new BlogInputError(`kun Lucas eller Charlie kan ændre et valgt billede (${slot})`);
@@ -273,7 +305,7 @@ function imagesPatch(v: unknown, before: BlogImages, actor: string): BlogImages 
     choiceBy = actor;
     choiceAt = new Date().toISOString();
   }
-  return { a, b, choice, choiceBy, choiceAt };
+  return { a, b, c, choice, choiceBy, choiceAt };
 }
 
 // --- Scorekortet (seks akser 1-100) -----------------------------------------
@@ -615,7 +647,10 @@ export function revisionOf(p: {
   // I Publicer er valget låst separat i updatePost.
   const img = readImages(p.images);
   const pr = readProofs(p.proofs);
-  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", { a: img.a, b: img.b }, pr.sources, pr.faq];
+  // c kun med når den findes: så får kort fra før C-slotten samme revision som før (ellers
+  // ville hvert grønt kort i Publicer og hvert faktatjek blive ugyldigt ved udrulningen).
+  const candidates = { a: img.a, b: img.b, ...(img.c ? { c: img.c } : {}) };
+  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", candidates, pr.sources, pr.faq];
   return crypto.createHash("sha256").update(stableJson(parts), "utf-8").digest("hex").slice(0, 16);
 }
 
@@ -715,13 +750,17 @@ export function runChecklist(p: {
   }
   const words = countWords(body);
   if (words < 600 || words > 900) missing.push(`brødteksten er ${words} ord — den skal være 600-900`);
-  const candidates = [images.a, images.b];
-  if (candidates.some((k) => !k || !k.alt || !k.credit || !k.source || !k.placement)) {
-    missing.push("to A/B-billeder med placering, alt-tekst, kredit og kilde");
+  // Tomme slots er ok; hver kandidat der FINDES skal være komplet.
+  const present = IMAGE_SLOTS.filter((s) => images[s]);
+  if (!present.length) missing.push("mindst én billedkandidat (A, B eller C) med placering, alt-tekst, kredit og kilde");
+  for (const slot of present) {
+    const k = images[slot]!;
+    const lack = [!k.placement && "placering", !k.alt && "alt-tekst", !k.credit && "kredit", !k.source && "kilde"].filter(Boolean);
+    if (lack.length) missing.push(`billedkandidat ${slot.toUpperCase()} mangler ${lack.join(", ")}`);
   }
-  // Valget skal være truffet af et menneske ("ingen" afvises nedenfor: uden billede kan intet publiceres).
-  if (!HUMAN_ACTORS.has(images.choiceBy) || !images.choiceAt) {
-    missing.push("menneskets A/B-valg mangler (A, B eller begge)");
+  // Valget skal være truffet af et menneske og pege på mindst ét billede.
+  if (!chosenSlots(images).length || !HUMAN_ACTORS.has(images.choiceBy) || !images.choiceAt) {
+    missing.push("menneskets billedvalg mangler (vælg 1-2 af A, B og C: første = topbillede, andet = i teksten)");
   }
   if (!proofs.factcheck) missing.push("menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)");
   else if (proofs.factcheck.revision !== revision) missing.push("faktatjekket gælder en ældre version af teksten — det skal laves om");
@@ -754,11 +793,12 @@ export function seoMissing(p: { title?: string; category?: string; excerpt?: str
   if (excerpt.length < SEO_LIMITS.excerptMin || excerpt.length > SEO_LIMITS.excerpt) {
     out.push(`uddraget er ${excerpt.length} tegn — det skal være ${SEO_LIMITS.excerptMin}-${SEO_LIMITS.excerpt} (det bliver meta description)`);
   }
-  if (images.choice === "none") out.push("et billede skal vælges (A, B eller begge) — uden billede kan opslaget ikke publiceres");
-  const chosen = images.choice === "both" ? [images.a, images.b] : images.choice === "a" ? [images.a] : images.choice === "b" ? [images.b] : [];
-  for (const [i, k] of chosen.entries()) {
+  const slots = chosenSlots(images);
+  if (!slots.length) out.push("et billede skal vælges (1-2 af A, B og C) — uden billede kan opslaget ikke publiceres");
+  for (const slot of slots) {
+    const k = images[slot];
     if (!k) continue;
-    const label = images.choice === "both" ? (i === 0 ? "A" : "B") : images.choice.toUpperCase();
+    const label = slot.toUpperCase();
     const alt = k.alt.trim();
     if (alt.length < SEO_LIMITS.altMin || alt.length > SEO_LIMITS.alt) out.push(`alt-tekst på ${label} er ${alt.length} tegn — den skal være ${SEO_LIMITS.altMin}-${SEO_LIMITS.alt}`);
     else if (ALT_OPENER.test(alt)) out.push(`alt-tekst på ${label} må ikke starte med "billede af"/"foto af" — beskriv motivet`);

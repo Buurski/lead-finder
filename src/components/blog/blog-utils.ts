@@ -82,6 +82,21 @@ export function scoreLevel(score: number): "low" | "mid" | "high" {
 // sende hele objektet tilbage, ellers forsvinder felter der ikke sendes med.
 export const IMAGE_FIELDS = ["id", "url", "placement", "alt", "credit", "source", "mobileUrl", "desktopUrl", "consentRef"] as const;
 
+// Spejler IMAGE_SLOTS/chosenSlots() i hq/posts.ts. Dialogen får rå jsonb (getPost),
+// så gamle rækker kan stadig stå med "both" (= "a,b") og uden c.
+export const IMAGE_SLOTS = ["a", "b", "c"] as const;
+export type ImageSlot = (typeof IMAGE_SLOTS)[number];
+
+/** Valgte slots i rækkefølge: [topbillede, billede i teksten]. Ugyldigt/"none" → []. */
+export function chosenSlots(choice: unknown): ImageSlot[] {
+  const raw = String(choice ?? "none").trim().toLowerCase();
+  if (raw === "both") return ["a", "b"];
+  if (!raw || raw === "none") return [];
+  const slots = raw.split(",").map((s) => s.trim());
+  const ok = slots.length <= 2 && new Set(slots).size === slots.length && slots.every((s) => (IMAGE_SLOTS as readonly string[]).includes(s));
+  return ok ? (slots as ImageSlot[]) : [];
+}
+
 /** Spejler isCustomerImage() i hq/posts.ts. */
 export function isCustomerImage(k: { url: string; source: string }): boolean {
   return /\/img\/cases\//.test(k.url) || /^kunde/i.test((k.source || "").trim());

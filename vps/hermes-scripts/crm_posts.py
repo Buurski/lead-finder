@@ -2,7 +2,7 @@
 """Signed CLI mod Kinly HQ's blog-board (/api/agent/posts). Skrevet af Claude 26/9.
 
 Hermes skriver ALTID som "hermes" — ruten afviser alt andet. Menneskets trin
-(A/B-billedvalg, faktatjek, "Send til publicering") kan agenten ikke tage.
+(billedvalg blandt images.a/b/c, faktatjek, "Send til publicering") kan agenten ikke tage.
 
   crm_posts.py list [--stage ide|arbejder|klar|publicer|udgivet]
   crm_posts.py get --id <uuid>
@@ -89,7 +89,7 @@ def verify_fields(fields: dict) -> list[str]:
             if not str((src or {}).get(key, "")).strip():
                 problems.append(f"kilde {i + 1}: '{key}' mangler")
     images = fields.get("images") or {}
-    for slot in ("a", "b"):
+    for slot in ("a", "b", "c"):
         cand = images.get(slot)
         if isinstance(cand, dict) and cand.get("url"):
             err = reachable(cand["url"], want_image=True)
@@ -99,7 +99,8 @@ def verify_fields(fields: dict) -> list[str]:
 
 
 # Punkter kun Lucas/Charlie kan klare (billedvalg + faktatjek). Alt andet er agentens.
-HUMAN_ONLY = ("menneskets A/B-valg", "menneskets faktatjek", "et billede skal vælges")
+# "menneskets A/B-valg" er den gamle tekst — står stadig i gemte tjeklister.
+HUMAN_ONLY = ("menneskets billedvalg", "menneskets A/B-valg", "menneskets faktatjek", "et billede skal vælges")
 
 
 def agent_missing(post: dict) -> list[str]:
@@ -124,7 +125,7 @@ def main() -> None:
     p.add_argument("--to-klar", action="store_true", help="flyt til klar når kun menneskets trin mangler")
     p = sub.add_parser("move"); p.add_argument("--id", required=True); p.add_argument("--stage", required=True, choices=["ide", "arbejder", "klar"])
     p = sub.add_parser("upload", help="upload PNG/WebP (fx kinly_graf-output) -> offentlig url")
-    p.add_argument("--id", required=True); p.add_argument("--slot", required=True, choices=["a", "b", "a-mobile", "b-mobile"])
+    p.add_argument("--id", required=True); p.add_argument("--slot", required=True, choices=["a", "b", "c", "a-mobile", "b-mobile", "c-mobile"])
     p.add_argument("--file", required=True)
     a = ap.parse_args()
 

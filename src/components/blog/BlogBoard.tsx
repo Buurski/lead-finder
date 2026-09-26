@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BlogStage, PostCard } from "@/lib/hq/posts";
 import Icon from "@/components/shell/Icon";
 import PostDialog from "./PostDialog";
-import { categoryLabel, overallScore, scoreLevel } from "./blog-utils";
+import { IMAGE_SLOTS, categoryLabel, chosenSlots, overallScore, scoreLevel } from "./blog-utils";
 import "./blog.css";
 
 export interface StageInfo {
@@ -165,7 +165,7 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
               <div className="bl-col-body">
                 {list.length === 0 && <div className="bl-col-empty">Ingen indlæg her</div>}
                 {list.map((card) => {
-                  const chosen = card.images.choice;
+                  const chosen = chosenSlots(card.images.choice);
                   const samlet = overallScore(card.scores);
                   return (
                     <button
@@ -214,22 +214,20 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                           {card.checklist.ok ? "Klar til publicering" : `${card.checklist.missing.length} mangler`}
                         </div>
                       )}
-                      {(card.images.a || card.images.b) && (
+                      {IMAGE_SLOTS.some((s) => card.images[s]) && (
                         <div className="bl-card-thumbs">
-                          {card.images.a && (
-                            <span className="bl-thumb" data-chosen={chosen === "a" || chosen === "both"}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={card.images.a.url} alt="" />
-                              {(chosen === "a" || chosen === "both") && <span className="bl-thumb-badge">A</span>}
-                            </span>
-                          )}
-                          {card.images.b && (
-                            <span className="bl-thumb" data-chosen={chosen === "b" || chosen === "both"}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={card.images.b.url} alt="" />
-                              {(chosen === "b" || chosen === "both") && <span className="bl-thumb-badge">B</span>}
-                            </span>
-                          )}
+                          {IMAGE_SLOTS.map((s) => {
+                            const cand = card.images[s];
+                            if (!cand) return null;
+                            const pos = chosen.indexOf(s);
+                            return (
+                              <span key={s} className="bl-thumb" data-chosen={pos >= 0}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={cand.url} alt="" />
+                                {pos >= 0 && <span className="bl-thumb-badge">{pos + 1} · {s.toUpperCase()}</span>}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </button>
