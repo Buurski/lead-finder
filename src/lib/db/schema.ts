@@ -218,6 +218,7 @@ export const task = pgTable("task", {
   owner: text("owner").notNull().default(""),
   title: text("title").notNull().default(""),
   due: text("due").notNull().default(""),
+  dueTime: text("due_time").notNull().default(""), // "HH:MM" eller "" (intet fast tidspunkt)
   note: text("note").notNull().default(""),
   important: boolean("important").notNull().default(false),
   doneAt: timestamp("done_at", { withTimezone: true }),

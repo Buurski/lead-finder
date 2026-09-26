@@ -5,6 +5,7 @@ import { customerForDraft } from "@/lib/pg/queue";
 import { countsAsSent } from "@/lib/draft-status";
 import { acquireSendLock, budgetKey, dailyBudgetUsed, DAILY_SEND_CAP, failedBeforeAccept, releaseSendLock, sendLockHeld, takeDailyBudget } from "@/lib/send-safety";
 import { createTask } from "@/lib/hq/tasks";
+import { scheduleCalendarSync } from "@/lib/hq/gcal-sync";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
 import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
@@ -571,5 +572,6 @@ async function flagForReconcile(name: string, to: string, why: string): Promise<
     title: `Afstem mail til ${name} (${to}): ${why} — tjek Gmail Sendt`.slice(0, 200),
     owner: "lucas",
     due: new Date().toISOString().slice(0, 10),
-  }).catch((err) => console.error(JSON.stringify({ evt: "approve-send.reconcile_task_failed", error: String(err).slice(0, 200) })));
+  }).then(() => scheduleCalendarSync("lucas"))
+    .catch((err) => console.error(JSON.stringify({ evt: "approve-send.reconcile_task_failed", error: String(err).slice(0, 200) })));
 }

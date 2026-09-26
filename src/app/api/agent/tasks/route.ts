@@ -1,9 +1,12 @@
 // Ingen "next/server"-import: route.test.ts kalder handleren direkte under
 // node:test, og node kan ikke resolve Next's subpath-eksport. Plain Response er
 // samme svar-objekt som NextResponse.json giver.
+import { eq } from "drizzle-orm";
 import { getDb, pgEnabled } from "../../../../lib/db/client.ts";
+import { task as taskTable } from "../../../../lib/db/schema.ts";
 import { DealInputError } from "../../../../lib/hq/deals.ts";
 import { completeTask, createTask, listMyDay, patchTask, type Owner } from "../../../../lib/hq/tasks.ts";
+import { scheduleCalendarSync, type CalOwner } from "../../../../lib/hq/gcal-sync.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
 import { cleanEnv } from "../../../../lib/hermes.ts";
 import { copenhagenNow } from "../../../../lib/settings.ts";
@@ -46,14 +49,20 @@ export async function POST(req: Request) {
       case "create": {
         // owner udeladt = opgaven er aktørens egen (validOwner i tasks.ts kræver en værdi).
         const task = await createTask(getDb(), { title: input.title, due: input.due, owner: input.owner ?? actor, companyId: input.companyId });
+        scheduleCalendarSync(task.owner as CalOwner);
         return json({ ok: true, task });
       }
       case "update": {
-        const task = await patchTask(getDb(), taskId(input.id), (input.fields ?? {}) as never, actor);
+        const id = taskId(input.id);
+        const [before] = await getDb().select({ owner: taskTable.owner }).from(taskTable).where(eq(taskTable.id, id));
+        const task = await patchTask(getDb(), id, (input.fields ?? {}) as never, actor);
+        scheduleCalendarSync(task.owner as CalOwner);
+        if (before && before.owner !== task.owner) scheduleCalendarSync(before.owner as CalOwner);
         return json({ ok: true, task });
       }
       case "complete": {
         const task = await completeTask(getDb(), taskId(input.id), actor);
+        scheduleCalendarSync(task.owner as CalOwner);
         return json({ ok: true, task });
       }
       case "list": {

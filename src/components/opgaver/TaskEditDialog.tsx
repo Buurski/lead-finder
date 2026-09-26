@@ -6,6 +6,7 @@ export interface EditableTask {
   id: string;
   title: string;
   due: string;
+  dueTime: string;
   owner: string;
   note: string;
   important: boolean;
@@ -20,6 +21,7 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
   const deal = item.id.startsWith("deal:");
   const [title, setTitle] = useState(item.title);
   const [due, setDue] = useState(item.due);
+  const [dueTime, setDueTime] = useState(item.dueTime);
   const [owner, setOwner] = useState(item.owner);
   const [note, setNote] = useState(item.note);
   const [important, setImportant] = useState(item.important);
@@ -31,10 +33,10 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
     setBusy(true);
     setError("");
     try {
-      const body = deal ? { title, due } : { title, due, owner, note, important };
+      const body = deal ? { title, due } : { title, due, dueTime, owner, note, important };
       const res = await fetch(`/api/opgaver/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Kunne ikke gemme opgaven");
-      onChanged({ title: title.trim(), due, owner, note: note.trim(), important });
+      onChanged({ title: title.trim(), due, dueTime: deal ? item.dueTime : dueTime, owner, note: note.trim(), important });
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke gemme opgaven"); }
     finally { setBusy(false); }
@@ -58,7 +60,10 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
       <div className="op-dialog cc-card" role="dialog" aria-modal="true" aria-label="Redigér opgave">
         <div className="op-dialog-head"><strong>Redigér {deal ? "næste skridt" : "opgave"}</strong><button type="button" onClick={onClose} aria-label="Luk">×</button></div>
         <label>Titel<input className="op-input" autoFocus maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        <label>Dato<input className="op-input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></label>
+        <div className="op-dialog-daterow">
+          <label>Dato<input className="op-input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></label>
+          {!deal && <label>Kl.<input className="op-input" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} /></label>}
+        </div>
         {!deal && <>
           <label>Ejer<select className="op-input" value={owner} onChange={(e) => setOwner(e.target.value)}><option value="lucas">Lucas</option><option value="charlie">Charlie</option></select></label>
           <label>Note<textarea className="op-input op-dialog-note" maxLength={4000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Fx afventer verificering fra Allan" /></label>

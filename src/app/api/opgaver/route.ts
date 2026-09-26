@@ -4,6 +4,7 @@ import { copenhagenNow } from "@/lib/settings";
 import { isCommandCenterRequest } from "@/lib/cc-auth";
 import { createTask, listDone, listMyDay } from "@/lib/hq/tasks";
 import { hqWrite, jsonBody } from "@/lib/hq/api";
+import { scheduleCalendarSync, type CalOwner } from "@/lib/hq/gcal-sync";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,11 @@ export async function GET(req: Request) {
   return NextResponse.json({ items });
 }
 
-// POST { companyId?, dealId?, owner, title, due? }
+// POST { companyId?, dealId?, owner, title, due?, dueTime? }
 export async function POST(req: Request) {
-  return hqWrite(req, async () => ({ task: await createTask(getDb(), await jsonBody(req)) }));
+  return hqWrite(req, async () => {
+    const t = await createTask(getDb(), await jsonBody(req));
+    scheduleCalendarSync(t.owner as CalOwner);
+    return { task: t };
+  });
 }

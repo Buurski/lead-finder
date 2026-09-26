@@ -18,6 +18,7 @@ export default function NewTaskDialog({
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(initialCompany ?? null);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" })); // i dag
+  const [dueTime, setDueTime] = useState("");
   const [owner, setOwner] = useState<"lucas" | "charlie">(defaultOwner);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -50,7 +51,7 @@ export default function NewTaskDialog({
       const res = await fetch("/api/opgaver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), owner, due: due || undefined, companyId: picked?.id }),
+        body: JSON.stringify({ title: title.trim(), owner, due: due || undefined, dueTime: dueTime || undefined, companyId: picked?.id }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke oprettes");
       onCreated();
@@ -106,6 +107,10 @@ export default function NewTaskDialog({
           <div className="qa-field">
             <label htmlFor="qa-task-due">Hvornår</label>
             <input id="qa-task-due" type="date" className="qa-input" style={{ width: 170 }} value={due} onChange={(e) => setDue(e.target.value)} />
+          </div>
+          <div className="qa-field">
+            <label htmlFor="qa-task-due-time">Kl. (valgfri)</label>
+            <input id="qa-task-due-time" type="time" className="qa-input" style={{ width: 110 }} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
           </div>
           <fieldset className="qa-field" style={{ border: 0, padding: 0, margin: 0 }}>
             <legend style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Hvem</legend>
