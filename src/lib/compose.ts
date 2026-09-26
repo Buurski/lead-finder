@@ -9,7 +9,7 @@
 
 import { mixForLead } from "./tone-mixer.ts";
 import type { MixLead, OpenerKind } from "./tone-mixer.ts";
-import { pickDemos, verticalPageFor } from "./demos.ts";
+import { pickDemos, referenceLines, missingReferenceLinks } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { validateDraft } from "./draft.ts";
 import { personalGreetingName } from "./qualify.ts";
@@ -43,16 +43,11 @@ function pickSubject(name: string, seed: string): string {
 // For single-demo leads (skønhedsklinikker) the line becomes a softer
 // "Eksempel på en hjemmeside for en kunde"-framing — gentaget demo-pair virker
 // spam-agtigt for klinik-segmentet (Lucas 2026-06-23).
-// ponytail: branche-siden på kinly.dk lægges forrest når den findes — samme
-// linje-format som demoerne, så textToHtml linker den automatisk.
-function demoLeadLine(demos: Demo[], branch: string): string[] {
-  const vertical = verticalPageFor(branch);
-  // Højst 2 links i alt — branche-siden tager første plads, resten fyldes op med
-  // demoPair (case-siderne ligger forrest dér). Flere links læser som spam.
-  const urls = [...(vertical ? [vertical] : []), ...demos.map((d) => d.url)].slice(0, 2);
-  if (urls.length === 0) return [];
-  if (urls.length === 1) return [`Eksempel på en hjemmeside for en kunde:`, `→ ${urls[0]}`];
-  return urls.map((u) => `→ ${u}`);
+// Link-linjerne kommer fra ÉN kilde (demos.ts#referenceLines): kinly.dk-forside,
+// matchende case (eller bedste demo) og branche-side. Højst 3 links — flere
+// læser som spam.
+function demoLeadLine(branch: string, name: string): string[] {
+  return referenceLines(branch, name);
 }
 
 function tailorLine(name: string): string {
@@ -105,7 +100,7 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
     ...(valueText ? [``, valueText] : []),
     ``,
     demoIntro,
-    ...demoLeadLine(demos, branch),
+    ...demoLeadLine(branch, name),
     ``,
     tailorLine(name),
     ...(offerText ? [``, offerText] : []),
@@ -134,8 +129,9 @@ export function composeColdEmail(lead: ComposeLead): ComposedEmail {
   const text = buildText(lead.name, mix.opener, mix.disclosure, mix.demoIntro, demos, lead.branch, mix.closing, valueLine(lead.name), offerLine(lead.name));
 
   const check = validateDraft(text);
-  if (!check.ok) {
-    throw new Error(`composeColdEmail voice violation for "${lead.name}": ${check.errors.join("; ")}`);
+  const links = missingReferenceLinks(text, lead.branch, lead.name);
+  if (!check.ok || links.length) {
+    throw new Error(`composeColdEmail voice violation for "${lead.name}": ${[...check.errors, ...links].join("; ")}`);
   }
 
   return {
@@ -161,8 +157,9 @@ export function composeFollowupEmail(lead: ComposeLead, previousOpenerKind?: Ope
   const text = buildText(lead.name, chosen.opener, `${chosen.disclosure} ${followIntro}`, chosen.demoIntro, demos, lead.branch, chosen.closing);
 
   const check = validateDraft(text);
-  if (!check.ok) {
-    throw new Error(`composeFollowupEmail voice violation for "${lead.name}": ${check.errors.join("; ")}`);
+  const links = missingReferenceLinks(text, lead.branch, lead.name);
+  if (!check.ok || links.length) {
+    throw new Error(`composeFollowupEmail voice violation for "${lead.name}": ${[...check.errors, ...links].join("; ")}`);
   }
 
   return {

@@ -7,7 +7,7 @@
 import type { Lead } from "../sheets.ts";
 import { isContactable } from "../leads/contactable.ts";
 import { handleFromWebsite } from "./handle.ts";
-import { branchGroupFor, buildMessengerDraft, MSG_PATTERNS } from "./compose.ts";
+import { branchGroupFor, buildMessengerDraft, MSG_PATTERNS, validateMessengerDraft } from "./compose.ts";
 import type { MsgGroup, MsgPattern } from "./compose.ts";
 
 export interface MessengerCandidate {
@@ -145,5 +145,15 @@ export function selectMessengerCandidates(
       pattern,
       status: "pending" as const,
     };
+  }).filter((c) => {
+    // Link-politik (Lucas 24/9): DM'en har sin EGEN store og sit eget 650-tegns
+    // loft, så kø-gaten i queue.ts fanger den ikke. Valider her, fail-closed:
+    // hellere én DM færre end en besked uden kinly.dk-link (eller for lang).
+    const issues = validateMessengerDraft(c.draft, "lucas");
+    if (issues.length) {
+      console.warn(JSON.stringify({ evt: "messenger.candidate_skipped", id: c.id, issues }));
+      return false;
+    }
+    return true;
   });
 }

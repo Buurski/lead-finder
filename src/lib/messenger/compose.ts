@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -135,16 +135,21 @@ export function buildMessengerDraft(
     lead.pattern === "A" ? patternA(lead.reviews, branchDisp, demoUrl)
     : lead.pattern === "B" ? patternB(lead.city, branchDisp, demoUrl)
     : patternC(lead.reviews, branchDisp, demoUrl);
-  const text = `${body}\n\nMvh, ${messengerSignatureName(sender)}`;
+  // Link-politik (Lucas 24/9): også DM'en bærer kinly.dk-forsiden. Demo-/case-
+  // linket ovenfor kommer fra DEMO_SITES (samme kilde som mail-politikken), og
+  // her bruges demoUrlFor-grupperingen — DM'en er kort, så der er plads til én
+  // reference ud over eksemplet.
+  const text = `${body}\n\nMin egen side: ${KINLY_FRONT}\n\nMvh, ${messengerSignatureName(sender)}`;
   return { text, pattern: lead.pattern, demoUrl, branchDisp, group };
 }
 
-/** Mirror of the script's validateDraft — guards tone/price/CTA/signature. */
+/** Mirror of the script's validateDraft — guards tone/price/CTA/signature/link. */
 export function validateMessengerDraft(text: string, sender: "lucas" | "charlie" = "lucas"): string[] {
   const issues: string[] = [];
   if (text.length > 650) issues.push(`too long (${text.length} chars)`);
   if (/\d+\s*k(?:r|R)\b|\d+\.\d{3}\s*kr|alt\s+inklusiv|\bfra\s+\d|prisvenlig/.test(text)) issues.push("contains price/kr");
   if (/skriv\s+bare|send\s+(?:mig\s+)?mockup|svar\s+ja|\b200\+\s*kund/i.test(text)) issues.push("hard-sell CTA");
+  if (!text.includes(KINLY_FRONT)) issues.push("mangler kinly.dk-link");
   if (!text.endsWith(`Mvh, ${messengerSignatureName(sender)}`)) issues.push("missing signature");
   return issues;
 }
