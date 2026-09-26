@@ -47,7 +47,7 @@ export default async function KonkurrenterPage() {
       <PageHeader
         icon="Users"
         title="Konkurrenter"
-        subtitle="Ugentlig Jev-scan af danske webbureauer — mønstre, huller og hvor Kinly står."
+        subtitle="Ugentlig Jev-scan af bureauer, freelancere, AI-byggere og idéer fra X/LinkedIn — og hvad Kinly skal gøre ved det."
       />
       <KonkurrenterBoard report={report} kinly={kinly} savedIdeas={savedIdeas} />
     </div>

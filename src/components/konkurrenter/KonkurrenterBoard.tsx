@@ -441,7 +441,8 @@ export default function KonkurrenterBoard({
 
   const allFindings = useMemo<DisplayFinding[]>(() => {
     if (!report) return [];
-    return [...(report.findings ?? []), ...gapsToFindings(report.gaps)];
+    // Nye rapporter har findings, som dækker de samme huller — gaps kun som fallback for gamle rapporter.
+    return report.findings?.length ? report.findings : gapsToFindings(report.gaps);
   }, [report]);
 
   const visibleFindings = useMemo(
