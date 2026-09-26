@@ -51,7 +51,63 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
-function Row({ a }: { a: TimelineActivity }) {
+// Egen note: kun "note"-typen, kun lucas/charlie, og kun ens egen — ellers
+// vises hverken Ret eller Slet (serveren afviser alligevel resten).
+function isOwnNote(a: TimelineActivity, currentUser: string | null): boolean {
+  return a.type === "note" && (currentUser === "lucas" || currentUser === "charlie") && a.actor === currentUser;
+}
+
+function Row({ a, companyId, canEdit }: { a: TimelineActivity; companyId: string; canEdit: boolean }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(a.summary);
+  const [summary, setSummary] = useState(a.summary);
+  const [deleted, setDeleted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  if (deleted) return null;
+
+  async function save() {
+    const text = draft.trim();
+    if (!text) { setErr("Skriv noget først."); return; }
+    const prev = summary;
+    setSummary(text); // optimistisk
+    setEditing(false);
+    setErr("");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/virksomheder/${companyId}/activity/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summary: text }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
+      router.refresh();
+    } catch (e) {
+      setSummary(prev); // rollback
+      setDraft(prev);
+      setEditing(true);
+      setErr(e instanceof Error ? e.message : "kunne ikke gemme");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm("Slet noten?")) return;
+    setErr("");
+    setDeleted(true); // optimistisk
+    try {
+      const res = await fetch(`/api/virksomheder/${companyId}/activity/${a.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke slette");
+      router.refresh();
+    } catch (e) {
+      setDeleted(false); // rollback
+      setErr(e instanceof Error ? e.message : "kunne ikke slette");
+    }
+  }
+
   return (
     <div className="virk-timeline-item virk-fade-in">
       {PERSON.has(a.actor) ? (
@@ -62,17 +118,42 @@ function Row({ a }: { a: TimelineActivity }) {
         </span>
       )}
       <div className="virk-timeline-body">
-        <div className="virk-timeline-text">
-          {a.summary}
-          {a.billableDkk ? ` (${a.billableDkk.toLocaleString("da-DK")} kr)` : ""}
+        {editing ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={2}
+              aria-label="Ret note"
+              style={{ borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-2)", padding: "8px 10px", fontSize: 13.5, color: "var(--text)", resize: "vertical" }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="cc-btn cc-btn-accent virk-btn-press" onClick={save} disabled={busy}>{busy ? "Gemmer…" : "Gem"}</button>
+              <button className="cc-btn virk-btn-press" onClick={() => { setEditing(false); setDraft(summary); setErr(""); }} disabled={busy}>Annullér</button>
+            </div>
+          </div>
+        ) : (
+          <div className="virk-timeline-text">
+            {summary}
+            {a.billableDkk ? ` (${a.billableDkk.toLocaleString("da-DK")} kr)` : ""}
+          </div>
+        )}
+        <div className="virk-timeline-meta cc-mono">
+          {a.actor} · {relTime(a.at)}
+          {canEdit && !editing && (
+            <>
+              {" · "}<button className="cc-link" type="button" onClick={() => setEditing(true)}>Ret</button>
+              {" · "}<button className="cc-link" type="button" onClick={remove}>Slet</button>
+            </>
+          )}
         </div>
-        <div className="virk-timeline-meta cc-mono">{a.actor} · {relTime(a.at)}</div>
+        {err && <span role="alert" style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
       </div>
     </div>
   );
 }
 
-export default function Timeline({ companyId, activities }: { companyId: string; activities: TimelineActivity[] }) {
+export default function Timeline({ companyId, activities, currentUser }: { companyId: string; activities: TimelineActivity[]; currentUser: string | null }) {
   const router = useRouter();
   // Serverens `activities` er facit; optimistiske poster lægges foran og
   // fjernes igen efter et vellykket kald (så router.refresh() ikke giver en
@@ -206,7 +287,7 @@ export default function Timeline({ companyId, activities }: { companyId: string;
         <p className="cc-dim" style={{ fontSize: 13 }}>Ingen hændelser endnu.</p>
       ) : (
         <div className="virk-timeline">
-          {list.map((a) => <Row key={a.id} a={a} />)}
+          {list.map((a) => <Row key={a.id} a={a} companyId={companyId} canEdit={isOwnNote(a, currentUser)} />)}
         </div>
       )}
     </div>

@@ -31,6 +31,23 @@ function Deal({ deal, onSaved }: { deal: DealRow; onSaved: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+
+  async function remove() {
+    if (!window.confirm(`Slet aftalen "${deal.title || "Aftale"}"?`)) return;
+    setErr("");
+    setDeleted(true); // optimistisk
+    try {
+      const res = await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke slette");
+      onSaved();
+    } catch (e) {
+      setDeleted(false); // rollback
+      setErr(e instanceof Error ? e.message : "kunne ikke slette");
+    }
+  }
+
+  if (deleted) return null;
 
   async function saveStage(next: DealStage) {
     const prev = stage;
@@ -98,8 +115,9 @@ function Deal({ deal, onSaved }: { deal: DealRow; onSaved: () => void }) {
             {busy ? "Gemmer…" : "Gem"}
           </button>
         )}
+        <button className="cc-btn virk-btn-press" onClick={remove} style={{ marginLeft: "auto" }}>Slet</button>
       </div>
-      {err && <span style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
+      {err && <span role="alert" style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
     </div>
   );
 }
