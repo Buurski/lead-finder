@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hasContact, toLeadgenItem, ratedForPool } from "./run.mjs";
+import { hasContact, toLeadgenItem, ratedForPool, fbLinkFrom } from "./run.mjs";
 
 test("hasContact — hårdt kontaktfilter (Lucas 2026-08-19)", () => {
   assert.equal(hasContact({ name: "Uden kontakt", phone: "", email: "", emailOnSite: null }), false);
@@ -31,4 +31,21 @@ test("ratedForPool — kun rated fra samme source-kørsel genbruges", () => {
   assert.deepEqual(ratedForPool({ rated: prev.rated }, "2026-09-25T04:00:31.000Z"), [], "gammel fil uden poolAt kasseres");
   assert.deepEqual(ratedForPool(null, "2026-09-25T04:00:31.000Z"), [], "ingen fil");
   assert.deepEqual(ratedForPool(prev, undefined), [], "pool uden at genbruger aldrig");
+});
+
+test("fbLinkFrom — første rigtige side-link, aldrig del-/plugin-links", () => {
+  assert.equal(fbLinkFrom('<a href="https://www.facebook.com/sharer/sharer.php?u=x">del</a><a href="https://www.facebook.com/SalonVida/">fb</a>'), "https://www.facebook.com/SalonVida");
+  assert.equal(fbLinkFrom('<a href="https://facebook.com/plugins/page.php">x</a>'), null);
+  assert.equal(fbLinkFrom(null), null);
+  // Opus-review 26/9: .php-links, undersider og landekode-subdomæner
+  assert.equal(fbLinkFrom('<a href="https://www.facebook.com/sharer.php?u=x">del</a><a href="https://da-dk.facebook.com/SalonVida/about">fb</a>'), "https://www.facebook.com/SalonVida");
+  assert.equal(fbLinkFrom('<a href="https://facebook.com/photo.php?fbid=1">x</a>'), null);
+});
+
+test("toLeadgenItem — FB-tal og målt websiteStatus følger med til ingest", () => {
+  const item = toLeadgenItem({ name: "Æ Kalgo", place_id: "p1", fb: { followers: 8799, talking: 143 }, websiteStatus: "none" });
+  assert.equal(item.fb_followers, 8799);
+  assert.equal(item.fb_talking, 143);
+  assert.equal(item.websiteStatus, "none");
+  assert.equal(toLeadgenItem({ name: "Uden FB" }).fb_followers, null);
 });

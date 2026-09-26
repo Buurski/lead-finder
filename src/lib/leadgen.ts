@@ -12,6 +12,7 @@
 import { store } from "./store.ts";
 import { hasUsableEmail } from "./leads/channel.ts";
 import { classifyFeed, FEED_SPECS } from "./feed-health.ts";
+import { socialKind } from "./leads/social-fit.ts";
 
 // ingest-leadgen (Vercel-cron) — værn fra Claude-audit 25/9. Leadgen.json har
 // ~70 kandidater/dag; uden loft ville rate-fixet fylde /godkendelse med 50-70
@@ -42,6 +43,23 @@ export function ingestAllowance(queue: { source?: string; createdAt?: string }[]
 export function orderForIngest<T extends { email?: string | null; fitScore?: number }>(items: T[]): T[] {
   const mail = (x: T) => (hasUsableEmail(x.email ?? undefined) ? 1 : 0);
   return [...items].sort((a, b) => mail(b) - mail(a) || (b.fitScore ?? 0) - (a.fitScore ?? 0));
+}
+
+// Leadgen item -> tone-mixer websiteStatus. A Facebook page as "website" means NO own
+// site ("none" -> the "kun en Facebook-side" opener). Before 26/9 it returned "old",
+// so FB-only leads were told their site looked a few years old. Instagram/Krak:
+// "ok" -> no website claim at all (the none-opener names Facebook).
+export function websiteStatusFor(it: { website?: string; site_issues?: string[]; websiteStatus?: string }): string {
+  if (!it.website) return "none";
+  const kind = socialKind(it.website);
+  if (kind === "facebook") return "none";
+  if (kind) return "ok";
+  // run.mjs measures old/ok from the copyright year (26/9+). Before that every
+  // site became "old" and every cold mail said the site looked years old.
+  if (it.websiteStatus === "old" || it.websiteStatus === "ok") return it.websiteStatus;
+  const issues = (it.site_issues || []).join(" ").toLowerCase();
+  if (/unreachable|not-?responsive|dead|timeout|down/.test(issues)) return "dead";
+  return "old";
 }
 
 export interface IngestLead {

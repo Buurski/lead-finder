@@ -10,7 +10,8 @@ import { buildBlockSets, suppressionReason, bizKey } from "@/lib/leads/suppress"
 import { addEmailToBlock } from "@/lib/leads/contactable";
 import { withCronLog } from "@/lib/cron-log";
 import { isLeadgenBackfillSource } from "@/lib/leads/leadgen-backfill";
-import { ingestAllowance, isStaleLeadgen, orderForIngest } from "@/lib/leadgen";
+import { ingestAllowance, isStaleLeadgen, orderForIngest, websiteStatusFor } from "@/lib/leadgen";
+import { followerBucket } from "@/lib/leads/social-stats";
 
 // GET /api/cron/ingest-leadgen — pulls the raw lead-gen candidates produced by the
 // Cowork/sandbox lead-gen run (KnowledgeOS:data/leadgen.json) and turns them into
@@ -48,6 +49,8 @@ interface LeadgenItem {
   gap?: string;
   place_id?: string;
   site_issues?: string[];
+  fb_followers?: number | null;
+  websiteStatus?: string;
 }
 interface LeadgenFile {
   at?: string;
@@ -94,13 +97,6 @@ async function fetchLeadgen(now: number): Promise<LeadgenFile> {
   return data;
 }
 
-// Map the sandbox's site_issues/website into the tone-mixer's websiteStatus enum.
-function websiteStatusFor(it: LeadgenItem): string {
-  if (!it.website) return "none";
-  const issues = (it.site_issues || []).join(" ").toLowerCase();
-  if (/unreachable|not-?responsive|dead|timeout|down/.test(issues)) return "dead";
-  return "old";
-}
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -255,7 +251,7 @@ async function ingest() {
       city: it.city || "",
       hooks: it.gap ? [it.gap] : [],
       demoPair: composed.demoPair,
-      professionalism: `leadgen fitScore ${it.fitScore ?? "?"} — ${it.gap || ""}`.trim(),
+      professionalism: [`leadgen fitScore ${it.fitScore ?? "?"}`, it.gap, followerBucket(it.fb_followers) && `Facebook: ${followerBucket(it.fb_followers)}`].filter(Boolean).join(" — "),
       subject: composed.subject,
       body: composed.text,
       // Carry the email so the send route can reach this lead (no Sheets row exists).

@@ -9,6 +9,7 @@ import fs from "node:fs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const imp = (p) => import(pathToFileURL(path.join(ROOT, "src", "lib", p)).href);
+const { socialKind, fbFit } = await imp("leads/social-fit.ts");
 const PHASE = process.argv[2] || "source";
 const WORKDIR = process.env.LEADGEN_WORKDIR || path.join(ROOT, ".leadgen-work");
 const F = (n) => path.join(WORKDIR, `lg_v2_${n}.json`);
@@ -91,7 +92,9 @@ async function fetchHtml(url, ms = 7000) {
 }
 
 // ---- query plan: skin + restaurant weighted heaviest, 1 barber/city ----
-const SKIN_Q = ["skønhedsklinik", "kosmetolog", "hudpleje", "permanent makeup"];
+// 26/9: "hudpleje" (overlapper kosmetolog/skønhedsklinik) byttet til "skønhedssalon" — samme antal
+// Places-kald (Lucas' budget ~100 kr./md.); de friske leads kommer fra de 30 nye byer, ikke flere kald.
+const SKIN_Q = ["skønhedsklinik", "kosmetolog", "skønhedssalon", "permanent makeup"];
 // Exclude hotels, public pools, sports/leisure centres, resorts and obvious
 // non-clinic chains that the generic "spa wellness" query used to drag in.
 const EXCLUDE_NAME = /hudlæge|hudlaege|dermatolog|hudlæger|tandlæge|tandlaege|hotel|strandhotel|kurhotel|svømmehal|svømmehall|svømmebad|badeland|vandland|aquadventure|idrætscenter|idraetscenter|fritidscenter|sportscenter|sportcenter|kulturhus|gigantium|kurbad|\bresort\b|comwell|scandic|best western|radisson|seaside|slot copenhagen|feriecenter|camping/i;
@@ -113,7 +116,13 @@ const PROVINCE = ["Aarhus", "Odense", "Aalborg", "Esbjerg", "Randers", "Kolding"
   "Silkeborg", "Herning", "Viborg", "Næstved", "Sønderborg", "Hjørring", "Holstebro", "Fredericia",
   "Roskilde", "Helsingør", "Aabenraa", "Svendborg", "Skagen", "Sæby", "Aars", "Støvring", "Bjerringbro",
   "Ry", "Galten", "Hørning", "Tarm", "Videbæk", "Vojens", "Gråsten", "Nordborg", "Otterup", "Ringe",
-  "Glamsbjerg", "Bogense", "Maribo", "Sakskøbing", "Stege", "Haslev", "Faxe", "Augustenborg", "Christiansfeld"];
+  "Glamsbjerg", "Bogense", "Maribo", "Sakskøbing", "Stege", "Haslev", "Faxe", "Augustenborg", "Christiansfeld",
+  // 26/9: skønhedspuljen var brugt op — samme 44 byer kom igen hver ~4. dag. Flere byer (Jylland/Fyn,
+  // Sjælland straffes allerede af Jev-geografien) giver friske forretninger uden flere kald pr. dag.
+  "Ikast", "Brande", "Skive", "Thisted", "Lemvig", "Struer", "Ringkøbing", "Skjern", "Grenaa", "Ebeltoft",
+  "Hadsten", "Odder", "Skanderborg", "Hobro", "Frederikshavn", "Brønderslev", "Nykøbing Mors", "Hadsund",
+  "Varde", "Ribe", "Grindsted", "Billund", "Haderslev", "Tønder", "Middelfart", "Nyborg", "Kerteminde",
+  "Faaborg", "Assens", "Give"];
 const CPH = ["København", "Frederiksberg"];
 const FIELD_MASK = "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.nationalPhoneNumber,places.id,places.types,places.businessStatus";
 
@@ -177,6 +186,7 @@ export function toLeadgenItem(c) {
   return { name: c.name, branch: c.queryBranch, category: c.cat, city: c.city, address: c.address,
     phone: c.phone, email: c.email || "", website: c.website, rating: c.rating, reviews: c.reviews, fitScore: c.fitScore,
     place_id: c.place_id,
+    fb_followers: c.fb?.followers ?? null, fb_talking: c.fb?.talking ?? null, websiteStatus: c.websiteStatus || null,
     hasViewport: c.hasViewport ?? null, bureau: !!c.bureau, copyrightYear: c.copyrightYear ?? null,
     source: "places-direct", cvr_flag: c.cvr_flag || "cvr_unchecked", cph: !!c.cph, drafted: !!c.drafted, skip: c.skip || "" };
 }
@@ -228,7 +238,7 @@ async function phaseSource() {
   const stats = { raw: raw.length, jobs: jobs.length };
   let pool = raw.filter((c) => c.status === "OPERATIONAL"); stats.after_status = pool.length;
   pool = pool.filter((c) => {
-    if (!(c.rating >= 4.0 && c.rating <= 4.9)) return false;
+    if (!(c.rating >= 4.0 && c.rating <= 5.0)) return false; // 5,0 tilladt 26/9 — anmeldelsesgulvet nedenfor frasorterer de små
     let floor = 200;
     if (c.cat === "skin") floor = (c.rating >= 4.6) ? 25 : 200;
     else if (c.cat === "salon") floor = 80;
@@ -253,12 +263,23 @@ async function phaseSource() {
 }
 
 // =================== PHASE: rate (chunked, resumable) ===================
+// Første rigtige facebook.com/<side>-link på en egen hjemmeside (ikke del-/plugin-links).
+export function fbLinkFrom(html) {
+  for (const m of (html || "").matchAll(/https?:\/\/(?:[a-z-]+\.)?facebook\.com\/([A-Za-z0-9.\-]{3,80})(?:\/[^"'?#\s<>]*)?["'?#]/gi)) {
+    if (/\.php$/i.test(m[1]) || /^(sharer|share|plugins|tr|dialog|login|policy|privacy|help|pages|groups|events|watch|people|hashtag|photo|photos|story|reel|reels)$/i.test(m[1])) continue;
+    return `https://www.facebook.com/${m[1]}`;
+  }
+  return null;
+}
 function scoreLead(c, html) {
-  const ratingScore = Math.max(0, Math.min(1, (c.rating - 4.0) / 0.9)) * 12;
+  const ratingScore = Math.max(0, Math.min(1, (c.rating - 4.0) / 0.9)) * 12; // 5,0 → loft 12
   const reviewScore = c.reviews >= 200 && c.reviews <= 1200 ? 18 : c.reviews > 1200 ? 12 : 14;
   const rr = Math.min(30, ratingScore + reviewScore);
-  let webNeed, hasViewport = null, copyrightYear = null, bureau = false, emailOnSite = null;
-  if (html == null) { webNeed = 15; }
+  let webNeed, hasViewport = null, copyrightYear = null, bureau = false, emailOnSite = null, fbLink = null;
+  const social = socialKind(c.website);
+  // Kun Facebook/Instagram/Krak som "hjemmeside" = ingen egen side = størst behov (målgruppen).
+  if (social) { webNeed = 25; if (social === "facebook") fbLink = c.website; }
+  else if (html == null) { webNeed = 15; }
   else {
     hasViewport = /<meta[^>]+name=["']?viewport/i.test(html);
     const years = [...html.matchAll(/(?:©|&copy;|copyright)[^0-9]{0,12}(20\d{2})/gi)].map((m) => +m[1]);
@@ -267,6 +288,7 @@ function scoreLead(c, html) {
     const em = [...new Set((html.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []))]
       .filter((e) => !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e) && !/sentry|wixpress|example|@2x/.test(e));
     emailOnSite = em[0] || null;
+    fbLink = fbLinkFrom(html);
     webNeed = 12;
     if (!hasViewport) webNeed += 8;
     if (copyrightYear && copyrightYear <= (new Date().getFullYear() - 3)) webNeed += 5;
@@ -278,8 +300,8 @@ function scoreLead(c, html) {
   const local = 15 - (bureau ? 8 : 0);
   const contact = (c.phone ? 5 : 0) + (emailOnSite ? 5 : 0);
   const fitScore = Math.min(100, Math.round(rr + webNeed + local + branchFit + contact));
-  return { fitScore, hasViewport, copyrightYear, bureau, emailOnSite,
-    websiteStatus: copyrightYear && copyrightYear <= (new Date().getFullYear() - 4) ? "old" : "ok" };
+  return { fitScore, hasViewport, copyrightYear, bureau, emailOnSite, fbLink,
+    websiteStatus: social === "facebook" ? "none" : social ? "ok" : copyrightYear && copyrightYear <= (new Date().getFullYear() - 4) ? "old" : "ok" };
 }
 // Rated-filen hører til ÉN source-kørsel (pool.at). WORKDIR overlever mellem
 // dage; før 25/9 voksede lg_v2_rated.json fra 2/9 til 470 rækker, remaining blev
@@ -294,7 +316,7 @@ async function phaseRate() {
   const doneIds = new Set(rated.map((r) => r.place_id));
   const todo = pool.filter((c) => !doneIds.has(c.place_id)).slice(0, 26);
   let i = 0;
-  async function worker() { while (i < todo.length) { const c = todo[i++]; const html = await fetchHtml(c.website); Object.assign(c, scoreLead(c, html)); rated.push(c); } }
+  async function worker() { while (i < todo.length) { const c = todo[i++]; const html = socialKind(c.website) ? null : await fetchHtml(c.website); Object.assign(c, scoreLead(c, html)); rated.push(c); } }
   await Promise.all(Array.from({ length: 6 }, worker));
   wr("rated", { poolAt, rated });
   const remaining = pool.length - rated.length;
@@ -342,6 +364,8 @@ function selectLeads(eligible) {
 }
 async function phaseFinalize() {
   const { rated } = rd("rated");
+  // Facebook-størrelse (fb_og.py): målgruppe-fit, ikke "flere følgere = bedre".
+  for (const c of rated) { c.fbAdjust = fbFit(c.fb?.followers); c.fitScore = Math.max(0, Math.min(100, c.fitScore + c.fbAdjust)); }
   const scored = rated.filter((c) => c.fitScore >= 65);
   // hårdt kontaktfilter (2026-08-19) — leads uden telefon OG uden mail udvælges slet ikke
   const eligible = scored.filter(hasContact).sort((a, b) => b.fitScore - a.fitScore);
@@ -353,7 +377,7 @@ async function phaseFinalize() {
     while (ei < selected.length) {
       const c = selected[ei++];
       let email = c.emailOnSite || null;
-      if (!email) { const h = await fetchHtml(c.website.replace(/\/?$/, "/kontakt"), 6000); if (h) { const m = h.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g); if (m) email = m.find((e) => !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e) && !/sentry|wixpress|example|@2x/.test(e)) || null; } }
+      if (!email && !socialKind(c.website)) { const h = await fetchHtml(c.website.replace(/\/?$/, "/kontakt"), 6000); if (h) { const m = h.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g); if (m) email = m.find((e) => !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e) && !/sentry|wixpress|example|@2x/.test(e)) || null; } }
       const cvr = await cvrLookup(c.name);
       if (!cvr.ok) { cvrUnchecked = true; c.cvr_flag = "cvr_unchecked"; }
       else { cvrChecked++; const d = cvr.data || {}; c.cvr_flag = "cvr_ok";
@@ -420,7 +444,7 @@ async function phaseApply() {
     catch (e) { composeFailures.push({ name: c.name, err: String(e.message || e) }); c.drafted = false; c.skip = "compose-fail"; continue; }
     draftsToAdd.push({ id: newDraftId(), leadId: c.place_id, name: c.name, branch: c.queryBranch, city: c.city,
       hooks: [`${c.reviews} anmeldelser på Google`, `rating ${c.rating}`], demoPair: composed.demoPair,
-      professionalism: `${c.reviews} anmeldelser, rating ${c.rating}, fitScore ${c.fitScore}${c.hasViewport === false ? ", ingen mobil-viewport" : ""}${c.bureau ? ", bureau-footer" : ""}`,
+      professionalism: `${c.reviews} anmeldelser, rating ${c.rating}, fitScore ${c.fitScore}${c.hasViewport === false ? ", ingen mobil-viewport" : ""}${c.bureau ? ", bureau-footer" : ""}${c.fb?.followers != null ? `, ${c.fb.followers} FB-følgere` : ""}`,
       subject: composed.subject, body: composed.text, recipientEmail: c.email, status: "pending",
       source: "places-direct", comboId: composed.comboId, openerKind: composed.openerKind, createdAt: nowIso, updatedAt: nowIso });
     c.drafted = true; blockSets.ids.add(c.place_id); const k = bizKey(c.name, c.city); if (k) blockSets.keys.add(k);
