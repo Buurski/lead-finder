@@ -193,7 +193,8 @@ export default function PostDialog({
   const dirty = post ? title !== post.title || slug !== post.slug || category !== post.category || excerpt !== post.excerpt || altDirty : false;
   const idx = post ? stages.findIndex((s) => s.stage === post.stage) : -1;
   const canPublish = post ? post.stage !== "publicer" && post.stage !== "udgivet" : false;
-  const locked = post?.stage === "udgivet"; // alle felt-rettelser er låst server-side her
+  // Publicer og Udgivet: alle felt-rettelser er låst server-side — felterne skal også se låste ud.
+  const locked = post?.stage === "publicer" || post?.stage === "udgivet";
   const canDelete = post ? post.stage === "ide" || post.stage === "arbejder" : false;
   const prevBlocked = post?.stage === "udgivet"; // "et udgivet indlæg kan ikke flyttes tilbage"
   const nextBlocked = post?.stage === "publicer"; // "Udgivet sættes automatisk" — kun markPublished må
@@ -243,6 +244,7 @@ export default function PostDialog({
               {/* --- SEO --- */}
               <section className="bl-section">
                 <h3 className="bl-section-title">SEO</h3>
+                <fieldset disabled={locked} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "contents" }}>
                 <label className="bl-field">
                   <span>Titel <Counter value={title.length} max={SEO_LIMITS.title} /></span>
                   <input className="bl-input" maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -268,6 +270,7 @@ export default function PostDialog({
                 {excerpt.length > 0 && (excerpt.length < SEO_LIMITS.excerptMin || excerpt.length > SEO_LIMITS.excerpt) && (
                   <p className="bl-field-warn" role="alert">Uddraget skal være mellem {SEO_LIMITS.excerptMin} og {SEO_LIMITS.excerpt} tegn.</p>
                 )}
+                </fieldset>
                 <div className="bl-snippet">
                   <div className="bl-snippet-url">kinly.dk/blog/{slug || "…"}/</div>
                   <div className="bl-snippet-title">{title || "(uden titel)"}</div>

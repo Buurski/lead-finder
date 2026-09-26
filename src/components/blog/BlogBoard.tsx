@@ -110,6 +110,8 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                               href={card.publishedUrl}
                               target="_blank"
                               rel="noreferrer"
+                              // Kun så bredt som teksten — ellers sluger linket klik midt på kortet (E2E 26/9).
+                              style={{ display: "inline-flex", alignItems: "center", gap: 2, width: "fit-content" }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               Live <Icon name="ArrowUpRight" style={{ width: 11, height: 11 }} />
