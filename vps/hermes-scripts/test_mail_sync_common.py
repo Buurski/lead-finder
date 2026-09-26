@@ -516,5 +516,30 @@ class CrmTransitionTests(unittest.TestCase):
         self.assertEqual(common.iso_at("ikke en dato"), "")
 
 
+class StatusTextTests(unittest.TestCase):
+    @staticmethod
+    def _msg(sender: str, body: str, date: str) -> dict:
+        import base64
+        data = base64.urlsafe_b64encode(body.encode()).decode()
+        return {"payload": {"mimeType": "text/plain", "body": {"data": data},
+                            "headers": [{"name": "From", "value": sender}, {"name": "Date", "value": date}]}}
+
+    def test_newest_mail_survives_budget(self):
+        old = self._msg("Lene <info@vida-klinik.dk>", "gammel " * 600, "2026-09-24T08:00:00Z")
+        new = self._msg("Lucas <lucas@kinly.dk>", "Hvad koster farve af vipper?", "2026-09-25T13:27:00Z")
+        text = crm_mail_sync_jev.thread_text([old, new])
+        self.assertIn("Hvad koster farve af vipper?", text)
+        self.assertLessEqual(len(text), 2500 + 10)
+        self.assertLess(text.index("gammel"), text.index("Hvad koster"))  # kronologisk
+
+    def test_guard_question_from_us_means_customer(self):
+        g = crm_mail_sync_jev.guard_status
+        self.assertEqual(g("ingen", True, "Et par spørgsmål:\n1. Hvad koster det?\nHilsen Lucas"), "kunden")
+        self.assertEqual(g("os", True, "Kan du sende billederne?"), "kunden")
+        self.assertEqual(g("ingen", True, "Se https://kinly.dk/?ref=x tak"), "ingen")
+        self.assertEqual(g("ingen", True, "Tak, god weekend\n\nDen 25. sep. skrev Lene:\n> Virker det?"), "ingen")
+        self.assertEqual(g("os", False, "Hvad koster det?"), "os")
+
+
 if __name__ == "__main__":
     unittest.main()

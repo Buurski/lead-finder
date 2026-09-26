@@ -221,9 +221,11 @@ def _sort_key(message: dict):
 
 def thread_text(messages: list[dict], limit: int = 2500) -> str:
     """Seneste ≤3 mails, trunkeret til i alt ~2.500 tegn (spec §D)."""
+    # Budgettet bruges nyeste-først (fix 26/9: ældste-først skar den nyeste mail
+    # helt væk, så Jev dømte VIDA "ingen venter" på en mail med 5 spørgsmål).
     parts: list[str] = []
     total = 0
-    for m in messages:
+    for m in reversed(messages):
         sender, subject, date = message_fields(m)
         chunk = f"[{date}] {sender}: {subject}\n{message_body(m)}".strip()
         if total + len(chunk) > limit:
@@ -233,7 +235,16 @@ def thread_text(messages: list[dict], limit: int = 2500) -> str:
             total += len(chunk)
         if total >= limit:
             break
-    return "\n---\n".join(parts)
+    return "\n---\n".join(reversed(parts))
+
+
+def guard_status(waiting_on: str, last_is_ours: bool, last_body: str) -> str:
+    """Deterministisk værn over Jev: stiller vores seneste mail et spørgsmål,
+    ligger bolden hos kunden — uanset hvad Jev mener."""
+    own = re.split(r"(?m)^(?:>|Den .{0,80} skrev|On .{0,80} wrote)", last_body, maxsplit=1)[0]
+    if last_is_ours and re.search(r"\?(\s|$)", own) and waiting_on != "kunden":
+        return "kunden"
+    return waiting_on
 
 
 def fresh_activities(activities: list[dict], prior: list[dict]) -> list[dict]:
@@ -362,7 +373,9 @@ def main() -> int:
     # Auto-status pr. kunde med nye mails denne kørsel (spec §D). Best-effort: en
     # fejl her må aldrig rulle den allerede bekræftede mail-sync tilbage.
     status_written = status_errors = 0
-    for client in sorted({item["clientName"] for item in fresh}):
+    # --status-all: engangs-genberegning for alle kunder (fx efter fix af status-logik).
+    status_clients = set(messages_by_client) if "--status-all" in sys.argv else {item["clientName"] for item in fresh}
+    for client in sorted(status_clients):
         recent = sorted(messages_by_client.get(client, []), key=_sort_key)[-3:]
         if not recent:
             continue
@@ -375,6 +388,9 @@ def main() -> int:
             if not result["ok"]:
                 status_errors += 1
                 continue
+            last_sender, _, _ = message_fields(recent[-1])
+            result["waitingOn"] = guard_status(result["waitingOn"], sender_address(last_sender) in ours,
+                                               message_body(recent[-1]))
             based_on = [str(m.get("id") or m.get("messageId") or "") for m in recent]
             crm_agent_log.log_activity(
                 actor="hermes", event_type="status", company=client,

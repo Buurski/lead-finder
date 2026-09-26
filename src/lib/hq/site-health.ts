@@ -50,7 +50,7 @@ export async function probe(url: string, now = Date.now()): Promise<Probe> {
   let status = 0;
   let error: string | undefined;
   try {
-    const r = await safeFetch(url, { timeoutMs: 10_000, maxBytes: 64_000 });
+    const r = await safeFetch(url, { timeoutMs: 10_000, maxBytes: 5_000_000 });
     status = r?.status ?? 0;
     if (!r) error = "ugyldig adresse";
   } catch (e) {
