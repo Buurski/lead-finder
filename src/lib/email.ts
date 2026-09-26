@@ -1,4 +1,4 @@
-import { DEMO_SITES, REFERENCE_INTRO, customerSiteLinks, referenceLinks, withReferenceLinks } from "./demos.ts";
+import { DEMO_SITES, customerSiteLinks, referenceIntro, referenceLines, referenceLinks, withReferenceLinks } from "./demos.ts";
 import { applySignature, applySignatureHtml, defaultSender, formatFrom, formatSignature, getTransporter, isSenderAvailable, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
@@ -675,13 +675,14 @@ export function getEmailTemplate(
   const fix = withReferenceLinks(result.text, branch, vars.name);
   if (fix.added.length === 0) return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
   const sig = formatSignature(sender);
+  const intro = referenceIntro(referenceLines(branch, vars.name));
   return {
     ...result,
-    text: insertBefore(result.text, sig.text, [REFERENCE_INTRO, ...fix.added.map((u) => `→ ${u}`)].join("\n")) + UNSUBSCRIBE_TEXT,
+    text: insertBefore(result.text, sig.text, [intro, ...fix.added.map((u) => `→ ${u}`)].join("\n")) + UNSUBSCRIBE_TEXT,
     html: insertBefore(
       result.html,
       sig.html,
-      [`<p>${REFERENCE_INTRO}<br>`, ...fix.added.map((u) => `→ <a href="${u}">${u}</a><br>`), `</p>`].join(""),
+      [`<p>${intro}<br>`, ...fix.added.map((u) => `→ <a href="${u}">${u}</a><br>`), `</p>`].join(""),
     ),
   };
 }

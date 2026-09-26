@@ -22,6 +22,12 @@ test("alle vinkler består stemme-reglerne og nævner virksomheden", () => {
   }
 });
 
+test("26/9: opfølgningen lover ikke eksempler når kun forsiden linkes", () => {
+  const msg = (b: string) => composeStep({ name: "Test Test", branch: b, website: "x.dk" }, "eksempel").body;
+  for (const b of ["tømrer", "vinduespudser", "boghandel"]) { assert.equal(msg(b).includes("et par eksempler"), false, b); assert.ok(msg(b).includes("Her er min egen side."), b); }
+  for (const b of ["frisør", "café", "maler"]) assert.ok(msg(b).includes("et par eksempler"), b);
+});
+
 test("vinkel: aldrig samme to gange, sidste trin er altid 'sidste', ingen SEO uden hjemmeside", () => {
   assert.equal(nextAngle(2, 3, [], true), "gratis_udkast");
   assert.equal(nextAngle(3, 5, ["gratis_udkast"], true), "seo_tjek");

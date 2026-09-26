@@ -296,6 +296,11 @@ export interface ReferenceFix {
   caseMissing: boolean;
 }
 
+/** "et par eksempler" kræver et link ud over forsiden, ellers loves noget der ikke er der. */
+export function referenceIntro(links: string[]): string {
+  return links.some((l) => !hasKinlyFront(l)) ? REFERENCE_INTRO : "Her er min egen side.";
+}
+
 /**
  * Tilføjer de manglende link-linjer til en færdig prospekt-tekst. Bruges af
  * legacy-skabelonerne (email.ts) og af backfill af gamle kladder, så de følger
@@ -306,7 +311,7 @@ export function withReferenceLinks(text: string, branch: string, name = ""): Ref
   const links = referenceLines(branch, name).map((line) => line.slice(2));
   const added = links.filter((u) => !(u === l.front ? hasKinlyFront(text) : text.includes(u)));
   if (added.length === 0) return { body: text, added: [], caseMissing: l.caseMissing };
-  const block = [REFERENCE_INTRO, ...added.map((u) => `→ ${u}`)].join("\n");
+  const block = [referenceIntro(links), ...added.map((u) => `→ ${u}`)].join("\n");
   return { body: `${text.replace(/\s+$/, "")}\n\n${block}`, added, caseMissing: l.caseMissing };
 }
 

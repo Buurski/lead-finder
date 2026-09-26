@@ -7,7 +7,7 @@ import { and, eq, gt, inArray } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, outreach } from "../db/schema.ts";
 import { validateDraft } from "../draft.ts";
-import { missingReferenceLinks, referenceLines, REFERENCE_INTRO } from "../demos.ts";
+import { missingReferenceLinks, referenceIntro, referenceLines } from "../demos.ts";
 import type { QueueDraft } from "../queue.ts";
 
 export const DEFAULT_TOUCHES = 3;
@@ -90,7 +90,7 @@ export function composeStep(lead: SequenceLead, angle: Angle): { subject: string
   if (links.length) {
     const parts = body.split("\n\n");
     const last = parts.pop() ?? "";
-    const block = [REFERENCE_INTRO, ...links].join("\n");
+    const block = [referenceIntro(links), ...links].join("\n");
     body = (last ? [...parts, block, last] : [...parts, block]).join("\n\n");
   }
 

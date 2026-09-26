@@ -10,6 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildLeadEmail, previewEmailTemplate, getEmailTemplate } from "./email.ts";
 import { formatSignature } from "./senders.ts";
+import { REFERENCE_INTRO } from "./demos.ts";
 
 const baseLead = {
   id: "lead-test-123",
@@ -310,15 +311,10 @@ test("sendLeadEmail: kundehost i emnet afvises før SMTP (composedBody-stien)", 
   );
 });
 
-// Legacy-skabelon-stien (uden composedBody) genererer selv sit emne af leadets
-// navn. Et kunde-domæne der må ikke ud herfra heller.
-test("sendLeadEmail: kundehost i emnet afvises før SMTP (legacy-skabelon)", async () => {
-  const { sendLeadEmail } = await import("./email.ts");
-  await assert.rejects(
-    () => sendLeadEmail(
-      { ...baseLead, name: "KT VVS ktvvs.vercel.app", branch: "vvs", email: "kunde@example.dk" },
-      "cold",
-    ),
-    /kundens egen side/,
-  );
+// Legacy-emnets garanti var falsk: domænet stod også i kroppen, så gaten udløses på
+// text uanset emne-loopet. Droppet — emnet er dækket af composed-stien ovenfor.
+test("26/9: legacy-skabelonen lover ikke eksempler når kun forsiden linkes", () => {
+  const tpl = (b: string) => getEmailTemplate(b, "cold", { ...baseLead, branch: b, leadId: "l", daysSince: 7, sender: "lucas" });
+  for (const b of ["tømrer", "vinduespudser", "boghandel"]) { assert.equal(tpl(b).text.includes("et par eksempler"), false, b); assert.equal(tpl(b).html.includes("et par eksempler"), false, b); assert.ok(tpl(b).text.includes("Her er min egen side."), b); }
+  for (const b of ["frisør", "café", "maler"]) assert.ok(tpl(b).text.includes(REFERENCE_INTRO), b);
 });
