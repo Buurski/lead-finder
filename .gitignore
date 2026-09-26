@@ -63,3 +63,5 @@ demos/
 .claude/launch.json
 .env.pg
 .pglite-dev/
+
+__pycache__/
