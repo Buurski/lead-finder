@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { BlogInputError, createPost, listPosts } from "@/lib/hq/posts";
+import { assessPost } from "@/lib/hq/post-score";
 import { authorizedRead, hqWrite, jsonBody } from "@/lib/hq/api";
 
 export const runtime = "nodejs";
@@ -26,6 +27,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return hqWrite(req, async (actor) => {
     const b = await jsonBody(req);
-    return { post: await createPost(getDb(), b, actor) };
+    const post = await createPost(getDb(), b, actor);
+    // Auto-bedøm den nye idé med Jev i baggrunden — svaret må aldrig forsinke
+    // eller fejle oprettelsen (post-score.ts kaster aldrig).
+    after(() => assessPost(getDb(), post.id, { title: post.title, category: post.category, note: post.note }).catch(() => {}));
+    return { post };
   });
 }

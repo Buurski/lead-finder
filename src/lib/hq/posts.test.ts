@@ -26,9 +26,12 @@ import {
   readRatings,
   readScores,
   recordJev,
+  recordScores,
+  overallScore,
   revisionOf,
   runChecklist,
   seoMissing,
+  SCORE_AXES,
   updatePost,
 } from "./posts.ts";
 import type { BlogImages } from "./posts.ts";
@@ -452,6 +455,53 @@ test("scorekort og menneskers rating: partial patches, round-trip og agent-afvis
   const cards = await listPosts(db);
   assert.equal(cards[0].ratings.length, 2);
   assert.equal(cards[0].scores.seo?.score, 78);
+});
+
+test("recordScores: seks akser stemplet med tidspunkt+model, rører hverken revision eller faktatjek", async () => {
+  assert.deepEqual([...SCORE_AXES], ["styrke", "kundebase", "seo", "geo", "marked", "gap"]);
+  const created = await createPost(db, { title: "Jev-bedømt idé" }, "hermes");
+  const post = await publish(created.id);
+  const before = await db.select().from(blogPost).where(eq(blogPost.id, post.id)).then((r) => r[0]);
+  const beforeRevision = revisionOf(before);
+  assert.equal(readChecklist(before.checklist).ok, true);
+  assert.ok(before.proofs && (before.proofs as { factcheck?: unknown }).factcheck);
+
+  const entries = Object.fromEntries(SCORE_AXES.map((a, i) => [a, { score: 10 + i * 10, why: "" }])) as Record<(typeof SCORE_AXES)[number], { score: number; why: string }>;
+  const scores = await recordScores(db, post.id, entries, "jev-1.13.0");
+  for (const axis of SCORE_AXES) {
+    assert.equal(scores[axis]?.model, "jev-1.13.0");
+    assert.ok(scores[axis]?.at);
+  }
+  assert.equal(overallScore(scores), Math.round(SCORE_AXES.map((_, i) => 10 + i * 10).reduce((a, b) => a + b, 0) / SCORE_AXES.length));
+
+  const after = await db.select().from(blogPost).where(eq(blogPost.id, post.id)).then((r) => r[0]);
+  assert.equal(revisionOf(after), beforeRevision, "en score-opdatering må ikke ændre revisionen");
+  assert.equal(readChecklist(after.checklist).ok, readChecklist(before.checklist).ok, "checklisten må ikke regnes forfra af en score-opdatering");
+  assert.deepEqual((after.proofs as { factcheck?: unknown }).factcheck, (before.proofs as { factcheck?: unknown }).factcheck, "faktatjekket må stå urørt");
+  assert.equal(after.stage, "publicer", "en score-opdatering rører ikke fase eller position");
+});
+
+test("overallScore: gennemsnit af det der er sat, null når intet er bedømt", () => {
+  assert.equal(overallScore({}), null);
+  assert.equal(overallScore({ seo: { score: 80, why: "" }, gap: { score: 40, why: "" } }), 60);
+});
+
+test("en manuel scoresPatch kan ikke sætte at/model — kun recordScores kan", async () => {
+  const post = await createPost(db, { title: "Manuel rettelse" }, "hermes");
+  const patched = await updatePost(db, post.id, { scores: { seo: { score: 78, why: "søgevolumen" } } }, "hermes");
+  assert.deepEqual(readScores(patched.scores).seo, { score: 78, why: "søgevolumen" });
+});
+
+test("træk-og-slip bruger samme server-gate som pil-knapperne: forbudte flytninger afvises", async () => {
+  // BlogBoard's drop-handler kalder PATCH /api/posts/[id] → updatePost, samme
+  // vej som PostDialog's ChevronRight-knapper — der er ingen separat DnD-gate
+  // at glemme at opdatere. Et menneske kan ikke trække direkte til Udgivet,
+  // og en rød tjekliste stopper et træk til Publicer.
+  const post = await seed();
+  await assert.rejects(updatePost(db, post.id, { stage: "udgivet" }, "lucas"), /automatisk/);
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "lucas"), /tjeklisten er ikke aktuel og grøn/);
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  assert.equal(row.stage, "ide", "et afvist træk må ikke ændre kortets fase");
 });
 
 test("beviserne er partial patches, og faktatjekket er menneskets alene", async () => {

@@ -15,6 +15,7 @@ import {
   recordJev,
   updatePost,
 } from "../../../../lib/hq/posts.ts";
+import { assessPost } from "../../../../lib/hq/post-score.ts";
 import { choice as jevChoice, jevAsk, jevEnabled, noul as jevNoul, type JevQuestion } from "../../../../lib/jev.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
 import { cleanEnv } from "../../../../lib/hermes.ts";
@@ -116,6 +117,22 @@ const JEV_QUESTIONS: Record<string, JevQuestion> = {
   },
 };
 
+/**
+ * Auto-bedøm en nyoprettet idé med Jev i baggrunden, uden at forsinke eller
+ * kunne fejle oprettelsen. `after()` findes kun i next/server, som denne fil
+ * med vilje IKKE importerer statisk (route.test.ts kalder handleren direkte
+ * under node:test med --conditions react-server, hvor "next/server" ikke kan
+ * resolves — se filens hoved-kommentar). Dynamisk import + try/catch: i en
+ * rigtig Next.js-request virker det som normalt; under testen fejler
+ * import'en eller (hvis den en dag resolves) kaldet af after() uden for en
+ * request-scope, og begge dele fanges stille — idéen står blot ubedømt.
+ */
+function scheduleAssessment(id: string, input: { title: string; category: string; note: string }): void {
+  void import("next/server")
+    .then(({ after }) => after(() => assessPost(getDb(), id, input).catch(() => {})))
+    .catch(() => {});
+}
+
 // POST { actor, action, ... } — blog-pipelinen (create/update/move/list/get/precheck/published).
 export async function POST(req: Request) {
   const body = await req.text();
@@ -134,6 +151,7 @@ export async function POST(req: Request) {
     switch (action) {
       case "create": {
         const post = await createPost(getDb(), createFields(input as unknown as Record<string, unknown>), actor);
+        scheduleAssessment(post.id, { title: post.title, category: post.category, note: post.note });
         return json({ ok: true, post });
       }
       case "update": {

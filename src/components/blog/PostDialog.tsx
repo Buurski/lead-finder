@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import Icon from "@/components/shell/Icon";
 import type { BlogChecklist, BlogImageCandidate, BlogImages, BlogProofs, BlogStage, ImageChoice, PostCard } from "@/lib/hq/posts";
 import type { StageInfo } from "./BlogBoard";
-import { BLOG_CATEGORIES, SEO_LIMITS, categoryLabel, countWords, isCustomerImage } from "./blog-utils";
+import { BLOG_CATEGORIES, SCORE_AXES, SCORE_LABEL, SEO_LIMITS, categoryLabel, countWords, isCustomerImage, overallScore, readScores, scoreLevel } from "./blog-utils";
 
 interface FullPost {
   id: string;
@@ -22,6 +22,9 @@ interface FullPost {
   proofs: BlogProofs;
   checklist: BlogChecklist;
   publishedUrl: string | null;
+  note: string;
+  /** Rå jsonb — getPost() returnerer db-rækken uendret, se readScores i blog-utils.ts. */
+  scores: unknown;
 }
 
 async function patchPost(id: string, body: Record<string, unknown>): Promise<FullPost> {
@@ -132,6 +135,29 @@ export default function PostDialog({
 
   function chooseImage(choice: ImageChoice) {
     void run({ images: { choice } });
+  }
+
+  // "Bedøm igen" — samme Jev-bedømmelse som baggrundskaldet ved oprettelse,
+  // bare på forespørgsel. 503 (ingen TYPESAFE_API_KEY) vises som "Jev ikke sat
+  // op", ikke en generisk fejl — det er en opsætnings-tilstand, ikke en fejl i
+  // dataene.
+  const [scoreBusy, setScoreBusy] = useState(false);
+  async function rescore() {
+    if (scoreBusy || !post) return;
+    setScoreBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/posts/${id}/score`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 503) throw new Error("Jev ikke sat op");
+      if (!res.ok) throw new Error(data.error || "kunne ikke bedømme idéen");
+      setPost((cur) => (cur ? { ...cur, scores: data.scores } : cur));
+      onSaved({ scores: data.scores });
+    } catch (e) {
+      setNotice({ kind: "error", text: e instanceof Error ? e.message : "kunne ikke bedømme idéen" });
+    } finally {
+      setScoreBusy(false);
+    }
   }
 
   function saveConsent(slot: "a" | "b") {
@@ -352,6 +378,52 @@ export default function PostDialog({
                     )}
                   </>
                 )}
+              </section>
+
+              {/* --- Jev-bedømmelse --- */}
+              <section className="bl-section">
+                <h3 className="bl-section-title">Jev-bedømmelse</h3>
+                {(() => {
+                  const scores = readScores(post.scores);
+                  const samlet = overallScore(scores);
+                  const stamp = SCORE_AXES.map((a) => scores[a]?.at).find(Boolean);
+                  const model = SCORE_AXES.map((a) => scores[a]?.model).find(Boolean);
+                  return (
+                    <>
+                      {samlet !== null ? (
+                        <>
+                          <div className="bl-jev-overall">
+                            <span className="bl-score-badge" data-level={scoreLevel(samlet)}>{samlet}/100 samlet</span>
+                            {stamp && (
+                              <span className="bl-jev-meta">
+                                {new Date(stamp).toLocaleString("da-DK")}{model ? ` · ${model}` : ""}
+                              </span>
+                            )}
+                          </div>
+                          <div className="bl-jev-grid">
+                            {SCORE_AXES.map((axis) => {
+                              const e = scores[axis];
+                              if (!e) return null;
+                              return (
+                                <div key={axis} className="bl-jev-row">
+                                  <span className="bl-jev-label">{SCORE_LABEL[axis]}</span>
+                                  <span className="bl-jev-bar"><span className="bl-jev-bar-fill" data-level={scoreLevel(e.score)} style={{ width: `${e.score}%` }} /></span>
+                                  <span className="bl-jev-value">{e.score}</span>
+                                  {e.why && <p className="bl-jev-why">{e.why}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="bl-jev-empty">Endnu ikke bedømt.</p>
+                      )}
+                      <div className="bl-dialog-actions">
+                        <button type="button" className="cc-btn" onClick={() => void rescore()} disabled={scoreBusy}>{scoreBusy ? "Bedømmer…" : "Bedøm igen"}</button>
+                      </div>
+                    </>
+                  );
+                })()}
               </section>
 
               {/* --- tjekliste --- */}

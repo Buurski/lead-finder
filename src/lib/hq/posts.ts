@@ -276,25 +276,33 @@ function imagesPatch(v: unknown, before: BlogImages, actor: string): BlogImages 
   return { a, b, choice, choiceBy, choiceAt };
 }
 
-// --- Scorekortet (fem akser 1-100) -----------------------------------------
-// Blog-arbejderen scorer en idé før nogen skriver: styrke, kundebase-fit, SEO,
-// GEO og konkurrent-gap. Hver akse bærer sin korte begrundelse, så tallet ikke
-// står alene. Mennesker må rette tallene; agenten overskriver aldrig en rating
-// (se ratings nedenfor).
-export const SCORE_AXES = ["styrke", "kundebase", "seo", "geo", "gap"] as const;
+// --- Scorekortet (seks akser 1-100) -----------------------------------------
+// Jev bedømmer en idé før nogen skriver den (post-score.ts): salgsværdi,
+// hvor væsentligt emnet er for kundebasen, SEO-potentiale, GEO (citeres den af
+// AI-søgning), efterspørgsel/marked og konkurrence-hul. Hver akse bærer sin
+// korte begrundelse (kun med når API'et faktisk giver en), så tallet ikke står
+// alene. Mennesker må rette tallene manuelt; agenten overskriver aldrig en
+// rating (se ratings nedenfor). `at`/`model` sættes kun af Jev-bedømmelsen
+// (recordScores) — en manuel rettelse via scoresPatch kan ikke sætte dem, så
+// et menneskes tal aldrig kan udgive sig for at komme fra Jev.
+export const SCORE_AXES = ["styrke", "kundebase", "seo", "geo", "marked", "gap"] as const;
 export type ScoreAxis = (typeof SCORE_AXES)[number];
 
 export const SCORE_LABEL: Record<ScoreAxis, string> = {
-  styrke: "Styrke",
-  kundebase: "Kundebase-fit",
-  seo: "SEO",
+  styrke: "Salgsværdi",
+  kundebase: "Væsentlighed for kunden",
+  seo: "SEO-potentiale",
   geo: "GEO",
-  gap: "Konkurrent-gap",
+  marked: "Efterspørgsel/marked",
+  gap: "Konkurrence-hul",
 };
 
 export interface BlogScoreEntry {
   score: number;
   why: string;
+  /** Kun sat af en Jev-bedømmelse (recordScores), aldrig af en manuel rettelse. */
+  at?: string;
+  model?: string;
 }
 
 export type BlogScores = Partial<Record<ScoreAxis, BlogScoreEntry>>;
@@ -306,12 +314,26 @@ export function readScores(v: unknown): BlogScores {
   for (const axis of SCORE_AXES) {
     const raw = (v as Record<string, unknown>)[axis];
     if (!raw || typeof raw !== "object") continue;
-    const e = raw as { score?: unknown; why?: unknown };
+    const e = raw as { score?: unknown; why?: unknown; at?: unknown; model?: unknown };
     const score = Number(e.score);
     if (!Number.isInteger(score) || score < 1 || score > 100) continue;
-    out[axis] = { score, why: String(e.why ?? "") };
+    out[axis] = {
+      score,
+      why: String(e.why ?? ""),
+      ...(typeof e.at === "string" && e.at ? { at: e.at } : {}),
+      ...(typeof e.model === "string" && e.model ? { model: e.model } : {}),
+    };
   }
   return out;
+}
+
+/** Samlet score: gennemsnit af de akser der er sat. Ikke gemt — regnes ved brug
+ *  (sortering af Idé-kolonnen, badge på kortet), så den aldrig kan gå ud af trit
+ *  med akserne. null når intet er bedømt endnu. */
+export function overallScore(scores: BlogScores): number | null {
+  const values = SCORE_AXES.map((axis) => scores[axis]?.score).filter((n): n is number => typeof n === "number");
+  if (!values.length) return null;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
 /** Partial patch: kun de akser der sendes med ændres; null rydder én akse. */
@@ -999,6 +1021,34 @@ export async function recordJev(
     };
     await tx.update(blogPost).set({ jev }).where(eq(blogPost.id, id));
     return jev;
+  });
+}
+
+/**
+ * Gemmer Jevs bedømmelse af idéen (post-score.ts): alle seks akser sættes i én
+ * omgang (Jev svarer på dem alle i samme kald), stemplet med tidspunkt og
+ * model. Erstatter hele scores-kolonnen med vilje — Jev bedømmer altid alle
+ * seks akser, så der er intet fra en ældre manuel rettelse at bevare. Rører
+ * IKKE revision/checklist/factcheck: `scores` indgår ikke i revisionOf's
+ * fingeraftryk, så en ny bedømmelse aldrig kan ugyldiggøre et faktatjek.
+ */
+export async function recordScores(
+  db: Db,
+  id: string,
+  entries: Record<ScoreAxis, { score: number; why: string }>,
+  model: string,
+): Promise<BlogScores> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.id, id)).for("update");
+    if (!row) throw new BlogInputError("indlægget findes ikke");
+    const at = new Date().toISOString();
+    const scores: BlogScores = {};
+    for (const axis of SCORE_AXES) {
+      const e = entries[axis];
+      if (e) scores[axis] = { score: e.score, why: e.why, at, model };
+    }
+    await tx.update(blogPost).set({ scores }).where(eq(blogPost.id, id));
+    return scores;
   });
 }
 
