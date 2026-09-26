@@ -47,3 +47,18 @@ test("threadSummary og threadCount bevares gennem normalizeDigest", () => {
   assert.equal(d.items[0].threadSummary, "Allan bekræfter besøg i næste uge; videoen mangler.");
   assert.equal(d.items[0].threadCount, 5);
 });
+
+test("markering med millisekunder skjuler svar uden (VPS-format) — regression 26/9", () => {
+  const d: InboxDigest = normalizeDigest({ items: [
+    { id: "m1", from: "a@b.dk", date: "2026-09-24T05:38:17Z", needsReply: true, leadId: "7", category: "client" },
+    { id: "m2", from: "a@b.dk", date: "2026-09-24T07:38:17+02:00", needsReply: true, leadId: "8", category: "client" },
+  ] }) as InboxDigest;
+  // HQ gemmer new Date(date).toISOString() → "…17.000Z"
+  const fjernet = applyHandled(d, {}, { m1: "2026-09-24T05:38:17.000Z", m2: "2026-09-24T05:38:17.000Z" });
+  assert.equal(fjernet.items.length, 0);
+  const svaret = applyHandled(d, { "7": "2026-09-24T05:38:17.000Z" });
+  assert.equal(svaret.items.find((i) => i.id === "m1")!.needsReply, false);
+  // et NYERE svar dukker stadig op
+  const nyt = applyHandled(d, {}, { m1: "2026-09-24T05:38:16.000Z" });
+  assert.ok(nyt.items.some((i) => i.id === "m1"));
+});

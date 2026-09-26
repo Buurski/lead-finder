@@ -111,7 +111,7 @@ const handledKey = (leadId: string) => `replies/handled/${leadId}`;
  * er håndteret. Overlever at oversigten bygges på ny; et NYERE svar dukker op igen. */
 export async function markReplyHandled(leadId: string, upTo = new Date().toISOString()): Promise<void> {
   const prev = await store.get<string>(handledKey(leadId));
-  if (!prev || upTo > prev) await store.put(handledKey(leadId), upTo);
+  if (!prev || !(Date.parse(prev) >= Date.parse(upTo))) await store.put(handledKey(leadId), upTo);
 }
 
 // Én delt map (itemId → tid) for "fjern meddelelsen" uanset lead/konto.
@@ -139,15 +139,23 @@ export async function withHandled(d: InboxDigest): Promise<InboxDigest> {
   return applyHandled(d, handled, handledItems ?? {});
 }
 
+// Sammenlign som tidspunkter, ALDRIG som tekst: VPS-cronen skriver "…:17Z", HQ gemmer
+// toISOString() "…:17.000Z", og "…17Z" <= "…17.000Z" er FALSK som streng ('Z' > '.').
+// Det fik hvert "Svaret"/"Fjern"-klik til at dukke op igen efter genindlæsning (26/9).
+function notAfter(date: string | undefined, upTo: string | undefined): boolean {
+  if (!upTo) return false;
+  const a = Date.parse(date || ""), b = Date.parse(upTo);
+  if (Number.isNaN(b)) return false;
+  return Number.isNaN(a) || a <= b; // dato-løst svar: markeringen gælder
+}
+
 /** Ren: slår behandlede svar fra (needsReply=false) og dropper "fjernede" meddelelser helt. */
 export function applyHandled(d: InboxDigest, handled: Record<string, string>, handledItems: Record<string, string> = {}): InboxDigest {
   return {
     ...d,
     items: d.items
-      .filter((i) => !(handledItems[i.id] && (i.date || "") <= handledItems[i.id]))
-      .map((i) =>
-        i.needsReply && i.leadId && handled[i.leadId] && (i.date || "") <= handled[i.leadId] ? { ...i, needsReply: false } : i,
-      ),
+      .filter((i) => !notAfter(i.date, handledItems[i.id]))
+      .map((i) => (i.needsReply && i.leadId && notAfter(i.date, handled[i.leadId]) ? { ...i, needsReply: false } : i)),
   };
 }
 
