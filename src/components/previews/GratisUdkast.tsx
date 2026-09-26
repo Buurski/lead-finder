@@ -210,7 +210,7 @@ function Group({ title, items, selectedId, onPick }: { title: string; items: Pre
             <span className="gu-item-time">{timeAgo(item.createdAt)}</span>
           </div>
           <span className="gu-item-sub">
-            {item.seoTjek ? `SEO-tjek ${item.seoTjek.score}/100 · klar til svar` : WORKING.includes(item.status) ? WORKING_LABEL[item.status] : item.branch || item.email}
+            {item.seoTjek && groupOf(item) === "ready" ? `SEO-tjek ${item.seoTjek.score}/100 · klar til svar` : WORKING.includes(item.status) ? WORKING_LABEL[item.status] : item.branch || item.email}
           </span>
         </button>
       ))}
@@ -363,7 +363,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
         ) : (
           <span className="gu-visual-empty" style={{ margin: "auto" }}>
             {item.seoTjek
-              ? `SEO-tjek ${item.seoTjek.score}/100 på ${item.seoTjek.host} · ${item.seoTjek.mangler.length} ting at rette. Svar med rapportmailen herunder.`
+              ? `SEO-tjek ${item.seoTjek.score}/100 på ${item.seoTjek.host}${item.seoTjek.mangler.length ? ` · mangler: ${item.seoTjek.mangler.join(", ")}` : ""}. Svar med rapportmailen herunder.`
               : item.previewUrl ? "Intet screenshot endnu" : "Demo ikke klar endnu"}
           </span>
         )}

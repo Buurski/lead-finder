@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DISCLOSURES, LUCAS_ONLY, adaptToSender, mixForLead } from "./tone-mixer.ts";
+import { DISCLOSURES, LUCAS_ONLY, adaptToSender, mixForLead, wrongPersonText } from "./tone-mixer.ts";
 
 test("Charlie får aldrig Lucas' salgselev-historie; skift frem og tilbage er tabsfrit", () => {
   for (const line of DISCLOSURES.charlie) assert.equal(LUCAS_ONLY.test(line), false);
@@ -48,4 +48,12 @@ test("fælles præsentation: samme tekst for begge afsendere, gamle navngivne ov
   assert.equal(wrongPersonText("charlie", oldNamed), true);
   assert.equal(adaptToSender(oldNamed, "charlie"), adaptToSender(oldNamed, "lucas"));
   assert.ok(adaptToSender(oldNamed, "charlie").includes(DISCLOSURE[0]));
+});
+
+test("wrongPersonText fanger Charlie-formuleringer i en Lucas-mail (Hermes-audit 26/9)", () => {
+  for (const t of ["Jeg driver Kinly med Lucas", "Lucas og jeg bygger sider", "min makker Lucas har kigget", "sammen med Lucas"]) {
+    assert.equal(wrongPersonText("lucas", t), true, t);
+    assert.equal(wrongPersonText("charlie", t), false, t);
+  }
+  assert.equal(wrongPersonText("lucas", "Hej, jeg hedder Lucas og driver Kinly"), false);
 });

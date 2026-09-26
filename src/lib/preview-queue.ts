@@ -57,13 +57,17 @@ function hostOf(url: string | undefined): string {
 }
 
 /** Kun et gyldigt resultat slipper igennem (offentlig formular bag en delt hemmelighed). */
+// Spejl af bad("…")-labels i kinly-site src/app/api/seo-tjek/route.ts. Nyt label dér ⇒ tilføj her, ellers droppes det tavst.
+const SEO_LABELS = new Set(["AI-crawlere", "Billed-alt-tekst", "Billeder", "CVR", "Canonical-tag", "Citerbar struktur", "Gadeadresse", "H1-tekst", "HTTPS", "Indholdsmængde", "Interne links", "Mailadresse", "Maps-link", "Meta-beskrivelse", "Mobil-viewport", "Navn i titel", "Schema.org", "Server-hastighed", "Sidetitel", "Sitemap.xml", "Social preview", "Telefon", "Tillid", "Åbningstider", "Én H1"]);
+
 export function cleanSeoTjek(v: unknown): SeoTjekResult | undefined {
   if (!v || typeof v !== "object") return undefined;
   const r = v as Record<string, unknown>;
   const host = s(r.host, 100).toLowerCase();
   const score = typeof r.score === "number" && Number.isFinite(r.score) ? Math.round(r.score) : NaN;
   if (!HOST_RE.test(host) || !(score >= 0 && score <= 100)) return undefined;
-  const mangler = (Array.isArray(r.mangler) ? r.mangler : []).map((m) => s(m, 120)).filter(Boolean).slice(0, 8);
+  // Kun kinly.dk-tjekkets egne labels: formularen er anonym, og listen ender i en mail fra Lucas' konto (Opus-review 26/9).
+  const mangler = (Array.isArray(r.mangler) ? r.mangler : []).map((m) => s(m, 120)).filter((m) => SEO_LABELS.has(m)).slice(0, 8);
   return { host, score, mangler };
 }
 

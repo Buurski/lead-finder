@@ -110,5 +110,10 @@ export async function PATCH(req: NextRequest) {
   }
   if ("busy" in result) return NextResponse.json({ error: "udkastet har et afsendelsesforsøg — er det uafklaret, så afstem det (Gmail Sendt); er det sendt, kan status ikke ændres" }, { status: 409 });
   const request = result.request;
+  // Afvist eller lukket manuelt (svaret pr. telefon/Gmail) ⇒ svar-opgaven fra henvendelsen lukkes også.
+  if (request && (request.status === "afvist" || request.status === "sendt/lukket") && pgEnabled()) {
+    const { closeInboundTask } = await import("@/lib/hq/preview-send");
+    await closeInboundTask(getDb(), id);
+  }
   return request ? NextResponse.json({ ok: true, request }) : NextResponse.json({ error: "request_not_found" }, { status: 404 });
 }

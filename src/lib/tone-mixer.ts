@@ -294,7 +294,7 @@ export function adaptToSender(body: string, _sender?: "lucas" | "charlie"): stri
 export const LUCAS_ONLY = /salgselev|Lucas Buur|23 24 24 82|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger|Jeg\s+hedder\s+Lucas|Jeg\s+er\s+Lucas|Mit\s+navn\s+er\s+Lucas/i;
 
 /** Tekst der kun passer fra den ANDEN person (fx "sammen med Lucas" i en mail fra Lucas). */
-const CHARLIE_ONLY = /(sammen\s+med|med\s+min\s+(?:makker|kompagnon))\s+Lucas|Jeg\s+hedder\s+Charlie|Jeg\s+er\s+Charlie|Mit\s+navn\s+er\s+Charlie/i;
+const CHARLIE_ONLY = /(sammen\s+med|driver\s+Kinly\s+med|med\s+min\s+(?:makker|kompagnon)|min\s+(?:makker|kompagnon))\s+Lucas|Lucas\s+og\s+jeg\b|Jeg\s+hedder\s+Charlie|Jeg\s+er\s+Charlie|Mit\s+navn\s+er\s+Charlie/i;
 export function wrongPersonText(sender: "lucas" | "charlie", text: string): boolean {
   return (sender === "charlie" ? LUCAS_ONLY : CHARLIE_ONLY).test(text);
 }
