@@ -508,6 +508,13 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         print(f"FEJL: ingen DK-konkurrenter i {liste_path}")
         return 1
 
+    # Frisk Jev-dom over konkurrenternes blogopslag først (cachen genbruges; ingen HQ-kort herfra —
+    # dette script laver selv idékortene bagefter). Blog-scannet har intet eget cron-job.
+    try:
+        blogscan.run(blogscan.DEFAULT_SOURCES, dry_run, blogscan.DEFAULT_TOTAL_LIMIT, 40, True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[blogscan] sprunget over: {exc}")
+
     blog_sources = jev_lib.load_json(blogscan.DEFAULT_SOURCES, {"sources": []}).get("sources", [])
     sources_by_id = {s["id"]: s for s in blog_sources}
 
@@ -614,6 +621,14 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         print(f"Skrevet til {VAULT_NOTE}")
         resp = crm_posts.call({"action": "save", "report": report}, POST_PATH)
         print(json.dumps(resp, ensure_ascii=False)[:500])
+        if resp.get("ok"):
+            # LLM læser kun Jevs komprimerede tal (ét billigt kald). Fejl her vælter aldrig scannet.
+            try:
+                import konkurrent_analyse
+                ares = crm_posts.call({"action": "analysis", "analysis": konkurrent_analyse.analyse(report)}, POST_PATH)
+                print("[analyse]", json.dumps(ares, ensure_ascii=False)[:200])
+            except Exception as exc:  # noqa: BLE001
+                print(f"[analyse] sprunget over: {exc}")
         if content_ideas:
             created = blogscan.create_hq_cards(content_ideas)
             print(f"Oprettet {len(created)} HQ-kort: {', '.join(created) or '(ingen)'}")

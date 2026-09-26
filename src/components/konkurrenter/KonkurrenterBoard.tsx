@@ -49,7 +49,7 @@ function GoogleCell({ google }: { google?: Competitor["google"] }) {
   );
 }
 
-function GapCard({ gap }: { gap: CompetitorGap }) {
+function GapCard({ gap, hideKind = false }: { gap: CompetitorGap; hideKind?: boolean }) {
   const [status, setStatus] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -74,7 +74,7 @@ function GapCard({ gap }: { gap: CompetitorGap }) {
   return (
     <div className="konk-gap-card" data-kind={gap.kind}>
       <div className="konk-gap-head">
-        <span className="cc-chip konk-gap-chip" data-kind={gap.kind}>{GAP_KIND_LABEL[gap.kind]}</span>
+        {!hideKind && <span className="cc-chip konk-gap-chip" data-kind={gap.kind}>{GAP_KIND_LABEL[gap.kind]}</span>}
         <h3 className="konk-gap-title">{gap.title}</h3>
       </div>
       <p className="konk-gap-detail">{gap.detail}</p>
@@ -161,6 +161,20 @@ export default function KonkurrenterBoard({ report, kinly }: { report: Competito
           <span className="konk-summary-value">{report.jevCalls}</span>
         </div>
       </div>
+
+      {report.analysis && (
+        <section className="konk-section">
+          <h2 className="konk-section-title">Hvad betyder det for Kinly</h2>
+          <div className="konk-dim" style={{ fontSize: 12, marginBottom: 8 }}>
+            AI-læsning af Jevs tal ({report.analysis.model}, {fmtDate(report.analysis.at)}). Tjek tallene i tabellen, før du handler på det.
+          </div>
+          <div className="konk-gap-grid">
+            {report.analysis.points.map((p, i) => (
+              <GapCard key={i} gap={{ title: p.title, detail: p.detail, kind: "indhold" }} hideKind />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="cc-card konk-table-card">
         {/* Desktop: sortérbar tabel. Mobil: kort — samme data, ingen vandret scroll. */}

@@ -1,7 +1,7 @@
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { __setStore, InMemoryStore } from "../store.ts";
-import { CompetitorInputError, loadLatestReport, loadReportHistory, saveReport, validateReport } from "./competitors.ts";
+import { CompetitorInputError, loadLatestReport, loadReportHistory, saveAnalysis, saveReport, validateReport } from "./competitors.ts";
 
 beforeEach(() => {
   __setStore(new InMemoryStore());
@@ -96,4 +96,16 @@ test("historik holdes på maks 12 — ældste rydes ud", async () => {
   // nyeste-først: 14. og 13. dag skal være med, 1. og 2. skal være rykket ud.
   assert.equal(history[0].generatedAt.slice(0, 10), "2026-01-14");
   assert.equal(history.at(-1)!.generatedAt.slice(0, 10), "2026-01-03");
+});
+
+test("analyse hæftes på nyeste rapport; nyt scan fjerner den; validering holder", async () => {
+  await assert.rejects(saveAnalysis({ model: "m", points: [{ title: "t", detail: "d" }] }), CompetitorInputError);
+  await saveReport(validRaw());
+  await saveAnalysis({ model: "deepseek-v4-flash", points: [{ title: "Priser skjules", detail: "13 af 18 viser ingen pris." }] });
+  assert.equal((await loadLatestReport())!.analysis!.points[0].title, "Priser skjules");
+  assert.throws(() => validateReport({ ...validRaw(), analysis: {} }), CompetitorInputError); // scannet kan ikke selv sætte analyse
+  await assert.rejects(saveAnalysis({ model: "m", points: [] }), CompetitorInputError);
+  await assert.rejects(saveAnalysis({ model: "m", points: [{ title: "t", detail: "d", x: 1 }] }), CompetitorInputError);
+  await saveReport(validRaw({ generatedAt: "2026-02-01T02:00:00.000Z" }));
+  assert.equal((await loadLatestReport())!.analysis, undefined);
 });

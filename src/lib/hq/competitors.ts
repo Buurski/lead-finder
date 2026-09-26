@@ -64,12 +64,19 @@ export interface CompetitorGap {
   detail: string;
   kind: GapKind;
 }
+/** Billig LLM-læsning af Jevs tal (søndag efter scannet). Sættes kun via saveAnalysis. */
+export interface CompetitorAnalysis {
+  at: string;
+  model: string;
+  points: { title: string; detail: string }[];
+}
 export interface CompetitorReport {
   generatedAt: string;
   jevCalls: number;
   competitors: Competitor[];
   patterns: CompetitorPattern[];
   gaps: CompetitorGap[];
+  analysis?: CompetitorAnalysis;
 }
 
 const MAX_COMPETITORS = 40;
@@ -289,6 +296,27 @@ export async function saveReport(raw: unknown): Promise<CompetitorReport> {
   await store.put(`${PREFIX}${dateKeyOf(report.generatedAt)}`, report);
   await pruneHistory();
   return report;
+}
+
+/** Hæfter LLM-analysen på den nyeste rapport (og dens dags-nøgle). Et nyt scan
+ *  erstatter rapporten og dermed analysen — den hører altid til de tal, den læste. */
+export async function saveAnalysis(raw: unknown): Promise<CompetitorAnalysis> {
+  const o = obj(raw, "analysis");
+  noUnknownKeys(o, ["model", "points"], "analysis");
+  const model = str(o.model, "analysis.model", 60, true)!;
+  if (!Array.isArray(o.points) || o.points.length === 0) throw new CompetitorInputError("analysis.points skal være en ikke-tom liste");
+  const points = o.points.slice(0, 6).map((v, i) => {
+    const p = obj(v, `points[${i}]`);
+    noUnknownKeys(p, ["title", "detail"], `points[${i}]`);
+    return { title: str(p.title, `points[${i}].title`, 80, true)!, detail: str(p.detail, `points[${i}].detail`, 400, true)! };
+  });
+  const latest = await loadLatestReport();
+  if (!latest) throw new CompetitorInputError("ingen rapport at analysere endnu");
+  const analysis: CompetitorAnalysis = { at: new Date().toISOString(), model, points };
+  const next = { ...latest, analysis };
+  await store.put(KEY_LATEST, next);
+  await store.put(`${PREFIX}${dateKeyOf(latest.generatedAt)}`, next);
+  return analysis;
 }
 
 export async function loadLatestReport(): Promise<CompetitorReport | null> {
