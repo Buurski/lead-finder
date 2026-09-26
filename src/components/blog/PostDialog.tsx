@@ -1,14 +1,18 @@
 "use client";
-// Kort-dialogen: SEO-felter (live tællere), A/B-billedvalg, tjekliste,
+// Kort-dialogen: SEO-felter (live tællere), billedvalg (A/B/C, 1-2 i rækkefølge), tjekliste,
 // faktatjek og fase-flyt. Body er read-only — redigering af brødteksten er
 // uden for scope her (spec). Henter det fulde indlæg selv (listen på tavlen
 // er uden body, jf. listPosts' kommentar).
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/shell/Icon";
-import type { BlogChecklist, BlogImageCandidate, BlogImages, BlogProofs, BlogStage, ImageChoice, PostCard } from "@/lib/hq/posts";
+import type { BlogChecklist, BlogImageCandidate, BlogImages, BlogProofs, BlogStage, PostCard } from "@/lib/hq/posts";
 import type { StageInfo } from "./BlogBoard";
-import { BLOG_CATEGORIES, SCORE_AXES, SCORE_LABEL, SEO_LIMITS, categoryLabel, countWords, isCustomerImage, overallScore, readScores, scoreLevel } from "./blog-utils";
+import { BLOG_CATEGORIES, IMAGE_SLOTS, SCORE_AXES, SCORE_LABEL, SEO_LIMITS, categoryLabel, chosenSlots, countWords, isCustomerImage, overallScore, readScores, scoreLevel, type ImageSlot } from "./blog-utils";
+
+type SlotText = Record<ImageSlot, string>;
+const EMPTY_SLOTS: SlotText = { a: "", b: "", c: "" };
+const ORDER_LABEL = ["1 · Top", "2 · I teksten"] as const;
 
 interface FullPost {
   id: string;
@@ -72,10 +76,8 @@ export default function PostDialog({
   const [slug, setSlug] = useState("");
   const [category, setCategory] = useState("");
   const [excerpt, setExcerpt] = useState("");
-  const [consentA, setConsentA] = useState("");
-  const [altA, setAltA] = useState("");
-  const [altB, setAltB] = useState("");
-  const [consentB, setConsentB] = useState("");
+  const [alts, setAlts] = useState<SlotText>(EMPTY_SLOTS);
+  const [consents, setConsents] = useState<SlotText>(EMPTY_SLOTS);
   const [factNote, setFactNote] = useState("");
 
   useEffect(() => {
@@ -93,10 +95,8 @@ export default function PostDialog({
         setSlug(p.slug);
         setCategory(p.category);
         setExcerpt(p.excerpt);
-        setConsentA(p.images.a?.consentRef ?? "");
-        setAltA(p.images.a?.alt ?? "");
-        setAltB(p.images.b?.alt ?? "");
-        setConsentB(p.images.b?.consentRef ?? "");
+        setAlts({ a: p.images.a?.alt ?? "", b: p.images.b?.alt ?? "", c: p.images.c?.alt ?? "" });
+        setConsents({ a: p.images.a?.consentRef ?? "", b: p.images.b?.consentRef ?? "", c: p.images.c?.consentRef ?? "" });
       })
       .catch((e) => { if (live) setLoadError(e instanceof Error ? e.message : "kunne ikke hente indlægget"); })
       .finally(() => { if (live) setLoading(false); });
@@ -133,8 +133,14 @@ export default function PostDialog({
     setExcerpt((cur) => (cur === sent.excerpt ? next.excerpt : cur));
   }
 
-  function chooseImage(choice: ImageChoice) {
-    void run({ images: { choice } });
+  // Klik i rækkefølge: første valgte = topbillede, andet = billedet i teksten; klik igen
+  // fravælger (fravælges toppen, rykker nr. 2 op). Serveren validerer og stempler valget.
+  function toggleImage(slot: ImageSlot) {
+    if (!post) return;
+    const order = chosenSlots(post.images.choice);
+    const next = order.includes(slot) ? order.filter((s) => s !== slot) : [...order, slot];
+    if (next.length > 2) return; // knappen er spærret — højst to
+    void run({ images: { choice: next.length ? next.join(",") : "none" } });
   }
 
   // "Bedøm igen" — samme Jev-bedømmelse som baggrundskaldet ved oprettelse,
@@ -160,22 +166,19 @@ export default function PostDialog({
     }
   }
 
-  function saveConsent(slot: "a" | "b") {
-    if (!post) return;
-    const cand = slot === "a" ? post.images.a : post.images.b;
+  function saveConsent(slot: ImageSlot) {
+    const cand = post?.images[slot];
     if (!cand) return;
-    const value = slot === "a" ? consentA : consentB;
-    const full: BlogImageCandidate = { ...cand, consentRef: value };
+    const full: BlogImageCandidate = { ...cand, consentRef: consents[slot] };
     void run({ images: { [slot]: full } });
   }
 
   // Alt-tekst rettes her, så checklistens alt-krav kan løses fra tavlen (Sol w4a R3).
   // Serveren nulstiller valget, hvis et valgt billede ændres — så vælger man igen.
-  function saveAlt(slot: "a" | "b") {
-    if (!post) return;
-    const cand = slot === "a" ? post.images.a : post.images.b;
+  function saveAlt(slot: ImageSlot) {
+    const cand = post?.images[slot];
     if (!cand) return;
-    const full: BlogImageCandidate = { ...cand, alt: (slot === "a" ? altA : altB).trim() };
+    const full: BlogImageCandidate = { ...cand, alt: alts[slot].trim() };
     void run({ images: { [slot]: full } });
   }
 
@@ -212,10 +215,10 @@ export default function PostDialog({
 
   // Ugemt alt-tekst skal spærre publicering ligesom SEO-felterne (Lucas' fund):
   // begge er "dirty"-agtige rettelser, der ellers stille forsvinder ved luk/skift.
-  const altDirty = Boolean(
-    (post?.images.a && altA.trim() !== post.images.a.alt) ||
-    (post?.images.b && altB.trim() !== post.images.b.alt)
-  );
+  const altDirty = IMAGE_SLOTS.some((s) => {
+    const cand = post?.images[s];
+    return Boolean(cand && alts[s].trim() !== cand.alt);
+  });
   const dirty = post ? title !== post.title || slug !== post.slug || category !== post.category || excerpt !== post.excerpt || altDirty : false;
   const idx = post ? stages.findIndex((s) => s.stage === post.stage) : -1;
   const canPublish = post ? post.stage !== "publicer" && post.stage !== "udgivet" : false;
@@ -309,32 +312,49 @@ export default function PostDialog({
                 )}
               </section>
 
-              {/* --- A/B billeder --- */}
+              {/* --- billeder A/B/C: vælg 1-2 i rækkefølge --- */}
               <section className="bl-section">
-                <h3 className="bl-section-title">A/B-billede</h3>
-                {!post.images.a && !post.images.b ? (
+                <h3 className="bl-section-title">Billeder</h3>
+                {!IMAGE_SLOTS.some((s) => post.images[s]) ? (
                   <p className="cc-dim">Ingen billedkandidater endnu.</p>
                 ) : (
                   <>
+                    {!locked && (
+                      <p className="bl-ab-hint">
+                        Klik på billederne i den rækkefølge du vil bruge dem: <strong>1</strong> bliver topbillede, <strong>2</strong> står inde i teksten. Klik igen for at fravælge.
+                      </p>
+                    )}
                     <div className="bl-ab-grid">
-                      {(["a", "b"] as const).map((slot) => {
-                        const cand = slot === "a" ? post.images.a : post.images.b;
-                        if (!cand) return <div key={slot} className="bl-ab-empty">Ingen kandidat {slot.toUpperCase()}</div>;
-                        const chosen = post.images.choice === slot || post.images.choice === "both";
-                        const heroLabel = post.images.choice === "both" ? (slot === "a" ? "Hero" : "I teksten") : chosen ? "Hero" : null;
-                        const consentVal = slot === "a" ? consentA : consentB;
-                        const setConsentVal = slot === "a" ? setConsentA : setConsentB;
+                      {IMAGE_SLOTS.map((slot) => {
+                        const cand = post.images[slot];
+                        const letter = slot.toUpperCase();
+                        if (!cand) return <div key={slot} className="bl-ab-empty">Ingen kandidat {letter}</div>;
+                        const order = chosenSlots(post.images.choice);
+                        const pos = order.indexOf(slot);
+                        const full = pos < 0 && order.length >= 2;
                         const custImg = isCustomerImage(cand);
-                        const altVal = slot === "a" ? altA : altB;
+                        const altVal = alts[slot];
                         return (
-                          <div key={slot} className="bl-ab-cand" data-chosen={chosen}>
-                            <div className="bl-ab-crop">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={cand.url} alt={cand.alt} />
-                              {heroLabel && <span className="bl-hero-badge">{heroLabel}</span>}
-                              {cand.placement && <span className="bl-placement-badge">{cand.placement}</span>}
+                          <div key={slot} className="bl-ab-cand" data-chosen={pos >= 0} data-blocked={full && !locked}>
+                            <div className="bl-ab-head">
+                              <strong>{letter}</strong>
+                              <span className="cc-dim">{cand.placement || "ingen placering"}</span>
                             </div>
-                            {chosen && (
+                            <button
+                              type="button"
+                              className="bl-ab-pick"
+                              aria-pressed={pos >= 0}
+                              disabled={busy || locked || full}
+                              onClick={() => toggleImage(slot)}
+                              title={locked ? "Låst i Publicer/Udgivet" : full ? "Der er allerede valgt to — fravælg et først" : pos >= 0 ? `Fravælg ${letter}` : order.length ? `Vælg ${letter} som billede i teksten` : `Vælg ${letter} som topbillede`}
+                            >
+                              <span className="bl-ab-crop">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={cand.url} alt={cand.alt} />
+                                {pos >= 0 && <span className="bl-hero-badge">{ORDER_LABEL[pos]}</span>}
+                              </span>
+                            </button>
+                            {pos === 0 && (
                               <div className="bl-og-crop">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={cand.url} alt="" />
@@ -344,11 +364,11 @@ export default function PostDialog({
                             <div className="bl-ab-meta">
                               <label className="bl-field bl-ab-alt">
                                 <span>Alt-tekst <Counter value={altVal.length} min={SEO_LIMITS.altMin} max={SEO_LIMITS.alt} /></span>
-                                <textarea className="bl-input bl-textarea" rows={2} value={altVal} onChange={(e) => (slot === "a" ? setAltA : setAltB)(e.target.value)} maxLength={200} placeholder="Beskriv hvad billedet viser (ikke 'billede af')" />
+                                <textarea className="bl-input bl-textarea" rows={3} value={altVal} onChange={(e) => setAlts((cur) => ({ ...cur, [slot]: e.target.value }))} maxLength={200} disabled={locked} placeholder="Beskriv hvad billedet viser (ikke 'billede af')" />
                               </label>
                               {!locked && altVal.trim() !== cand.alt && (
                                 <button type="button" className="cc-btn" onClick={() => saveAlt(slot)} disabled={busy}>
-                                  Gem alt-tekst{chosen ? " (valget skal tages igen bagefter)" : ""}
+                                  Gem alt-tekst{pos >= 0 ? " (valget skal tages igen bagefter)" : ""}
                                 </button>
                               )}
                               <div className="cc-dim bl-ab-credit">{cand.credit || "ingen kredit"} · {cand.source || "ingen kilde"}</div>
@@ -358,10 +378,10 @@ export default function PostDialog({
                                 <p className="bl-warn">Dette ligner et kundebillede — kundens samtykke skal registreres.</p>
                                 <label className="bl-field">
                                   <span>Samtykke (fx &quot;mail 2026-09-20 fra Allan&quot;)</span>
-                                  <input className="bl-input" value={consentVal} onChange={(e) => setConsentVal(e.target.value)} maxLength={200} />
+                                  <input className="bl-input" value={consents[slot]} onChange={(e) => setConsents((cur) => ({ ...cur, [slot]: e.target.value }))} maxLength={200} disabled={locked} />
                                 </label>
                                 {!locked && (
-                                  <button type="button" className="cc-btn" onClick={() => saveConsent(slot)} disabled={busy || consentVal === (cand.consentRef ?? "")}>Gem samtykke</button>
+                                  <button type="button" className="cc-btn" onClick={() => saveConsent(slot)} disabled={busy || consents[slot] === (cand.consentRef ?? "")}>Gem samtykke</button>
                                 )}
                               </div>
                             )}
@@ -369,13 +389,13 @@ export default function PostDialog({
                         );
                       })}
                     </div>
-                    {!locked && (
-                      <div className="bl-dialog-actions">
-                        <button type="button" className="cc-btn" data-on={post.images.choice === "a"} disabled={busy || !post.images.a} onClick={() => chooseImage("a")} title={!post.images.a ? "Ingen kandidat A" : undefined}>Vælg A</button>
-                        <button type="button" className="cc-btn" data-on={post.images.choice === "b"} disabled={busy || !post.images.b} onClick={() => chooseImage("b")} title={!post.images.b ? "Ingen kandidat B" : undefined}>Vælg B</button>
-                        <button type="button" className="cc-btn" data-on={post.images.choice === "both"} disabled={busy || !post.images.a || !post.images.b} onClick={() => chooseImage("both")} title={!post.images.a || !post.images.b ? "Kræver begge kandidater" : undefined}>Begge (A = hero, B i teksten)</button>
-                      </div>
-                    )}
+                    <p className="bl-ab-status" aria-live="polite">
+                      {(() => {
+                        const order = chosenSlots(post.images.choice);
+                        if (!order.length) return "Intet billede valgt endnu.";
+                        return order.map((s, i) => `${ORDER_LABEL[i]}: ${s.toUpperCase()}`).join(" · ");
+                      })()}
+                    </p>
                   </>
                 )}
               </section>

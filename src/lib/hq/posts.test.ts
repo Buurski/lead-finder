@@ -10,6 +10,7 @@ import {
   SOURCE_LABEL,
   STAGE_LABEL,
   bodyLinks,
+  chosenSlots,
   countWords,
   createPost,
   deletePost,
@@ -57,7 +58,7 @@ async function publish(id: string, actor = "lucas") {
 
 // --- Grønt eksempel: en kladde der opfylder hvert punkt i tjeklisten --------
 const GREEN_SLUG = "hvad-koster-en-hjemmeside";
-const GREEN_CANDIDATE = (slot: "a" | "b") => ({
+const GREEN_CANDIDATE = (slot: "a" | "b" | "c") => ({
   id: `billed-${slot}`,
   url: `https://cdn.kinly.dk/${slot}.jpg`,
   placement: slot === "a" ? "hero" : "inline",
@@ -67,7 +68,7 @@ const GREEN_CANDIDATE = (slot: "a" | "b") => ({
   mobileUrl: `https://cdn.kinly.dk/${slot}-mobil.jpg`,
   desktopUrl: `https://cdn.kinly.dk/${slot}-desktop.jpg`,
 });
-const GREEN_IMAGES: BlogImages = { a: GREEN_CANDIDATE("a"), b: GREEN_CANDIDATE("b"), choice: "none", choiceBy: "", choiceAt: null };
+const GREEN_IMAGES: BlogImages = { a: GREEN_CANDIDATE("a"), b: GREEN_CANDIDATE("b"), c: null, choice: "none", choiceBy: "", choiceAt: null };
 const GREEN_SOURCES = [1, 2, 3, 4, 5].map((n) => ({
   url: `https://www.erhvervsstyrelsen.dk/kilde-${n}`,
   date: `2026-09-0${n}`,
@@ -542,9 +543,9 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
   // Agenten kan levere alt undtagen de to menneske-punkter.
   const halv = await updatePost(db, post.id, { body: greenBody(), proofs: { ...GREEN_PROOFS }, images: GREEN_IMAGES }, "hermes");
   assert.deepEqual(readChecklist(halv.checklist).missing, [
-    "menneskets A/B-valg mangler (A, B eller begge)",
+    "menneskets billedvalg mangler (vælg 1-2 af A, B og C: første = topbillede, andet = i teksten)",
     "menneskets faktatjek mangler (nul opdigtede kunder, citater og tal)",
-    "et billede skal vælges (A, B eller begge) — uden billede kan opslaget ikke publiceres",
+    "et billede skal vælges (1-2 af A, B og C) — uden billede kan opslaget ikke publiceres",
   ]);
 
   // Agenten kan ikke publicere, uanset hvor grønt kortet er.
@@ -610,7 +611,7 @@ test("tjeklistens enkelte punkter: ord, links, CTA, pladsholder og A/B-stempel",
   assert.equal(grøn.ok, true, grøn.missing.join("; "));
 
   const udenValg = runChecklist({ ...grund, images: { ...billeder, choiceBy: "", choiceAt: null }, proofs: beviser });
-  assert.match(udenValg.missing.join(" "), /A\/B-valg/);
+  assert.match(udenValg.missing.join(" "), /menneskets billedvalg/);
 
   const medTodo = runChecklist({ ...grund, body: `${grund.body}\n\nTODO: skriv resten`, images: billeder, proofs: beviser });
   assert.match(medTodo.missing.join(" "), /pladsholder/);
@@ -655,7 +656,7 @@ test("Jev-svaret gemmes på den revision det gjaldt", async () => {
 
 test("SEO-gates (Lucas 25-09): kategori, titel, uddrag, alt-tekst, billedvalg og kundesamtykke", () => {
   const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre." };
-  const valgt = (choice: "a" | "b" | "both" | "none", a = GREEN_CANDIDATE("a")): BlogImages => ({ a, b: GREEN_CANDIDATE("b"), choice, choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" });
+  const valgt = (choice: string, a = GREEN_CANDIDATE("a")): BlogImages => ({ a, b: GREEN_CANDIDATE("b"), c: null, choice, choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" });
   assert.deepEqual(seoMissing(grund, valgt("a")), []);
   const m = (p: object, imgs = valgt("a")) => seoMissing({ ...grund, ...p }, imgs).join(" | ");
   assert.match(m({ category: "Priser" }), /kategori skal være/);
@@ -697,4 +698,81 @@ test("agenten kan ikke registrere kundens samtykke til et billede — Opus-counc
   await assert.rejects(updatePost(db, post.id, { images: { a: kunde } }, "hermes"), /samtykke/);
   const ok = await updatePost(db, post.id, { images: { a: kunde } }, "lucas");
   assert.equal(readImages(ok.images).a?.consentRef, "mail 2026-09-20 fra Allan");
+});
+
+// --- A/B/C og ordnet valg (Lucas 26/9: "tre billeder jeg kan vælge mellem") ---
+const ABC = { a: GREEN_CANDIDATE("a"), b: GREEN_CANDIDATE("b"), c: GREEN_CANDIDATE("c") };
+
+test("bagudkompatibelt: gamle rækker med 'both'/'none' og uden c læses korrekt", () => {
+  const legacy = { a: GREEN_CANDIDATE("a"), b: GREEN_CANDIDATE("b"), choice: "both", choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" };
+  const r = readImages(legacy);
+  assert.equal(r.choice, "a,b");
+  assert.equal(r.c, null);
+  assert.deepEqual(chosenSlots(r), ["a", "b"]);
+  assert.equal(readImages({ a: null, b: null, choice: "none" }).choice, "none");
+  assert.equal(readImages({}).choice, "none");
+  // Rod i en gammel række bliver "intet valgt" — aldrig et gæt.
+  for (const bad of ["a,a", "a,b,c", "x", 7]) assert.equal(readImages({ ...legacy, choice: bad }).choice, "none", String(bad));
+  // Revisionen for et kort fra før C-slotten er uændret (grønne kort i Publicer og faktatjek holder).
+  const grund = { title: "T", slug: "t-t-t", body: "b" };
+  assert.equal(revisionOf({ ...grund, images: legacy }), revisionOf({ ...grund, images: { ...legacy, c: null, choice: "a,b" } }));
+  assert.notEqual(revisionOf({ ...grund, images: legacy }), revisionOf({ ...grund, images: { ...legacy, c: GREEN_CANDIDATE("c") } }));
+});
+
+test("ordnet valg: c,a gemmes i rækkefølge; kun mennesker; dubletter, >2 og tomme slots afvises", async () => {
+  const post = await createPost(db, { title: "Tre billeder" }, "hermes");
+  const med = await updatePost(db, post.id, { images: ABC }, "hermes");
+  assert.deepEqual(readImages(med.images).c, ABC.c);
+
+  await assert.rejects(updatePost(db, post.id, { images: { choice: "c,a" } }, "hermes"), /kun Lucas eller Charlie/);
+  await assert.rejects(updatePost(db, post.id, { images: { choice: "a,a" } }, "lucas"), /to gange/);
+  await assert.rejects(updatePost(db, post.id, { images: { choice: "a,b,c" } }, "lucas"), /højst to/);
+  await assert.rejects(updatePost(db, post.id, { images: { choice: "d" } }, "lucas"), /a, b og c/);
+
+  const valgt = await updatePost(db, post.id, { images: { choice: "c,a" } }, "lucas");
+  const imgs = readImages(valgt.images);
+  assert.equal(imgs.choice, "c,a");
+  assert.deepEqual(chosenSlots(imgs), ["c", "a"]);
+  assert.equal(imgs.choiceBy, "lucas");
+  // Et valg ændrer ikke revisionen (billedvalget må ikke ugyldiggøre faktatjekket).
+  assert.equal(readChecklist(valgt.checklist).revision, readChecklist(med.checklist).revision);
+
+  // Legacy-input "both" forstås stadig og gemmes i ny form.
+  const begge = await updatePost(db, post.id, { images: { choice: "both" } }, "charlie");
+  assert.equal((begge.images as { choice: string }).choice, "a,b");
+
+  // Valget må ikke pege på en tom slot.
+  const tom = await createPost(db, { title: "Kun A", images: { a: ABC.a } }, "hermes");
+  await assert.rejects(updatePost(db, tom.id, { images: { choice: "a,c" } }, "lucas"), /kræver en kandidat i c/);
+});
+
+test("valgt C kan agenten ikke udskifte; frit B må den rette; mennesket rydder stemplet", async () => {
+  const post = await createPost(db, { title: "C er valgt", images: ABC }, "hermes");
+  await updatePost(db, post.id, { images: { choice: "c" } }, "lucas");
+  const ny = { ...ABC.c, url: "https://cdn.kinly.dk/c-ny.jpg" };
+  await assert.rejects(updatePost(db, post.id, { images: { c: ny } }, "hermes"), /valgt billede \(c\)/);
+  const frit = await updatePost(db, post.id, { images: { b: { ...ABC.b, url: "https://cdn.kinly.dk/b-ny.jpg" } } }, "hermes");
+  assert.equal(readImages(frit.images).choiceBy, "lucas");
+  const human = readImages((await updatePost(db, post.id, { images: { c: ny } }, "lucas")).images);
+  assert.equal(human.choice, "c");
+  assert.equal(human.choiceBy, "");
+});
+
+test("tjeklisten: kun kandidater der findes skal være komplette, og mindst ét billede skal være valgt", () => {
+  const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: GREEN_EXCERPT, body: greenBody() };
+  const kunA: BlogImages = { a: ABC.a, b: null, c: null, choice: "a", choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" };
+  const rev = (images: BlogImages) => revisionOf({ ...grund, images, proofs: GREEN_PROOFS });
+  const beviser = (images: BlogImages) => ({ ...GREEN_PROOFS, factcheck: { by: "lucas", at: "x", note: "", revision: rev(images) } });
+  const check = (images: BlogImages) => runChecklist({ ...grund, images, proofs: beviser(images) });
+
+  assert.deepEqual(check(kunA).missing, []);
+  const ordnet: BlogImages = { ...kunA, b: ABC.b, c: ABC.c, choice: "c,a" };
+  assert.deepEqual(check(ordnet).missing, []);
+  const halvC: BlogImages = { ...ordnet, c: { ...ABC.c, credit: "", source: "" } };
+  assert.match(check(halvC).missing.join(" | "), /billedkandidat C mangler kredit, kilde/);
+  const ingen: BlogImages = { a: null, b: null, c: null, choice: "none", choiceBy: "", choiceAt: null };
+  assert.match(check(ingen).missing.join(" | "), /mindst én billedkandidat/);
+  assert.match(check({ ...kunA, choice: "none" }).missing.join(" | "), /menneskets billedvalg/);
+  // SEO-gaten tjekker de valgte i rækkefølge — også C.
+  assert.match(seoMissing(grund, { ...ordnet, c: { ...ABC.c, alt: "kort" } }).join(" "), /alt-tekst på C/);
 });

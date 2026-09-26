@@ -292,9 +292,11 @@ export const blogPost = pgTable(
     body: text("body").notNull().default(""),
     note: text("note").notNull().default(""),
     sourcePath: text("source_path").notNull().default(""),
-    // A/B-billedkontrakt (se hq/posts.ts: BlogImages): {"a":kandidat|null,
-    // "b":kandidat|null,"choice":"a"|"b"|"both"|"none"}. Ren CRM-data, ingen
-    // upload — kandidaterne er URL'er til billeder der allerede ligger et sted.
+    // Billedkontrakt (se hq/posts.ts: BlogImages): {"a"|"b"|"c":kandidat|null,
+    // "choice":"none"|ordnet liste af 1-2 slots som "c,a" (legacy "both" = "a,b")}.
+    // Ren CRM-data, ingen upload — kandidaterne er URL'er til billeder der
+    // allerede ligger et sted. Default rører vi ikke (ingen migration: readImages
+    // læser manglende c som null).
     images: jsonb("images").notNull().default({ a: null, b: null, choice: "none" }),
     // Hvor kortet kom fra (spec 24-09 §Datamodel): "manuel" | "agent" | "crm-signal".
     // Kun den autentificerede menneske-intake kan skabe manuel — også når idéen

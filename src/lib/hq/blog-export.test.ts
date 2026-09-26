@@ -5,7 +5,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
 import { createPost, updatePost } from "./posts.ts";
-import { confirmPublished, exportablePosts, parseBody, toKinlyPost } from "./blog-export.ts";
+import { afterSectionFor, confirmPublished, exportablePosts, parseBody, toKinlyPost } from "./blog-export.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -104,6 +104,35 @@ test("confirmPublished kræver 200 fra siden, før kortet bliver Udgivet", async
   assert.equal(after.stage, "udgivet");
   assert.equal(after.publishedUrl, url);
   await assert.rejects(confirmPublished(db, p.id, url, fake(200, html)), /ikke i Publicer/);
+});
+
+test("ordnet valg c,a: cover = C, billedet i teksten = A med afterSection fra placement og caption fra kredit", () => {
+  const row = (choice: string, placement: string, credit = "Unsplash / Jane Doe") => ({
+    id: "x", title: "T", slug: "tre-billeder", category: "pris", excerpt: "e", body: body("tre-billeder"), proofs: {}, updatedBy: "lucas",
+    images: { a: { ...cand("a"), placement, credit }, b: cand("b"), c: { ...cand("b"), id: "billed-c", url: "https://cdn.kinly.dk/c.webp" }, choice },
+  });
+  const { post, files } = toKinlyPost(row("c,a", "efter-afsnit-1"));
+  assert.equal(post.cover.src, "/img/blog/tre-billeder-hero.webp");
+  assert.deepEqual(files.map((f) => f.url), ["https://cdn.kinly.dk/c.webp", "https://cdn.kinly.dk/a.png"]);
+  assert.equal(post.images?.length, 1);
+  assert.equal(post.images?.[0].src, "/img/blog/tre-billeder-billede.png");
+  assert.equal(post.images?.[0].afterSection, 0); // "efter afsnit 1" = efter sektion med indeks 0
+  assert.equal(post.images?.[0].caption, "Kilde: Unsplash / Jane Doe");
+  assert.equal(toKinlyPost(row("c,a", "efter-afsnit-1", "Foto: Kinly")).post.images?.[0].caption, "Foto: Kinly");
+  assert.equal(toKinlyPost(row("c,a", "efter-afsnit-1", "")).post.images?.[0].caption, undefined);
+  // Et enkelt valg giver kun cover.
+  assert.equal(toKinlyPost(row("a", "hero")).post.images, undefined);
+  // Legacy "both" = a som cover, b i teksten.
+  assert.equal(toKinlyPost(row("both", "hero")).post.cover.src, "/img/blog/tre-billeder-hero.png");
+});
+
+test("afterSectionFor: efter-afsnit-N (klemt), ellers midterste sektion", () => {
+  assert.equal(afterSectionFor("efter-afsnit-2", 4), 1);
+  assert.equal(afterSectionFor("efter-afsnit-9", 4), 3);
+  assert.equal(afterSectionFor("efter-afsnit-0", 4), 0);
+  assert.equal(afterSectionFor("midt", 4), 2);
+  assert.equal(afterSectionFor("hero", 5), 2);
+  assert.equal(afterSectionFor("inline", 1), 0);
 });
 
 test("toKinlyPost uden valgt billede kaster", () => {

@@ -6,12 +6,12 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
-import { markPublished, readChecklist, readImages, readProofs, revisionOf, type BlogImageCandidate } from "./posts.ts";
+import { chosenSlots, markPublished, readChecklist, readImages, readProofs, revisionOf, type BlogImageCandidate } from "./posts.ts";
 
 type Row = typeof blogPost.$inferSelect;
 
 export interface KinlySection { heading: string; paragraphs: string[]; bullets?: string[] }
-export interface KinlyImage { src: string; alt: string; afterSection?: number; consentRef?: string }
+export interface KinlyImage { src: string; alt: string; caption?: string; afterSection?: number; consentRef?: string }
 export interface KinlyPost {
   slug: string;
   title: string;
@@ -76,6 +76,24 @@ export function parseBody(body: string): { intro: string[]; sections: KinlySecti
   return { intro, sections };
 }
 
+/**
+ * Billede 2's plads. kinly.dk's afterSection er et 0-baseret sektionsindeks ("vises efter
+ * sektionen med dette indeks"), så placement "efter-afsnit-2" (efter 2. afsnit) → 1.
+ * Andet ("midt", "inline", "hero" …) → midterste sektion. Altid klemt inden for sektionerne.
+ */
+export function afterSectionFor(placement: string, count: number): number {
+  const m = /^efter-afsnit-(\d{1,3})$/i.exec(placement.trim());
+  const idx = m ? Number(m[1]) - 1 : Math.floor(count / 2);
+  return Math.max(0, Math.min(idx, count - 1));
+}
+
+/** Billedtekst ud fra krediteringen: "Foto: …"/"Kilde: …" står som de er, ellers "Kilde: <kredit>". */
+function captionFor(credit: string): { caption?: string } {
+  const c = credit.trim();
+  if (!c) return {};
+  return { caption: /^(foto|kilde|illustration|grafik|graf)\s*:/i.test(c) ? c : `Kilde: ${c}` };
+}
+
 function cphToday(now = new Date()): string {
   return now.toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
 }
@@ -85,9 +103,8 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
   const slug = row.slug;
   const images = readImages(row.images);
   const proofs = readProofs(row.proofs);
-  const chosen: BlogImageCandidate[] = (images.choice === "both" ? [images.a, images.b] : images.choice === "a" ? [images.a] : images.choice === "b" ? [images.b] : []).filter(
-    (k): k is BlogImageCandidate => Boolean(k),
-  );
+  // Rækkefølgen er menneskets: første valgte = cover, andet = billedet i teksten.
+  const chosen = chosenSlots(images).map((s) => images[s]).filter((k): k is BlogImageCandidate => Boolean(k));
   if (!chosen.length) throw new Error(`${slug}: intet valgt billede`);
 
   const { intro, sections: parsed } = parseBody(row.body);
@@ -121,7 +138,9 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
     ...(intro[1] ? { shortAnswer: intro[1] } : {}),
     cover: img(chosen[0], 0),
     sections,
-    ...(chosen[1] ? { images: [{ ...img(chosen[1], 1), afterSection: Math.min(1, sections.length - 1) }] } : {}),
+    ...(chosen[1]
+      ? { images: [{ ...img(chosen[1], 1), afterSection: afterSectionFor(chosen[1].placement, sections.length), ...captionFor(chosen[1].credit) }] }
+      : {}),
     ...(proofs.sources.length
       ? { sources: proofs.sources.map((s) => ({ label: s.claim.length > 140 ? `${s.claim.slice(0, 137)}…` : s.claim || s.url, url: s.url })) }
       : {}),

@@ -38,6 +38,16 @@ const IMAGE_CANDIDATES = {
     mobileUrl: "https://cdn.example.com/b-mobile.jpg",
     desktopUrl: "https://cdn.example.com/b-desktop.jpg",
   },
+  c: {
+    id: "billed-c",
+    url: "https://cdn.example.com/c.jpg",
+    placement: "efter-afsnit-2",
+    alt: "En kaffekop ved siden af en telefon",
+    credit: "Foto: C",
+    source: "CRM",
+    mobileUrl: "",
+    desktopUrl: "",
+  },
 };
 
 let db: Db;
@@ -118,6 +128,7 @@ test("A/B-billeder kan round-trippe, men agenten kan ikke vælge dem", async () 
   assert.equal(created.post.images.choice, "none");
   assert.deepEqual(created.post.images.a, IMAGE_CANDIDATES.a);
   assert.deepEqual(created.post.images.b, IMAGE_CANDIDATES.b);
+  assert.deepEqual(created.post.images.c, IMAGE_CANDIDATES.c);
 
   const list = await (await post({ actor: "hermes", action: "list" })).json();
   assert.deepEqual(list.cards[0].images, created.post.images);
@@ -132,13 +143,13 @@ test("A/B-billeder kan round-trippe, men agenten kan ikke vælge dem", async () 
   assert.match((await agentChoice.json()).error, /kun Lucas eller Charlie/);
 
   const humanChoice = await updatePost(db, created.post.id, { images: { choice: "both" } }, "lucas");
-  assert.equal(humanChoice.images.choice, "both");
+  assert.equal(humanChoice.images.choice, "a,b"); // legacy "both" gemmes i ny form
   assert.deepEqual(humanChoice.images.a, IMAGE_CANDIDATES.a);
   assert.deepEqual(humanChoice.images.b, IMAGE_CANDIDATES.b);
 });
 
 test("agenten kan ikke udskifte et allerede valgt billede, men må rette frie slots", async () => {
-  for (const choice of ["a", "b", "both"] as const) {
+  for (const choice of ["a", "b", "a,b", "c,a"] as const) {
     const created = await (await post({ action: "create", title: `Valgt billede ${choice}`, images: IMAGE_CANDIDATES })).json();
     const id = created.post.id;
     await updatePost(db, id, { images: { choice } }, "lucas");
@@ -152,7 +163,7 @@ test("agenten kan ikke udskifte et allerede valgt billede, men må rette frie sl
         desktopUrl: `https://cdn.example.com/nyt-${slot}-desktop.jpg`,
       };
       const res = await post({ action: "update", id, fields: { images: { [slot]: replacement } } });
-      if (choice === slot || choice === "both") {
+      if (choice.split(",").includes(slot)) {
         assert.equal(res.status, 400, `valgt ${slot} må ikke ændres ved choice=${choice}`);
         assert.match((await res.json()).error, /valgt billede/);
         const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
