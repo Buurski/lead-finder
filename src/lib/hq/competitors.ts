@@ -15,9 +15,9 @@ export type BlogQuality = "høj" | "mellem" | "lav";
 export type GapKind = "indhold" | "ydelse" | "pris" | "synlighed";
 export type CompetitorKind = "bureau" | "freelancer" | "ai-bygger";
 export type MessagingAngle = "pris" | "hastighed" | "ai" | "lokal" | "garanti";
-export type FindingCategory = "ydelse" | "pris-budskab" | "seo" | "geo" | "alternativ" | "forbedring";
+export type FindingCategory = "ydelse" | "pris-budskab" | "seo" | "geo" | "alternativ" | "forbedring" | "inspiration";
 export type FindingSuggest = "blog" | "annonce" | "kinly-dk" | "salg";
-export const FINDING_CATEGORIES = ["ydelse", "pris-budskab", "seo", "geo", "alternativ", "forbedring"] as const;
+export const FINDING_CATEGORIES = ["ydelse", "pris-budskab", "seo", "geo", "alternativ", "forbedring", "inspiration"] as const;
 export const FINDING_SUGGESTS = ["blog", "annonce", "kinly-dk", "salg"] as const;
 
 export interface CompetitorGoogle {
@@ -36,7 +36,8 @@ export interface CompetitorSite {
 export interface CompetitorBlog {
   posts30d: number;
   topics: string[];
-  quality: BlogQuality;
+  /** Mangler når Jev ikke har vurderet bloggens opslag endnu. */
+  quality?: BlogQuality;
 }
 export interface CompetitorSocial {
   facebookFollowers?: number;
@@ -103,6 +104,8 @@ export interface CompetitorFinding {
   rating: number;
   evidence: string[];
   suggest: FindingSuggest;
+  /** Kun inspiration: link til opslaget på X/LinkedIn/HN (https). */
+  url?: string;
 }
 /** Billig LLM-læsning af Jevs tal (søndag efter scannet). Sættes kun via saveAnalysis. */
 export interface CompetitorAnalysis {
@@ -117,6 +120,8 @@ export interface CompetitorReport {
   patterns: CompetitorPattern[];
   gaps: CompetitorGap[];
   findings?: CompetitorFinding[];
+  /** ScrapeCreators-forbrug for inspiration (X/LinkedIn). */
+  credits?: { used: number; left: number };
   analysis?: CompetitorAnalysis;
 }
 
@@ -248,7 +253,7 @@ function parseBlog(v: unknown): CompetitorBlog | undefined {
   return {
     posts30d: int(o.posts30d, "blog.posts30d", 0, true)!,
     topics: strArray(o.topics, "blog.topics", 8, 80) ?? [],
-    quality: enumOf(o.quality, "blog.quality", ["høj", "mellem", "lav"] as const, true)!,
+    quality: enumOf(o.quality, "blog.quality", ["høj", "mellem", "lav"] as const, false),
   };
 }
 function parseSocial(v: unknown): CompetitorSocial | undefined {
@@ -354,7 +359,7 @@ function parseGap(v: unknown, i: number): CompetitorGap {
 function parseFinding(v: unknown, i: number): CompetitorFinding {
   const label = `findings[${i}]`;
   const o = obj(v, label);
-  noUnknownKeys(o, ["id", "category", "title", "detail", "rating", "evidence", "suggest"], label);
+  noUnknownKeys(o, ["id", "category", "title", "detail", "rating", "evidence", "suggest", "url"], label);
   return {
     id: str(o.id, `${label}.id`, 40, true)!,
     category: enumOf(o.category, `${label}.category`, FINDING_CATEGORIES, true)!,
@@ -363,13 +368,14 @@ function parseFinding(v: unknown, i: number): CompetitorFinding {
     rating: intRange(o.rating, `${label}.rating`, 1, 5, true)!,
     evidence: strArray(o.evidence, `${label}.evidence`, 6, 80) ?? [],
     suggest: enumOf(o.suggest, `${label}.suggest`, FINDING_SUGGESTS, true)!,
+    ...(o.url !== undefined ? { url: httpsUrl(o.url, `${label}.url`, true)! } : {}),
   };
 }
 
 /** Streng validering (kastes CompetitorInputError ved fejl). Lister klippes til deres loft i stedet for at blive afvist. */
 export function validateReport(raw: unknown): CompetitorReport {
   const o = obj(raw, "rapport");
-  noUnknownKeys(o, ["generatedAt", "jevCalls", "competitors", "patterns", "gaps", "findings"], "rapport");
+  noUnknownKeys(o, ["generatedAt", "jevCalls", "competitors", "patterns", "gaps", "findings", "credits"], "rapport");
   const generatedAt = isoDate(o.generatedAt, "generatedAt");
   const jevCalls = int(o.jevCalls, "jevCalls", 0, true)!;
   if (!Array.isArray(o.competitors)) throw new CompetitorInputError("competitors skal være en liste");
@@ -383,7 +389,13 @@ export function validateReport(raw: unknown): CompetitorReport {
     if (!Array.isArray(o.findings)) throw new CompetitorInputError("findings skal være en liste");
     findings = o.findings.slice(0, MAX_FINDINGS).map(parseFinding);
   }
-  return { generatedAt, jevCalls, competitors, patterns, gaps, ...(findings ? { findings } : {}) };
+  let credits: CompetitorReport["credits"];
+  if (o.credits !== undefined) {
+    const c = obj(o.credits, "credits");
+    noUnknownKeys(c, ["used", "left"], "credits");
+    credits = { used: int(c.used, "credits.used", 0, true)!, left: int(c.left, "credits.left", 0, true)! };
+  }
+  return { generatedAt, jevCalls, competitors, patterns, gaps, ...(findings ? { findings } : {}), ...(credits ? { credits } : {}) };
 }
 
 function dateKeyOf(generatedAt: string): string {

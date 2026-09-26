@@ -47,6 +47,7 @@ const CATEGORY_CHIP_LABEL: Record<FindingCategory, string> = {
   geo: "GEO/AI",
   alternativ: "Alternativer (AI-byggere)",
   forbedring: "Forbedringer",
+  inspiration: "Inspiration (X/LinkedIn)",
 };
 const CATEGORY_BADGE_LABEL: Record<FindingCategory, string> = {
   ydelse: "Ydelse",
@@ -55,6 +56,7 @@ const CATEGORY_BADGE_LABEL: Record<FindingCategory, string> = {
   geo: "GEO/AI",
   alternativ: "Alternativ",
   forbedring: "Forbedring",
+  inspiration: "Inspiration",
 };
 const GAP_TO_CATEGORY: Record<GapKind, FindingCategory> = {
   indhold: "seo",
@@ -72,6 +74,7 @@ const CATEGORY_TO_BLOG: Record<FindingCategory, string> = {
   geo: "ai-soegning",
   alternativ: "kinly",
   forbedring: "kinly",
+  inspiration: "ai-soegning",
 };
 const KIND_ORDER: CompetitorKind[] = ["bureau", "freelancer", "ai-bygger"];
 const KIND_LABEL: Record<CompetitorKind, string> = {
@@ -95,6 +98,7 @@ interface DisplayFinding {
   rating?: number;
   evidence: string[];
   suggest: FindingSuggest;
+  url?: string;
 }
 
 function gapsToFindings(gaps: CompetitorGap[]): DisplayFinding[] {
@@ -166,7 +170,8 @@ function FindingCard({ f, big = false, onDismiss }: { f: DisplayFinding; big?: b
   const primary: ActionKey = f.suggest === "blog" ? "blog" : f.suggest === "annonce" ? "annonce" : "gem";
 
   function noteFor(f: DisplayFinding): string {
-    const parts = [f.detail, ...f.evidence];
+    // url først: blog-noten klippes ved 300 tegn, så kilden må ikke ryge.
+    const parts = [...(f.url ? [f.url] : []), f.detail, ...f.evidence];
     return parts.join(" — ").slice(0, 4000);
   }
 
@@ -244,6 +249,11 @@ function FindingCard({ f, big = false, onDismiss }: { f: DisplayFinding; big?: b
           {f.evidence.map((e) => (
             <span key={e} className="konk-evidence-chip">{e}</span>
           ))}
+          {f.url && (
+            <a href={f.url} target="_blank" rel="noopener noreferrer" className="cc-link konk-evidence-link">
+              Se opslag ↗
+            </a>
+          )}
         </div>
       )}
       <div className="konk-finding-actions">
@@ -473,6 +483,12 @@ export default function KonkurrenterBoard({
             <span className="konk-summary-value">{kindGroups[k].length}</span>
           </div>
         ))}
+        {report.credits && (
+          <div className="konk-summary-stat">
+            <span className="konk-summary-label">ScrapeCreators</span>
+            <span className="konk-summary-value">{report.credits.left} credits</span>
+          </div>
+        )}
       </div>
 
       {/* 2. Denne uge */}

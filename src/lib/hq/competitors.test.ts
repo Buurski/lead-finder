@@ -170,3 +170,32 @@ test("analyse hæftes på nyeste rapport; nyt scan fjerner den; validering holde
   await saveReport(validRaw({ generatedAt: "2026-02-01T02:00:00.000Z" }));
   assert.equal((await loadLatestReport())!.analysis, undefined);
 });
+
+test("inspiration-fund med https-url og credits accepteres; http/javascript-url og ukendte credit-felter afvises", async () => {
+  const f = { id: "ins-abc", category: "inspiration", title: "Vis fast pris i annoncer", detail: "Så gør vi: …", rating: 4,
+    evidence: ["@levelsio"], suggest: "annonce", url: "https://x.com/levelsio/status/1" };
+  const saved = await saveReport(validRaw({ findings: [f], credits: { used: 16, left: 1100 } }));
+  assert.equal(saved.findings?.[0].url, "https://x.com/levelsio/status/1");
+  assert.deepEqual(saved.credits, { used: 16, left: 1100 });
+  assert.deepEqual((await loadLatestReport())?.credits, { used: 16, left: 1100 });
+  for (const url of ["http://x.com/a", "javascript:alert(1)"]) {
+    assert.throws(() => validateReport(validRaw({ findings: [{ ...f, url }] })), CompetitorInputError);
+  }
+  assert.throws(() => validateReport(validRaw({ credits: { used: 1, left: 2, x: 3 } })), CompetitorInputError);
+  assert.throws(() => validateReport(validRaw({ credits: { used: -1, left: 2 } })), CompetitorInputError);
+});
+
+test("scan-output: blog uden quality og AI-bygger med country 'andet' accepteres", () => {
+  const base = validRaw();
+  const v = validateReport({
+    ...base,
+    competitors: [
+      { ...base.competitors[0], blog: { posts30d: 1 } },
+      { name: "Wix", url: "https://www.wix.com/", country: "andet", kind: "ai-bygger", aiBuilder: { aiFeatures: true, danish: false, codeExport: false } },
+    ],
+  });
+  assert.equal(v.competitors[0].blog?.quality, undefined);
+  assert.equal(v.competitors[1].country, "andet");
+  const bad = { ...base.competitors[0], site: { ...base.competitors[0].site, services: ["seo"] } };
+  assert.throws(() => validateReport({ ...base, competitors: [bad] }), CompetitorInputError); // scannet skal fjerne site.services
+});

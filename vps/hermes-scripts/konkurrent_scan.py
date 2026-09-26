@@ -268,7 +268,8 @@ def run_ai_builders(alt_in: list[dict]) -> list[dict]:
     """Letvægtsspor for kind=='ai-bygger': kun fetch + regex, ingen Places/Jev/GEO/blog."""
     out: list[dict] = []
     for comp in alt_in:
-        entry: dict = {"name": comp["name"], "url": comp["url"], "kind": "ai-bygger"}
+        entry: dict = {"name": comp["name"], "url": comp["url"], "kind": "ai-bygger",
+                       "country": "DK" if comp.get("country") == "DK" else "andet"}
         raw_html = fetch_site(comp["url"])
         if not raw_html:
             continue
@@ -910,6 +911,10 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
     insp = inspiration.collect(dry_run)
     errors.extend(insp["errors"])
     jev_calls += insp.get("judged", 0)
+
+    for e in out_competitors:  # site.services bruges internt (mønstre); HQ kender kun top-level "services"
+        if isinstance(e.get("site"), dict):
+            e["site"].pop("services", None)
 
     now = datetime.now(timezone.utc)
     report = {
