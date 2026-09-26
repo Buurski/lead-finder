@@ -45,6 +45,7 @@ export interface NextStep {
   step: string;
   owner: string;
   due: string; // YYYY-MM-DD eller ""
+  dueTime: string;
   note: string;
   important: boolean;
   state: StepState;
@@ -110,6 +111,7 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
       step: it.title,
       owner: it.owner,
       due: it.due,
+      dueTime: it.dueTime,
       note: it.note,
       important: it.important,
       state: itemState(it, today),

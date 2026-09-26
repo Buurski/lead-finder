@@ -210,7 +210,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
             company={c.name}
             today={today}
             defaultOwner={defaultOwner}
-            initialTasks={dossier.openTasks.map((t) => ({ id: t.id, title: t.title, due: t.due, owner: t.owner, note: t.note, important: t.important }))}
+            initialTasks={dossier.openTasks.map((t) => ({ id: t.id, title: t.title, due: t.due, dueTime: t.dueTime, owner: t.owner, note: t.note, important: t.important }))}
           />
         </>
       ),

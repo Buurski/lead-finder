@@ -15,13 +15,14 @@ export interface TaskRowItem extends EditableTask {
 
 const MONTH = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 
-function dueLabel(due: string, today: string): string {
+function dueLabel(due: string, today: string, dueTime: string): string {
+  const suffix = dueTime ? `, ${dueTime}` : "";
   if (!due) return "Ingen dato";
-  if (due === today) return "I dag";
-  if (due === addDays(today, 1)) return "I morgen";
+  if (due === today) return `I dag${suffix}`;
+  if (due === addDays(today, 1)) return `I morgen${suffix}`;
   if (due < today) return "Forfalden";
   const d = new Date(`${due}T00:00:00Z`);
-  return `${d.getUTCDate()}. ${MONTH[d.getUTCMonth()]}`;
+  return `${d.getUTCDate()}. ${MONTH[d.getUTCMonth()]}${suffix}`;
 }
 
 function OwnerPill({ owner }: { owner: string }) {
@@ -84,8 +85,8 @@ export default function TaskRow({
       </div>
       <OwnerPill owner={item.owner} />
       <details className="op-menu">
-        <summary className="op-due cc-focus" data-overdue={overdue} aria-label={`Forfald: ${dueLabel(item.due, today)}. Klik for at flytte.`}>
-          <span className="cc-mono">{dueLabel(item.due, today)}</span>
+        <summary className="op-due cc-focus" data-overdue={overdue} aria-label={`Forfald: ${dueLabel(item.due, today, item.dueTime)}. Klik for at flytte.`}>
+          <span className="cc-mono">{dueLabel(item.due, today, item.dueTime)}</span>
           <Icon name="ChevronDown" style={{ width: 13, height: 13 }} />
         </summary>
         <div className="op-menu-list">

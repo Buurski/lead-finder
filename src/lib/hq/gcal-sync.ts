@@ -7,7 +7,9 @@
 // dato) sammenlignes med kalenderens HQ-mærkede begivenheder; kun forskelle
 // skrives. Begivenheder uden HQ-mærket røres aldrig.
 import { createHash } from "node:crypto";
-import type { MyDayItem } from "./tasks.ts";
+import { getDb, pgEnabled } from "../db/client.ts";
+import { copenhagenNow } from "../settings.ts";
+import { listMyDay, type MyDayItem } from "./tasks.ts";
 
 export type CalOwner = "lucas" | "charlie";
 
@@ -41,11 +43,29 @@ export function ownerOf(item: Pick<MyDayItem, "owner">): CalOwner {
   return item.owner === "charlie" ? "charlie" : "lucas";
 }
 
-export function toEvent(item: MyDayItem, today: string): CalEvent | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(item.due)) return null;
-  // Forfalden opgave flyttes til i dag, så den minder igen hver morgen til den er klaret.
-  const day = item.due < today ? today : item.due;
-  const overdue = item.due < today;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const SLOT_START = "09:00"; // dagens tidløse opgaver fordeles herfra
+const SLOT_STEP_MIN = 15; // minutter pr. tidløs opgave
+const TIMED_DURATION_MIN = 30;
+
+function addMinutes(time: string, add: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + add;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// Påmindelse dagen før kl. 17, beregnet som minutter før starttidspunktet (så den
+// rammer kl. 17 uanset hvornår på dagen opgaven ligger, ikke kun ved 08:00).
+// Ponytail: ignorerer DST-skiftedage (op til 1 times fejl to gange om året).
+function eveningBeforeMinutes(day: string, time: string): number {
+  const [y, mo, d] = day.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  const start = Date.UTC(y, mo - 1, d, hh, mm);
+  const eveningBefore = Date.UTC(y, mo - 1, d - 1, 17, 0);
+  return Math.round((start - eveningBefore) / 60000);
+}
+
+function buildEvent(item: MyDayItem, day: string, time: string, durationMin: number, overdue: boolean): CalEvent {
   const summary = [item.important ? "❗" : "", overdue ? "(forfalden) " : "", item.title || item.context, item.company ? ` · ${item.company}` : ""].join("");
   const link = item.companyId ? `${APP}/virksomheder/${item.companyId}` : `${APP}/opgaver`;
   const description = [
@@ -58,26 +78,49 @@ export function toEvent(item: MyDayItem, today: string): CalEvent | null {
     id: eventIdFor(item.id),
     summary: summary.slice(0, 250),
     description: description.slice(0, 4000),
-    start: { dateTime: `${day}T08:00:00`, timeZone: TZ },
-    end: { dateTime: `${day}T08:15:00`, timeZone: TZ },
-    // Kl. 17 dagen før (900 min før 08:00) og kl. 08 på dagen.
-    reminders: { useDefault: false as const, overrides: [{ method: "popup" as const, minutes: 900 }, { method: "popup" as const, minutes: 0 }] },
+    start: { dateTime: `${day}T${time}:00`, timeZone: TZ },
+    end: { dateTime: `${day}T${addMinutes(time, durationMin)}:00`, timeZone: TZ },
+    reminders: { useDefault: false as const, overrides: [{ method: "popup" as const, minutes: eveningBeforeMinutes(day, time) }, { method: "popup" as const, minutes: 0 }] },
     transparency: "transparent" as const,
   };
   const hash = createHash("sha1").update(JSON.stringify(base)).digest("hex").slice(0, 16);
   return { ...base, extendedProperties: { private: { kinlyHq: "1", hash } } };
 }
 
+/**
+ * Opgaver → kalenderbegivenheder for én dag ad gangen. Tidsatte lægges på deres
+ * eget tidspunkt (30 min); tidløse fordeles fra kl. 09 i 15-min-slots (vigtige
+ * først, så efter id), så de ikke ligger oven i hinanden. Forfaldne opgaver
+ * flyttes til i dag, så de minder igen hver morgen til de er klaret.
+ */
+export function toEvents(items: MyDayItem[], today: string): CalEvent[] {
+  const byDay = new Map<string, MyDayItem[]>();
+  for (const item of items) {
+    if (!DATE_RE.test(item.due)) continue;
+    const day = item.due < today ? today : item.due;
+    (byDay.get(day) ?? byDay.set(day, []).get(day)!).push(item);
+  }
+  const events: CalEvent[] = [];
+  for (const [day, dayItems] of byDay) {
+    for (const item of dayItems) {
+      if (item.dueTime) events.push(buildEvent(item, day, item.dueTime, TIMED_DURATION_MIN, item.due < today));
+    }
+    const untimed = dayItems
+      .filter((i) => !i.dueTime)
+      .sort((a, b) => Number(b.important) - Number(a.important) || a.id.localeCompare(b.id));
+    untimed.forEach((item, idx) => {
+      events.push(buildEvent(item, day, addMinutes(SLOT_START, idx * SLOT_STEP_MIN), SLOT_STEP_MIN, item.due < today));
+    });
+  }
+  return events;
+}
+
 export interface SyncResult { owner: CalOwner; inserted: number; updated: number; removed: number; skipped?: string }
 
 /** Afstem én persons kalender. Fejl på én begivenhed stopper ikke resten, men kastes samlet til sidst. */
 export async function syncCalendar(api: CalApi, calendarId: string, owner: CalOwner, items: MyDayItem[], today: string): Promise<SyncResult> {
-  const want = new Map<string, CalEvent>();
-  for (const item of items) {
-    if (ownerOf(item) !== owner) continue;
-    const ev = toEvent(item, today);
-    if (ev) want.set(ev.id, ev);
-  }
+  const mine = items.filter((item) => ownerOf(item) === owner);
+  const want = new Map(toEvents(mine, today).map((ev) => [ev.id, ev] as const));
   const have = await api.list(calendarId);
   const res: SyncResult = { owner, inserted: 0, updated: 0, removed: 0 };
   const errors: string[] = [];
@@ -142,4 +185,39 @@ export async function googleCalApi(): Promise<CalApi> {
       }
     },
   };
+}
+
+/** Kalender-id'et for en person, eller undefined hvis ikke sat op i env. */
+function calendarIdFor(owner: CalOwner): string | undefined {
+  return process.env[`HQ_GCAL_${owner.toUpperCase()}`]?.trim() || undefined;
+}
+
+/** Afstemmer én persons kalender lige nu — den ene funktion cron-ruten OG
+ * scheduleCalendarSync deler, så synk-logikken kun findes ét sted. */
+export async function syncOwnerNow(owner: CalOwner): Promise<SyncResult> {
+  if (!pgEnabled()) return { owner, inserted: 0, updated: 0, removed: 0, skipped: "DATA_BACKEND er ikke pg" };
+  const calendarId = calendarIdFor(owner);
+  if (!calendarId) return { owner, inserted: 0, updated: 0, removed: 0, skipped: "ikke sat op" };
+  const { date } = copenhagenNow();
+  const items = await listMyDay(getDb(), { owner, today: date });
+  const api = await googleCalApi();
+  return syncCalendar(api, calendarId, owner, items, date);
+}
+
+/**
+ * Planlægger synkronisering af én persons kalender, efter svaret er sendt
+ * (next/server's after() — ellers kan Vercel fryse funktionen før kaldet er
+ * færdigt). Importerer next/server dynamisk: agent/tasks/route.ts må ikke
+ * importere det statisk (knækker node:test uden Next's bundler, se dens egen
+ * kommentar), og denne funktion kaldes derfra. Fejler ALDRIG brugerens handling
+ * — en fejl her logges kun; cron-ruten er sikkerhedsnettet.
+ */
+export function scheduleCalendarSync(owner: CalOwner): void {
+  const run = () =>
+    syncOwnerNow(owner).catch((err) => {
+      console.error(JSON.stringify({ evt: "calendar-sync.trigger.failed", owner, error: String(err instanceof Error ? err.message : err).slice(0, 300) }));
+    });
+  import("next/server")
+    .then(({ after }) => after(run))
+    .catch(() => { void run(); }); // next/server utilgængeligt/uden for request scope (node:test, scripts) → kør med det samme
 }

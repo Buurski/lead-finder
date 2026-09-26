@@ -95,7 +95,7 @@ export default function NextStepsTable({ steps, today }: { steps: NextStep[]; to
           );
         })
       )}
-      {editing && <TaskEditDialog item={{ id: editing.id, title: editing.step, due: editing.due, owner: editing.owner, note: editing.note, important: editing.important, companyId: editing.companyId }} onClose={() => setEditing(null)} onChanged={() => router.refresh()} />}
+      {editing && <TaskEditDialog item={{ id: editing.id, title: editing.step, due: editing.due, dueTime: editing.dueTime, owner: editing.owner, note: editing.note, important: editing.important, companyId: editing.companyId }} onClose={() => setEditing(null)} onChanged={() => router.refresh()} />}
     </div>
   );
 }

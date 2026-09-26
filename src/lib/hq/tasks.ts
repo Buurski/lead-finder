@@ -29,6 +29,7 @@ export interface MyDayItem {
   company: string;
   owner: string;
   due: string; // YYYY-MM-DD eller ""
+  dueTime: string; // HH:MM eller "" (aftalers næste skridt har altid "" — se gcal-sync)
   note: string;
   important: boolean;
   bucket: DueBucket;
@@ -56,7 +57,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
   // (fælles-regel #23); getHqSummary() kalder denne funktion fra sin egen
   // Promise.all, så to samtidige forespørgsler herinde ovenpå det er for meget.
   const taskRows = await db
-    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, owner: task.owner, note: task.note, important: task.important })
+    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, dueTime: task.dueTime, owner: task.owner, note: task.note, important: task.important })
     .from(task)
     .where(opts.owner ? and(isNull(task.doneAt), eq(task.owner, opts.owner)) : isNull(task.doneAt));
   const dealRows = await db
@@ -75,6 +76,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
       company: t.clientName,
       owner: t.owner,
       due: t.due,
+      dueTime: t.dueTime,
       note: t.note,
       important: t.important,
       bucket: dueBucket(t.due, opts.today),
@@ -91,6 +93,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
         company: d.company,
         owner: d.owner,
         due: d.due ?? "",
+        dueTime: "", // aftalers næste skridt har ingen kolonne til klokkeslæt — bruger default-tid
         note: "",
         important: false,
         bucket: dueBucket(d.due ?? "", opts.today),
@@ -113,6 +116,13 @@ export async function listDone(db: Db, opts: { owner?: Owner; limit?: number }):
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DUE_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function validDueTime(v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (typeof v !== "string" || !DUE_TIME.test(v)) throw new DealInputError("klokkeslæt skal være TT:MM");
+  return v;
+}
 
 function validTitle(v: unknown): string {
   if (typeof v !== "string") throw new DealInputError("titel skal være tekst");
@@ -130,11 +140,12 @@ function validOwner(v: unknown): Owner {
   return v;
 }
 
-export interface CreateTaskInput { companyId?: unknown; dealId?: unknown; owner?: unknown; title?: unknown; due?: unknown }
+export interface CreateTaskInput { companyId?: unknown; dealId?: unknown; owner?: unknown; title?: unknown; due?: unknown; dueTime?: unknown }
 
 export async function createTask(db: Db, p: CreateTaskInput) {
   const title = validTitle(p.title);
   const due = validDue(p.due);
+  const dueTime = validDueTime(p.dueTime);
   const owner = validOwner(p.owner);
   let companyId: string | null = null;
   let clientName = "";
@@ -145,11 +156,11 @@ export async function createTask(db: Db, p: CreateTaskInput) {
     clientName = c.name;
   }
   const dealId = p.dealId ? uuidOrThrow(p.dealId, "aftale-id") : null;
-  const [t] = await db.insert(task).values({ companyId, dealId, clientName, owner, title, due }).returning();
+  const [t] = await db.insert(task).values({ companyId, dealId, clientName, owner, title, due, dueTime }).returning();
   return t;
 }
 
-export interface TaskPatch { done?: unknown; due?: unknown; title?: unknown; owner?: unknown; note?: unknown; important?: unknown }
+export interface TaskPatch { done?: unknown; due?: unknown; dueTime?: unknown; title?: unknown; owner?: unknown; note?: unknown; important?: unknown }
 
 function validNote(v: unknown): string {
   if (typeof v !== "string" || v.length > 4000) throw new DealInputError("note skal være højst 4000 tegn");
@@ -160,6 +171,7 @@ export function validateTaskPatch(p: TaskPatch): Partial<typeof task.$inferInser
   if (p.done !== undefined && typeof p.done !== "boolean") throw new DealInputError("done skal være true eller false");
   const fields: Partial<typeof task.$inferInsert> = {};
   if (p.due !== undefined) fields.due = validDue(p.due);
+  if (p.dueTime !== undefined) fields.dueTime = validDueTime(p.dueTime);
   if (p.title !== undefined) fields.title = validTitle(p.title);
   if (p.owner !== undefined) fields.owner = validOwner(p.owner);
   if (p.note !== undefined) fields.note = validNote(p.note);
@@ -213,7 +225,7 @@ export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string)
 
 /** Samme fire felter på en aftales næste skridt — genbruger updateDeal i stedet for at duplikere dens validering/aktivitetslog. */
 export async function patchDealNextStep(db: Db, dealId: string, p: TaskPatch, actor: string) {
-  if (p.note !== undefined || p.important !== undefined) throw new DealInputError("aftalens næste skridt har ikke note eller vigtig");
+  if (p.note !== undefined || p.important !== undefined || p.dueTime !== undefined) throw new DealInputError("aftalens næste skridt har ikke note, vigtig eller klokkeslæt");
   validateTaskPatch(p);
   if (p.done === false) throw new DealInputError("et klaret næste skridt kan ikke genåbnes — sæt et nyt på aftalen");
   if (p.done === true) {

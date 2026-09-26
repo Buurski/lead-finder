@@ -76,17 +76,38 @@ test("validering afviser rod", async () => {
   await assert.rejects(createTask(db, { owner: "lucas", title: "" }), DealInputError);
   await assert.rejects(createTask(db, { owner: "hacker", title: "Ring" }), /ejer/);
   await assert.rejects(createTask(db, { owner: "lucas", title: "Ring", due: "25/9" }), /ÅÅÅÅ-MM-DD/);
+  await assert.rejects(createTask(db, { owner: "lucas", title: "Ring", dueTime: "25:00" }), /klokkeslæt/);
+  await assert.rejects(createTask(db, { owner: "lucas", title: "Ring", dueTime: "9:00" }), /klokkeslæt/);
   const t = await createTask(db, { owner: "lucas", title: "Ring" });
   await assert.rejects(patchTask(db, t.id, {}, "lucas"), /intet at opdatere/);
 });
 
-test("PATCH validerer note, vigtig og dato", () => {
-  assert.deepEqual(validateTaskPatch({ title: " Bestil kort ", due: "2026-09-24", owner: "charlie", note: " Allan ", important: true }), {
-    title: "Bestil kort", due: "2026-09-24", owner: "charlie", note: "Allan", important: true,
+test("klokkeslæt: gyldigt format gemmes, tomt/ugyldigt afvises, en aftales næste skridt kan ikke få tid", async () => {
+  const t = await createTask(db, { owner: "lucas", title: "Ring", due: "2026-09-25", dueTime: "14:30" });
+  assert.equal(t.dueTime, "14:30");
+  const cleared = await patchTask(db, t.id, { dueTime: "" }, "lucas");
+  assert.equal(cleared.dueTime, "");
+  await assert.rejects(patchTask(db, t.id, { dueTime: "24:00" }, "lucas"), /klokkeslæt/);
+
+  const [d] = await db.insert(deal).values({ companyId, title: "Nyhedsbrev", stage: "aftalt", owner: "lucas", nextStep: "Send udkast", nextStepDue: TODAY }).returning();
+  await assert.rejects(patchDealNextStep(db, d.id, { dueTime: "10:00" }, "lucas"), /klokkeslæt/);
+
+  // listMyDay giver opgavens klokkeslæt videre; en aftales næste skridt har altid "".
+  const withTime = await createTask(db, { owner: "lucas", title: "Ring i eftermiddag", due: TODAY, dueTime: "15:00" });
+  const items = await listMyDay(db, { today: TODAY, owner: "lucas" });
+  assert.equal(items.find((i) => i.id === withTime.id)?.dueTime, "15:00");
+  assert.equal(items.find((i) => i.id === `deal:${d.id}`)?.dueTime, "");
+});
+
+test("PATCH validerer note, vigtig, dato og klokkeslæt", () => {
+  assert.deepEqual(validateTaskPatch({ title: " Bestil kort ", due: "2026-09-24", dueTime: "09:05", owner: "charlie", note: " Allan ", important: true }), {
+    title: "Bestil kort", due: "2026-09-24", dueTime: "09:05", owner: "charlie", note: "Allan", important: true,
   });
   assert.throws(() => validateTaskPatch({ important: "true" }), DealInputError);
   assert.throws(() => validateTaskPatch({ note: 42 }), DealInputError);
   assert.throws(() => validateTaskPatch({ due: "2026-02-30" }), DealInputError);
+  assert.throws(() => validateTaskPatch({ dueTime: "9:00" }), DealInputError);
+  assert.throws(() => validateTaskPatch({ dueTime: "24:00" }), DealInputError);
   assert.throws(() => validateTaskPatch({ owner: "allan" }), DealInputError);
   assert.throws(() => validateTaskPatch({ done: "nej" }), DealInputError);
 });

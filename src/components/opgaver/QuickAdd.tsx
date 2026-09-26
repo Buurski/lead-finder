@@ -10,6 +10,7 @@ export default function QuickAdd({ defaultOwner, today, onCreated }: { defaultOw
   const [title, setTitle] = useState("");
   // I dag som standard — ellers lander opgaven under "Uden dato" og er usynlig i "Min dag" (Lucas 23/9).
   const [due, setDue] = useState(today);
+  const [dueTime, setDueTime] = useState("");
   const [owner, setOwner] = useState(defaultOwner || "lucas");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<CompanyHit[]>([]);
@@ -41,11 +42,11 @@ export default function QuickAdd({ defaultOwner, today, onCreated }: { defaultOw
       const res = await fetch("/api/opgaver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), due: due || undefined, owner, companyId: picked?.id }),
+        body: JSON.stringify({ title: title.trim(), due: due || undefined, dueTime: dueTime || undefined, owner, companyId: picked?.id }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke oprette opgaven");
       const where = !due ? "under Alle (uden dato)" : due === today ? "i Min dag" : `under Alle (${due})`;
-      setTitle(""); setDue(today); setQ(""); setPicked(null); setShowHits(false);
+      setTitle(""); setDue(today); setDueTime(""); setQ(""); setPicked(null); setShowHits(false);
       onCreated(`Opgave tilføjet — ligger ${where}.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "kunne ikke oprette opgaven");
@@ -92,6 +93,14 @@ export default function QuickAdd({ defaultOwner, today, onCreated }: { defaultOw
           value={due}
           aria-label="Forfaldsdato"
           onChange={(e) => setDue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+        />
+        <input
+          className="op-input op-input-time"
+          type="time"
+          value={dueTime}
+          aria-label="Klokkeslæt (valgfri)"
+          onChange={(e) => setDueTime(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
         />
         <select className="op-input op-input-owner" value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Ejer">

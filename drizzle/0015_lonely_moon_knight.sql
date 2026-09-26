@@ -1,0 +1,1 @@
+ALTER TABLE "task" ADD COLUMN "due_time" text DEFAULT '' NOT NULL;

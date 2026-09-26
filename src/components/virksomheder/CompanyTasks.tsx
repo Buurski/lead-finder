@@ -7,7 +7,7 @@ import TaskRow, { type TaskRowItem } from "@/components/opgaver/TaskRow";
 import type { EditableTask } from "@/components/opgaver/TaskEditDialog";
 import "@/components/opgaver/opgaver.css";
 
-interface InitialTask { id: string; title: string; due: string; owner: string; note: string; important: boolean }
+interface InitialTask { id: string; title: string; due: string; dueTime: string; owner: string; note: string; important: boolean }
 
 async function patchTask(id: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/opgaver/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -18,6 +18,7 @@ export default function CompanyTasks({ companyId, company, initialTasks, today, 
   const [tasks, setTasks] = useState<InitialTask[]>(initialTasks);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [owner, setOwner] = useState<string>(defaultOwner);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -30,12 +31,12 @@ export default function CompanyTasks({ companyId, company, initialTasks, today, 
       const res = await fetch("/api/opgaver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), due: due || undefined, owner, companyId }),
+        body: JSON.stringify({ title: title.trim(), due: due || undefined, dueTime: dueTime || undefined, owner, companyId }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke oprette opgaven");
       const { task: t } = await res.json();
-      setTasks((prev) => [...prev, { id: t.id, title: t.title, due: t.due, owner: t.owner, note: t.note, important: t.important }]);
-      setTitle(""); setDue("");
+      setTasks((prev) => [...prev, { id: t.id, title: t.title, due: t.due, dueTime: t.dueTime, owner: t.owner, note: t.note, important: t.important }]);
+      setTitle(""); setDue(""); setDueTime("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "kunne ikke oprette opgaven");
     } finally {
@@ -86,6 +87,7 @@ export default function CompanyTasks({ companyId, company, initialTasks, today, 
           onKeyDown={(e) => { if (e.key === "Enter") add(); }}
         />
         <input className="op-input op-input-date" type="date" value={due} aria-label="Forfaldsdato" onChange={(e) => setDue(e.target.value)} />
+        <input className="op-input op-input-time" type="time" value={dueTime} aria-label="Klokkeslæt (valgfri)" onChange={(e) => setDueTime(e.target.value)} />
         <select className="op-input op-input-owner" value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Ejer">
           <option value="lucas">Lucas</option>
           <option value="charlie">Charlie</option>

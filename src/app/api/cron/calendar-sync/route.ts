@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb, pgEnabled } from "@/lib/db/client";
-import { listMyDay } from "@/lib/hq/tasks";
-import { googleCalApi, syncCalendar, type CalOwner, type SyncResult } from "@/lib/hq/gcal-sync";
-import { copenhagenNow } from "@/lib/settings";
+import { pgEnabled } from "@/lib/db/client";
+import { syncOwnerNow, type CalOwner, type SyncResult } from "@/lib/hq/gcal-sync";
 import { withCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
@@ -25,11 +23,8 @@ export async function GET(req: Request) {
       if (!calendars.length) return { result: [] as SyncResult[], note: "ikke sat op — HQ_GCAL_LUCAS mangler" };
       // Samme kalender til begge ville få hver sync til at slette den andens begivenheder.
       if (calendars.length === 2 && calendars[0].id === calendars[1].id) throw new Error("HQ_GCAL_LUCAS og HQ_GCAL_CHARLIE peger på samme kalender");
-      const { date } = copenhagenNow();
-      const items = await listMyDay(getDb(), { today: date });
-      const api = await googleCalApi();
       const out: SyncResult[] = [];
-      for (const c of calendars) out.push(await syncCalendar(api, c.id, c.owner, items, date));
+      for (const c of calendars) out.push(await syncOwnerNow(c.owner));
       return { result: out, note: out.map((r) => `${r.owner}: +${r.inserted} ~${r.updated} −${r.removed}`).join(", ") };
     });
     return NextResponse.json({ ok: true, results });
