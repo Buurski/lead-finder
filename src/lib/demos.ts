@@ -134,11 +134,11 @@ export function pickDemos(branch: string, name: string): Demo[] {
 export const KINLY_FRONT = "https://kinly.dk/";
 // Forsiden tæller når URL'en slutter der: slutningen af teksten, whitespace eller
 // tegnsætning (fx ".", ":", "—", "#"), og Lucas må gerne skrive den uden
-// afsluttende slash. Det der IKKE må følge efter er en sti — bogstav/tal, "/",
-// "-", "%" eller "~" gør URL'en til en underside. Et punktum tæller kun som
-// punktum når der ikke står et domæne efter det, så "kinly.dk.eksempel.dk" ikke
-// glider igennem som forsiden. /case/... og /hjemmeside-til-... er ikke forsiden.
-const KINLY_FRONT_LINK = /https:\/\/kinly\.dk\/?(?![\w/~%-]|\.\w)/i;
+// afsluttende slash. Det der IKKE må følge efter er en sti — bogstaver og tal i
+// ALLE alfabeter (også æøå), "/", "-", "%" eller "~" gør URL'en til en underside
+// eller et fremmed domæne. Et punktum tæller kun som punktum når der ikke står
+// et domæne efter det. /case/... og /hjemmeside-til-... er ikke forsiden.
+const KINLY_FRONT_LINK = /https:\/\/kinly\.dk\/?(?![\p{L}\p{N}_~%\/-]|\.(?=[\p{L}\p{N}]))/iu;
 
 /** Er forsiden (https://kinly.dk/) med i teksten? Case- og branche-sider tæller ikke. */
 export function hasKinlyFront(text: string): boolean {
