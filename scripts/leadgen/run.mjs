@@ -263,8 +263,9 @@ async function phaseSource() {
 // =================== PHASE: rate (chunked, resumable) ===================
 // Første rigtige facebook.com/<side>-link på en egen hjemmeside (ikke del-/plugin-links).
 export function fbLinkFrom(html) {
-  for (const m of (html || "").matchAll(/https?:\/\/(?:www\.|m\.)?facebook\.com\/([A-Za-z0-9.\-]{3,80})\/?["'?#]/gi)) {
-    if (!/^(sharer|share|plugins|tr|dialog|login|policy|privacy|help|pages|groups|events|watch|profile\.php)$/i.test(m[1])) return `https://www.facebook.com/${m[1]}`;
+  for (const m of (html || "").matchAll(/https?:\/\/(?:[a-z-]+\.)?facebook\.com\/([A-Za-z0-9.\-]{3,80})(?:\/[^"'?#\s<>]*)?["'?#]/gi)) {
+    if (/\.php$/i.test(m[1]) || /^(sharer|share|plugins|tr|dialog|login|policy|privacy|help|pages|groups|events|watch|people|hashtag|photo|photos|story|reel|reels)$/i.test(m[1])) continue;
+    return `https://www.facebook.com/${m[1]}`;
   }
   return null;
 }
@@ -298,7 +299,7 @@ function scoreLead(c, html) {
   const contact = (c.phone ? 5 : 0) + (emailOnSite ? 5 : 0);
   const fitScore = Math.min(100, Math.round(rr + webNeed + local + branchFit + contact));
   return { fitScore, hasViewport, copyrightYear, bureau, emailOnSite, fbLink,
-    websiteStatus: social ? "none" : copyrightYear && copyrightYear <= (new Date().getFullYear() - 4) ? "old" : "ok" };
+    websiteStatus: social === "facebook" ? "none" : social ? "ok" : copyrightYear && copyrightYear <= (new Date().getFullYear() - 4) ? "old" : "ok" };
 }
 // Rated-filen hører til ÉN source-kørsel (pool.at). WORKDIR overlever mellem
 // dage; før 25/9 voksede lg_v2_rated.json fra 2/9 til 470 rækker, remaining blev

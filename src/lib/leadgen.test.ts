@@ -21,6 +21,9 @@ test("socialKind + fbFit — kun for store straffes, ingen Facebook er fint", ()
   assert.equal(socialKind("https://m.facebook.com/x"), "facebook");
   assert.equal(socialKind("https://www.krak.dk/a"), "directory");
   assert.equal(socialKind("https://notfacebook.com"), null);
+  assert.equal(socialKind("https://da-dk.facebook.com/x"), "facebook");
+  assert.equal(socialKind("https://web.facebook.com/x"), "facebook");
+  assert.equal(socialKind("https://fb.me/x"), "facebook");
   assert.equal(socialKind("https://vida.dk"), null);
   assert.equal(socialKind(""), null);
   assert.equal(fbFit(null), 0, "ingen Facebook = neutral");

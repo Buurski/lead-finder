@@ -3,8 +3,9 @@
 // group. No imports on purpose: scripts/leadgen/run.mjs loads this under plain
 // Node on the VPS, and social-stats.ts (which imports store) must not ride along.
 
+// Base domains; any subdomain counts too (m., web., da-dk., business., mbasic. …).
 const SOCIAL_HOSTS: Record<string, "facebook" | "instagram" | "directory"> = {
-  "facebook.com": "facebook", "fb.com": "facebook", "m.facebook.com": "facebook",
+  "facebook.com": "facebook", "fb.com": "facebook", "fb.me": "facebook",
   "instagram.com": "instagram",
   "krak.dk": "directory", "degulesider.dk": "directory", "linktr.ee": "directory",
 };
@@ -15,8 +16,8 @@ export function socialKind(url: string | null | undefined): "facebook" | "instag
   let host: string;
   try { host = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).hostname.toLowerCase(); }
   catch { return null; }
-  host = host.replace(/^www\./, "");
-  return SOCIAL_HOSTS[host] ?? null;
+  const base = Object.keys(SOCIAL_HOSTS).find((d) => host === d || host.endsWith(`.${d}`));
+  return base ? SOCIAL_HOSTS[base] : null;
 }
 
 // Lucas 2026-09-20/26: "Restaurant Berserk had 12,000 followers — we are not

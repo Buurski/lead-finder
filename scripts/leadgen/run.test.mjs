@@ -37,6 +37,9 @@ test("fbLinkFrom — første rigtige side-link, aldrig del-/plugin-links", () =>
   assert.equal(fbLinkFrom('<a href="https://www.facebook.com/sharer/sharer.php?u=x">del</a><a href="https://www.facebook.com/SalonVida/">fb</a>'), "https://www.facebook.com/SalonVida");
   assert.equal(fbLinkFrom('<a href="https://facebook.com/plugins/page.php">x</a>'), null);
   assert.equal(fbLinkFrom(null), null);
+  // Opus-review 26/9: .php-links, undersider og landekode-subdomæner
+  assert.equal(fbLinkFrom('<a href="https://www.facebook.com/sharer.php?u=x">del</a><a href="https://da-dk.facebook.com/SalonVida/about">fb</a>'), "https://www.facebook.com/SalonVida");
+  assert.equal(fbLinkFrom('<a href="https://facebook.com/photo.php?fbid=1">x</a>'), null);
 });
 
 test("toLeadgenItem — FB-tal og målt websiteStatus følger med til ingest", () => {

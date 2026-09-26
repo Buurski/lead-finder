@@ -25,7 +25,7 @@ MAX_PAGES = 60      # per day — low volume on purpose
 MIN_FIT = 65        # only leads that can be picked — the size check only matters there
 PAUSE_S = 2.0
 
-NUM = r"([\d][\d.,]*\s*[KkMm]?)"
+NUM = r"([\d][\d.,]*\s*(?:mio\.?|t\.|[KkMm])?)"
 PATTERNS = {
     "followers": [NUM + r"\s*(?:følgere|followers)", NUM + r"\s*(?:synes godt om|likes)"],
     "talking": [NUM + r"\s*(?:taler om dette|talking about this)"],
@@ -34,10 +34,10 @@ PATTERNS = {
 
 
 def parse_count(s: str) -> int:
-    s = s.strip()
-    mult = {"k": 1_000, "m": 1_000_000}.get(s[-1:].lower())
-    if mult:
-        return int(float(s[:-1].strip().replace(",", ".")) * mult)
+    s = s.strip().lower()
+    for suffix, mult in (("mio.", 1_000_000), ("mio", 1_000_000), ("t.", 1_000), ("k", 1_000), ("m", 1_000_000)):
+        if s.endswith(suffix):
+            return int(float(s[: -len(suffix)].strip().replace(",", ".")) * mult)
     return int(re.sub(r"[.,\s]", "", s))
 
 
@@ -53,8 +53,13 @@ def parse_og(desc: str) -> dict:
 
 
 def og_description(raw: str) -> str:
-    m = re.search(r'<meta[^>]+property="og:description"[^>]+content="([^"]*)"', raw)
-    return html.unescape(m.group(1)) if m else ""
+    # attribute order and quote style vary — find the tag first, then its content
+    for tag in re.findall(r"<meta[^>]*>", raw, re.I):
+        if re.search(r"property\s*=\s*[\"']og:description[\"']", tag, re.I):
+            m = re.search(r"content\s*=\s*\"([^\"]*)\"|content\s*=\s*'([^']*)'", tag, re.I)
+            if m:
+                return html.unescape(m.group(1) or m.group(2) or "")
+    return ""
 
 
 def main() -> None:
@@ -82,8 +87,10 @@ def main() -> None:
         fb = parse_og(desc)
         c["fb"] = {"url": c["fbLink"], "followers": fb.get("followers"), "talking": fb.get("talking"), "checkins": fb.get("checkins")}
         got += fb.get("followers") is not None
-    with open(RATED, "w", encoding="utf-8") as f:
+    tmp = RATED + ".tmp"  # atomic: a killed run must never leave a truncated rated file for finalize
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f)
+    os.replace(tmp, RATED)
     print(json.dumps({"fb_candidates": len(todo), "fb_with_followers": got}))
 
 
@@ -93,6 +100,10 @@ def selftest() -> None:
     assert parse_og("Café X. 12,345 likes · 7 talking about this · 1,002 were here") == {"followers": 12345, "talking": 7, "checkins": 1002}
     assert parse_og("1.2K Followers, 300 Following, 88 Posts") == {"followers": 1200}
     assert parse_og("Tjek telefonnummer, hjemmeside og åbningstider") == {}
+    assert parse_og("Restaurant Y. 12 t. følgere · 40 taler om dette") == {"followers": 12000, "talking": 40}
+    assert parse_og("Kæde Z. 1,2 mio. følgere") == {"followers": 1200000}
+    assert og_description("<meta content=\"8.799 følgere\" property=\"og:description\" />") == "8.799 følgere"
+    assert og_description("<meta property='og:description' content='173 følgere'>") == "173 følgere"
     print("fb_og selftest ok")
 
 
