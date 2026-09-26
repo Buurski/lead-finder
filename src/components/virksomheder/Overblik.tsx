@@ -235,7 +235,7 @@ function AftaleEditor({
   );
 }
 
-interface StamdataFields { name: string; phone: string; email: string; website: string; city: string; branch: string }
+interface StamdataFields { name: string; phone: string; email: string; website: string; city: string; branch: string; nameLocked?: boolean }
 
 function StamdataEditor({ companyId, initial, onDone, onCancel }: { companyId: string; initial: StamdataFields; onDone: () => void; onCancel: () => void }) {
   const [name, setName] = useState(initial.name);
@@ -251,7 +251,7 @@ function StamdataEditor({ companyId, initial, onDone, onCancel }: { companyId: s
     if (!name.trim()) { setErr("Navn må ikke være tomt."); return; }
     setBusy(true); setErr("");
     try {
-      await patchProfil(companyId, { name: name.trim(), phone: phone.trim(), email: email.trim(), website: website.trim(), city: city.trim(), branch: branch.trim() });
+      await patchProfil(companyId, { ...(initial.nameLocked ? {} : { name: name.trim() }), phone: phone.trim(), email: email.trim(), website: website.trim(), city: city.trim(), branch: branch.trim() });
       onDone();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "kunne ikke gemme");
@@ -260,12 +260,23 @@ function StamdataEditor({ companyId, initial, onDone, onCancel }: { companyId: s
 
   return (
     <div className="ov-editor">
-      <input className="virk-inline-input" style={{ height: 34 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="Navn" aria-label="Navn" />
-      <input className="virk-inline-input" style={{ height: 34 }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon" aria-label="Telefon" />
-      <input className="virk-inline-input" style={{ height: 34 }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" aria-label="E-mail" />
-      <input className="virk-inline-input" style={{ height: 34 }} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website" aria-label="Website" />
-      <input className="virk-inline-input" style={{ height: 34 }} value={city} onChange={(e) => setCity(e.target.value)} placeholder="By" aria-label="By" />
-      <input className="virk-inline-input" style={{ height: 34 }} value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="Branche" aria-label="Branche" />
+      {([
+        ["Navn", name, setName, "text"],
+        ["Telefon", phone, setPhone, "tel"],
+        ["E-mail", email, setEmail, "email"],
+        ["Website", website, setWebsite, "url"],
+        ["By", city, setCity, "text"],
+        ["Branche", branch, setBranch, "text"],
+      ] as const).map(([label, value, set, type]) => {
+        const locked = label === "Navn" && initial.nameLocked;
+        return (
+          <label key={label} style={{ display: "grid", gap: 4, fontSize: 12, color: "var(--text-dim)", fontWeight: 600 }}>
+            {label}
+            <input className="virk-inline-input" style={{ height: 34 }} type={type} value={value} disabled={locked} onChange={(e) => set(e.target.value)} />
+            {locked && <span style={{ fontWeight: 400 }}>En kundes navn rettes ikke her — fakturaer og kontakter hænger på navnet.</span>}
+          </label>
+        );
+      })}
       {err && <span style={{ fontSize: 12, color: "var(--red)" }}>{err}</span>}
       <div style={{ display: "flex", gap: 8 }}>
         <button className="cc-btn cc-btn-accent virk-btn-press" onClick={save} disabled={busy}>{busy ? "Gemmer…" : "Gem"}</button>

@@ -162,7 +162,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
   } : null;
 
   const tabs = [
-    { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} company={{ name: c.name, phone: real(c.phone), email: real(c.email), website: c.website, city: c.city, branch: c.branch }} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
+    { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} company={{ name: c.name, phone: real(c.phone), email: real(c.email), website: c.website, city: c.city, branch: c.branch, nameLocked: c.clientNo !== null }} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
     { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} currentUser={user} /> },
     {
       key: "aftaler",

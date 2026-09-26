@@ -255,7 +255,9 @@
 @media (max-width: 600px) {
   .kunde-grid { grid-template-columns: 1fr; }
   /* Faner på én linje: scroll vandret i stedet for at ombryde. */
-  .kunde-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .kunde-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; padding-right: 48px;
+    /* Scroll-hint (council 26/9): sidste fane toner ud, så man ser der er flere. */
+    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
   .kunde-tabs > * { flex: none; }
 }
 

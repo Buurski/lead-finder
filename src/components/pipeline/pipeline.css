@@ -206,3 +206,11 @@
   }
   .pl-owner-btn:active { transform: none; }
 }
+
+/* Mobil (council 26/9): proportionale labels løb sammen ("6375 7"). Stregen over
+   viser stadig proportionerne — tallene får lige bredde, så de kan læses. */
+@media (max-width: 640px) {
+  .pl-funnel-label { flex-grow: 1 !important; }
+  .pl-funnel-label .n { font-size: 16px; }
+  .pl-funnel-label .t { font-size: 10.5px; }
+}
