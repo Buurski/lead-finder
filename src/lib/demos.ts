@@ -156,10 +156,10 @@ export function isCustomerSiteUrl(url: string): boolean {
   return CUSTOMER_HOSTS.has(hostKey(url));
 }
 
-// Kandidat uden whitespace-krav (→https://x, se,https://x); (?<!@) = e-mail.
+// Kandidat uden whitespace-krav; (?<!@) = e-mail.
 export function customerSiteLinks(text: string): string[] {
   const hits: string[] = [];
-  for (const m of text.matchAll(/(?<!@)(?:https?:\/\/|\/\/)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
+  for (const m of text.matchAll(/(?<!@)(?:(?:https?:\/\/|\/\/)(?:[^\s/@]+@)?)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
     const u = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
     if (isCustomerSiteUrl(u) && !hits.includes(m[0])) hits.push(m[0]);
   }

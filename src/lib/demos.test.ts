@@ -258,8 +258,9 @@ test("værnet matcher host præcist — port, tegnsætning, lookalike og case", 
   }
   for (const t of [
     "→ ktvvs.vercel.app/path", "→ //ktvvs.vercel.app/path", "se www.vida-klinik.dk, tak", "→ KTVVS.Vercel.app/x",
+    "https://user@ktvvs.vercel.app/x",
   ]) assert.equal(customerSiteLinks(t).length, 1, t);
-  for (const t of ["skriv til info@ktvvs.vercel.app", "se ktvvs.vercel.app.evil/x", "ved kinly.dk og zaytoon-six.vercel.app"]) {
+  for (const t of ["skriv til info@ktvvs.vercel.app", "user@ktvvs.vercel.app", "se ktvvs.vercel.app.evil/x", "ved kinly.dk og zaytoon-six.vercel.app"]) {
     assert.deepEqual(customerSiteLinks(t), [], t);
   }
   assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
