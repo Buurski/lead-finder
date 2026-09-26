@@ -33,17 +33,17 @@ PATH = "/api/agent/posts"
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128 Safari/537.36 KinlyFactCheck"
 
 
-def call(payload: dict) -> dict:
+def call(payload: dict, path: str = PATH) -> dict:
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     ts = str(int(time.time()))
     req = Request(
-        ENDPOINT,
+        ENDPOINT.replace(PATH, path),
         data=body.encode("utf-8"),
         method="POST",
         headers={
             "Content-Type": "application/json",
             "X-Timestamp": ts,
-            "Authorization": f"Bearer {sign(load_secret(), ts, body, PATH)}",
+            "Authorization": f"Bearer {sign(load_secret(), ts, body, path)}",
         },
     )
     try:
@@ -123,6 +123,9 @@ def main() -> None:
     p = sub.add_parser("update"); p.add_argument("--id", required=True); p.add_argument("--fields-file", required=True)
     p.add_argument("--to-klar", action="store_true", help="flyt til klar når kun menneskets trin mangler")
     p = sub.add_parser("move"); p.add_argument("--id", required=True); p.add_argument("--stage", required=True, choices=["ide", "arbejder", "klar"])
+    p = sub.add_parser("upload", help="upload PNG/WebP (fx kinly_graf-output) -> offentlig url")
+    p.add_argument("--id", required=True); p.add_argument("--slot", required=True, choices=["a", "b", "a-mobile", "b-mobile"])
+    p.add_argument("--file", required=True)
     a = ap.parse_args()
 
     if a.cmd == "list":
@@ -136,6 +139,12 @@ def main() -> None:
         out(data)
     elif a.cmd == "get":
         out(call({"action": "get", "id": a.id}))
+    elif a.cmd == "upload":
+        import base64
+        mime = "image/webp" if a.file.lower().endswith(".webp") else "image/png"
+        with open(a.file, "rb") as fh:
+            data = base64.b64encode(fh.read()).decode("ascii")
+        out(call({"id": a.id, "slot": a.slot, "mime": mime, "data": data}, "/api/agent/posts/image"))
     elif a.cmd == "missing":
         data = call({"action": "get", "id": a.id})
         if not data.get("ok"):
