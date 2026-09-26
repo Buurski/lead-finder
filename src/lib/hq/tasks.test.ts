@@ -88,7 +88,7 @@ test("PATCH validerer note, vigtig og dato", () => {
   assert.throws(() => validateTaskPatch({ note: 42 }), DealInputError);
   assert.throws(() => validateTaskPatch({ due: "2026-02-30" }), DealInputError);
   assert.throws(() => validateTaskPatch({ owner: "allan" }), DealInputError);
-  assert.throws(() => validateTaskPatch({ done: false }), DealInputError);
+  assert.throws(() => validateTaskPatch({ done: "nej" }), DealInputError);
 });
 
 test("vigtige opgaver sorteres først og kan rettes og slettes", async () => {
@@ -101,4 +101,14 @@ test("vigtige opgaver sorteres først og kan rettes og slettes", async () => {
   assert.deepEqual((await listMyDay(db, { today: TODAY, owner: "charlie" })).map((x) => x.id), [marked.id]);
   await deleteHqTask(db, marked.id, "lucas");
   assert.deepEqual((await listMyDay(db, { today: TODAY })).map((x) => x.id), [first.id]);
+});
+
+test("klaret opgave kan genåbnes og logges (E2E 26/9)", async () => {
+  const { patchTask } = await import("./tasks.ts");
+  const t = await createTask(db, { owner: "lucas", title: "Genåbn mig", due: TODAY });
+  await patchTask(db, t.id, { done: true }, "lucas");
+  const open = await patchTask(db, t.id, { done: false }, "lucas");
+  assert.equal(open.doneAt, null);
+  const acts = await db.select().from(activity);
+  assert.ok(acts.some((a) => a.summary === "Opgave genåbnet: Genåbn mig"));
 });

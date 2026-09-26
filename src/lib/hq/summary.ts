@@ -2,7 +2,7 @@
 // (kinly.dk-henvendelser) og Hermes hentes af siden selv og må fejle uden at
 // vælte resten.
 import "server-only";
-import { and, eq, gt, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, isNotNull, ne, or, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, invoice, outreach, subscriptionPlan } from "../db/schema.ts";
 import { invoiceTotal, isOverdue, type Invoice, type Subscription } from "../invoices.ts";
@@ -82,13 +82,17 @@ function itemState(item: MyDayItem, today: string): StepState {
  */
 export async function getHqSummary(db: Db, today: string, me?: string | null): Promise<HqSummary> {
   const n = sql<number>`count(*)::int`;
-  const leadRows = and(gt(company.rowNo, 0), eq(company.archived, false));
+  // Samme definition som /kunder: også manuelt oprettede virksomheder (row_no < 0) tæller,
+  // og "kunde" = har kundenummer (ikke fjernet) — ikke livsfasen alene (E2E 26/9).
+  const isCustomer = and(isNotNull(company.clientNo), eq(company.clientRemoved, false));
+  const leadRows = and(eq(company.archived, false), or(isNull(company.clientNo), eq(company.clientRemoved, true)));
 
   const [[drafts], [replies], funnelRows, invRows, subRows, items] = await Promise.all([
     db.select({ n }).from(outreach).where(inArray(outreach.status, OPEN_DRAFT)),
     // Ubehandlet svar: der er svaret, men ingen har flyttet leadet videre endnu.
     db.select({ n }).from(company).where(unhandledReplyWhere()),
-    db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle),
+    db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle)
+      .then(async (rows) => [...rows.filter((r) => r.stage !== "kunde"), { stage: "kunde", n: (await db.select({ n }).from(company).where(and(isCustomer, eq(company.archived, false))))[0].n }]),
     db.select({ data: invoice.data }).from(invoice).where(inArray(invoice.status, UNPAID)),
     db.select({ data: subscriptionPlan.data }).from(subscriptionPlan),
     listMyDay(db, { today, owner: me === "lucas" || me === "charlie" ? me : undefined }),

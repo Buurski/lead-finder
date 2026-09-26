@@ -47,7 +47,7 @@ test("HQ-tal læses korrekt fra Postgres", async () => {
 
   const s = await getHqSummary(db, TODAY);
   assert.deepEqual(s.kpi, { draftsPending: 1, newReplies: 1, overdueNextSteps: 1 });
-  assert.deepEqual(s.funnel.map((f) => f.n), [0, 0, 2, 1, 0]); // kunde uden lead-række tæller ikke; tragten tæller også gamle svar
+  assert.deepEqual(s.funnel.map((f) => f.n), [0, 0, 2, 1, 1]); // kunde tæller som på /kunder (også uden lead-række, E2E 26/9); tragten tæller også gamle svar
   assert.deepEqual(s.nextSteps.map((x) => [x.company, x.state]), [["VIDA Skønhedsklinik", "forfalden"], ["Salon Artec", "snart"]]);
   assert.deepEqual(s.money, { mrr: 750, outstanding: 750, overdueCount: 1 });
   assert.equal(s.team[0].summary, "Nyhedsbrev-skabelon færdig");

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertWriteRequest } from "@/lib/cc-auth";
 import { removeClient } from "@/lib/sheets";
 
 // POST /api/clients/remove { name } — delete a client row from the Clients tab.
@@ -6,6 +7,11 @@ import { removeClient } from "@/lib/sheets";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  try {
+    await assertWriteRequest(req);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 403 });
+  }
   const { name } = await req.json().catch(() => ({}));
   if (!name || typeof name !== "string") return NextResponse.json({ error: "name required" }, { status: 400 });
   try {

@@ -325,10 +325,12 @@ function InboxApp() {
   }, []);
   useEffect(() => {
     if (isMobile) return;
+    // Mens køen indlæses er listen tom — et direkte link (?id=) må ikke smides væk imens (E2E 26/9).
+    if (loading && drafts.length === 0) return;
     if (selectedId && visible.some((d) => d.id === selectedId)) return;
     if (visible.length > 0) setSelectedId(visible[0].id, { push: false });
     else if (selectedId) setSelectedId(null, { push: false });
-  }, [isMobile, visible, selectedId, setSelectedId]);
+  }, [isMobile, visible, selectedId, setSelectedId, loading, drafts.length]);
 
   const selectedDraft = useMemo(() => drafts.find((d) => d.id === selectedId) ?? null, [drafts, selectedId]);
   const openDraft = useCallback((id: string) => setSelectedId(id, { push: true }), [setSelectedId]);

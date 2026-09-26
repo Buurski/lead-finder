@@ -94,7 +94,8 @@ function validPatch(p: DealPatch) {
 }
 
 export async function createDeal(db: Db, companyId: string, p: DealPatch, actor: string) {
-  const fields = validPatch({ stage: "tilbud", ...p });
+  // Uden ejer vises aftalens næste skridt ikke i nogens "Min dag" (E2E 26/9) — opretteren ejer den.
+  const fields = validPatch({ stage: "tilbud", ...(actor === "lucas" || actor === "charlie" ? { owner: actor } : {}), ...p });
   if (!fields.title) throw new DealInputError("Titel mangler");
   return db.transaction(async (tx) => {
     const [c] = await tx.select({ id: company.id }).from(company).where(eq(company.id, companyId));

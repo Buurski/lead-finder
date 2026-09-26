@@ -157,7 +157,7 @@ function validNote(v: unknown): string {
 }
 
 export function validateTaskPatch(p: TaskPatch): Partial<typeof task.$inferInsert> {
-  if (p.done !== undefined && p.done !== true) throw new DealInputError("done skal være true");
+  if (p.done !== undefined && typeof p.done !== "boolean") throw new DealInputError("done skal være true eller false");
   const fields: Partial<typeof task.$inferInsert> = {};
   if (p.due !== undefined) fields.due = validDue(p.due);
   if (p.title !== undefined) fields.title = validTitle(p.title);
@@ -167,7 +167,7 @@ export function validateTaskPatch(p: TaskPatch): Partial<typeof task.$inferInser
     if (typeof p.important !== "boolean") throw new DealInputError("vigtig skal være true eller false");
     fields.important = p.important;
   }
-  if (p.done !== true && Object.keys(fields).length === 0) throw new DealInputError("intet at opdatere");
+  if (p.done === undefined && Object.keys(fields).length === 0) throw new DealInputError("intet at opdatere");
   return fields;
 }
 
@@ -184,9 +184,23 @@ export async function completeTask(db: Db, id: string, actor: string) {
   });
 }
 
+/** Fortryd "klaret" (E2E 26/9): doneAt nulstilles og det logges. */
+export async function reopenTask(db: Db, id: string, actor: string) {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(task).where(eq(task.id, id));
+    if (!before) throw new DealInputError("opgaven findes ikke");
+    if (!before.doneAt) return before;
+    const legacy = before.data && typeof before.data === "object" && !Array.isArray(before.data) ? before.data as Record<string, unknown> : null;
+    const [after] = await tx.update(task).set({ doneAt: null, ...(legacy ? { data: { ...legacy, done: false, doneAt: null } } : {}) }).where(eq(task.id, id)).returning();
+    await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Opgave genåbnet: ${before.title}` });
+    return after;
+  });
+}
+
 export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string) {
   const fields = validateTaskPatch(p);
   if (p.done === true) return completeTask(db, id, actor);
+  if (p.done === false) return reopenTask(db, id, actor);
   const [before] = await db.select({ data: task.data }).from(task).where(eq(task.id, id));
   if (!before) throw new DealInputError("opgaven findes ikke");
   if (before.data && typeof before.data === "object" && !Array.isArray(before.data)) {
@@ -201,6 +215,7 @@ export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string)
 export async function patchDealNextStep(db: Db, dealId: string, p: TaskPatch, actor: string) {
   if (p.note !== undefined || p.important !== undefined) throw new DealInputError("aftalens næste skridt har ikke note eller vigtig");
   validateTaskPatch(p);
+  if (p.done === false) throw new DealInputError("et klaret næste skridt kan ikke genåbnes — sæt et nyt på aftalen");
   if (p.done === true) {
     const [before] = await db.select({ title: deal.title, nextStep: deal.nextStep, companyId: deal.companyId }).from(deal).where(eq(deal.id, dealId));
     if (!before) throw new DealInputError("aftalen findes ikke");

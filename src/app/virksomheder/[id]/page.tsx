@@ -23,6 +23,7 @@ import DealsSection from "@/components/virksomheder/DealsSection";
 import Timeline from "@/components/virksomheder/Timeline";
 import MergePanel from "@/components/virksomheder/MergePanel";
 import MakeCustomerButton from "@/components/virksomheder/MakeCustomerButton";
+import PhaseSelect from "@/components/virksomheder/PhaseSelect";
 import NoteCard from "@/components/virksomheder/NoteCard";
 import HermesAskButton from "@/components/virksomheder/HermesAskButton";
 import UnbilledWork from "@/components/virksomheder/UnbilledWork";
@@ -295,6 +296,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
             {canMakeCustomer && <MakeCustomerButton companyId={c.id} companyName={c.name} />}
+            {c.clientNo === null && c.lifecycle !== "flettet" && <PhaseSelect companyId={c.id} />}
             <ProfileQuickActions companyId={c.id} companyName={c.name || "(uden navn)"} defaultOwner={defaultOwner} canDraft={c.clientNo == null} />
             <HermesAskButton companyId={c.id} name={c.name || "kunden"} />
             <MergePanel self={{ id: c.id, name: c.name, city: c.city, lifecycle: c.lifecycle, clientNo: c.clientNo, rowNo: c.rowNo }} />

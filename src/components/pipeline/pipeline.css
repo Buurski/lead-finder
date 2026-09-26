@@ -25,14 +25,14 @@
   border-radius: 10px;
   background: var(--surface-2);
   transition: background 120ms ease;
-  display: block;
+  display: block; flex-basis: 0; min-width: 0;
 }
 .pl-funnel-seg:hover { background: var(--border-light); }
 .pl-funnel-seg[data-lit="true"] { background: var(--accent); }
 .pl-funnel-labels { display: flex; gap: 4px; }
 .pl-funnel-label {
   display: flex; flex-direction: column; gap: 2px;
-  text-decoration: none; color: inherit; min-width: 0; padding: 2px 2px;
+  text-decoration: none; color: inherit; min-width: 0; flex-basis: 0; padding: 2px 2px;
   border-radius: 8px;
 }
 .pl-funnel-label .n { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }

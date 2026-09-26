@@ -142,6 +142,23 @@ export default function OpgaverBoard({
                   </div>
                 </div>
                 <span className="cc-mono op-done-at">{new Date(d.doneAt).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}</span>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  style={{ fontSize: 12, padding: "2px 8px" }}
+                  onClick={async () => {
+                    try {
+                      await patchItem(d.id, { done: false });
+                      setDone((cur) => cur?.filter((x) => x.id !== d.id) ?? cur);
+                      notify("Opgaven er åben igen");
+                      void reload();
+                    } catch (e) {
+                      notify(e instanceof Error ? e.message : "kunne ikke fortryde");
+                    }
+                  }}
+                >
+                  Fortryd
+                </button>
               </div>
             ))}
           </div>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertWriteRequest } from "@/lib/cc-auth";
 import { updateLeadStatus, addClient, getLeads, type LeadStatus } from "@/lib/sheets";
 import { ensureClientNote } from "@/lib/client-notes";
 
@@ -6,6 +7,11 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    await assertWriteRequest(req);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 403 });
+  }
   try {
     const { id } = await params;
     const { status, notes } = await req.json();
