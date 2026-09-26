@@ -6,7 +6,8 @@ TRIN
 3) KILDER (mindst 5, gerne 6): rigtige https-sider der siger præcis det du bruger (Google-dokumentation, Danmarks Statistik, branchesider, studier). Hent hver med curl og bekræft at påstanden står der. Opdigt ALDRIG kilde, tal, kunde eller citat. Kan noget ikke bekræftes: skriv det ikke.
 4) INTERNE LINKS: hent https://kinly.dk/sitemap.xml og vælg mindst 2 by-/branche-/case-sider der passer (ikke /blog og ikke /seo-tjek). Brug fulde adresser: [Hjemmeside til VVS i Herning](https://kinly.dk/...).
 5) KUNDESPØRGSMÅL: kør python3 /root/.hermes/scripts/kundespoergsmaal.py "<indlæggets 1-2 hovedsøgeord>" --max 15 (ét kald pr. hovedsøgeord, gerne to hvis emnet har et naturligt sideord). Læs listen. Mindst to af FAQ'ens 3-5 spørgsmål og mindst to H2'er SKAL besvare de hyppigst forekommende reelle spørgsmål derfra — skriv spørgsmålet som H2/FAQ-q i kundens egne ord (omskriv let hvis autofuldførelsen er akavet, men bevar det reelle spørgsmål). Giver scriptet ingen brugbare forslag, skriv selv de spørgsmål lokale kunder typisk stiller om emnet.
-6) BILLEDER A og B — vælg det visuelle der bærer HISTORIEN (Lucas 26/9: ikke altid en graf, men det der passer til indlægget):
+6) BILLEDER A, B og C — TRE forskellige forslag Lucas kan vælge imellem (Lucas 26/9). Han vælger 2: det første bliver topbillede, det andet står inde i teksten. Alle tre skal bære HISTORIEN, ikke bare pynte, og de må ikke ligne hinanden (fx én Kinly-graf/figur, ét foto af byen/stedet, én figur eller et andet foto med en anden vinkel). Egne visuals har Kinly-vibe: kinly_graf.py giver automatisk kinly-wordmark, Space Grotesk, creme baggrund og orange accent — lav ALDRIG egne visuals uden om scriptet.
+   PLACERING: sæt "placement" på hver kandidat: "hero" hvis den er bedst som topbillede, ellers "efter-afsnit-N" (N = den ## mellemrubrik billedet hører til, 1 = første), så billedet står ved den del af teksten det forklarer. Mindst én kandidat skal være "hero", mindst én skal være "efter-afsnit-N".
 
    A (det vigtigste visuelle, PÅKRÆVET) — vælg ÉN af:
    - Kinly-graf, NÅR et verificeret tal er pointen (hvad kunden vinder/mister: klik, henvendelser, kunder der vælger konkurrenten, AI-svar der springer dem over). Byg specen KUN fra tal du selv har bekræftet i trin 3's kilder. ALDRIG opdigtede tal, ALDRIG konkurrent-prisskilte (vis værdi, ikke "hvor dyr konkurrenten er"). Skriv /tmp/graf-<slug>.json (feltformat: python3 /root/.hermes/scripts/kinly_graf.py uden argumenter) og kør: python3 /root/.hermes/scripts/kinly_graf.py /tmp/graf-<slug>.json /tmp/graf-<slug> . "source" i specen SKAL være en af kilderne fra trin 3 (samme URL i proofs.sources).
@@ -20,7 +21,9 @@ TRIN
 
    B (rigtigt foto, som i dag): ét frit licenseret foto fra Wikimedia Commons. Søg:
    curl -s -A "KinlyBlog/1.0 (lucas@kinly.dk)" "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=<SØGEORD>&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600&format=json"
-   url = imageinfo[0].thumburl (fjern ?utm...-delen). credit = "<Artist uden HTML> / <LicenseShortName>". source = "Wikimedia Commons: <descriptionurl>". Kun jpg/png-fotos, ingen logoer, ingen personer i fokus. Aldrig kundebilleder og aldrig kinly.dk/img/cases/.
+   url = imageinfo[0].thumburl (fjern ?utm...-delen). credit = "<Artist uden HTML> / <LicenseShortName>". source = "Wikimedia Commons: <descriptionurl>". Kun jpg/png-fotos, ingen logoer, ingen personer i fokus. Aldrig kundebilleder og aldrig kinly.dk/img/cases/. Hvis indlægget har en by (Herning, Ikast …), er B et foto af byen.
+
+   C (tredje forslag, PÅKRÆVET): en ANDEN type end A og B. Var A en graf, så enten en Kinly-figur uden tal (sammenligning/proces via kinly_graf.py) eller et andet foto med en anden vinkel (fx en butiksgade, en telefon i hånden, et værksted — noget der passer til afsnittet det skal stå ved). Upload egne figurer med --slot c / c-mobile; fotos samme regler som B.
 7) Skriv /tmp/blog-<slug>.json præcis sådan her (UTF-8):
 {
  "slug": "<3-80 tegn a-z 0-9 bindestreg, ingen æøå>",
@@ -29,7 +32,8 @@ TRIN
  "body": "<markdown, 600-900 ord, ## mellemrubrikker, korte afsnit>",
  "images": {
   "a": {"url": "<url fra crm_posts.py upload (graf/figur) eller foto-url>", "mobileUrl": "<mobil-url fra upload, valgfri>", "placement": "hero", "alt": "<20-125 tegn, beskriv motivet, må ikke starte med 'billede af'/'foto af'>", "credit": "Kinly", "source": "<samme kilde-url som i graf-specen>"},
-  "b": {"url": "<wikimedia-foto-url>", "placement": "hero", "alt": "...", "credit": "...", "source": "..."}
+  "b": {"url": "<wikimedia-foto-url>", "placement": "hero eller efter-afsnit-N", "alt": "...", "credit": "...", "source": "..."},
+  "c": {"url": "<figur-url fra upload eller foto-url>", "placement": "efter-afsnit-N", "alt": "...", "credit": "...", "source": "..."}
  },
  "proofs": {
   "sources": [{"url": "https://...", "date": "<dato for kilden eller hentedato ÅÅÅÅ-MM-DD>", "claim": "<den konkrete påstand du bruger>", "method": "curl + læst"}],
