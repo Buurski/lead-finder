@@ -221,6 +221,10 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
   // demo når branchen ingen case har) + branche-side — fra ÉN kilde i demos.ts.
   // demoPair bliver kladdens metadata, men kroppen viser kun de tre link-roller.
   const linkLines = referenceLines(lead.branch, lead.name);
+  // 26/9: er forside-linket det eneste, har mailen intet at vise (tømrer,
+  // vinduespudser). Så må demoIntro/tailorLine ikke love demoer eller eksempler
+  // der ikke er der — kun de ærlige linklinjer står tilbage.
+  const hasExamples = linkLines.length > 1;
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
@@ -232,10 +236,9 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ``,
     branchValueLine(lead.branch),
     ``,
-    mix.demoIntro,
+    ...(hasExamples ? [mix.demoIntro] : []),
     ...linkLines,
-    ``,
-    tailorLine,
+    ...(hasExamples ? [``, tailorLine] : []),
     ``,
     offerLine,
     ``,

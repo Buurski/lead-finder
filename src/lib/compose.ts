@@ -91,6 +91,10 @@ function greetingLine(businessName: string): string {
 }
 
 function buildText(name: string, opener: string, disclosure: string, demoIntro: string, demos: Demo[], branch: string, closing: string, valueText?: string, offerText?: string): string {
+  const links = demoLeadLine(branch, name);
+  // 26/9: samme rodårsag som i draft.ts — uden andet end forside-linket har
+  // mailen intet at vise, og demoIntro/tailorLine må ikke love noget der ikke er.
+  const hasExamples = links.length > 1;
   return [
     greetingLine(name),
     ``,
@@ -99,10 +103,9 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
     `${disclosure}`,
     ...(valueText ? [``, valueText] : []),
     ``,
-    demoIntro,
-    ...demoLeadLine(branch, name),
-    ``,
-    tailorLine(name),
+    ...(hasExamples ? [demoIntro] : []),
+    ...links,
+    ...(hasExamples ? [``, tailorLine(name)] : []),
     ...(offerText ? [``, offerText] : []),
     ``,
     closing,

@@ -37,6 +37,12 @@ export async function sendPreview(
   if (!r) throw new PreviewSendError("udkastet findes ikke");
   if (!(SENDABLE as readonly string[]).includes(r.status)) throw new PreviewSendError(`kan ikke sendes i status "${r.status}"`);
   if (!r.previewUrl) throw new PreviewSendError("udkastet har intet link endnu");
+  // 26/9: previewUrl ER mailens link. Peger udkastet selv på en kendt kundeside
+  // (KT VVS-previewet), må mailen ikke gå ud — også når body'en ikke har linket.
+  const badPreview = customerSiteLinks(r.previewUrl)[0];
+  if (badPreview) {
+    throw new PreviewSendError(`udkastets link peger på kundens egen side (${badPreview}) — brug kinly.dk-casen`);
+  }
   const to = r.email.trim();
   if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
   const subject = input.subject.trim();
@@ -47,10 +53,13 @@ export async function sendPreview(
   // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
   // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
   if (!hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
-  // 26/9: kundens egen side må kun linkes via sin kinly.dk-case — gaten står FØR db.
-  const customerLinks = customerSiteLinks(body);
-  if (customerLinks.length) {
-    throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);
+  // 26/9: kundens egen side må kun linkes via sin kinly.dk-case — gaten står FØR
+  // db. Emnet er en selvstændig vej ud (fx et preview-domæne i subject-linjen).
+  for (const part of [subject, body]) {
+    const customerLinks = customerSiteLinks(part);
+    if (customerLinks.length) {
+      throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);
+    }
   }
 
   const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));

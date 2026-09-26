@@ -14,7 +14,7 @@ import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
 import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
 import { validateDraft } from "@/lib/draft";
-import { missingReferenceLinks } from "@/lib/demos";
+import { missingReferenceLinks, customerSiteLinks } from "@/lib/demos";
 import { parseIds, onlyIds } from "@/lib/send-ids";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
@@ -173,6 +173,13 @@ export async function GET(req: Request) {
     }, { sharedEmails });
     if (!decision.ok) {
       skipped.push({ name: d.name, reason: decision.reason ?? "blokeret" });
+      continue;
+    }
+    // Spejl POST'ens emne-gate (6c): et kunde-domæne i subject-linjen bliver
+    // sprunget over i selve sendeløkken, så preflighten må ikke love den sendt.
+    const badSubject = customerSiteLinks(d.subject)[0];
+    if (badSubject) {
+      skipped.push({ name: d.name, reason: `kunde-link i emne: ${badSubject} — brug kinly.dk-casen` });
       continue;
     }
     if (wouldSend >= SEND_CAP) {
@@ -431,6 +438,16 @@ export async function POST(req: Request) {
           if ((finalText.match(/Med venlig hilsen/g) || []).length !== 1) {
             skipped.push({ name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
+            continue;
+          }
+          // 6c. EMNE-GATE (26/9): emnet er ikke dækket af link-politikken ovenfor.
+          // Et kendt kunde-domæne (fx et preview) i subject-linjen må ikke ud —
+          // samme kilde som krops-værnet (demos.ts#customerSiteLinks).
+          const badSubject = customerSiteLinks(fresh.subject)[0];
+          if (badSubject) {
+            const reason = `kunde-link i emne: ${badSubject} — brug kinly.dk-casen`;
+            skipped.push({ name: d.name, reason });
+            send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;
           }
 

@@ -292,3 +292,33 @@ test("sendLeadEmail: composedBody med kunde-preview afvises før SMTP", async ()
     /kundens egen side/,
   );
 });
+
+// 26/9: emnet var slet ikke dækket. Et kendt kunde-domæne i emnet skal afvises
+// lige så hårdt som i kroppen — og før transporten, så testen ikke bruger creds.
+test("sendLeadEmail: kundehost i emnet afvises før SMTP (composedBody-stien)", async () => {
+  const { sendLeadEmail } = await import("./email.ts");
+  await assert.rejects(
+    () => sendLeadEmail(
+      {
+        ...baseLead, email: "kunde@example.dk", sender: "lucas",
+        composedSubject: "Udkast til KT VVS (ktvvs.vercel.app)",
+        composedBody: "Hej\n\nHer er udkastet.\n\nMvh, Lucas",
+      },
+      "cold",
+    ),
+    /kundens egen side/,
+  );
+});
+
+// Legacy-skabelon-stien (uden composedBody) genererer selv sit emne af leadets
+// navn. Et kunde-domæne der må ikke ud herfra heller.
+test("sendLeadEmail: kundehost i emnet afvises før SMTP (legacy-skabelon)", async () => {
+  const { sendLeadEmail } = await import("./email.ts");
+  await assert.rejects(
+    () => sendLeadEmail(
+      { ...baseLead, name: "KT VVS ktvvs.vercel.app", branch: "vvs", email: "kunde@example.dk" },
+      "cold",
+    ),
+    /kundens egen side/,
+  );
+});

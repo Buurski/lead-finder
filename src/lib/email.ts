@@ -786,8 +786,9 @@ export async function sendLeadEmail(
     html = template.html;
   }
 
-  // 26/9: composedBody-genvejen gik uden om link-værnet — tjek begge bytes FØR SMTP.
-  for (const part of [text, html]) {
+  // 26/9: composedBody-genvejen gik uden om link-værnet — tjek ALLE bytes (også
+  // emnet) FØR SMTP, så et kunde-domæne i subject-linjen heller ikke slipper ud.
+  for (const part of [subject, text, html]) {
     const bad = customerSiteLinks(part)[0];
     if (bad) throw new Error(`kundens egen side må ikke sendes (${bad}) — brug kinly.dk-casen`);
   }

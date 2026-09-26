@@ -76,3 +76,41 @@ test("kunde-link i mailen afvises før db og afsendelse", async () => {
   assert.equal(x.sent.length, 0);
   assert.equal((await db.select().from(activity)).length, 0, "intet db-krav må oprettes");
 });
+
+// 26/9: previewUrl ER mailens link. Peger udkastet selv på en kendt kundeside,
+// skal gaten give den klare besked — også når body'en slet ikke har linket, og
+// før db/deliver.
+test("kundeside som previewUrl afvises før db og afsendelse", async () => {
+  const r: PreviewLike = { ...req, id: "preview_p1", previewUrl: "ktvvs.vercel.app/path?x=y" };
+  for (const body of [
+    `Her er udkastet: https://ktvvs.vercel.app/path?x=y\n\nMin egen side: https://kinly.dk/`,
+    `Uden link endnu\n\nMin egen side: https://kinly.dk/`,
+  ]) {
+    const x = deps(r);
+    await assert.rejects(
+      sendPreview(db, r.id, { subject: msg.subject, body }, "lucas", x.d),
+      /kundens egen side/,
+    );
+    assert.equal(x.sent.length, 0);
+    assert.equal((await db.select().from(activity)).length, 0, "intet db-krav må oprettes");
+  }
+});
+
+// Emnet er en selvstændig send-vej: et kunde-domæne der kan læses her må ikke ud.
+test("kundeside i emnet afvises før db og afsendelse", async () => {
+  const x = deps(req);
+  const body = `Her er udkastet: ${url}\n\nMin egen side: https://kinly.dk/`;
+  await assert.rejects(
+    sendPreview(db, req.id, { subject: "Udkast til KT VVS (ktvvs.vercel.app)", body }, "lucas", x.d),
+    /kundens egen side/,
+  );
+  assert.equal(x.sent.length, 0);
+  assert.equal((await db.select().from(activity)).length, 0, "intet db-krav må oprettes");
+});
+
+// Positiv kontrol: den legitime demo-preview og kinly.dk-forsiden går uhindret.
+test("legitim demo-preview i previewUrl og body sendes", async () => {
+  const x = deps(req);
+  await sendPreview(db, req.id, msg, "lucas", x.d);
+  assert.deepEqual(x.sent, ["maja@salonlux.dk"]);
+});
