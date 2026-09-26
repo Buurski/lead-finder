@@ -47,3 +47,11 @@ test("'sagt nej' kan ikke vaskes til ny med ét klik; gammel status gemmes i log
   const [a] = await db.select().from(activity);
   assert.equal((a.payload as { fromLeadStatus: string }).fromLeadStatus, "not-interested");
 });
+
+test("en flettet dublet kan ikke vækkes (Opus-council 26/9)", async () => {
+  const [c] = await db.insert(company).values({ rowNo: 8, name: "Dublet", lifecycle: "flettet", archived: true }).returning();
+  await assert.rejects(setPhase(db, c.id, "ny", "lucas"), PhaseError);
+  const [after] = await db.select().from(company).where(eq(company.id, c.id));
+  assert.equal(after.archived, true);
+  assert.equal(after.lifecycle, "flettet");
+});

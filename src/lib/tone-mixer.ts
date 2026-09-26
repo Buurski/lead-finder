@@ -293,7 +293,7 @@ export function adaptToSender(body: string, _sender?: "lucas" | "charlie"): stri
 }
 
 /** Lucas' personlige detaljer i en mail der sendes fra Charlie (inkl. hans præsentation, uanset linjeskift). */
-export const LUCAS_ONLY = /salgselev|Lucas Buur|23\s*24\s*24\s*82|(?:det\s+er|Mvh,?|Hilsen,?|Venlig\s+hilsen,?)\s+Lucas\b|(?:^|\n)\s*Lucas\s*(?:\n|$)|\bLucas\s+her\b|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger|Jeg\s+hedder\s+Lucas|Jeg\s+er\s+Lucas|Mit\s+navn\s+er\s+Lucas/i;
+export const LUCAS_ONLY = /salgselev|Lucas Buur|23\s*24\s*24\s*82|(?:det\s+er|Mvh,?|Hilsen,?|Venlig\s+hilsen,?)\s+Lucas\b|(?:hilsen|hilsner|kh\.?|hilsen\s+fra)\s*,?\s*Lucas\b|(?:^|\n)\s*[-–—]\s*Lucas\b|(?:^|\n)\s*Lucas\s*(?:\n|$)|\bLucas\s+her\b|Jeg\s+står\s+selv\s+for\s+både\s+kode\s+og\s+kontakt|Det\s+er\s+mig\s+selv\s+der\s+bygger|Jeg\s+hedder\s+Lucas|Jeg\s+er\s+Lucas|Mit\s+navn\s+er\s+Lucas/i;
 
 /**
  * Tekst der kun passer fra den ANDEN person. Lucas' præsentation nævner aldrig

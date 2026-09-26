@@ -247,6 +247,14 @@ function imagesPatch(v: unknown, before: BlogImages, actor: string): BlogImages 
     throw new BlogInputError("kun Lucas eller Charlie kan vælge A/B-billedet");
   }
   const human = HUMAN_ACTORS.has(actor);
+  // Kundens samtykke er et menneskes udsagn (Opus-council 26/9): agenten må runde det
+  // uændret, men ikke sætte eller ændre det.
+  for (const slot of ["a", "b"] as const) {
+    const now = slot === "a" ? a : b;
+    if (!human && now?.consentRef && now.consentRef !== before[slot]?.consentRef) {
+      throw new BlogInputError("kun Lucas eller Charlie kan registrere kundens samtykke til et billede");
+    }
+  }
   let choiceBy = before.choiceBy;
   let choiceAt = before.choiceAt;
   for (const slot of ["a", "b"] as const) {
@@ -577,12 +585,26 @@ export function revisionOf(p: {
   excerpt?: string;
   body?: string;
   images?: unknown;
+  proofs?: unknown;
 }): string {
+  // Kilder og FAQ er en del af det der udgives (FAQ bliver FAQ-schema på kinly.dk), så de
+  // indgår: en ændring ugyldiggør faktatjekket og Publicer-låsen (Opus-council 26/9).
   // Billedvalget (choice/choiceBy/choiceAt) er ikke en del af teksten: et valg må ikke ugyldiggøre faktatjekket (E2E 25/9).
   // I Publicer er valget låst separat i updatePost.
   const img = readImages(p.images);
-  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", { a: img.a, b: img.b }];
-  return crypto.createHash("sha256").update(JSON.stringify(parts), "utf-8").digest("hex").slice(0, 16);
+  const pr = readProofs(p.proofs);
+  const parts = [p.title ?? "", p.slug ?? "", p.category ?? "", p.excerpt ?? "", p.body ?? "", { a: img.a, b: img.b }, pr.sources, pr.faq];
+  return crypto.createHash("sha256").update(stableJson(parts), "utf-8").digest("hex").slice(0, 16);
+}
+
+/** JSON med sorterede nøgler: Postgres' jsonb omsorterer nøgler, så et objekt fra DB og det samme
+ *  objekt i hukommelsen skal give samme fingeraftryk (ellers matcher revisionen aldrig). */
+function stableJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableJson).join(",")}]`;
+  if (v && typeof v === "object") {
+    return `{${Object.keys(v).sort().filter((k) => (v as Record<string, unknown>)[k] !== undefined).map((k) => `${JSON.stringify(k)}:${stableJson((v as Record<string, unknown>)[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(v ?? null);
 }
 
 // Ord, links og pladsholdere: én definition, som både serveren og UI'et bruger
@@ -738,9 +760,12 @@ function finish(
   actor: string,
   stage: BlogStage,
 ) {
-  const revision = revisionOf(content);
+  // Revisionen afhænger af kilder/FAQ, så beviserne patches først; et nyt faktatjek i
+  // samme kald stemples bagefter med den endelige revision.
+  const patched = p.proofs === undefined ? before.proofs : proofsPatch(p.proofs, before.proofs, actor, "");
+  const revision = revisionOf({ ...content, proofs: patched });
+  const proofs = patched.factcheck && patched.factcheck.revision === "" ? { ...patched, factcheck: { ...patched.factcheck, revision } } : patched;
   const scores = p.scores === undefined ? before.scores : scoresPatch(p.scores, before.scores);
-  const proofs = p.proofs === undefined ? before.proofs : proofsPatch(p.proofs, before.proofs, actor, revision);
   const rating = p.rating === undefined || p.rating === null ? null : ratingEntry(p.rating, actor, { stage, revision });
   return { revision, scores, proofs, rating, checklist: runChecklist({ ...content, proofs }) };
 }

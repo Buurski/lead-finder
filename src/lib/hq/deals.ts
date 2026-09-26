@@ -145,7 +145,9 @@ export async function deleteDeal(db: Db, dealId: string, actor: string) {
     await tx.update(activity).set({ dealId: null }).where(eq(activity.dealId, dealId));
     await tx.update(task).set({ dealId: null }).where(eq(task.dealId, dealId));
     await tx.delete(deal).where(eq(deal.id, dealId));
-    await tx.insert(activity).values({ companyId: before.companyId, actor, type: "fase", summary: `Aftale slettet: ${before.title || "Aftale"}` });
+    await tx.insert(activity).values({ companyId: before.companyId, actor, type: "fase", summary: `Aftale slettet: ${before.title || "Aftale"}`,
+      // Regnskabssporet: hvad aftalen var værd, da den blev slettet (Opus-council 26/9).
+      payload: { dealId, title: before.title, stage: before.stage, valueDkk: before.valueDkk, mrrDkk: before.mrrDkk } });
     return { id: dealId };
   });
 }

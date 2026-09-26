@@ -24,6 +24,8 @@ export async function setPhase(
   return db.transaction(async (tx) => {
     const [c] = await tx.select().from(company).where(eq(company.id, companyId)).for("update");
     if (!c) throw new PhaseError("virksomheden findes ikke");
+    // En flettet dublet må aldrig vækkes (den ville komme tilbage i sekvensen — Opus-council 26/9).
+    if (c.lifecycle === "flettet") throw new PhaseError("virksomheden er flettet ind i en anden — ret fasen dér");
     if (c.clientNo != null) throw new PhaseError(c.clientRemoved ? "tidligere kunde står altid som tabt" : "virksomheden er kunde — fjern kundestatus først");
     if (p === "ny" && SAID_NO.has((c.leadStatus || "").trim().toLowerCase())) {
       throw new PhaseError("virksomheden har sagt nej — vælg Interesseret, hvis de selv har ombestemt sig");

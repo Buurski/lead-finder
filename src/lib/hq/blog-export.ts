@@ -115,7 +115,8 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
     category: row.category,
     format: row.category === "kundecases" ? "Historien" : row.category === "kinly" ? "Vores historie" : "Undersøgelsen",
     published: cphToday(now),
-    author: row.updatedBy === "charlie" ? "Charlie Nielsen" : "Lucas Buur",
+    // Forfatter = mennesket der faktatjekkede den version der udgives (updatedBy kan være hermes).
+    author: proofs.factcheck?.by === "charlie" ? "Charlie Nielsen" : "Lucas Buur",
     hook,
     ...(intro[1] ? { shortAnswer: intro[1] } : {}),
     cover: img(chosen[0], 0),
@@ -156,8 +157,19 @@ export async function confirmPublished(db: Db, id: string, url: unknown, fetcher
   const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
   if (!row) throw new Error("indlægget findes ikke");
   if (typeof url !== "string") throw new Error("url mangler");
-  // markPublished kræver at url'en er præcis /blog/<slug>/, og kinly.dk svarer 404 på ukendte slugs — så 200 er beviset.
-  const res = await fetcher(url, { redirect: "manual", headers: { "user-agent": "KinlyHQ-udgiver" } });
+  // Kun kortets egen adresse hentes (ingen vilkårlige url'er — SSRF, Opus-council 26/9).
+  const expected = `https://kinly.dk/blog/${row.slug}/`;
+  if (!row.slug || url !== expected) throw new Error(`url skal være ${expected}`);
+  const res = await fetcher(expected, { redirect: "manual", headers: { "user-agent": "KinlyHQ-udgiver" } });
   if (res.status !== 200) throw new Error(`siden er ikke live endnu (HTTP ${res.status})`);
-  return markPublished(db, id, { url }, "udgiver");
+  // 200 alene beviser ikke at DETTE kort er udgivet (fx en ældre side med samme slug): titlen skal stå i HTML'en.
+  if (!decodeEntities(await res.text()).includes(row.title)) throw new Error("siden svarer, men viser ikke kortets titel — ikke dette opslag");
+  return markPublished(db, id, { url: expected }, "udgiver");
+}
+
+function decodeEntities(html: string): string {
+  return html
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }

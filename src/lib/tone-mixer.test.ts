@@ -69,3 +69,10 @@ test("afsender-værn fanger AI-tekst skrevet til den anden person (Opus 26/9)", 
   for (const line of DISCLOSURES.lucas) assert.equal(wrongPersonText("lucas", line), false, line);
   for (const line of DISCLOSURES.charlie) assert.equal(wrongPersonText("charlie", line), false, line);
 });
+
+test("værnet fanger Lucas' afslutninger i en Charlie-mail (Opus-council 26/9)", () => {
+  for (const t of ["Tak for nu.\nBedste hilsner, Lucas", "Kh. Lucas", "Hilsen fra Lucas", "Ses!\n- Lucas", "Hilsen\nLucas"]) {
+    assert.equal(wrongPersonText("charlie", t), true, t);
+  }
+  assert.equal(wrongPersonText("charlie", "Sammen med Lucas driver jeg Kinly.\nMvh Charlie"), false);
+});

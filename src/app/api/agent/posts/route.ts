@@ -11,7 +11,6 @@ import {
   createPost,
   getPost,
   listPosts,
-  markPublished,
   readJev,
   recordJev,
   updatePost,
@@ -152,11 +151,11 @@ export async function POST(req: Request) {
         const post = await updatePost(getDb(), postId(input.id), { stage: input.stage }, actor);
         return json({ ok: true, post });
       }
-      case "published": {
-        // Kun udgiver-jobbet melder live, og kun med url-bevis fra kinly.dk/blog.
-        const post = await markPublished(getDb(), postId(input.id), { url: input.url, note: input.note }, actor);
-        return json({ ok: true, post });
-      }
+      case "published":
+        // Kun udgiver-jobbet (/api/cron/blog-export) melder live — det henter selv siden
+        // og tjekker titlen. En agent der melder live låser kortet uden at det er udgivet
+        // (Opus-council 26/9).
+        throw new BlogInputError("kun udgiver-jobbet kan melde et indlæg udgivet");
       case "list": {
         const cards = await listPosts(getDb(), input.stage === undefined || input.stage === null ? {} : { stage: String(input.stage) });
         return json({ ok: true, cards });

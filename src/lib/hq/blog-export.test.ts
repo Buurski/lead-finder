@@ -91,12 +91,19 @@ test("kort uden for Publicer eller med ændret tekst eksporteres ikke", async ()
 test("confirmPublished kræver 200 fra siden, før kortet bliver Udgivet", async () => {
   const p = await greenInPublicer();
   const url = `https://kinly.dk/blog/${p.slug}/`;
-  const fake = (status: number) => (async () => new Response("x", { status })) as unknown as typeof fetch;
+  let fetched = "";
+  const fake = (status: number, body = "x") => (async (u: string) => { fetched = u; return new Response(body, { status }); }) as unknown as typeof fetch;
+  // SSRF: en fremmed url hentes aldrig.
+  await assert.rejects(confirmPublished(db, p.id, "http://169.254.169.254/latest", fake(200)), /url skal være/);
+  assert.equal(fetched, "");
   await assert.rejects(confirmPublished(db, p.id, url, fake(404)), /ikke live/);
-  const after = await confirmPublished(db, p.id, url, fake(200));
+  // 200 uden kortets titel = en anden side med samme slug.
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, "<h1>Et gammelt opslag</h1>")), /titel/);
+  const html = `<h1>${p.title.replace(/'/g, "&#x27;").replace(/&/g, "&amp;")}</h1>`;
+  const after = await confirmPublished(db, p.id, url, fake(200, html));
   assert.equal(after.stage, "udgivet");
   assert.equal(after.publishedUrl, url);
-  await assert.rejects(confirmPublished(db, p.id, url, fake(200)), /ikke i Publicer/);
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, html)), /ikke i Publicer/);
 });
 
 test("toKinlyPost uden valgt billede kaster", () => {

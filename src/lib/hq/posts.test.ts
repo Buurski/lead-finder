@@ -20,6 +20,7 @@ import {
   listPosts,
   markPublished,
   readChecklist,
+  readImages,
   readJev,
   readProofs,
   readRatings,
@@ -553,7 +554,7 @@ test("tjeklisten er maskinelt beregnet, og Publicer er fail-closed på revisione
 test("tjeklistens enkelte punkter: ord, links, CTA, pladsholder og A/B-stempel", async () => {
   const grund = { title: "Hvad koster en hjemmeside", slug: GREEN_SLUG, category: "pris", excerpt: "Hvad koster en hjemmeside til en lille virksomhed i 2026? Vi gennemgår priser, drift og hvad du selv kan gøre.", body: greenBody() };
   const billeder: BlogImages = { ...GREEN_IMAGES, choice: "both", choiceBy: "lucas", choiceAt: "2026-09-25T00:00:00.000Z" };
-  const beviser = { ...GREEN_PROOFS, factcheck: { by: "lucas", at: "2026-09-25T00:00:00.000Z", note: "", revision: revisionOf({ ...grund, images: billeder }) } };
+  const beviser = { ...GREEN_PROOFS, factcheck: { by: "lucas", at: "2026-09-25T00:00:00.000Z", note: "", revision: revisionOf({ ...grund, images: billeder, proofs: GREEN_PROOFS }) } };
 
   const grøn = runChecklist({ ...grund, images: billeder, proofs: beviser });
   assert.equal(grøn.ok, true, grøn.missing.join("; "));
@@ -620,4 +621,30 @@ test("SEO-gates (Lucas 25-09): kategori, titel, uddrag, alt-tekst, billedvalg og
   // B tjekkes kun når B er valgt.
   assert.deepEqual(seoMissing(grund, { ...valgt("a"), b: { ...GREEN_CANDIDATE("b"), alt: "kort" } }), []);
   assert.match(seoMissing(grund, { ...valgt("both"), b: { ...GREEN_CANDIDATE("b"), alt: "kort" } }).join(" "), /alt-tekst på B/);
+});
+
+test("revisionen er ens fra hukommelse og DB (jsonb omsorterer nøgler) — Opus-council 26/9", async () => {
+  const post = await createPost(db, { title: "Billeder og FAQ" }, "hermes");
+  const img = { url: "https://example.com/a.jpg", placement: "hero", alt: "En lang nok alt-tekst her", credit: "c", source: "s" };
+  const m = await updatePost(db, post.id, { images: { a: img, b: { ...img, url: "https://example.com/b.jpg" } }, proofs: { faq: GREEN_FAQ } }, "hermes");
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  assert.equal(readChecklist(m.checklist).revision, revisionOf(row));
+});
+
+test("en ændret FAQ gør faktatjekket ugyldigt (FAQ bliver udgivet) — Opus-council 26/9", async () => {
+  const post = await createPost(db, { title: "FAQ-lås" }, "hermes");
+  await updatePost(db, post.id, { proofs: { faq: GREEN_FAQ } }, "hermes");
+  const tjekket = await updatePost(db, post.id, { proofs: { factcheck: { note: "ok" } } }, "lucas");
+  assert.equal(readProofs(tjekket.proofs).factcheck?.revision, revisionOf(tjekket));
+  const aendret = await updatePost(db, post.id, { proofs: { faq: [...GREEN_FAQ.slice(0, 2), { q: "Hvor mange kunder?", a: "Over 500." }] } }, "hermes");
+  assert.notEqual(readProofs(aendret.proofs).factcheck?.revision, revisionOf(aendret));
+  assert.match(readChecklist(aendret.checklist).missing.join(" "), /ældre version/);
+});
+
+test("agenten kan ikke registrere kundens samtykke til et billede — Opus-council 26/9", async () => {
+  const post = await createPost(db, { title: "Samtykke" }, "hermes");
+  const kunde = { url: "https://kinly.dk/img/cases/x.jpg", placement: "hero", alt: "Salonens reception set indefra", credit: "Kunde", source: "kunde", consentRef: "mail 2026-09-20 fra Allan" };
+  await assert.rejects(updatePost(db, post.id, { images: { a: kunde } }, "hermes"), /samtykke/);
+  const ok = await updatePost(db, post.id, { images: { a: kunde } }, "lucas");
+  assert.equal(readImages(ok.images).a?.consentRef, "mail 2026-09-20 fra Allan");
 });

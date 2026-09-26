@@ -342,31 +342,16 @@ test("move uden stage og update uden felter afvises — ingen tavse no-ops", asy
   assert.equal(after.updatedAt.toISOString(), created.post.updatedAt);
 });
 
-test("published kræver url-bevis fra kinly.dk/blog og stage Publicer", async () => {
+test("agenten kan ikke melde et indlæg udgivet — kun udgiver-jobbet kan", async () => {
   const created = await (await post({ actor: "hermes", action: "create", title: "Klar til live" })).json();
   const id = created.post.id;
-  const LIVE_URL = `https://kinly.dk/blog/${created.post.slug}/`;
-
-  // Forkert kolonne: kortet står i Idéer.
-  const forTidligt = await post({ actor: "hermes", action: "published", id, url: LIVE_URL });
-  assert.equal(forTidligt.status, 400);
-  assert.match((await forTidligt.json()).error, /står ikke i Publicer/);
-
   await toPublicer(id);
-
-  for (const url of ["https://kinly.dk/om-os", "http://kinly.dk/blog/x", "https://evil.dk/blog/x", ""]) {
-    const res = await post({ actor: "hermes", action: "published", id, url });
-    assert.equal(res.status, 400);
-    assert.match((await res.json()).error, /kinly\.dk\/blog/);
-  }
-
-  const live = await (await post({ actor: "hermes", action: "published", id, url: LIVE_URL, note: "live kl. 05:15" })).json();
-  assert.equal(live.post.stage, "udgivet");
-  assert.equal(live.post.publishedUrl, LIVE_URL);
-  assert.ok(live.post.publishedAt);
-
-  const igen = await post({ actor: "hermes", action: "published", id, url: LIVE_URL });
-  assert.equal(igen.status, 400);
+  const res = await post({ actor: "hermes", action: "published", id, url: `https://kinly.dk/blog/${created.post.slug}/` });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /kun udgiver-jobbet/);
+  const [after] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  assert.equal(after.stage, "publicer");
+  assert.equal(after.publishedUrl, null);
 });
 
 test("update afviser de forbudte felter — stage og udgivelses-felter kan ikke patches", async () => {
