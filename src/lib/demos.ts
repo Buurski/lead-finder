@@ -334,7 +334,9 @@ export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[
   else if (CLINIC.test(t) || BEAUTY.test(t) || BARBER.test(t)) urls.push(DEMO_SITES.vidaCase);
   // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
   // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
-  else if (CRAFT_UTIL.test(t)) urls.push(DEMO_SITES.ktvvsCase);
+  // !AUTO: "mekaniker" rammer også automekanikere, men de routes til auto og har
+  // Ikast-casen som deres (branchKind tjekker AUTO før CRAFT_UTIL).
+  else if (CRAFT_UTIL.test(t) && !AUTO.test(t)) urls.push(DEMO_SITES.ktvvsCase);
   else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
   urls.push("https://kinly.dk/projekter/");
   const out: MailLink[] = [];

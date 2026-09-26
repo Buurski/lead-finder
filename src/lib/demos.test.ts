@@ -173,5 +173,9 @@ test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async (
   const vvs = suggestMailLinks("vvs", "VVS Test");
   assert.ok(vvs.some((l) => l.url === DEMO_SITES.ktvvsCase));
   assert.ok(vvs.length <= 5 && vvs.every((l) => known.has(l.url)));
+  // Automekanikere routes til auto (Ikast-casen) — de skal ikke have VVS-casen.
+  const auto = suggestMailLinks("automekaniker", "Bilerne");
+  assert.equal(auto[0].url, DEMO_SITES.ikastCase);
+  assert.ok(!auto.some((l) => l.url === DEMO_SITES.ktvvsCase));
   assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
 });
