@@ -10,8 +10,17 @@
   display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
   scroll-snap-align: start;
+  transition: background 140ms ease, border-color 140ms ease;
 }
-.bl-col-head { padding: 13px 14px 11px; border-bottom: 1px solid var(--border); }
+/* Træk-over-highlight, samme greb som pipeline (pl-col[data-over]). */
+.bl-col[data-over="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.bl-col-head { padding: 13px 14px 11px; border-bottom: 1px solid var(--border); border-top: 3px solid transparent; border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
+/* Farvede kolonnehoveder efter fase, samme idé som pipelinens farvede pills. */
+.bl-col[data-stage="ide"] .bl-col-head { border-top-color: var(--blue); }
+.bl-col[data-stage="arbejder"] .bl-col-head { border-top-color: var(--amber); }
+.bl-col[data-stage="klar"] .bl-col-head { border-top-color: var(--text-dim); }
+.bl-col[data-stage="publicer"] .bl-col-head { border-top-color: var(--accent); }
+.bl-col[data-stage="udgivet"] .bl-col-head { border-top-color: var(--green); }
 .bl-col-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
 .bl-col-title .cc-chip { font-family: var(--font-mono); }
 .bl-col-body { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 10px; min-height: 90px; }
@@ -25,8 +34,19 @@
   transition: border-color 120ms ease;
 }
 .bl-card:hover { border-color: var(--border-strong); }
+.bl-card[draggable="true"] { cursor: grab; }
+/* Samme dæmpning som et trukket pipeline-kort (pl-card[data-dragging]) — den
+   native drag-ghost viser positionen, kortet selv fades blot let. */
+.bl-card[data-dragging="true"] { opacity: 0.45; }
 .bl-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .bl-card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.bl-score-badge {
+  flex-shrink: 0; font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+  border-radius: 999px; padding: 2px 8px; line-height: 1.4;
+}
+.bl-score-badge[data-level="low"] { background: var(--red-dim); color: var(--red); }
+.bl-score-badge[data-level="mid"] { background: var(--amber-dim); color: #8a5a12; }
+.bl-score-badge[data-level="high"] { background: var(--green-dim); color: var(--green, #1a7f37); }
 .bl-card-cat { margin-top: 6px; font-weight: 500; }
 .bl-card-checklist { margin-top: 8px; font-size: 11.5px; font-weight: 600; color: var(--red); }
 .bl-card-checklist[data-ok="true"] { color: var(--green, #1a7f37); }
@@ -132,6 +152,31 @@
   opacity: .45; cursor: not-allowed;
 }
 
+/* Afvist træk (BlogBoard's moveCard) — samme placering/stil som pipelinens
+   pl-toast, men altid rødt: den vises kun ved en fejl. */
+.bl-drop-toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: var(--red); color: #fff; padding: 10px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 500; z-index: 1200; max-width: 90vw;
+  animation: bl-fade 140ms ease both;
+}
+
+/* ---- Jev-bedømmelse (PostDialog) ---- */
+.bl-jev-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.bl-jev-row { display: grid; grid-template-columns: 150px 1fr 34px; align-items: center; gap: 10px; }
+.bl-jev-label { font-size: 12px; color: var(--text-muted); }
+.bl-jev-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bl-jev-bar-fill { height: 100%; border-radius: 999px; transition: width 200ms ease; }
+.bl-jev-bar-fill[data-level="low"] { background: var(--red); }
+.bl-jev-bar-fill[data-level="mid"] { background: var(--amber); }
+.bl-jev-bar-fill[data-level="high"] { background: var(--green, #4C9A6F); }
+.bl-jev-value { font-size: 12px; font-weight: 700; font-family: var(--font-mono); text-align: right; }
+.bl-jev-why { grid-column: 1 / -1; font-size: 11.5px; color: var(--text-dim); margin: -4px 0 0; }
+.bl-jev-overall { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bl-jev-overall .bl-score-badge { font-size: 14px; padding: 4px 12px; }
+.bl-jev-meta { font-size: 11.5px; color: var(--text-dim); margin: 0 0 12px; }
+.bl-jev-empty { color: var(--text-dim); font-size: 12.5px; margin: 0 0 12px; }
+
 /* "+ Ny idé" over Idé-kolonnen */
 .bl-new-idea { margin-top: 10px; }
 .bl-new-idea-btn { width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px; }
@@ -145,8 +190,13 @@
   .bl-dialog-head { padding: 14px 16px 12px; }
   .bl-dialog-content { padding: 14px 16px 20px; }
   .bl-dialog-notice { padding: 10px 16px; }
+  .bl-jev-row { grid-template-columns: 1fr 30px; grid-template-areas: "label value" "bar bar" "why why"; row-gap: 4px; }
+  .bl-jev-label { grid-area: label; }
+  .bl-jev-value { grid-area: value; }
+  .bl-jev-bar { grid-area: bar; }
+  .bl-jev-why { grid-area: why; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bl-dialog, .bl-card, .bl-ab-cand { animation: none !important; transition: none !important; }
+  .bl-dialog, .bl-card, .bl-ab-cand, .bl-drop-toast, .bl-jev-bar-fill { animation: none !important; transition: none !important; }
 }

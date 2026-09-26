@@ -19,6 +19,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/kunder", label: "Kunder", icon: "Building2", hint: "Aktive kunder" },
   { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals og næste skridt" },
+  { href: "/blog", label: "Blog", icon: "Rss", hint: "Blogindlæg: idé til udgivet" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
@@ -29,7 +30,6 @@ export const NAV_PRIMARY: NavItem[] = [
 // Reachable via ⌘K og mobilens "Mere"-ark, ikke i den faste rail.
 export const NAV_MORE: NavItem[] = [
   { href: "/virksomheder", label: "Alle virksomheder", icon: "Building2", hint: "Alle virksomheder og leads" },
-  { href: "/blog", label: "Blog", icon: "Rss", hint: "Blogindlæg: idé til udgivet" },
   { href: "/studio", label: "Studio", icon: "LayoutGrid", hint: "Demoer og kunde-sites" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
   { href: "/indsigter", label: "Indsigter", icon: "Activity", hint: "Indtjening og trends" },
