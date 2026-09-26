@@ -89,16 +89,24 @@ function AttentionStrip({ items }: { items: CustomerOverview["attention"] }) {
   );
 }
 
-function ContactCard({ mails }: { mails: CustomerOverview["lastMails"] }) {
+function ContactCard({ mails, status }: { mails: CustomerOverview["lastMails"]; status: CustomerOverview["status"] }) {
   const last = mails[0];
+  // Statussen (mail-syncs billige venter-på-vurdering) vinder kun når den er nyere
+  // end sidste mail — ellers er mail-retningen facit (samme regel som overview.ts).
+  const statusNewer = status !== null && (!last || Date.parse(status.at) > Date.parse(last.at));
+  const waitingSide = statusNewer
+    ? status!.waitingOn === "os" ? "us" : status!.waitingOn === "kunden" ? "customer" : null
+    : last ? (last.dir === "ind" ? "us" : "customer") : null;
+  const waitingSince = statusNewer ? status!.at : last?.at;
   return (
     <div className="cc-card cc-card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="virk-section-title"><span>Kontakt</span></div>
-      {last && (
-        <span className="ov-waiting" data-side={last.dir === "ind" ? "us" : "customer"}>
-          {last.dir === "ind" ? "Venter på os" : `Venter på kunden siden ${fmtDate(last.at)}`}
+      {waitingSide && waitingSince && (
+        <span className="ov-waiting" data-side={waitingSide}>
+          {waitingSide === "us" ? "Venter på os" : `Venter på kunden siden ${fmtDate(waitingSince)}`}
         </span>
       )}
+      {statusNewer && status!.nextStep && <span className="cc-dim" style={{ fontSize: 12 }}>{status!.text}</span>}
       {mails.length === 0 ? (
         <p className="cc-dim" style={{ fontSize: 12.5 }}>Ingen mails registreret endnu.</p>
       ) : (
@@ -625,7 +633,7 @@ export default function Overblik({
       {showOpstart && <OpstartCard companyId={companyId} items={onboarding} onSaved={() => router.refresh()} />}
 
       <div className="ov-row">
-        <ContactCard mails={overview.lastMails} />
+        <ContactCard mails={overview.lastMails} status={overview.status} />
         <MoneyCard companyId={companyId} money={overview.money} editing={editingAftale} onEdit={setEditingAftale} onSaved={() => router.refresh()} />
       </div>
 

@@ -12,6 +12,7 @@ import { cmsUsageAll } from "@/lib/hq/cms-usage";
 import { listUpdates, type UpdateStatus } from "@/lib/hq/customer-updates";
 import { listPipeline } from "@/lib/hq/deals";
 import { BlogInputError, getPost, listPosts } from "@/lib/hq/posts";
+import { listCustomerContacts } from "@/lib/hq/customer-contacts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
@@ -21,7 +22,7 @@ import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post"] as const;
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts"] as const;
 
 function authorized(req: Request): boolean {
   return verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET));
@@ -105,6 +106,12 @@ export async function GET(req: Request) {
         if (err instanceof BlogInputError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
         throw err;
       }
+    }
+    case "customer-contacts": {
+      // Kundeliste til Hermes' mail-sync (26/9): mailadresser + domæne pr. kunde,
+      // så scriptet matcher på deltagere (From/To/Cc) i stedet for fritekst.
+      const customers = await listCustomerContacts(db);
+      return NextResponse.json({ ok: true, customers });
     }
     default:
       return NextResponse.json({ ok: false, error: "ukendt what", mulige: WHATS }, { status: 400 });
