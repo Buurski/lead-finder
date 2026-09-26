@@ -433,11 +433,26 @@ test("applySignatureHtml: balanceret parentes bliver i href, ubalanceret ryger u
   assert.equal(out.includes(">https://demo.dk/p</a>)"), true);
 });
 
-test("applySignatureHtml: råt anførselstegn kan ikke bryde ud af href", async () => {
+test("applySignatureHtml: afsluttende HTML-entitet rives ikke over", async () => {
   const { applySignatureHtml } = await import("./senders.ts");
-  const out = applySignatureHtml('Se https://demo.dk/x?a=1&b=2"onmouseover="alert(1)', "lucas");
-  const m = out.match(/<a href="([^"]*)" style="color:#1a5fb4;">([^<]*)<\/a>/);
-  assert.equal(m?.[1], "https://demo.dk/x?a=1&amp;b=2");
-  assert.equal(m?.[2], "https://demo.dk/x?a=1&amp;b=2");
-  assert.equal(out.includes('onmouseover="alert(1)'), true);
+  const out = applySignatureHtml("Se <https://kinly.dk> her", "lucas");
+  assert.equal(/href="https:\/\/kinly\.dk"[^>]*>https:\/\/kinly\.dk<\/a>&gt;/.test(out), true);
+  assert.equal(out.includes("https://kinly.dk&gt"), false);
+  assert.equal(out.includes("&amp;gt;"), false);
+});
+
+test("applySignatureHtml: citationstegn i en URL kan ikke bryde ud af href (Sol w4a-r4 R4-03)", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se https://example.test/"onmouseover="alert(1) nu`, "lucas");
+  assert.doesNotMatch(out, /href="[^"]*"onmouseover=/);
+  assert.doesNotMatch(out, / onmouseover=/);
+  assert.match(out, /&quot;onmouseover=&quot;/);
+});
+
+test("applySignatureHtml: URL i citationstegn får et rent href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se "https://kinly.dk" og 'https://kinly.dk/x' her`, "lucas");
+  assert.match(out, /href="https:\/\/kinly\.dk"/);
+  assert.match(out, /href="https:\/\/kinly\.dk\/x"/);
+  assert.doesNotMatch(out, /href="[^"]*&(quot|#39);/);
 });
