@@ -225,8 +225,7 @@ test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
   assert.ok(suggestMailLinks("vvs", "VVS Test").some((l) => l.url === DEMO_SITES.ktvvsCase));
 });
 
-// 26/9: link-kravet krævede kun at links var TIL STEDE, så et udkast med alle
-// tre links PLUS kundens eget link slap igennem. Værnet skal ramme alle tekstveje.
+// 26/9: et udkast med alle tre links PLUS kundens eget link slap igennem.
 test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", async () => {
   const { validateDraft } = await import("./draft.ts");
   const { validateMessengerDraft } = await import("./messenger/compose.ts");
@@ -240,8 +239,7 @@ test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", as
   assert.ok(missingReferenceLinks(vida, "skønhedsklinik", "Klinik Test").some((i) => i.includes("vida-klinik.dk")));
 });
 
-// Host sammenlignes præcist: port, FQDN-rod og afsluttende tegnsætning (.,;!) hører
-// til hosten, mens lookalikes og case/demo-links skal slippe igennem.
+// Host præcist: port og afsluttende tegnsætning hører til hosten; lookalikes slipper.
 test("værnet matcher host præcist — port, tegnsætning, lookalike og case", () => {
   for (const u of [
     "https://ktvvs.vercel.app/", "https://ktvvs.vercel.app:8080/x", "https://ktvvs.vercel.app.",
@@ -254,7 +252,6 @@ test("værnet matcher host præcist — port, tegnsætning, lookalike og case", 
   ]) assert.equal(isCustomerSiteUrl(u), false, u);
   const ok = [...referenceLines("vvs", "KT VVS Test"), "→ https://ktvvs.vercel.app.evil/"].join("\n");
   assert.deepEqual(missingReferenceLinks(ok, "vvs", "KT VVS Test"), []);
-  // Fri tekst: URL'en står midt i en sætning og slutter med tegnsætning (intet slash).
   assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app."), ["https://ktvvs.vercel.app."]);
   for (const t of ["kig på https://ktvvs.vercel.app, tak", "se https://ktvvs.vercel.app;", "https://vida-klinik.dk!"]) {
     assert.equal(customerSiteLinks(t).length, 1, t);
@@ -263,16 +260,17 @@ test("værnet matcher host præcist — port, tegnsætning, lookalike og case", 
   assert.ok(missingReferenceLinks("Se https://ktvvs.vercel.app. herfra", "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
 });
 
-test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", () => {
-  assert.ok(!DEMO_CATALOG.some((d) => d.url === DEMO_SITES.ktvvs), "previewet står i DEMO_CATALOG");
-  assert.deepEqual(pickDemos("maler", "Maler Test").map((d) => d.url), [DEMO_SITES.denlillemaler]);
-  // Previewet er ikke i MAIL_LINKS (testen ovenfor), så eneste vej ind i forslagene
-  // er demo-parret — det skal være rent for hver af brancherne.
-  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
-    assert.ok(!pickDemos(branch, name).some((d) => d.url === DEMO_SITES.ktvvs), `previewet i demo-parret for ${branch}`);
+test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", async () => {
+  // 26/9: hele kataloget og link-listen — ikke kun KT VVS.
+  const { MAIL_LINKS } = await import("./demos.ts");
+  for (const l of [...DEMO_CATALOG, ...MAIL_LINKS]) {
+    assert.equal(isCustomerSiteUrl(l.url), false, `kunde-side i kataloget: ${l.url}`);
   }
-  // Maler-demoen er kun til en FAKTISK maler. Andre håndværk/service er
-  // fail-closed = [] — uden body-fallback, så ingen fremmed reference i teksten.
+  assert.deepEqual(pickDemos("maler", "Maler Test").map((d) => d.url), [DEMO_SITES.denlillemaler]);
+  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
+    assert.ok(!pickDemos(branch, name).some((d) => isCustomerSiteUrl(d.url)), `kunde-side i demo-parret for ${branch}`);
+  }
+  // Maler-demoen er kun til en FAKTISK maler; andre håndværk/service er [] (fail-closed).
   for (const [branch, name] of [["tømrer", "Tømrer Test"], ["vinduespudser", "Pro Vindues Polering"]]) {
     assert.deepEqual(pickDemos(branch, name), []);
     assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler), branch);

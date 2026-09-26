@@ -42,8 +42,6 @@ const D = {
   buurfoto: { label: "Fotograf", url: DEMO_SITES.buurfoto },
   streetcut: { label: "Barber", url: DEMO_SITES.streetcut },
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
-  vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
-  ikastAutoservice: { label: "Autoværksted", url: DEMO_SITES.ikastAutoservice },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
   midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
   vidaCase: { label: "Kunde: VIDA Klinik (skønhedsklinik)", url: DEMO_SITES.vidaCase },
@@ -63,10 +61,8 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.underKlippen, branch: "mad" },
   { ...D.zaytoon, branch: "mad" },
   { ...D.salonArtec, branch: "skønhed" },
-  { ...D.vida, branch: "skønhed" },
   { ...D.streetcut, branch: "skønhed" },
   { ...D.denlillemaler, branch: "håndværk" },
-  { ...D.ikastAutoservice, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   // vestfjends.vercel.app svarer 404 (verificeret 2026-09-23) — fjernet fra
   // Studio-grid'et til den er oppe igen. pickDemos() bruger den stadig som
@@ -90,7 +86,6 @@ const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
-// Maler-faget: den eneste ægte håndværks-demo. Tømrer/murer får ingen, se pickDemos.
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
@@ -119,8 +114,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "auto": return [D.ikastCase, D.denlillemaler];
     // VVS/el: casen er kladden og kundens reference; previewet er ikke en demo.
     case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
-    // craft/service: kun en faktisk maler får maler-demoen. Alt andet er
-    // fail-closed = [] — hellere ingen demo end en fremmed reference.
+    // craft/service: kun en faktisk maler får maler-demoen; ellers [] (fail-closed).
     case "craft": return PAINTER.test(`${name} ${branch}`) ? [D.denlillemaler] : [];
     case "service": return [];
     // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
@@ -154,7 +148,7 @@ export function hasKinlyFront(text: string): boolean {
  */
 const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
 
-/** Host-nøgle: hostname (host bar porten med), uden www. og afsluttende tegnsætning. */
+/** hostname uden www. og afsluttende tegnsætning (host porten med). */
 function hostKey(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, "");
@@ -165,14 +159,13 @@ function hostKey(url: string): string {
 
 const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
 
-/** Kundens egen side må kun linkes via sin kinly.dk-case (Lucas 23/9). Host
- *  sammenlignes præcist, så en lookalike ikke smugler kunden igennem. */
+/** Kundens side kun via sin kinly.dk-case (Lucas 23/9); host sammenlignes præcist. */
 export function isCustomerSiteUrl(url: string): boolean {
   const h = hostKey(url);
   return h !== "" && CUSTOMER_HOSTS.has(h);
 }
 
-/** Kunde-links fundet i fri tekst (URL'er parset med new URL). Tom = ok. */
+/** Kunde-links i fri tekst. Tom = ok. */
 export function customerSiteLinks(text: string): string[] {
   const hits: string[] = [];
   for (const m of text.matchAll(/https?:\/\/[^\s<>"'()\]]+/gi)) {
@@ -294,7 +287,6 @@ export const REFERENCE_INTRO = "Her kan I se min egen side og et par eksempler:"
 export function missingReferenceLinks(body: string, branch: string, name = ""): string[] {
   const l = referenceLinks(branch, name);
   const issues: string[] = [];
-  // Kunde-linket tjekkes først: det slap igennem selv når alle tre links var der.
   for (const u of customerSiteLinks(body)) {
     issues.push(`kundens egen side må ikke linkes (${u}) — brug kinly.dk-casen`);
   }
