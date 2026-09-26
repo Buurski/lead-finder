@@ -8,7 +8,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { missingReferenceLinks, referenceLines } from "./demos.ts";
+import { customerSiteLinks, missingReferenceLinks, referenceLines } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
@@ -69,6 +69,11 @@ export function validateDraft(text: string): ValidationResult {
   }
   for (const dead of DEAD_DEMO_HOSTS) {
     if (text.includes(dead)) errors.push(`dødt demo-link: ${dead} — vælg andre demoer`);
+  }
+  // Kunde-link (kundens domæne eller vores preview) må aldrig i et udkast —
+  // samme værn som sendegaten (demos.ts#customerSiteLinks).
+  for (const u of customerSiteLinks(text)) {
+    errors.push(`kunde-link: ${u} — brug kinly.dk-casen, ikke kundens egen side`);
   }
   return { ok: errors.length === 0, errors };
 }
@@ -216,6 +221,10 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
   // demo når branchen ingen case har) + branche-side — fra ÉN kilde i demos.ts.
   // demoPair bliver kladdens metadata, men kroppen viser kun de tre link-roller.
   const linkLines = referenceLines(lead.branch, lead.name);
+  // 26/9: er forside-linket det eneste, har mailen intet at vise (tømrer,
+  // vinduespudser). Så må demoIntro/tailorLine ikke love demoer eller eksempler
+  // der ikke er der — kun de ærlige linklinjer står tilbage.
+  const hasExamples = linkLines.length > 1;
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
@@ -227,10 +236,9 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ``,
     branchValueLine(lead.branch),
     ``,
-    mix.demoIntro,
+    ...(hasExamples ? [mix.demoIntro] : []),
     ...linkLines,
-    ``,
-    tailorLine,
+    ...(hasExamples ? [``, tailorLine] : []),
     ``,
     offerLine,
     ``,

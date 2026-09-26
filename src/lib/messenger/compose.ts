@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT, hasKinlyFront } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -16,7 +16,9 @@ const DEMO_URLS = {
   foodInter: DEMO_SITES.zaytoon,
   foodCafe: DEMO_SITES.jernbanecafeenCase,
   photo: DEMO_SITES.buurfoto,
-  craftUtility: DEMO_SITES.ktvvs,
+  // VVS/el: KT VVS er en rigtig kunde. DM'en linker casen på kinly.dk — aldrig
+  // kundens eget preview/domæne (demos.ts#CUSTOMER_SITES, Lucas 23/9).
+  craftUtility: DEMO_SITES.ktvvsCase,
   craft: DEMO_SITES.denlillemaler,
   service: DEMO_SITES.ikastCase,
 };
@@ -150,6 +152,8 @@ export function validateMessengerDraft(text: string, sender: "lucas" | "charlie"
   if (/\d+\s*k(?:r|R)\b|\d+\.\d{3}\s*kr|alt\s+inklusiv|\bfra\s+\d|prisvenlig/.test(text)) issues.push("contains price/kr");
   if (/skriv\s+bare|send\s+(?:mig\s+)?mockup|svar\s+ja|\b200\+\s*kund/i.test(text)) issues.push("hard-sell CTA");
   if (!hasKinlyFront(text)) issues.push("mangler kinly.dk-link");
+  // 26/9: kundens egen side må aldrig stå i en DM — kun via kinly.dk-casen.
+  for (const u of customerSiteLinks(text)) issues.push(`kunde-link: ${u} — brug kinly.dk-casen`);
   if (!text.endsWith(`Mvh, ${messengerSignatureName(sender)}`)) issues.push("missing signature");
   return issues;
 }

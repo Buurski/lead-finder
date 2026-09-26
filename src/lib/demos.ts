@@ -31,24 +31,24 @@ export const DEMO_SITES = {
   ikastCase: "https://kinly.dk/case/ikast-autoservice/",
   jernbanecafeenCase: "https://kinly.dk/case/jernbanecafeen/",
   lejEnKokCase: "https://kinly.dk/case/lej-en-kok/",
+  // KT VVS-casen er live: 200 + i kinly.dk/sitemap.xml (verificeret med curl 26/9).
+  ktvvsCase: "https://kinly.dk/case/kt-vvs/",
 } as const;
 
 const D = {
   underKlippen: { label: "Café / dansk", url: DEMO_SITES.underKlippen },
   zaytoon: { label: "Restaurant / takeaway", url: DEMO_SITES.zaytoon },
   denlillemaler: { label: "Maler / håndværk", url: DEMO_SITES.denlillemaler },
-  ktvvs: { label: "VVS / el", url: DEMO_SITES.ktvvs },
   buurfoto: { label: "Fotograf", url: DEMO_SITES.buurfoto },
   streetcut: { label: "Barber", url: DEMO_SITES.streetcut },
   salonArtec: { label: "Salon / skønhed", url: DEMO_SITES.salonArtec },
-  vida: { label: "Skønhedsklinik", url: DEMO_SITES.vida },
-  ikastAutoservice: { label: "Autoværksted", url: DEMO_SITES.ikastAutoservice },
   vestfjends: { label: "Service / lokal", url: DEMO_SITES.vestfjends },
   midtadvokaterne: { label: "Advokat / rådgivning", url: DEMO_SITES.midtadvokaterne },
   vidaCase: { label: "Kunde: VIDA Klinik (skønhedsklinik)", url: DEMO_SITES.vidaCase },
   ikastCase: { label: "Kunde: Ikast AutoService (autoværksted)", url: DEMO_SITES.ikastCase },
   jernbanecafeenCase: { label: "Kunde: Jernbanecaféen (café)", url: DEMO_SITES.jernbanecafeenCase },
   lejEnKokCase: { label: "Kunde: Lej en Kok (catering/mad)", url: DEMO_SITES.lejEnKokCase },
+  ktvvsCase: { label: "Kunde: KT VVS (VVS/el)", url: DEMO_SITES.ktvvsCase },
 } as const;
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
@@ -61,11 +61,8 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.underKlippen, branch: "mad" },
   { ...D.zaytoon, branch: "mad" },
   { ...D.salonArtec, branch: "skønhed" },
-  { ...D.vida, branch: "skønhed" },
   { ...D.streetcut, branch: "skønhed" },
   { ...D.denlillemaler, branch: "håndværk" },
-  { ...D.ktvvs, branch: "håndværk" },
-  { ...D.ikastAutoservice, branch: "håndværk" },
   { ...D.buurfoto, branch: "foto" },
   // vestfjends.vercel.app svarer 404 (verificeret 2026-09-23) — fjernet fra
   // Studio-grid'et til den er oppe igen. pickDemos() bruger den stadig som
@@ -89,6 +86,7 @@ const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
+const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
 // Without this branch, Pro Vindues Polering and similar fell to default = wrong demos.
 const SERVICE_MAINT = /vindues|vindue|polering|pudser|rengør|rengoring|cleaning|servicemand|handyman|gartner|flytte|flytning|haveservice|service mand|viceværts?|nedrivning/i;
@@ -113,10 +111,10 @@ export function pickDemos(branch: string, name: string): Demo[] {
     case "foodIntl": return [D.zaytoon, D.underKlippen];
     case "food": return [D.jernbanecafeenCase, D.underKlippen];
     case "professional": return [D.midtadvokaterne, D.ikastCase];
-    case "auto": return [D.ikastCase, D.ktvvs];
-    case "craftUtility": return [D.ktvvs, D.denlillemaler];
-    case "craft": return [D.ktvvs, D.denlillemaler];
-    case "service": return [D.ktvvs, D.denlillemaler];
+    case "auto": return [D.ikastCase, D.denlillemaler];
+    case "craftUtility": return [D.ktvvsCase, D.denlillemaler];
+    case "craft": return PAINTER.test(`${name} ${branch}`) ? [D.denlillemaler] : [];
+    case "service": return [];
     // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
     default: return [D.ikastCase, D.underKlippen];
   }
@@ -154,6 +152,26 @@ export function hasKinlyFront(text: string): boolean {
  */
 const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
 
+function hostKey(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
+}
+
+const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
+
+export function isCustomerSiteUrl(url: string): boolean {
+  return CUSTOMER_HOSTS.has(hostKey(url));
+}
+
+// Kandidat uden whitespace-krav; (?<!@) = e-mail.
+export function customerSiteLinks(text: string): string[] {
+  const hits: string[] = [];
+  for (const m of text.matchAll(/(?<!@)(?:(?:https?:\/\/|\/\/)(?:[^\s/@]+@)?)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
+    const u = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
+    if (isCustomerSiteUrl(u) && !hits.includes(m[0])) hits.push(m[0]);
+  }
+  return hits;
+}
+
 export type BranchKind =
   | "clinic" | "barber" | "beauty" | "photo" | "foodIntl" | "food"
   | "professional" | "auto" | "craftUtility" | "craft" | "service" | "other";
@@ -180,9 +198,18 @@ const CASE_FOR: Partial<Record<BranchKind, { url: string; label: string }>> = {
   clinic: { url: DEMO_SITES.vidaCase, label: "VIDA Klinik" },
   beauty: { url: DEMO_SITES.vidaCase, label: "VIDA Klinik" },
   food: { url: DEMO_SITES.jernbanecafeenCase, label: "Jernbanecaféen" },
+  // foodIntl er samme spisested-familie som food; kun demo-stilen er en anden
+  // (zaytoon/underKlippen). Danske restauranter med udenlandsk køkken (thai,
+  // sushi, pizza) får derfor samme case — præcis som suggestMailLinks allerede
+  // tilbyder den for FOOD_INTL-leads.
+  foodIntl: { url: DEMO_SITES.jernbanecafeenCase, label: "Jernbanecaféen" },
   auto: { url: DEMO_SITES.ikastCase, label: "Ikast AutoService" },
-  // craftUtility (VVS/el) mangler bevidst: /case/kt-vvs/ svarer 404 (verificeret
-  // 25/9). Ingen død URL i et udkast — VVS er case_missing indtil den er live.
+  // KT VVS-casen er live (verificeret 26/9). Den gamle 404-antagelse fra 25/9
+  // er død; uden denne post blev VVS-kladder fejlagtigt case_missing.
+  craftUtility: { url: DEMO_SITES.ktvvsCase, label: "KT VVS" },
+  // craft og service har bevidst ingen case: KT VVS er VVS/el, ikke maler eller
+  // rengøring. Brancher uden ægte match forbliver case_missing (fail-closed).
+  // photo og barber er også uden case — der findes ingen case-side for dem.
 };
 
 // Branche-sider på kinly.dk.
@@ -258,6 +285,9 @@ export const REFERENCE_INTRO = "Her kan I se min egen side og et par eksempler:"
 export function missingReferenceLinks(body: string, branch: string, name = ""): string[] {
   const l = referenceLinks(branch, name);
   const issues: string[] = [];
+  for (const u of customerSiteLinks(body)) {
+    issues.push(`kundens egen side må ikke linkes (${u}) — brug kinly.dk-casen`);
+  }
   if (!hasKinlyFront(body)) issues.push(`mangler kinly.dk-forside (${l.front})`);
   if (l.caseUrl && !body.includes(l.caseUrl)) issues.push(`mangler case-link (${l.caseUrl})`);
   if (l.verticalUrl && !body.includes(l.verticalUrl)) issues.push(`mangler branche-side (${l.verticalUrl})`);
@@ -272,6 +302,11 @@ export interface ReferenceFix {
   caseMissing: boolean;
 }
 
+/** "et par eksempler" kræver et link ud over forsiden, ellers loves noget der ikke er der. */
+export function referenceIntro(links: string[]): string {
+  return links.some((l) => !hasKinlyFront(l)) ? REFERENCE_INTRO : "Her er min egen side.";
+}
+
 /**
  * Tilføjer de manglende link-linjer til en færdig prospekt-tekst. Bruges af
  * legacy-skabelonerne (email.ts) og af backfill af gamle kladder, så de følger
@@ -282,7 +317,7 @@ export function withReferenceLinks(text: string, branch: string, name = ""): Ref
   const links = referenceLines(branch, name).map((line) => line.slice(2));
   const added = links.filter((u) => !(u === l.front ? hasKinlyFront(text) : text.includes(u)));
   if (added.length === 0) return { body: text, added: [], caseMissing: l.caseMissing };
-  const block = [REFERENCE_INTRO, ...added.map((u) => `→ ${u}`)].join("\n");
+  const block = [referenceIntro(links), ...added.map((u) => `→ ${u}`)].join("\n");
   return { body: `${text.replace(/\s+$/, "")}\n\n${block}`, added, caseMissing: l.caseMissing };
 }
 
@@ -290,6 +325,8 @@ export function withReferenceLinks(text: string, branch: string, name = ""): Ref
 // Valgbare links i godkendelsen: kinly.dk-cases (rigtige kunder) først, så
 // kinly.dk-branchesider, så levende demoer. Kun sider der svarer 200 (tjekket
 // 23/9) — døde demoer (vestfjends) og kundernes egne domæner er med vilje ude.
+// KT VVS-previewet er også ude (26/9): kataloget er den vej et preview kunne
+// blive sat ind i en kladde med hånden, og en kunde må kun optræde via sin case.
 export interface MailLink extends Demo {
   group: "Kinly-cases" | "Kinly-branchesider" | "Demoer";
 }
@@ -299,6 +336,7 @@ export const MAIL_LINKS: MailLink[] = [
   { group: "Kinly-cases", ...D.ikastCase },
   { group: "Kinly-cases", ...D.jernbanecafeenCase },
   { group: "Kinly-cases", ...D.lejEnKokCase },
+  { group: "Kinly-cases", ...D.ktvvsCase },
   { group: "Kinly-cases", label: "Alle projekter på kinly.dk", url: "https://kinly.dk/projekter/" },
   { group: "Kinly-branchesider", label: "Hjemmeside til skønhedsklinik", url: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   { group: "Kinly-branchesider", label: "Hjemmeside til frisør", url: "https://kinly.dk/hjemmeside-til-frisoer/" },
@@ -309,7 +347,6 @@ export const MAIL_LINKS: MailLink[] = [
   { group: "Demoer", ...D.zaytoon },
   { group: "Demoer", ...D.salonArtec },
   { group: "Demoer", ...D.streetcut },
-  { group: "Demoer", ...D.ktvvs },
   { group: "Demoer", ...D.denlillemaler },
   { group: "Demoer", ...D.buurfoto },
   { group: "Demoer", ...D.midtadvokaterne },
@@ -325,6 +362,11 @@ export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[
   if (vertical) urls.push(vertical);
   if (FOOD.test(t) || FOOD_INTL.test(t)) urls.push(DEMO_SITES.jernbanecafeenCase, DEMO_SITES.lejEnKokCase);
   else if (CLINIC.test(t) || BEAUTY.test(t) || BARBER.test(t)) urls.push(DEMO_SITES.vidaCase);
+  // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
+  // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
+  // !AUTO: "mekaniker" rammer også automekanikere, men de routes til auto og har
+  // Ikast-casen som deres (branchKind tjekker AUTO før CRAFT_UTIL).
+  else if (CRAFT_UTIL.test(t) && !AUTO.test(t)) urls.push(DEMO_SITES.ktvvsCase);
   else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
   urls.push("https://kinly.dk/projekter/");
   const out: MailLink[] = [];

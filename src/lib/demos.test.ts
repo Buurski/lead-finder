@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -33,8 +33,10 @@ test("verticalPageFor(tandlæge) → null (ingen branche-side, medicinsk-eksklud
 
 // ---- Link-politik (Lucas 24/9) -------------------------------------------
 // Alle udkastveje skal bære kinly.dk-forsiden + den matchende case (når branchen
-// har en) + branche-siden (når den findes). VVS-casen er bevidst null: /case/
-// kt-vvs/ svarede 404 ved verifikation 25/9 — ingen død URL i et udkast.
+// har en) + branche-siden (når den findes). Cases er reelle kinly.dk-sider;
+// brancher uden ægte case (barber, fotograf, tandlæge) er null — ingen fremmed
+// reference. KT VVS-casen er live (200 + i sitemap, verificeret 26/9), så VVS
+// har en case nu; foodIntl deler Jernbanecaféen-casen med food.
 const BRANCH_CASES: { branch: string; caseUrl: string | null; vertical: string | null }[] = [
   { branch: "skønhedsklinik", caseUrl: DEMO_SITES.vidaCase, vertical: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   // BEAUTY-rækken (frisør/salon) får VIDA-casen som case-rolle — samme mapping som
@@ -42,8 +44,10 @@ const BRANCH_CASES: { branch: string; caseUrl: string | null; vertical: string |
   { branch: "frisør", caseUrl: DEMO_SITES.vidaCase, vertical: "https://kinly.dk/hjemmeside-til-skoenhedsklinik/" },
   { branch: "barber", caseUrl: null, vertical: "https://kinly.dk/hjemmeside-til-frisoer/" },
   { branch: "café", caseUrl: DEMO_SITES.jernbanecafeenCase, vertical: "https://kinly.dk/hjemmeside-til-restaurant-cafe/" },
+  { branch: "pizzeria", caseUrl: DEMO_SITES.jernbanecafeenCase, vertical: "https://kinly.dk/hjemmeside-til-restaurant-cafe/" },
   { branch: "autoværksted", caseUrl: DEMO_SITES.ikastCase, vertical: "https://kinly.dk/hjemmeside-til-automekaniker/" },
-  { branch: "vvs", caseUrl: null, vertical: "https://kinly.dk/hjemmeside-til-vvs/" },
+  { branch: "vvs", caseUrl: DEMO_SITES.ktvvsCase, vertical: "https://kinly.dk/hjemmeside-til-vvs/" },
+  { branch: "fotograf", caseUrl: null, vertical: null },
   { branch: "tandlæge", caseUrl: null, vertical: null },
 ];
 
@@ -111,10 +115,31 @@ test("withReferenceLinks tilføjer det der mangler og rører ikke en komplet tek
   const r = withReferenceLinks("Hej\n\nMed venlig hilsen\nLucas", "café", "Bodega Test");
   assert.equal(r.added.length, 3);
   assert.deepEqual(missingReferenceLinks(r.body, "café", "Bodega Test"), []);
-  // VVS: ingen case findes → kun forside + branche-side tilføjes, ingen falsk case.
+  // VVS har nu en case (KT VVS, live 26/9) → forside + case + branche-side.
   const v = withReferenceLinks("Hej", "vvs", "VVS Test");
-  assert.deepEqual(v.added, [KINLY_FRONT, "https://kinly.dk/hjemmeside-til-vvs/"]);
-  assert.equal(v.caseMissing, true);
+  assert.deepEqual(v.added, [KINLY_FRONT, DEMO_SITES.ktvvsCase, "https://kinly.dk/hjemmeside-til-vvs/"]);
+  assert.equal(v.caseMissing, false);
+  // Branche uden case (tandlæge) → kun forsiden; ingen falsk case (fail-closed).
+  const t = withReferenceLinks("Hej", "tandlæge", "Test Test");
+  assert.deepEqual(t.added, [KINLY_FRONT]);
+  assert.equal(t.caseMissing, true);
+});
+
+test("26/9: vvs → KT VVS-casen og intl restaurant → Jernbanecaféen; foto/barber er stadig caseløse", () => {
+  const vvs = referenceLinks("vvs", "VVSøren Rasmussen I/S");
+  assert.equal(vvs.caseUrl, DEMO_SITES.ktvvsCase);
+  assert.equal(vvs.caseMissing, false);
+  const intl = referenceLinks("populær restaurant", "Panya Thai");
+  assert.equal(intl.caseUrl, DEMO_SITES.jernbanecafeenCase);
+  assert.equal(intl.caseMissing, false);
+  // Demo-paret for foodIntl er uændret — kun case-rollen fik en post.
+  assert.equal(pickDemos("populær restaurant", "Panya Thai")[0].url, DEMO_SITES.zaytoon);
+  // Ingen case for foto/barber → udkastet flagges, ikke pyntes med en fremmed case.
+  for (const [branch, name] of [["fotograf", "kajsfoto.dk - fotograf"], ["barbershop", "Qosay Barber"]]) {
+    const r = referenceLinks(branch, name);
+    assert.equal(r.caseUrl, null, branch);
+    assert.equal(r.caseMissing, true, branch);
+  }
 });
 
 test("case-link og branche-side tæller ikke som link til forsiden", () => {
@@ -183,5 +208,116 @@ test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async (
   assert.ok(cafe.some((l) => l.url === "https://kinly.dk/hjemmeside-til-restaurant-cafe/"));
   const klinik = suggestMailLinks("skønhedsklinik", "Frederiksberg Skønhedsklinik");
   assert.equal(klinik[0].url, "https://kinly.dk/case/vida-klinik/");
+  // 26/9: VVS-kladder kræver KT VVS-casen (CASE_FOR.craftUtility) — den skal
+  // både stå i kataloget og komme med i forslaget, uden at sprænge loftet på 5.
+  assert.ok(MAIL_LINKS.some((l) => l.url === DEMO_SITES.ktvvsCase));
+  const vvs = suggestMailLinks("vvs", "VVS Test");
+  assert.ok(vvs.some((l) => l.url === DEMO_SITES.ktvvsCase));
+  assert.ok(vvs.length <= 5 && vvs.every((l) => known.has(l.url)));
+  // Automekanikere routes til auto (Ikast-casen) — de skal ikke have VVS-casen.
+  const auto = suggestMailLinks("automekaniker", "Bilerne");
+  assert.equal(auto[0].url, DEMO_SITES.ikastCase);
+  assert.ok(!auto.some((l) => l.url === DEMO_SITES.ktvvsCase));
   assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
+});
+
+// 26/9: link-politikken sad kun på demos.ts-vejen. DM- og legacy-skabelon-vejen
+// sendte stadig KT VVS-PREVIEWET (CUSTOMER_SITES kalder det ikke-linkbart), og
+// sendegaten (missingReferenceLinks) kræver kun links — den afviser ikke et
+// kunde-preview. Derfor pinnes begge veje her.
+test("DM- og legacy-vejen linker kundens case — ikke previewet", async () => {
+  const { getEmailTemplate } = await import("./email.ts");
+  const { buildMessengerDraft, validateMessengerDraft } = await import("./messenger/compose.ts");
+  const vars = (name: string, branch: string) => ({
+    leadId: "1", name, branch, city: "Ikast", websiteStatus: "old", websiteQualityTier: "old", daysSince: 7, sender: "lucas" as const,
+  });
+  // Legacy-skabelonen (craft-gruppen rammer vvs): casen står i mailen, previewet gør ikke.
+  for (const type of ["cold", "followup"] as const) {
+    const t = getEmailTemplate("vvs", type, vars("KT VVS Test", "vvs"));
+    assert.ok(t.text.includes(DEMO_SITES.ktvvsCase), `casen mangler i ${type}`);
+    assert.ok(t.html.includes(DEMO_SITES.ktvvsCase), `casen mangler i ${type}-html`);
+    assert.ok(!t.text.includes(DEMO_SITES.ktvvs), `previewet står i ${type}`);
+    assert.ok(!t.html.includes(DEMO_SITES.ktvvs), `previewet står i ${type}-html`);
+    assert.deepEqual(missingReferenceLinks(t.text, "vvs", "KT VVS Test"), [], type);
+  }
+  // Autoværksted rammer samme craft-gruppe, men har sin egen case (Ikast).
+  const auto = getEmailTemplate("autoværksted", "cold", vars("Bilerne", "autoværksted"));
+  assert.ok(auto.text.includes(DEMO_SITES.ikastCase));
+  assert.ok(!auto.text.includes(DEMO_SITES.ktvvs));
+  // Maler/tømrer har ingen case → den rigtige demo (maler) er stadig linket.
+  const maler = getEmailTemplate("maler", "cold", vars("Maler Test", "maler"));
+  assert.ok(maler.text.includes(DEMO_SITES.denlillemaler));
+  assert.ok(!maler.text.includes(DEMO_SITES.ktvvs));
+  // DM-vejen: samme politik, og DM'en består stadig sin egen validator.
+  const dm = buildMessengerDraft({ name: "VVS Test", branch: "vvs", city: "Ikast", reviews: 60, pattern: "A" });
+  assert.equal(dm.demoUrl, DEMO_SITES.ktvvsCase);
+  assert.ok(!dm.text.includes(DEMO_SITES.ktvvs), "previewet står i DM'en");
+  assert.deepEqual(validateMessengerDraft(dm.text), []);
+  // Kunde-previewet må heller ikke kunne VÆLGES i godkendelses-UI'et: intet
+  // preview i kataloget (MAIL_LINKS → dropdown + forslag), og ikke i demo-parret
+  // for de brancher hvor casen er kundens reference (VVS/el og auto).
+  const { MAIL_LINKS, suggestMailLinks, pickDemos } = await import("./demos.ts");
+  assert.ok(!MAIL_LINKS.some((l) => l.url === DEMO_SITES.ktvvs), "previewet står i kataloget");
+  assert.equal(pickDemos("vvs", "VVS Test")[0].url, DEMO_SITES.ktvvsCase);
+  assert.ok(!pickDemos("autoværksted", "Bilerne").some((d) => d.url === DEMO_SITES.ktvvs));
+  for (const [branch, name] of [["vvs", "VVS Test"], ["maler", "Maler Test"], ["automekaniker", "Bilerne"]]) {
+    assert.ok(!suggestMailLinks(branch, name).some((l) => l.url === DEMO_SITES.ktvvs), `previewet foreslås for ${branch}`);
+  }
+  assert.ok(suggestMailLinks("vvs", "VVS Test").some((l) => l.url === DEMO_SITES.ktvvsCase));
+});
+
+test("kunde-link i kroppen afvises — også når alle tre VVS-links er der", async () => {
+  const { validateDraft } = await import("./draft.ts");
+  const { validateMessengerDraft } = await import("./messenger/compose.ts");
+  const links = referenceLines("vvs", "KT VVS Test");
+  assert.deepEqual(missingReferenceLinks(links.join("\n"), "vvs", "KT VVS Test"), []);
+  for (const u of ["https://ktvvs.vercel.app/path?x=y", "//ktvvs.vercel.app/path", "ktvvs.vercel.app/path", "**https://ktvvs.vercel.app/**"]) {
+    const withPreview = [...links, `→ ${u}`].join("\n");
+    assert.ok(missingReferenceLinks(withPreview, "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")), u);
+    assert.equal(validateDraft(withPreview).ok, false, u);
+  }
+  assert.ok(validateMessengerDraft(`Hej!\n\nSe https://ktvvs.vercel.app/ her\n\nMin egen side: ${KINLY_FRONT}\n\nMvh, Lucas`).length > 0);
+  const vida = [...referenceLines("skønhedsklinik", "Klinik Test"), "→ https://vida-klinik.dk/"].join("\n");
+  assert.ok(missingReferenceLinks(vida, "skønhedsklinik", "Klinik Test").some((i) => i.includes("vida-klinik.dk")));
+});
+
+test("værnet matcher host præcist — port, tegnsætning, lookalike og case", () => {
+  for (const u of [
+    "https://ktvvs.vercel.app/", "https://ktvvs.vercel.app:8080/x", "https://ktvvs.vercel.app.",
+    "https://ktvvs.vercel.app,", "https://ktvvs.vercel.app;", "https://ktvvs.vercel.app!",
+    "https://vida-klinik.dk/", "https://www.vida-klinik.dk.", DEMO_SITES.ikastAutoservice,
+  ]) assert.equal(isCustomerSiteUrl(u), true, u);
+  for (const u of [
+    "https://ktvvs.vercel.app.evil/", "https://ikastautoservice.dk.evil/",
+    DEMO_SITES.ktvvsCase, DEMO_SITES.zaytoon, DEMO_SITES.denlillemaler,
+  ]) assert.equal(isCustomerSiteUrl(u), false, u);
+  const ok = [...referenceLines("vvs", "KT VVS Test"), "→ https://ktvvs.vercel.app.evil/"].join("\n");
+  assert.deepEqual(missingReferenceLinks(ok, "vvs", "KT VVS Test"), []);
+  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app."), ["https://ktvvs.vercel.app."]);
+  for (const t of ["kig på https://ktvvs.vercel.app, tak", "se https://ktvvs.vercel.app;", "https://vida-klinik.dk!"]) {
+    assert.equal(customerSiteLinks(t).length, 1, t);
+  }
+  for (const t of [
+    "→ ktvvs.vercel.app/path", "→ //ktvvs.vercel.app/path", "se www.vida-klinik.dk, tak", "→ KTVVS.Vercel.app/x",
+    "https://user@ktvvs.vercel.app/x",
+  ]) assert.equal(customerSiteLinks(t).length, 1, t);
+  for (const t of ["skriv til info@ktvvs.vercel.app", "user@ktvvs.vercel.app", "se ktvvs.vercel.app.evil/x", "ved kinly.dk og zaytoon-six.vercel.app"]) {
+    assert.deepEqual(customerSiteLinks(t), [], t);
+  }
+  assert.deepEqual(customerSiteLinks("Se den her https://ktvvs.vercel.app.evil."), []);
+  for (const t of ["→https://ktvvs.vercel.app/", "se,https://ktvvs.vercel.app/", "**https://ktvvs.vercel.app/**", "///ktvvs.vercel.app"]) assert.equal(customerSiteLinks(t).length, 1, t);
+  assert.ok(missingReferenceLinks("Se https://ktvvs.vercel.app. herfra", "vvs", "KT VVS Test").some((i) => i.includes("ktvvs.vercel.app")));
+});
+
+test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", async () => {
+  const { MAIL_LINKS } = await import("./demos.ts");
+  for (const l of [...DEMO_CATALOG, ...MAIL_LINKS]) {
+    assert.equal(isCustomerSiteUrl(l.url), false, `kunde-side i kataloget: ${l.url}`);
+  }
+  assert.deepEqual(pickDemos("maler", "Maler Test").map((d) => d.url), [DEMO_SITES.denlillemaler]);
+  for (const [branch, name, n] of [["vvs", "VVS Test", 2], ["maler", "Maler Test", 1], ["tømrer", "Tømrer Test", 0], ["vinduespudser", "Pro Vindues Polering", 0]]) {
+    assert.equal(pickDemos(branch, name).length, n, branch);
+    assert.ok(!pickDemos(branch, name).some((d) => isCustomerSiteUrl(d.url)), `kunde-side i demo-parret for ${branch}`);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler) || n > 0, branch);
+  }
 });

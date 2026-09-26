@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MAIL_LINKS, suggestMailLinks } from "@/lib/demos";
+import { MAIL_LINKS, isCustomerSiteUrl, suggestMailLinks } from "@/lib/demos";
 import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import Icon from "@/components/shell/Icon";
 import { GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
@@ -312,7 +312,13 @@ export default function InboxDetail({
           <div className="inbox-cardrow">
             {(decided ? draft.demoPair : demos).map((d, i) => (
               <div key={i} className="inbox-democard" data-active={!decided && i === activeSlot ? "true" : undefined} onFocusCapture={() => setActiveSlot(i)} onClick={() => setActiveSlot(i)}>
-                {decided ? (
+                {/* Gamle kladder kan have kundens preview i demoPair (sat før 26/9):
+                    ikke link, ikke valgbart — kun kinly.dk-casen linkes. */}
+                {isCustomerSiteUrl(d.url) ? (
+                  <span className="cc-dim" style={{ fontSize: 12 }}>
+                    Kunde-link — vises ikke. Kun kundens kinly.dk-case linkes.
+                  </span>
+                ) : decided ? (
                   <a href={d.url} target="_blank" rel="noopener noreferrer">{d.label} — {prettyUrl(d.url)} ↗</a>
                 ) : (
                   <>

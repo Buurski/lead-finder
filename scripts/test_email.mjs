@@ -38,7 +38,10 @@ const craft = getEmailTemplate("tømrer", "cold", { ...base, name: "Tømrerhuset
 check("craft compliment uses 'står for'", craft.text.includes("står for"));
 check("craft routes to denlillemaler demo", craft.text.includes("denlillemaler"));
 const vvs = getEmailTemplate("vvs", "cold", { ...base, name: "Bryggens VVS", branch: "vvs" });
-check("vvs routes to ktvvs utility demo", vvs.text.includes("ktvvs"));
+// 26/9: KT VVS er en rigtig kunde. Mailen bærer kinly.dk-casen — aldrig det
+// upublicerede preview (demos.ts#CUSTOMER_SITES).
+check("vvs routes to the KT VVS case, not the preview",
+  vvs.text.includes("https://kinly.dk/case/kt-vvs/") && !vvs.text.includes("ktvvs.vercel.app"));
 
 // ---- professional + unknown fallback --------------------------------------
 const pro = getEmailTemplate("advokat", "cold", { ...base, name: "Midtadvokaterne", branch: "advokat" });

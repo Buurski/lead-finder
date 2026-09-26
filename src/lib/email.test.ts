@@ -10,6 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildLeadEmail, previewEmailTemplate, getEmailTemplate } from "./email.ts";
 import { formatSignature } from "./senders.ts";
+import { REFERENCE_INTRO } from "./demos.ts";
 
 const baseLead = {
   id: "lead-test-123",
@@ -277,4 +278,43 @@ test("buildLeadEmail: Charlie + CHARLIE_SENDER_TITLE env viser titel", () => {
     delete process.env.CHARLIE_SENDER_TITLE;
     clearCharlie();
   }
+});
+
+// 26/9: composedBody-stien gik direkte til SMTP uden om link-værnet. Gaten ligger
+// FØR transporten, så testen hverken rører creds eller SMTP.
+test("sendLeadEmail: composedBody med kunde-preview afvises før SMTP", async () => {
+  const { sendLeadEmail } = await import("./email.ts");
+  const body = "Se udkastet her https://ktvvs.vercel.app/path?x=y\n\nMvh, Lucas";
+  await assert.rejects(
+    () => sendLeadEmail(
+      { ...baseLead, email: "kunde@example.dk", sender: "lucas", composedSubject: "En idé", composedBody: body },
+      "cold",
+    ),
+    /kundens egen side/,
+  );
+});
+
+// 26/9: emnet var slet ikke dækket. Et kendt kunde-domæne i emnet skal afvises
+// lige så hårdt som i kroppen — og før transporten, så testen ikke bruger creds.
+test("sendLeadEmail: kundehost i emnet afvises før SMTP (composedBody-stien)", async () => {
+  const { sendLeadEmail } = await import("./email.ts");
+  await assert.rejects(
+    () => sendLeadEmail(
+      {
+        ...baseLead, email: "kunde@example.dk", sender: "lucas",
+        composedSubject: "Udkast til KT VVS (ktvvs.vercel.app)",
+        composedBody: "Hej\n\nHer er udkastet.\n\nMvh, Lucas",
+      },
+      "cold",
+    ),
+    /kundens egen side/,
+  );
+});
+
+// Legacy-emnets garanti var falsk: domænet stod også i kroppen, så gaten udløses på
+// text uanset emne-loopet. Droppet — emnet er dækket af composed-stien ovenfor.
+test("26/9: legacy-skabelonen lover ikke eksempler når kun forsiden linkes", () => {
+  const tpl = (b: string) => getEmailTemplate(b, "cold", { ...baseLead, branch: b, leadId: "l", daysSince: 7, sender: "lucas" });
+  for (const b of ["tømrer", "vinduespudser", "boghandel"]) { assert.equal(tpl(b).text.includes("et par eksempler"), false, b); assert.equal(tpl(b).html.includes("et par eksempler"), false, b); assert.ok(tpl(b).text.includes("Her er min egen side."), b); }
+  for (const b of ["frisør", "café", "maler"]) assert.ok(tpl(b).text.includes(REFERENCE_INTRO), b);
 });

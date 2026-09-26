@@ -401,3 +401,58 @@ test("applySignatureHtml: escaped brødtekst + logo + ingen dobbelt-signatur", a
   assert.equal((out.match(/Med venlig hilsen/g) || []).length, 1);
   assert.equal(/Mvh, Lucas Buur/.test(out), false);
 });
+
+// ---- Auto-linker i HTML-alternativet (t_3b843dd0) --------------------------
+// Læsende probe 26/09 på e4fced2: tegnsætning direkte efter URL blev trukket
+// ind i href ("https://kinly.dk—"), så modtageren fik døde links.
+
+test("applySignatureHtml: klippende tegnsætning efter URL står uden for <a>", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://kinly.dk— og https://kinly.dk/.", "lucas");
+  assert.equal(/href="https:\/\/kinly\.dk"[^>]*>https:\/\/kinly\.dk<\/a>—/.test(out), true);
+  assert.equal(/href="https:\/\/kinly\.dk\/"[^>]*>https:\/\/kinly\.dk\/<\/a>\./.test(out), true);
+  assert.equal(/href="https:\/\/kinly\.dk[—.,;:!?…]/.test(out), false);
+});
+
+test("applySignatureHtml: path/query/fragment og case bevares i href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://demo.dk/p/12?a=1&b=2#top og https://Demo.dk/Path", "lucas");
+  const hrefs = [...out.matchAll(/<a href="([^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(hrefs.slice(0, 2), [
+    "https://demo.dk/p/12?a=1&amp;b=2#top",
+    "https://Demo.dk/Path",
+  ]);
+  assert.equal(out.includes("&amp;amp;"), false);
+});
+
+test("applySignatureHtml: balanceret parentes bliver i href, ubalanceret ryger ud", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se https://demo.dk/wiki/Foo_(bar) og (https://demo.dk/p)", "lucas");
+  const hrefs = [...out.matchAll(/<a href="([^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(hrefs.slice(0, 2), ["https://demo.dk/wiki/Foo_(bar)", "https://demo.dk/p"]);
+  assert.equal(out.includes(">https://demo.dk/p</a>)"), true);
+});
+
+test("applySignatureHtml: afsluttende HTML-entitet rives ikke over", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml("Se <https://kinly.dk> her", "lucas");
+  assert.equal(/href="https:\/\/kinly\.dk"[^>]*>https:\/\/kinly\.dk<\/a>&gt;/.test(out), true);
+  assert.equal(out.includes("https://kinly.dk&gt"), false);
+  assert.equal(out.includes("&amp;gt;"), false);
+});
+
+test("applySignatureHtml: citationstegn i en URL kan ikke bryde ud af href (Sol w4a-r4 R4-03)", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se https://example.test/"onmouseover="alert(1) nu`, "lucas");
+  assert.doesNotMatch(out, /href="[^"]*"onmouseover=/);
+  assert.doesNotMatch(out, / onmouseover=/);
+  assert.match(out, /&quot;onmouseover=&quot;/);
+});
+
+test("applySignatureHtml: URL i citationstegn får et rent href", async () => {
+  const { applySignatureHtml } = await import("./senders.ts");
+  const out = applySignatureHtml(`Se "https://kinly.dk" og 'https://kinly.dk/x' her`, "lucas");
+  assert.match(out, /href="https:\/\/kinly\.dk"/);
+  assert.match(out, /href="https:\/\/kinly\.dk\/x"/);
+  assert.doesNotMatch(out, /href="[^"]*&(quot|#39);/);
+});

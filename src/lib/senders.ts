@@ -390,11 +390,38 @@ export function applySignatureHtml(body: string, id: SenderId): string {
   const escaped = stripped
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const linked = escaped.replace(
-    /https?:\/\/[^\s<]+/g,
-    (u) => `<a href="${u}" style="color:#1a5fb4;">${u}</a>`,
-  );
+    .replace(/>/g, "&gt;")
+    // Citationstegn escapes også: de står i href="…", og et " i en tekst må
+    // ikke kunne lukke attributten og tilføje fx onmouseover (Sol w4a-r4 R4-03).
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+  // Auto-linker brødteksten. Klippende tegnsætning (— . , ; : ! ?) hører til
+  // sætningen, ikke adressen: ellers bliver href "https://kinly.dk—" og
+  // klikket dødt. Ubalancerede lukke-klammer ryger samme vej, mens balancerede
+  // par (fx /wiki/Foo_(bar)) bliver i adressen. Escapede citationstegn
+  // (&quot; / &#39;) stoppes i regexen, så ingen rå " kan bryde ud.
+  const linked = escaped.replace(/https?:\/\/(?:(?!&quot;|&#39;)[^\s<])+/g, (u) => {
+    let href = u;
+    let tail = "";
+    while (href.length > 0) {
+      // Afsluttende HTML-entitet (&gt;, &amp;, &#39;, …) må ikke rives over:
+      // HELE entiteten flyttes ud som synlig tekst, og klippet fortsætter
+      // foran den, så "Se <https://kinly.dk> her" giver et rent href + "&gt;".
+      const ent = href.match(/&(?:[a-zA-Z][a-zA-Z0-9]*|#\d+);$/);
+      if (ent) {
+        tail = ent[0] + tail;
+        href = href.slice(0, -ent[0].length);
+        continue;
+      }
+      const last = href.slice(-1);
+      const open = last === ")" ? "(" : last === "]" ? "[" : null;
+      const balanced = open !== null && href.split(last).length <= href.split(open).length;
+      if (balanced || (open === null && !/[.,;:!?—…]/.test(last))) break;
+      tail = last + tail;
+      href = href.slice(0, -1);
+    }
+    return `<a href="${href}" style="color:#1a5fb4;">${href}</a>${tail}`;
+  });
   const paragraphs = linked
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, "<br>")}</p>`)
