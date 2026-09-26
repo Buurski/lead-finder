@@ -160,7 +160,7 @@ export default async function VirksomhedProfilePage({ params }: { params: Promis
 
   const tabs = [
     { key: "overblik", label: "Overblik", content: <><Overblik companyId={c.id} overview={overview} cms={cms} servicesCatalog={SERVICES} onboarding={onboarding} relations={relations} seoPoints={seoRows.map((r) => ({ takenAt: r.takenAt.toISOString(), performance: r.performance, seo: r.seo, accessibility: r.accessibility, onpage: r.onpage }))} />{c.clientNo !== null && <div style={{ marginTop: 16 }}><GscCard gsc={gsc} marks={gscRows.marks} /></div>}</> },
-    { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} /> },
+    { key: "tidslinje", label: "Tidslinje", content: <Timeline companyId={c.id} activities={timelineActivities} currentUser={user} /> },
     {
       key: "aftaler",
       label: "Aftaler",

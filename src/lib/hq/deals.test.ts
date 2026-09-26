@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal } from "../db/schema.ts";
-import { createDeal, DealInputError, listPipeline, normalizeStage, updateDeal } from "./deals.ts";
+import { createDeal, DealInputError, deleteDeal, listPipeline, normalizeStage, updateDeal } from "./deals.ts";
 
 let db: Db;
 let companyId: string;
@@ -50,4 +50,23 @@ test("pipeline viser gamle rå-beløb og normaliserede faser", async () => {
   await db.insert(deal).values({ companyId, stage: "live", setupFeeRaw: "4997", monthlyFeeRaw: "299", package: "standard" });
   const [card] = await listPipeline(db);
   assert.deepEqual([card.stage, card.title, card.valueDkk, card.mrrDkk], ["leveret", "standard", 4997, 299]);
+});
+
+test("sletter en aftale og logger det på tidslinjen", async () => {
+  const d = await createDeal(db, companyId, { title: "Nyhedsbrev" }, "lucas");
+  await deleteDeal(db, d.id, "lucas");
+  assert.deepEqual(await db.select().from(deal).where(eq(deal.id, d.id)), []);
+  const log = (await db.select().from(activity).where(eq(activity.companyId, companyId))).map((a) => a.summary);
+  assert.ok(log.includes("Aftale slettet: Nyhedsbrev"));
+});
+
+test("betalt aftale kan ikke slettes", async () => {
+  const [d] = await db.insert(deal).values({ companyId, title: "Site", stage: "betalt" }).returning();
+  await assert.rejects(deleteDeal(db, d.id, "lucas"), /betalt/);
+});
+
+test("aftale med faktureret arbejde kan ikke slettes", async () => {
+  const d = await createDeal(db, companyId, { title: "Site" }, "lucas");
+  await db.insert(activity).values({ companyId, dealId: d.id, type: "arbejde", summary: "Design", billableDkk: 500, invoicedAt: new Date() });
+  await assert.rejects(deleteDeal(db, d.id, "lucas"), /fakturerede/);
 });

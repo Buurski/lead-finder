@@ -2,9 +2,9 @@
 // nyhedsbrev i gang + hjemmesidepas). Hver ændring skriver en hændelse i
 // tidslinjen med hvem der gjorde det.
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, deal } from "../db/schema.ts";
+import { activity, company, deal, task } from "../db/schema.ts";
 
 export const DEAL_STAGES = ["tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
@@ -125,6 +125,28 @@ export async function updateDeal(db: Db, dealId: string, p: DealPatch, actor: st
       await tx.insert(activity).values({ companyId: before.companyId, dealId, actor, type: "fase", summary: `${after.title || "Aftale"}: ${changes.join(", ")}` });
     }
     return after;
+  });
+}
+
+/**
+ * Sletter en aftale. Afvises hvis den er betalt, eller hvis fakturerede
+ * aktiviteter peger på den (schema-relationen: activity.deal_id +
+ * invoiced_at) — begge ville miste regnskabssporet. Aktivitets-/opgave-rækker
+ * der peger på aftalen mister kun deal-id'et, ikke sig selv.
+ */
+export async function deleteDeal(db: Db, dealId: string, actor: string) {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(deal).where(eq(deal.id, dealId)).for("update");
+    if (!before) throw new DealInputError("aftalen findes ikke");
+    if (normalizeStage(before.stage) === "betalt") throw new DealInputError("en betalt aftale kan ikke slettes");
+    const [invoiced] = await tx.select({ id: activity.id }).from(activity)
+      .where(and(eq(activity.dealId, dealId), isNotNull(activity.invoicedAt)));
+    if (invoiced) throw new DealInputError("aftalen har fakturerede aktiviteter og kan ikke slettes");
+    await tx.update(activity).set({ dealId: null }).where(eq(activity.dealId, dealId));
+    await tx.update(task).set({ dealId: null }).where(eq(task.dealId, dealId));
+    await tx.delete(deal).where(eq(deal.id, dealId));
+    await tx.insert(activity).values({ companyId: before.companyId, actor, type: "fase", summary: `Aftale slettet: ${before.title || "Aftale"}` });
+    return { id: dealId };
   });
 }
 
