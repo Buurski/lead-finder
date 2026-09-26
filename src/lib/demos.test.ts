@@ -62,3 +62,14 @@ test("suggestMailLinks: kun kendte, levende links, bedst først, max 5", async (
   assert.equal(klinik[0].url, "https://kinly.dk/case/vida-klinik/");
   assert.ok(!MAIL_LINKS.some((l) => /vestfjends|vida-klinik\.dk|ikastautoservice\.dk/.test(l.url)));
 });
+
+test("fitness og ukendte brancher får en rigtig case + projektoversigten, aldrig klinik-demoen (26/9)", () => {
+  for (const [branch, name] of [["Fitnesscenter / wellness", "Pure Performance Fitness"], ["Yoga", "Yoga Huset"], ["Tøjbutik", "Butik Nord"]]) {
+    const d = pickDemos(branch, name);
+    assert.equal(d.length, 2, name);
+    assert.ok(d[0].url.startsWith("https://kinly.dk/case/"), `${name}: ${d[0].url}`);
+    assert.equal(d[1].url, "https://kinly.dk/projekter/");
+    assert.deepEqual(pickDemos(branch, name), d, "samme lead → samme case");
+  }
+  assert.equal(pickDemos("Hudklinik", "Glow")[0].url, "https://kinly.dk/case/vida-klinik/");
+});

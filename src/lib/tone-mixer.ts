@@ -87,6 +87,8 @@ function cleanHook(hook: string): string {
 // All returned nouns are en-words so they fit the "en ${x}" opener templates.
 export function safeBranchNoun(branch?: string): string {
   const b = (branch || "").toLowerCase();
+  // "Fitnesscenter / wellness" må ikke blive "en salon" (E2E 26/9).
+  if (/fitness|træningscenter|traeningscenter|crossfit|\bgym\b|yoga|pilates|kampsport/.test(b)) return "virksomhed";
   if (/frisør|frisor|salon|skønhed|skonhed|hud|negle|vippe|barber|kosmet|\bspa\b|wellness|massage|klinik|beauty|hair/.test(b)) return "salon";
   if (/restaurant|café|cafe|pizz|\bbar\b|\bpub\b|grill|\bkro\b|bistro|brasseri|bager|spise|køkken|food|takeaway|sushi|kebab|burger|bodega/.test(b)) return "restaurant";
   if (/autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|mekaniker|automekanik|autoskade|pladeværksted|\bdæk/.test(b)) return "mekaniker";

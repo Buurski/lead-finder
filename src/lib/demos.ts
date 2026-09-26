@@ -49,7 +49,18 @@ const D = {
   ikastCase: { label: "Kunde: Ikast AutoService (autoværksted)", url: DEMO_SITES.ikastCase },
   jernbanecafeenCase: { label: "Kunde: Jernbanecaféen (café)", url: DEMO_SITES.jernbanecafeenCase },
   lejEnKokCase: { label: "Kunde: Lej en Kok (catering/mad)", url: DEMO_SITES.lejEnKokCase },
+  projekter: { label: "Flere af vores projekter", url: "https://kinly.dk/projekter/" },
 } as const;
+
+// Brancher uden en demo der ligner (fitness, butik, ukendt): én rigtig kundecase —
+// fast pr. navn, så samme lead altid får samme — plus projektoversigten på kinly.dk
+// (Lucas 26/9: aldrig et skønhedsklinik-link til et fitnesscenter).
+const REAL_CASES = [D.ikastCase, D.jernbanecafeenCase, D.lejEnKokCase, D.vidaCase];
+function neutralPair(name: string): Demo[] {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return [REAL_CASES[h % REAL_CASES.length], D.projekter];
+}
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
 // branch family it best represents. Read-only; the engine still routes via
@@ -73,6 +84,8 @@ export const DEMO_CATALOG: DemoEntry[] = [
   { ...D.midtadvokaterne, branch: "professionel" },
 ];
 
+// Fitness/træning har ingen egen demo og må ikke falde i CLINIC på "wellness" (E2E 26/9).
+const FITNESS = /fitness|træningscenter|traeningscenter|crossfit|\bgym\b|personlig træner|personlig traener|\bpt\b|yoga|pilates|spinning|bootcamp|kampsport|boksning/i;
 const FOOD_INTL =
   /pizza|pizzeria|italia|sushi|kebab|shawarma|falafel|tapas|libanon|tyrk|grill|mexicansk|wok|asia|thai|indisk|kinesisk/i;
 // \bbar\b / \bpub\b are word-bounded so they don't match "barber" / "republic" —
@@ -111,6 +124,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
   // kundens eget domæne. VIDA-casen er altid hovedpunktet for
   // skønhed/klinik. Andre demos er supplement — rækkefølgen i array er den
   // rækkefølge de vises i mailen.
+  if (FITNESS.test(t)) return neutralPair(name);
   if (CLINIC.test(t)) return [D.vidaCase, D.salonArtec];
   if (BARBER.test(t)) return [D.salonArtec, D.streetcut];
   if (BEAUTY.test(t)) return [D.vidaCase, D.salonArtec];
@@ -123,7 +137,7 @@ export function pickDemos(branch: string, name: string): Demo[] {
   if (CRAFT.test(t)) return [D.ktvvs, D.denlillemaler];
   if (SERVICE_MAINT.test(t)) return [D.ktvvs, D.denlillemaler];
   // vestfjends.vercel.app er død (404, 23/9) — aldrig i en mail igen.
-  return [D.ikastCase, D.underKlippen];
+  return neutralPair(name);
 }
 
 // Branche-sider på kinly.dk — matcher branch-teksten mod de samme regexes som
@@ -133,6 +147,7 @@ export function verticalPageFor(branch: string): string | null {
   const t = branch.toLowerCase();
   // Samme rækkefølge som pickDemos: CLINIC/BARBER FØR BEAUTY, ellers fanger
   // BEAUTY's brede regex (den matcher også "frisør"/"salon") dem først.
+  if (FITNESS.test(t)) return null;
   if (CLINIC.test(t)) return "https://kinly.dk/hjemmeside-til-skoenhedsklinik/";
   if (BARBER.test(t)) return "https://kinly.dk/hjemmeside-til-frisoer/";
   if (BEAUTY.test(t)) return "https://kinly.dk/hjemmeside-til-skoenhedsklinik/";
