@@ -1,6 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeIngest, isStaleLeadgen, orderForIngest, ingestAllowance } from "./leadgen.ts";
+import { normalizeIngest, isStaleLeadgen, orderForIngest, ingestAllowance, websiteStatusFor } from "./leadgen.ts";
+import { socialKind, fbFit } from "./leads/social-fit.ts";
+
+// 26/9: FB-only leads fik "jeres side virker et par år gammel", og alle andre
+// fik "old" uanset copyright-år. Mailen må aldrig påstå noget, vi ikke har målt.
+test("websiteStatusFor — Facebook = ingen side, målt status vinder, ellers old", () => {
+  assert.equal(websiteStatusFor({}), "none");
+  assert.equal(websiteStatusFor({ website: "https://www.facebook.com/aekalgo/" }), "none");
+  assert.equal(websiteStatusFor({ website: "https://instagram.com/zin" }), "ok", "IG: ingen påstand (none-opener nævner Facebook)");
+  assert.equal(websiteStatusFor({ website: "https://www.krak.dk/x", websiteStatus: "old" }), "ok");
+  assert.equal(websiteStatusFor({ website: "https://vida.dk", websiteStatus: "ok" }), "ok");
+  assert.equal(websiteStatusFor({ website: "https://vida.dk", websiteStatus: "old" }), "old");
+  assert.equal(websiteStatusFor({ website: "https://vida.dk" }), "old", "gamle filer uden status: uændret");
+  assert.equal(websiteStatusFor({ website: "https://vida.dk", site_issues: ["timeout"] }), "dead");
+});
+
+test("socialKind + fbFit — kun for store straffes, ingen Facebook er fint", () => {
+  assert.equal(socialKind("facebook.com/x"), "facebook");
+  assert.equal(socialKind("https://m.facebook.com/x"), "facebook");
+  assert.equal(socialKind("https://www.krak.dk/a"), "directory");
+  assert.equal(socialKind("https://notfacebook.com"), null);
+  assert.equal(socialKind("https://vida.dk"), null);
+  assert.equal(socialKind(""), null);
+  assert.equal(fbFit(null), 0, "ingen Facebook = neutral");
+  assert.equal(fbFit(32_474), -100, "for stor = ude uanset score (Dirty Ranch, 26/9)");
+  assert.equal(fbFit(10_000), 0, "grænsen er inklusiv");
+  assert.equal(fbFit(800), 0, "lille side = neutral, ingen bonus");
+});
 
 test("normalizeIngest bevarer bureau og hasViewport", () => {
   const [lead] = normalizeIngest([{ name: "KT VVS", bureau: true, hasViewport: false }]);

@@ -44,6 +44,11 @@ done
 # Burde aldrig ske (se loop-loftet) — men hvis PER_CAT vokser, siges det højt.
 [ "$remaining" -le 0 ] || echo "ADVARSEL: rate stoppede med remaining=$remaining — finalize kører på delvis vurdering" >&2
 
+# Facebook-størrelse (26/9): kun og:-metadata via curl_cffi i eget venv, maks 60 sider, aldrig fatal.
+FBPY=/root/.venvs/fbog/bin/python
+if [ -x "$FBPY" ]; then "$FBPY" scripts/leadgen/fb_og.py || echo "ADVARSEL: fb_og fejlede — finalize kører uden FB-tal" >&2
+else echo "ADVARSEL: $FBPY mangler — ingen FB-tal i dag" >&2; fi
+
 node scripts/leadgen/run.mjs finalize
 node scripts/leadgen/run.mjs apply
 
