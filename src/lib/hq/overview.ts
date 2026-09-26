@@ -5,6 +5,7 @@
 import type { Dossier } from "./dossier.ts";
 import { normalizeStage } from "./deals.ts";
 import { invoiceTotal, type Subscription } from "../invoices.ts";
+import type { UnbilledItem } from "./billing.ts";
 
 export type MailDir = "ud" | "ind";
 
@@ -86,7 +87,7 @@ export function monthlyMoney(invoices: Dossier["invoices"], now: number): Custom
 
 export function buildOverview(
   d: Dossier,
-  extra: { subscription: Subscription | null; unbilled: number; now: number },
+  extra: { subscription: Subscription | null; unbilled: number; now: number; unbilledItems?: UnbilledItem[] },
 ): CustomerOverview {
   const { now } = extra;
   const acts = [...d.activities].sort((a, b) => b.at.getTime() - a.at.getTime());
@@ -138,6 +139,20 @@ export function buildOverview(
   if (extra.unbilled > 0) attention.push({ level: "obs", text: `${kr(extra.unbilled)} arbejde er ikke faktureret` });
   for (const x of openDeals) {
     if (!x.nextStep?.trim()) attention.push({ level: "obs", text: `"${x.title || "Aftale"}" har intet næste skridt` });
+  }
+  // En aftale står som betalt, men der ligger stadig en ubetalt faktura — modstridende, skal ses.
+  const unpaidInvoices = invoices.filter((i) => ["sendt", "forfalden", "rykket"].includes(i.status));
+  if (unpaidInvoices.length && d.deals.some((x) => normalizeStage(x.stage) === "betalt")) {
+    for (const inv of unpaidInvoices) {
+      attention.push({ level: "haster", text: `Aftalen står som betalt, men faktura ${inv.number} er ikke betalt` });
+    }
+  }
+  // Ufaktureret arbejde der har ligget for længe — en pr. linje, så det ikke drukner i totalen ovenfor.
+  const UNBILLED_STALE_DAYS = 14;
+  for (const item of extra.unbilledItems ?? []) {
+    if (daysSince(item.at, now) >= UNBILLED_STALE_DAYS) {
+      attention.push({ level: "obs", text: `Ufaktureret arbejde fra ${item.at.slice(0, 10)} — lav faktura` });
+    }
   }
 
   const fallbackDomain = hostnameFrom(d.company.website);

@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertCrmMutationRequest, encodedClientName, validDate, validText, CrmInputError } from "./crm.ts";
+import { assertCrmMutationRequest, deleteContact, encodedClientName, listContacts, saveContact, validDate, validText, CrmInputError } from "./crm.ts";
 import { ccAuthMarker } from "./cc-auth.ts";
 import { mostUrgentOpenTask } from "./crm-client.ts";
 import { nextAction, type NextAction } from "./next-action.ts";
 import type { DeckSummary } from "./deck.ts";
+import { freshTestDb } from "./db/test-db.ts";
+import { company } from "./db/schema.ts";
+
+process.env.DATA_BACKEND = "pg";
 
 function summary(over: Partial<DeckSummary> = {}): DeckSummary {
   return {
@@ -120,4 +124,31 @@ test("mostUrgentOpenTask: ældste frist, tie-break på oprettelsestid og id, mut
   assert.equal(mostUrgentOpenTask(tasks)?.id, "task_e");
   assert.equal(mostUrgentOpenTask([]), undefined);
   assert.deepEqual(tasks.map((task) => task.id), original);
+});
+
+test("kontakt-CRUD: opret, ret (samme id), list og slet (pg-backend)", async () => {
+  const db = await freshTestDb();
+  await db.insert(company).values({ rowNo: -1, clientNo: 9, name: "VIDA" });
+
+  const created = await saveContact({ clientName: "VIDA", name: "Lene", role: "Indehaver", email: "lene@vida.dk", phone: "12345678" });
+  assert.match(created.id, /^contact_/);
+
+  let list = await listContacts("VIDA");
+  assert.equal(list.length, 1);
+  assert.equal(list[0].name, "Lene");
+
+  // Ret: samme id genbruges (upsert), ikke en ny kontakt.
+  const edited = await saveContact({ clientName: "VIDA", id: created.id, name: "Lene Hansen", role: "Indehaver", email: "lene@vida.dk", phone: "87654321" });
+  assert.equal(edited.id, created.id);
+  list = await listContacts("VIDA");
+  assert.equal(list.length, 1);
+  assert.equal(list[0].name, "Lene Hansen");
+  assert.equal(list[0].phone, "87654321");
+
+  await deleteContact("VIDA", created.id);
+  list = await listContacts("VIDA");
+  assert.equal(list.length, 0);
+
+  await assert.rejects(saveContact({ clientName: "Ukendt Kunde", name: "X" }), CrmInputError);
+  await assert.rejects(deleteContact("VIDA", "ikke-eksisterende-id"), CrmInputError);
 });

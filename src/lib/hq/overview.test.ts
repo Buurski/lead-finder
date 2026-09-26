@@ -91,6 +91,51 @@ test("'Lucas modtog svar' er indgående", () => {
   assert.equal(mailDirection("Lucas modtog svar fra Henrik om tidsplanen"), "ind");
 });
 
+test("aftale står betalt, men en faktura er stadig ubetalt → haster pr. faktura", () => {
+  const o = buildOverview(
+    dossier({
+      deals: [{ title: "Hjemmeside", stage: "betalt", nextStep: "x" } as never],
+      invoices: [
+        { number: "011", status: "sendt", lines: [{ description: "Site", amount: 1000 }], vatRate: 0, issueDate: "2026-09-01", dueDate: "2026-10-01" } as never,
+        { number: "012", status: "betalt", lines: [{ description: "Andet", amount: 500 }], vatRate: 0, issueDate: "2026-09-01" } as never,
+      ],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.ok(o.attention.some((a) => a.level === "haster" && a.text === "Aftalen står som betalt, men faktura 011 er ikke betalt"));
+  assert.equal(o.attention.filter((a) => a.text.includes("faktura 012")).length, 0);
+});
+
+test("ingen betalt-aftale → ingen advarsel selvom en faktura er ubetalt", () => {
+  const o = buildOverview(
+    dossier({
+      deals: [{ title: "Hjemmeside", stage: "i_gang", nextStep: "x" } as never],
+      invoices: [{ number: "013", status: "forfalden", lines: [{ description: "Site", amount: 1000 }], vatRate: 0, issueDate: "2026-09-01", dueDate: "2026-09-10" } as never],
+    }),
+    { subscription: null, unbilled: 0, now: NOW },
+  );
+  assert.ok(!o.attention.some((a) => a.text.includes("Aftalen står som betalt")));
+});
+
+test("ufaktureret arbejde ældre end 14 dage giver egen advarsel pr. linje", () => {
+  const old = new Date(NOW - 20 * 86_400_000).toISOString();
+  const fresh = new Date(NOW - 2 * 86_400_000).toISOString();
+  const o = buildOverview(
+    dossier(),
+    {
+      subscription: null,
+      unbilled: 1500,
+      now: NOW,
+      unbilledItems: [
+        { id: "a1", summary: "Rettelser", amount: 1000, at: old, actor: "lucas" },
+        { id: "a2", summary: "Nyt arbejde", amount: 500, at: fresh, actor: "lucas" },
+      ],
+    },
+  );
+  assert.ok(o.attention.some((a) => a.level === "obs" && a.text === `Ufaktureret arbejde fra ${old.slice(0, 10)} — lav faktura`));
+  assert.equal(o.attention.filter((a) => a.text.includes("Ufaktureret arbejde fra")).length, 1);
+});
+
 test("monthlyMoney: 12 måneder, kladder ude, efter fakturadato", async () => {
   const { monthlyMoney } = await import("./overview.ts");
   const inv = (number: string, status: string, issueDate: string, amount: number, paidAt?: string) =>
