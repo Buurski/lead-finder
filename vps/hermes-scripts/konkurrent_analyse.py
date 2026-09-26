@@ -31,17 +31,35 @@ Skriv max 5 punkter om hvad det betyder for Kinly: hvor vi kan vinde (salg, SEO,
 Sæt det VIGTIGSTE punkt (én konkret ting Kinly kan gøre denne uge) først.
 Hvert punkt: konkret, nævn tallet fra data, max 2 sætninger. Dansk, jordnært, ingen buzzwords.
 Sæt "category" til én af: ydelse, pris-budskab, seo, geo, alternativ, forbedring. Sæt "suggest" til én af: blog, annonce, kinly-dk, salg.
-Svar KUN med JSON: {"points":[{"title":"max 70 tegn","detail":"max 350 tegn","category":"...","suggest":"..."}]}"""
+Data kan også have "inspiration": opslag fra X/LinkedIn/Hacker News som Jev har vurderet relevante. For HVERT af dem: omskriv til en dansk idé for Kinly — "title" (max 70 tegn, start med et verbum) og "detail" (max 200 tegn: hvad idéen er, og hvordan Kinly konkret bruger den). Kopiér aldrig opslaget, oversæt idéen.
+Svar KUN med JSON: {"points":[{"title":"max 70 tegn","detail":"max 350 tegn","category":"...","suggest":"..."}],"inspiration":[{"id":"...","title":"...","detail":"..."}]}"""
 
 
-def compact(report: dict) -> str:
+def compact(report: dict, inspiration: list[dict] | None = None) -> str:
     findings = [
         {"cat": f.get("category"), "t": f.get("title"), "d": f.get("detail"),
          "rating": f.get("rating"), "suggest": f.get("suggest"), "evidence": f.get("evidence")}
         for f in (report.get("findings") or [])[:15]
     ]
     data = {"antal_konkurrenter": len(report.get("competitors", [])), "findings": findings}
+    if inspiration:  # inspiration først i budgettet: kortes opslagene, ikke findings
+        data["inspiration"] = [{"id": c["id"], "kilde": c["source"], "type": c.get("typeLabel"),
+                                "tekst": " ".join(c["text"].split())[:500]} for c in inspiration[:6]]
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))[:MAX_INPUT_CHARS]
+
+
+def parse_inspiration(text: str, ids: set[str]) -> dict[str, tuple[str, str]]:
+    """{id: (title, detail)} for kendte id'er. Tåler manglende/ugyldigt — så bruges fallback-teksten."""
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        items = json.loads(m.group(0)).get("inspiration") or [] if m else []
+    except ValueError:
+        return {}
+    out = {}
+    for it in items if isinstance(items, list) else []:
+        if isinstance(it, dict) and it.get("id") in ids and it.get("title") and it.get("detail"):
+            out[it["id"]] = (str(it["title"]).strip()[:80], str(it["detail"]).strip()[:240])
+    return out
 
 
 def parse_points(text: str) -> list[dict]:
@@ -75,11 +93,12 @@ def load_key() -> str:
     return key
 
 
-def analyse(report: dict) -> dict:
+def analyse(report: dict, inspiration: list[dict] | None = None) -> tuple[dict, dict[str, tuple[str, str]]]:
+    """ÉT kald -> (analysis til HQ, {inspiration-id: (title, detail)})."""
     body = json.dumps({
         "model": MODEL,
-        "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": compact(report)}],
-        "max_tokens": 900, "temperature": 0.3, "response_format": {"type": "json_object"},
+        "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": compact(report, inspiration)}],
+        "max_tokens": 1500 if inspiration else 900, "temperature": 0.3, "response_format": {"type": "json_object"},
     }).encode("utf-8")
     req = Request(URL, data=body, method="POST",
                   headers={"Content-Type": "application/json", "Authorization": f"Bearer {load_key()}"})
@@ -87,7 +106,9 @@ def analyse(report: dict) -> dict:
         data = json.loads(res.read().decode("utf-8"))
     usage = data.get("usage") or {}
     print(f"[analyse] tokens ind={usage.get('prompt_tokens')} ud={usage.get('completion_tokens')}")
-    return {"model": MODEL, "points": parse_points(data["choices"][0]["message"]["content"])}
+    content = data["choices"][0]["message"]["content"]
+    rewrites = parse_inspiration(content, {c["id"] for c in inspiration or []})
+    return {"model": MODEL, "points": parse_points(content)}, rewrites
 
 
 def _selftest() -> None:
@@ -114,6 +135,15 @@ def _selftest() -> None:
 
     many = json.dumps({"points": [{"title": f"t{i}", "detail": "d"} for i in range(8)]})
     assert len(parse_points(many)) == 5  # max 5 nu (var 6)
+
+    insp = [{"id": "x:1", "source": "x", "typeLabel": "blog-idé", "text": "how  I\nprice sites " * 100}]
+    s2 = json.loads(compact(rep, insp))
+    assert s2["inspiration"][0]["id"] == "x:1" and len(s2["inspiration"][0]["tekst"]) == 500
+    assert "inspiration" not in json.loads(compact(rep))
+    rw = parse_inspiration('{"points":[],"inspiration":[{"id":"x:1","title":"Vis pris","detail":"d"},'
+                           '{"id":"fremmed","title":"t","detail":"d"},{"id":"x:1b","title":""}]}', {"x:1", "x:1b"})
+    assert rw == {"x:1": ("Vis pris", "d")}  # ukendt id og tom titel droppes
+    assert parse_inspiration("ingen json", {"x:1"}) == {} and parse_inspiration('{"inspiration":"x"}', {"x:1"}) == {}
     print("selftest ok")
 
 
@@ -122,4 +152,5 @@ if __name__ == "__main__":
         _selftest()
     elif "--probe" in sys.argv:  # ét minimalt live-kald for at bevise model-id + nøgle
         print(analyse({"competitors": [], "findings": [{"category": "seo", "title": "FAQ",
-              "detail": "64% af stærke blogs har FAQ", "rating": 4, "suggest": "kinly-dk", "evidence": []}]}))
+              "detail": "64% af stærke blogs har FAQ", "rating": 4, "suggest": "kinly-dk", "evidence": []}]},
+              [{"id": "x:1", "source": "x", "typeLabel": "salg", "text": "We doubled close rate by showing a fixed price upfront on every proposal."}]))

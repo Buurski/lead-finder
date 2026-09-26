@@ -439,3 +439,26 @@ class FacebookSkipTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InspirationFindingTests(unittest.TestCase):
+    CAND = {"id": "x:1", "source": "x", "author": "@levelsio", "text": "fixed price upfront", "likes": 900,
+            "url": "https://x.com/levelsio/status/1", "type": "annonce", "typeLabel": "annonce/marketing",
+            "suggest": "annonce", "rating": 4}
+
+    def test_rewrite_used_and_url_kept(self):
+        f = scan.inspiration_findings([self.CAND], {"x:1": ("Vis fast pris i annoncer", "Så gør vi: ...")})[0]
+        self.assertEqual((f["category"], f["title"], f["rating"], f["suggest"]), ("inspiration", "Vis fast pris i annoncer", 4, "annonce"))
+        self.assertEqual((f["url"], f["evidence"]), ("https://x.com/levelsio/status/1", ["@levelsio"]))
+
+    def test_fallback_and_stable_id(self):
+        a = scan.inspiration_findings([self.CAND], {})[0]
+        b = scan.inspiration_findings([self.CAND], {"x:1": ("Andet", "d")})[0]
+        self.assertTrue(a["title"].startswith("X · "))
+        self.assertEqual(a["id"], b["id"])  # id afhænger ikke af omskrivningen
+
+    def test_non_https_url_dropped_and_capped(self):
+        bad = {**self.CAND, "url": "javascript:alert(1)"}
+        self.assertNotIn("url", scan.inspiration_findings([bad], {})[0])
+        many = [{**self.CAND, "id": f"x:{i}"} for i in range(10)]
+        self.assertEqual(len(scan.inspiration_findings(many, {})), scan.inspiration.MAX_OUT)

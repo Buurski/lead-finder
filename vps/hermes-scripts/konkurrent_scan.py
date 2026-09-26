@@ -50,6 +50,7 @@ sys.path.insert(0, str(HERE))
 import jev_lib  # noqa: E402
 import konkurrent_blog_scan as blogscan  # noqa: E402
 import crm_posts  # noqa: E402
+import inspiration  # noqa: E402
 
 UA = blogscan.UA
 DEFAULT_LISTE = HERE / "konkurrent_liste.json"
@@ -751,6 +752,20 @@ def build_findings(competitors: list[dict], content_ideas: list[dict]) -> list[d
     return findings[:20]
 
 
+def inspiration_findings(candidates: list[dict], rewrites: dict[str, tuple[str, str]]) -> list[dict]:
+    """Jev-godkendte opslag -> findings (kategori 'inspiration', https-link til opslaget).
+    Dansk tekst fra DeepSeek-omskrivningen, ellers deterministisk fallback."""
+    out = []
+    for c in candidates[:inspiration.MAX_OUT]:
+        title, detail = rewrites.get(c["id"]) or inspiration.fallback_text(c)
+        f = _finding("inspiration", title, detail, c["rating"], [inspiration.evidence(c)], c["suggest"])
+        f["id"] = _finding_id("inspiration", c["id"])  # stabilt id pr. opslag, uafhængigt af omskrivning
+        if str(c.get("url", "")).startswith("https://"):
+            f["url"] = c["url"]
+        out.append(f)
+    return out
+
+
 # ---------------------------------------------------------------- rendering
 
 def render_section(now: datetime, competitors: list[dict], patterns: list[dict], gaps: list[dict], jev_calls: int, errors: list[str]) -> str:
@@ -889,7 +904,12 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
     content_ideas = blogscan.pick_top_ideas(rows, existing_titles, limit=3) if rows else []
 
     patterns, gaps = build_patterns_and_gaps(out_competitors, content_ideas)
-    findings = build_findings(out_competitors, content_ideas)
+    findings = build_findings(out_competitors, content_ideas)[:20 - inspiration.MAX_OUT]
+
+    # X/LinkedIn/HN: script + Jev (kaster aldrig). Fejl vælter ikke scannet.
+    insp = inspiration.collect(dry_run)
+    errors.extend(insp["errors"])
+    jev_calls += insp.get("judged", 0)
 
     now = datetime.now(timezone.utc)
     report = {
@@ -900,6 +920,18 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         "gaps": gaps,
         "findings": findings,
     }
+    if insp.get("credits"):
+        report["credits"] = insp["credits"]
+
+    # ÉT DeepSeek-kald før gemning: læser Jevs tal + omskriver inspiration til danske idéer.
+    analysis, rewrites = None, {}
+    if not dry_run:
+        try:
+            import konkurrent_analyse
+            analysis, rewrites = konkurrent_analyse.analyse(report, insp["candidates"])
+        except Exception as exc:  # noqa: BLE001
+            print(f"[analyse] sprunget over: {exc}")
+    report["findings"] = findings + inspiration_findings(insp["candidates"], rewrites)
 
     section = render_section(now, out_competitors, patterns, gaps, jev_calls, errors)
 
@@ -917,14 +949,12 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
         print(f"Skrevet til {VAULT_NOTE}")
         resp = crm_posts.call({"action": "save", "report": report}, POST_PATH)
         print(json.dumps(resp, ensure_ascii=False)[:500])
-        if resp.get("ok"):
-            # LLM læser kun Jevs komprimerede tal (ét billigt kald). Fejl her vælter aldrig scannet.
+        if resp.get("ok") and analysis:
             try:
-                import konkurrent_analyse
-                ares = crm_posts.call({"action": "analysis", "analysis": konkurrent_analyse.analyse(report)}, POST_PATH)
+                ares = crm_posts.call({"action": "analysis", "analysis": analysis}, POST_PATH)
                 print("[analyse]", json.dumps(ares, ensure_ascii=False)[:200])
             except Exception as exc:  # noqa: BLE001
-                print(f"[analyse] sprunget over: {exc}")
+                print(f"[analyse] ikke gemt: {exc}")
         if content_ideas:
             created = blogscan.create_hq_cards(content_ideas)
             print(f"Oprettet {len(created)} HQ-kort: {', '.join(created) or '(ingen)'}")

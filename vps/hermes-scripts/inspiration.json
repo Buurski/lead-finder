@@ -1,0 +1,30 @@
+{
+  "_note": "Lucas kan rette listerne. Pr. søndag: 12 X-handles + 4 LinkedIn-søgninger = 16 ScrapeCreators-credits. Hacker News er gratis. Jev sorterer alt irrelevant fra.",
+  "x_handles": [
+    {"handle": "levelsio", "why": "Indie-bygger: AI + hurtige sites, pris og salg som én person"},
+    {"handle": "marc_louvion", "why": "Ship fast: små produkter, landingssider, pris-eksperimenter"},
+    {"handle": "gregisenberg", "why": "AI-forretningsidéer og distribution"},
+    {"handle": "rauchg", "why": "Vercel: hvor AI-webbyggeri bevæger sig"},
+    {"handle": "lilyraynyc", "why": "SEO + AI-søgning (GEO), Google-opdateringer"},
+    {"handle": "aleyda", "why": "Teknisk SEO og AI-søgning, praktiske tjeklister"},
+    {"handle": "randfish", "why": "Zero-click søgning, brand og synlighed"},
+    {"handle": "Kevin_Indig", "why": "AI Overviews, GEO og søgeadfærd med data"},
+    {"handle": "darrenshaw_", "why": "Lokal SEO: Google Business Profile og anmeldelser"},
+    {"handle": "JoyanneHawkins", "why": "Lokal SEO: Maps-ranking og tests"},
+    {"handle": "JustinWelsh", "why": "Solo-forretning: content og salg som én person"},
+    {"handle": "coreyhainesco", "why": "B2B-marketing, positionering og budskab"}
+  ],
+  "linkedin_queries": [
+    "webbureau",
+    "hjemmeside lokal virksomhed",
+    "AI search GEO",
+    "local SEO small business"
+  ],
+  "hn_queries": [
+    "local SEO",
+    "AI search",
+    "website builder",
+    "freelance pricing",
+    "small business website"
+  ]
+}
