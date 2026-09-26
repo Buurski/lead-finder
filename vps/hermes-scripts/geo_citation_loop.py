@@ -251,7 +251,7 @@ def source_domains(answer: str) -> str:
 
 def measure() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    all_queries = QUERY_SET + tuple(load_extra_queries())
+    all_queries = QUERY_SET + tuple(load_extra_queries()[:6])  # ponytail: loft 6, hver = ét Codex-opslag
     for platform in PLATFORMS:
         for index, (gruppe, query, maal, pattern) in enumerate(all_queries):
             if index and rows[-1]["platform"] == platform and rows[-1]["status"] == "utilgængelig":

@@ -129,12 +129,15 @@ def _keyword_for(post: dict) -> str:
     note = str(post.get("note") or "")
     m = re.search(r"søgeord\s*[:\-]\s*([^\n]+)", note, re.I)
     if m:
-        return m.group(1).strip().rstrip(".")
+        return m.group(1).split(",")[0].strip().rstrip(".")
     for field in ("mainKeyword", "searchKeyword", "keyword"):
         val = post.get(field)
         if isinstance(val, str) and val.strip():
             return val.strip()
-    return str(post.get("title") or "").strip()
+    # Fallback: titlens kerne før kolon/spørgsmålstegn ("Google-anmeldelser: sådan…"
+    # → "google-anmeldelser"). Hele titlen giver 0 autofuldførelser (fix 26/9).
+    title = str(post.get("title") or "").strip()
+    return re.split(r"[:?–]", title)[0].strip().lower() or title
 
 
 def seo_checks(post: dict) -> dict:

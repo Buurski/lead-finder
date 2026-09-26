@@ -59,7 +59,11 @@ class KeywordForTests(unittest.TestCase):
 
     def test_title_fallback(self):
         post = {"title": "Hvad koster en hjemmeside"}
-        self.assertEqual(bst._keyword_for(post), "Hvad koster en hjemmeside")
+        self.assertEqual(bst._keyword_for(post), "hvad koster en hjemmeside")
+        post = {"title": "Google-anmeldelser: sådan får du flere i Herning"}
+        self.assertEqual(bst._keyword_for(post), "google-anmeldelser")
+        post = {"title": "X", "note": "Søgeord: pris på hjemmeside, billig hjemmeside"}
+        self.assertEqual(bst._keyword_for(post), "pris på hjemmeside")
 
 
 class SeoChecksTests(unittest.TestCase):
