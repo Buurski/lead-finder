@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { safeHref } from "@/lib/safe-href";
-import { KINLY_FRONT } from "@/lib/demos";
+import { defaultPreviewBody } from "@/lib/hq/preview-body";
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { timeAgo } from "@/components/hq/time";
@@ -45,14 +45,6 @@ const WORKING_LABEL: Record<string, string> = {
 };
 
 const DEFAULT_SUBJECT = "Jeres gratis udkast fra Kinly";
-
-function defaultBody(item: PreviewRequest): string {
-  const hilsen = item.contactName ? `Hej ${item.contactName},` : "Hej,";
-  const link = item.previewUrl ?? "";
-  // Link-politikken kræver kinly.dk-forsiden også i det gratis udkast; sendPreview
-  // afviser mailen uden den, så standardteksten skal indeholde den.
-  return `${hilsen}\n\nTak fordi I spurgte. Her er et første udkast til en ny hjemmeside til ${item.company}:\n${link}\n\nMin egen side: ${KINLY_FRONT}\n\nDet er et udkast — alt kan rettes. Sig til hvad I synes, så tager vi den derfra.`;
-}
 
 function groupOf(status: Status): "ready" | "working" | "sent" | "rejected" {
   if (READY.includes(status)) return "ready";
@@ -246,7 +238,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
   onSent: () => void;
 }) {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
-  const [body, setBody] = useState(item.mailDraft || defaultBody(item));
+  const [body, setBody] = useState(item.mailDraft || defaultPreviewBody(item));
   const [sender, setSender] = useState<"lucas" | "charlie">(senders.lucas ? "lucas" : "charlie");
   const [sendState, setSendState] = useState<"idle" | "confirm" | "sending" | "sent" | "error">(
     item.status === "sendt/lukket" ? "sent" : "idle",

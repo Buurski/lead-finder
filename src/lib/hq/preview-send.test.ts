@@ -4,6 +4,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
 import { PreviewSendError, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { KINLY_FRONT } from "../demos.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -66,4 +67,25 @@ test("et case-link tæller ikke som forsiden (streng front-gate)", async () => {
   const body = `Hej Maja\n\nHer er udkastet: ${url}\n\nVi har bygget https://kinly.dk/case/vida-klinik/`;
   await assert.rejects(sendPreview(db, "preview_s", { subject: msg.subject, body }, "lucas", x.d), PreviewSendError);
   assert.equal(x.sent.length, 0);
+});
+
+// Fund 6 (26/9): GratisUdkast skriver standardteksten med defaultPreviewBody, og
+// den tekst skal kunne gå gennem denne gate. Uden testen her kan nogen fjerne
+// kinly.dk-linjen fra standardteksten igen uden at nogen opdager det — det var
+// præcis fejlen s7 rettede.
+test("standardteksten i GratisUdkast består sendPreview-gaten", async () => {
+  const { defaultPreviewBody } = await import("./preview-body.ts");
+  const body = defaultPreviewBody({ contactName: "Maja", company: req.company, previewUrl: url });
+  const x = deps({ ...req, id: "preview_std" });
+  await sendPreview(db, "preview_std", { subject: "Jeres gratis udkast fra Kinly", body }, "lucas", x.d);
+  assert.deepEqual(x.sent, [req.email]);
+
+  // ...og det er link-gaten der holder: samme tekst uden forside-linjen afvises.
+  const uden = body.replace(`Min egen side: ${KINLY_FRONT}`, "Min egen side: vi har også en hjemmeside");
+  const y = deps({ ...req, id: "preview_std2" });
+  await assert.rejects(
+    sendPreview(db, "preview_std2", { subject: "Jeres gratis udkast fra Kinly", body: uden }, "lucas", y.d),
+    (err: Error) => err instanceof PreviewSendError && /kinly\.dk/.test(err.message),
+  );
+  assert.equal(y.sent.length, 0);
 });

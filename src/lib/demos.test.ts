@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -124,6 +124,38 @@ test("case-link og branche-side tæller ikke som link til forsiden", () => {
   assert.deepEqual(fixed.added, [KINLY_FRONT]);
   assert.deepEqual(missingReferenceLinks(fixed.body, "skønhedsklinik"), []);
   assert.deepEqual(withReferenceLinks(fixed.body, "skønhedsklinik").added, []);
+});
+
+test("forsiden tælles med tegnsætning efter og uden afsluttende slash", () => {
+  // Fund 5 (26/9): gaten står på et felt Lucas selv skriver. Punktrum, kolon,
+  // em dash og # efter URL'en — eller en forside uden afsluttende slash — skal
+  // tælle med, ellers afviser vi en mail hvor forsiden faktisk står der.
+  for (const ja of [
+    KINLY_FRONT,
+    `${KINLY_FRONT}.`,
+    `${KINLY_FRONT}:`,
+    `${KINLY_FRONT}—`,
+    `${KINLY_FRONT}#kontakt`,
+    "https://kinly.dk",
+    "Min egen side: https://kinly.dk.",
+    `Se ${KINLY_FRONT} her`,
+  ]) {
+    assert.equal(hasKinlyFront(ja), true, ja);
+  }
+  // ...og undersider er stadig ikke forsiden.
+  for (const nej of [
+    "https://kinly.dk/case/vida-klinik/",
+    "https://kinly.dk/hjemmeside-til-vvs/",
+    "https://kinly.dk/projekter/",
+    "https://kinly.dk/case",
+    "https://kinly.dkk/",
+  ]) {
+    assert.equal(hasKinlyFront(nej), false, nej);
+  }
+  assert.ok(
+    missingReferenceLinks("Se https://kinly.dk/case/vida-klinik/", "skønhedsklinik").some((i) => i.includes("forside")),
+    "et case-link alene skal stadig fanges som manglende forside",
+  );
 });
 
 test("dødt demo-link stopper kladden", async () => {
