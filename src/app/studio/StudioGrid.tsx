@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
 import { DEMO_CATALOG } from "@/lib/demos";
+import { safeHref } from "@/lib/safe-href";
 import type { DemoEntry } from "@/lib/demos";
 
 // Sites der blokerer indlejring (X-Frame-Options/CSP frame-ancestors). Det kan
@@ -120,7 +121,7 @@ export default function StudioGrid() {
         {shown.map((d) => (
           <a
             key={d.url}
-            href={d.url}
+            href={safeHref(d.url)}
             target="_blank"
             rel="noopener noreferrer"
             className="cc-card cc-focus"
