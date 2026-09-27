@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, MAIL_LINKS, pairLinkHref, CUSTOMER_SITES } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, REFERENCE_INTRO, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, hasDemoLink, hasDemoPromise, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, MAIL_LINKS, pairLinkHref, CUSTOMER_SITES } from "./demos.ts";
 import { previewBodyError } from "./hq/preview-send.ts";
 import { composeColdEmail } from "./compose.ts";
 
@@ -497,4 +497,143 @@ test("mekaniker → auto (Ikast-casen + automekaniker-siden), VVS/el → KT VVS"
     assert.ok(l.some((x) => x.url === DEMO_SITES.ktvvsCase), `KT VVS-casen mangler for ${where}`);
     assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), `Ikast-casen foreslået for ${where}`);
   }
+});
+
+// ---- "mekanik" er tvetydigt: et ægte VVS-ord vinder (27/9) -----------------
+test("et ægte VVS-/el-ord slår \"mekanik\": VVS & Mekanik → KT VVS, ikke auto", () => {
+  const varianter: [string, string][] = [
+    ["VVS & Mekanik", "Testfirma"],   // branchenavn
+    ["vvs", "VVS & Mekanik"],         // firmanavn
+    ["mekanik", "VVS & Mekanik"],     // firmanavn, andet felt
+  ];
+  for (const [branch, name] of varianter) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "craftUtility", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(refs.verticalUrl, VVS_SIDE, where);
+    const lines = referenceLines(branch, name).join("\n");
+    assert.ok(!lines.includes(DEMO_SITES.ikastCase), `${where}: Ikast-casen står i VVS-linjerne`);
+    assert.ok(!lines.includes(AUTOMEKANIKER_SIDE), `${where}: automekaniker-siden står i VVS-linjerne`);
+    // Link-gaten skal kræve de RIGTIGE links: forside + KT VVS-case + VVS-side er nok,
+    // og Ikast-casen må hverken kræves eller nævnes.
+    const body = [KINLY_FRONT, DEMO_SITES.ktvvsCase, VVS_SIDE].join("\n");
+    assert.deepEqual(missingReferenceLinks(body, branch, name), [], where);
+    assert.equal(linkGateReason(body, branch, name), null, where);
+    const links = suggestMailLinks(branch, name);
+    assert.ok(links.some((l) => l.url === DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen mangler i forslaget`);
+    assert.ok(!links.some((l) => l.url === DEMO_SITES.ikastCase), `${where}: Ikast-casen foreslås for en VVS-kunde`);
+  }
+  // Den modsatte vej (27/9): et entydigt værksted-ord slår et håndværksord i
+  // firmanavnet. "Smedegaard Autoservice" rammer CRAFT_UTIL ("smed") og
+  // "El-Biler Autoservice" rammer "el-", men begge er værksteder — AUTO_STRONG
+  // afgør sagen, før håndværksordet kommer i spil.
+  for (const [branch, name] of [["autoservice", "Smedegaard Autoservice"], ["autoservice", "El-Biler Autoservice"], ["autoværksted", "Smed Autoværksted"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "auto", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(refs.verticalUrl, AUTOMEKANIKER_SIDE, where);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen staar i vaerksted-linjerne`);
+  }
+});
+
+test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => {
+  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik", "mekanikeren", "mekanikerne", "mekanikerværksted", "mekanikken"]) {
+    assert.equal(branchKind(branch, "Bilerne"), "auto", branch);
+    const r = referenceLinks(branch, "Bilerne");
+    assert.equal(r.caseUrl, DEMO_SITES.ikastCase, branch);
+    assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, branch);
+  }
+  // Bestemt/plural form ("mekanikeren", "mekanikerne") må ikke falde i CRAFT_UTIL:
+  // ordet er auto, så hverken KT VVS-casen eller VVS-siden må dukke op.
+  for (const [branch, name] of [["mekanikeren", "Mekanikeren"], ["mekanikerne", "Mekanikerne"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "auto", where);
+    const r = referenceLinks(branch, name);
+    assert.equal(r.caseUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, where);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen staar i mekaniker-linjerne`);
+  }
+  // "mekanisk" indeholder ikke "mekanik" (mekani+s+k), så AUTO rammer den ikke.
+  // Et maskinværksted hører hverken til auto eller VVS, og udkastet flagges i
+  // stedet (fail-closed).
+  for (const [branch, name] of [["mekanisk værksted", "Mekanisk Værksted ApS"], ["mekanisk", "KB Mekanisk"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.notEqual(branchKind(branch, name), "auto", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, null, where);
+    assert.equal(refs.verticalUrl, null, where);
+    assert.equal(refs.caseMissing, true, where);
+    const lines = referenceLines(branch, name).join("\n");
+    assert.ok(!lines.includes(DEMO_SITES.ikastCase), where);
+    assert.ok(!lines.includes(DEMO_SITES.ktvvsCase), where);
+  }
+  // vvs og elektriker er uændret craftUtility: KT VVS-casen + VVS-siden, ingen Ikast-case.
+  for (const [branch, name] of [["vvs", "VVS Test"], ["elektriker", "El Test"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "craftUtility", where);
+    assert.equal(referenceLinks(branch, name).caseUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(referenceLinks(branch, name).verticalUrl, VVS_SIDE, where);
+    const l = suggestMailLinks(branch, name);
+    assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), where);
+  }
+});
+
+// ---- Demo-løftet følger linkets ROLLE, ikke antallet af links (27/9) -------
+// hasDemoLink afgør om linkblokken overhovedet VISER en demo (forsiden, casen og
+// branche-siden er kinly.dk-links og tæller ikke), og hasDemoPromise fanger
+// påstande om demoer/eksempler vi selv har lavet. Tilsammen er de accept-gaten
+// for en LLM-kladde i draft.ts.
+test("hasDemoLink: forside, case og branche-side er kinly.dk — en demo er en anden host", () => {
+  const vvs = referenceLines("vvs", "VVS Hansen");
+  assert.deepEqual(vvs, [`→ ${KINLY_FRONT}`, `→ ${DEMO_SITES.ktvvsCase}`, "→ https://kinly.dk/hjemmeside-til-vvs/"]);
+  assert.equal(hasDemoLink(vvs), false);
+  assert.equal(hasDemoLink([`→ ${KINLY_FRONT}`]), false);
+  assert.equal(hasDemoLink(referenceLines("maler", "Maler Mikkelsen").slice(0, 1)), false);
+  // Malerens demo-par: forsiden + denlillemaler.vercel.app — den er en demo.
+  assert.deepEqual(referenceLines("maler", "Maler Mikkelsen"), [`→ ${KINLY_FRONT}`, `→ ${DEMO_SITES.denlillemaler}`]);
+  assert.equal(hasDemoLink([`→ ${DEMO_SITES.denlillemaler}`]), true);
+  assert.equal(hasDemoLink(referenceLines("maler", "Maler Mikkelsen")), true);
+});
+
+test("hasDemoLink: hosten udledes af URL'en — kinly.dk.evil er ikke kinly.dk", () => {
+  // Lookalike-domænet er IKKE vores egen host (ingen endsWith/includes på "kinly.dk"),
+  // så det tæller ikke som et kinly.dk-link.
+  assert.equal(hasDemoLink(["→ https://kinly.dk.evil/demo"]), true);
+  assert.equal(hasDemoLink([`→ ${KINLY_FRONT}`, "→ https://kinly.dk.evil/"]), true);
+  assert.equal(hasDemoLink(["→ https://kinly.dk/hjemmeside-til-vvs/"]), false);
+});
+
+test("hasDemoPromise: ærlige linklinjer og udkast-tilbuddet lover ingenting", () => {
+  assert.equal(REFERENCE_INTRO, "Her er min side og nogle relevante links:");
+  assert.equal(hasDemoPromise([REFERENCE_INTRO, ...referenceLines("vvs", "VVS Hansen")].join("\n")), false);
+  assert.equal(hasDemoPromise(["Her er min egen side.", `→ ${KINLY_FRONT}`].join("\n")), false);
+  assert.equal(hasDemoPromise("Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for VVS Hansen kunne se ud, så kan I vurdere idéen helt konkret."), false);
+  assert.equal(hasDemoPromise("Skal jeg sende et udkast?"), false);
+  // Opfølgningens nye, ærlige linjer (501dd630's ordrette delta).
+  assert.equal(hasDemoPromise("Hvis I hellere vil se det end læse om det, har jeg lagt min side nedenfor."), false);
+  assert.equal(hasDemoPromise("En side til VVS Hansen skulle selvfølgelig passe til jeres eget udtryk."), false);
+});
+
+test("hasDemoPromise: påstande om egne demoer og eksempler fanges", () => {
+  for (const t of [
+    "jeg har lavet et par demoer, se dem herunder",
+    "Jeg lavede et par demoer I kan kigge på:",
+    "Her er et par eksempler:",
+    "Det er et eksempel jeg har bygget selv, hvis I vil se.",
+    "Jeg har lavet et par demo-hjemmesider til VVS som I kan kigge på:",
+    "kan I se nogle af de sider jeg har bygget her",
+    "Det er bare eksempler. En rigtig version til VVS Hansen ville matche jeres stil.",
+    "Det er kun for at vise idéen.",
+    "Sådan kunne det fx se ud, kig endelig:",
+    "De er lavet ud fra kundernes egne farver og billeder.",
+  ]) assert.equal(hasDemoPromise(t), true, t);
+});
+
+test("hasDemoPromise: \"sådan kan jeres side se ud\" tæller kun når demo-/forside-linket er med", () => {
+  const claim = "Sådan kan jeres side se ud:";
+  assert.equal(hasDemoPromise(claim), false, "uden link er der intet vi påstår at vise");
+  assert.equal(hasDemoPromise([claim, ...referenceLines("vvs", "VVS Hansen")].join("\n")), true);
+  assert.equal(hasDemoPromise([claim, `→ ${DEMO_SITES.denlillemaler}`].join("\n")), true);
 });

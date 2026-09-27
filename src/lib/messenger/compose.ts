@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront, isAutoBranch } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -43,6 +43,9 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
   // i de to næste funktioner.
   if (FITNESS.test(b)) return "service";
   if (MASSAGE.test(b)) return "service";
+  // En mekaniker er ikke en VVS-kunde: MsgGroup har ingen auto-gruppe, og
+  // DEMO_URLS.service peger på Ikast AutoService-casen (demos.ts AUTO-vejen).
+  if (isAutoBranch(b)) return "service";
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
   if (/foto|photo|photograph/.test(b)) return "photo";
@@ -76,6 +79,9 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
   if (FITNESS.test(b)) return "træningscenter";
   if (MASSAGE.test(b)) return "massageklinik";
+  // Samme ord som tone-mixer.ts bruger for auto-branchen. Uanset gruppe, ellers
+  // blev en mekaniker kaldt "håndværker"/"lokal virksomhed".
+  if (isAutoBranch(b)) return "mekaniker";
   if (group === "beauty") {
     if (/barber/.test(b)) return "barbersalon";
     if (/negl|nail/.test(b)) return "negleklinik";

@@ -164,10 +164,34 @@ const BARBER = /barber|herrefrisør|herre ?frisør|herreklip/i;
 const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|laser|botox|filler|wax|wellness|spa\b|klinik|cosmetic|aesthet|microblading|vipper|vippe|fillers/i;
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
-const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
-// Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
-// "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
+// VVS/el/kloak/varme — de ægte håndværksord. "mekaniker" står ikke her: ordet er
+// tvetydigt og ejes af mekanik-sporet (se isAutoBranch nedenfor).
+const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
+// Entydige autoværksted-ord. De vinder over et håndværksord i firmanavnet:
+// "Smedegaard Autoservice" er et værksted, ikke en smed.
+const AUTO_STRONG = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
+// "mekanik" alene er tvetydigt: en mekaniker er auto, men "VVS & Mekanik" er en
+// VVS-kunde. Derfor taber det til et ægte håndværksord (CRAFT_UTIL) og vinder
+// ellers. Rækkefølgen er låst af test i både mail- og DM-vejen.
+const AUTO_MECHANIC = /mekanik/i;
+
+// Præcedensen mellem de tre ordgrupper, ét sted, i denne rækkefølge:
+//   1. AUTO_STRONG — et entydigt autoværksted-ord afgør sagen med det samme, også
+//      når firmanavnet samtidig bærer et kort håndværks-ord ("El-Biler Autoservice"
+//      rammer "el-", "Smedegaard Autoservice" rammer "smed"). Uden dette trin
+//      vandt håndværksordet og kladden krævede KT VVS-casen + VVS-siden for et
+//      rigtigt værksted.
+//   2. AUTO_MECHANIC over CRAFT_UTIL — "mekanik" er tvetydigt, så et ægte
+//      VVS-/el-/kloak-/varme-ord vinder. Et firma der både er "VVS & Mekanik" er
+//      en VVS-kunde (KT VVS), ikke et autoværksted.
+//   3. Ellers er et rent mekanik-ord auto (mekaniker, bilmekaniker, mekanikeren).
+// Rækkefølgen er låst af test i begge veje (demos.test.ts,
+// messenger/compose.test.ts), og DM- og mail-vejen deler denne funktion, så de
+// ikke kan drive fra hinanden.
+export function isAutoBranch(text: string): boolean {
+  if (AUTO_STRONG.test(text)) return true;
+  return AUTO_MECHANIC.test(text) && !CRAFT_UTIL.test(text);
+}
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
@@ -253,7 +277,7 @@ export function branchKind(branch: string, name = ""): BranchKind {
   if (FOOD_INTL.test(t)) return "foodIntl";
   if (FOOD.test(t)) return "food";
   if (PROFESSIONAL.test(t)) return "professional";
-  if (AUTO.test(t)) return "auto";
+  if (isAutoBranch(t)) return "auto";
   if (CRAFT_UTIL.test(t)) return "craftUtility";
   if (CRAFT.test(t)) return "craft";
   if (SERVICE_MAINT.test(t)) return "service";
@@ -389,18 +413,64 @@ export interface ReferenceFix {
 }
 
 /**
- * Er der et ÆGTE demo-link i linklinjerne? Rollen afgøres på URL'en: et
- * kinly.dk-link er forside, case eller branche-side — aldrig en demo, uanset
- * hvor mange der er. Case- og branche-sider må derfor ikke gøre en mail til
- * en demo-mail (27/9).
+ * Hosten for vores egen forside, udledt af KINLY_FRONT (én kilde — et domæne-
+ * skift kræver ikke en ny hardcoded streng her). Sammenlignes præcist, så et
+ * lookalike-domæne som kinly.dk.evil ikke tæller som vores egen side.
+ */
+const KINLY_FRONT_HOST = (() => {
+  try { return new URL(KINLY_FRONT).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; }
+})();
+
+/** Ligger linket på vores egen host (kinly.dk)? Alt andet — også lookalikes — gør ikke. */
+function isKinlyHostLink(link: string): boolean {
+  const raw = (link ?? "").replace(/^→\s*/, "").trim();
+  try {
+    return new URL(raw).hostname.replace(/^www\./, "").toLowerCase() === KINLY_FRONT_HOST;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Er der et ÆGTE demo-link i linklinjerne? Rollen afgøres på linkets HOST, ikke
+ * på antallet: forside, case og branche-side ligger alle på kinly.dk og er
+ * aldrig en demo, uanset hvor mange de er (27/9).
  */
 export function hasDemoLink(links: string[]): boolean {
-  return links.some((l) => !l.replace(/^→\s*/, "").trim().startsWith("https://kinly.dk/"));
+  return links.some((l) => !isKinlyHostLink(l));
 }
 
 /** Forsiden alene = egen intro. Alt andet i blokken giver REFERENCE_INTRO ("min side og nogle relevante links") — linjen lover ikke demoer. */
 export function referenceIntro(links: string[]): string {
   return links.some((l) => !hasKinlyFront(l)) ? REFERENCE_INTRO : "Her er min egen side.";
+}
+
+// ---- Demo-løftet: påstande om egne demoer og eksempler (27/9) --------------
+// En kladde (også en LLM-kladde) må ikke påstå demoer eller eksempler som
+// linkblokken ikke viser. Mønstrene rammer kun påstande om NOGET VI SELV HAR
+// LAVET; de ærlige linjer — REFERENCE_INTRO, "Her er min egen side.", udkast-
+// tilbuddet og "Skal jeg sende et udkast?" — rammer ingen af dem.
+const DEMO_PROMISE_PATTERNS: RegExp[] = [
+  /\bdemo(?:er|en|s|-hjemmesider?|hjemmesider?)?\b/i, // "et par demoer", "demo-hjemmesider"
+  /\bet par eksempler\b/i, // "et par eksempler"
+  // "eksempel" og "eksempler" har ikke samme stamme (eksemp-el / eksemp-ler),
+  // så begge endelser står eksplicit her.
+  /\beksemp(?:el|ler)\b[^.!?\n]{0,40}\b(?:jeg|vi)\s+har\s+(?:lavet|bygget)/i, // "et eksempel jeg har bygget"
+  /\bnogle af de sider (?:jeg|vi) har bygget\b/i,
+  /\bsådan (?:kan|kunne) det\b[^.!?\n]{0,20}\bse ud\b/i, // demoIntro: "Sådan kunne det fx se ud"
+  /\bdet er (?:bare|kun) (?:eksempler|demoer)\b/i,
+  /\bdet er kun for at vise idéen\b/i,
+  /\bkundernes egne farver\b/i,
+];
+// Nutids-præsentation af et RESULTAT ("sådan kan jeres side se ud") tæller kun
+// når der faktisk er et link i teksten at vise det med. Udkast-tilbuddet
+// ("...hvordan en side for X kunne se ud, ...") er fremtid og rammer ikke mønstret.
+const DEMO_LOOK_NOW = /\bsådan (?:kan|kunne) (?:jeres|din|en)\s+side\b[^.!?\n]{0,25}\bse ud\b/i;
+const LINK_LINE = /^\s*→\s*https?:\/\//m;
+
+export function hasDemoPromise(text: string): boolean {
+  if (DEMO_PROMISE_PATTERNS.some((re) => re.test(text))) return true;
+  return LINK_LINE.test(text) && DEMO_LOOK_NOW.test(text);
 }
 
 /**
@@ -463,9 +533,10 @@ export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[
   else if (kind === "clinic" || kind === "beauty" || kind === "barber") urls.push(DEMO_SITES.vidaCase);
   // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
   // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
-  // !AUTO: "mekaniker" rammer også automekanikere, men de routes til auto og har
-  // Ikast-casen som deres (branchKind tjekker AUTO før CRAFT_UTIL).
-  else if (CRAFT_UTIL.test(t) && !AUTO.test(t)) urls.push(DEMO_SITES.ktvvsCase);
+  // !isAutoBranch: et lead der både bærer "mekanik" og et ægte VVS-/el-ord er
+  // en VVS-kunde (KT VVS), så det skal have VVS-casen og ikke Ikast-casen
+  // (isAutoBranch i demos.ts holder den præcedens ét sted).
+  else if (CRAFT_UTIL.test(t) && !isAutoBranch(t)) urls.push(DEMO_SITES.ktvvsCase);
   else if (kind === "fitness") {
     // Træning/wellness: neutral-parret (uden VIDA) + projektoversigten er hele
     // forslaget — hverken VIDA-casen eller skønhedsklinik-siden (27/9).
