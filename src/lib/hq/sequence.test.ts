@@ -4,6 +4,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { company, outreach } from "../db/schema.ts";
 import { composeStep, createFollowUpDrafts, followUpCandidates, nextAngle, stopOpenDrafts, type Angle } from "./sequence.ts";
+import { REFERENCE_INTRO } from "../demos.ts";
 import type { QueueDraft } from "../queue.ts";
 
 let db: Db;
@@ -25,7 +26,7 @@ test("alle vinkler består stemme-reglerne og nævner virksomheden", () => {
 test("26/9: opfølgningen lover ikke eksempler når kun forsiden linkes", () => {
   const msg = (b: string) => composeStep({ name: "Test Test", branch: b, website: "x.dk" }, "eksempel").body;
   for (const b of ["tømrer", "vinduespudser", "boghandel"]) { assert.equal(msg(b).includes("et par eksempler"), false, b); assert.ok(msg(b).includes("Her er min egen side."), b); }
-  for (const b of ["frisør", "café", "maler"]) assert.ok(msg(b).includes("et par eksempler"), b);
+  for (const b of ["frisør", "café", "maler"]) assert.ok(msg(b).includes(REFERENCE_INTRO), b);
 });
 
 test("vinkel: aldrig samme to gange, sidste trin er altid 'sidste', ingen SEO uden hjemmeside", () => {

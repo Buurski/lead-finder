@@ -367,7 +367,7 @@ export function referenceLines(branch: string, name = ""): string[] {
 }
 
 /** Overskrift til link-blokken, så hver kanal ikke opfinder sin egen. */
-export const REFERENCE_INTRO = "Her kan I se min egen side og et par eksempler:";
+export const REFERENCE_INTRO = "Her er min side og nogle relevante links:";
 
 /**
  * Prospekt-udkastets link-krav. Tom liste = ok.
@@ -412,7 +412,17 @@ export interface ReferenceFix {
   caseMissing: boolean;
 }
 
-/** "et par eksempler" kræver et link ud over forsiden, ellers loves noget der ikke er der. */
+/**
+ * Er der et ÆGTE demo-link i linklinjerne? Rollen afgøres på URL'en: et
+ * kinly.dk-link er forside, case eller branche-side — aldrig en demo, uanset
+ * hvor mange der er. Case- og branche-sider må derfor ikke gøre en mail til
+ * en demo-mail (27/9).
+ */
+export function hasDemoLink(links: string[]): boolean {
+  return links.some((l) => !l.replace(/^→\s*/, "").trim().startsWith("https://kinly.dk/"));
+}
+
+/** Forsiden alene = egen intro. Alt andet i blokken giver REFERENCE_INTRO ("min side og nogle relevante links") — linjen lover ikke demoer. */
 export function referenceIntro(links: string[]): string {
   return links.some((l) => !hasKinlyFront(l)) ? REFERENCE_INTRO : "Her er min egen side.";
 }
