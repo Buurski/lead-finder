@@ -38,6 +38,37 @@
 /* Samme dæmpning som et trukket pipeline-kort (pl-card[data-dragging]) — den
    native drag-ghost viser positionen, kortet selv fades blot let. */
 .bl-card[data-dragging="true"] { opacity: 0.45; }
+.bl-card:focus-within { border-color: var(--accent); }
+/* Knappen indeni bærer indholdet; kortet selv er rammen (plads til "Prøv igen"). */
+.bl-card-main {
+  display: block; width: 100%; text-align: left; padding: 0; margin: 0;
+  background: none; border: 0; font: inherit; color: inherit; cursor: inherit;
+}
+.bl-card-main:focus-visible { outline: none; }
+/* Arbejder: kortet er Hermes' — rammen viser det. */
+.bl-card[data-locked="true"] { border-style: dashed; background: var(--surface-2); }
+
+/* ---- Hermes' fremdrift (WorkStatus) ---- */
+.bl-work { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.bl-work-lock { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.bl-work-line { font-size: 11.5px; line-height: 1.4; color: var(--text); overflow-wrap: anywhere; }
+.bl-work-bar { height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.bl-work-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--amber); transition: width 400ms ease; }
+.bl-work[data-state="waiting"] .bl-work-bar > span { width: 30% !important; background: var(--text-dim); animation: bl-wait 1.6s ease-in-out infinite; }
+@keyframes bl-wait { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+.bl-work[data-state="failed"] .bl-work-line { color: var(--red); font-weight: 600; }
+.bl-work[data-state="failed"] .bl-work-bar > span { background: var(--red); }
+.bl-work[data-state="stale"] .bl-work-line { color: #8a5a12; font-weight: 600; }
+.bl-work-retry { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.bl-work-note { font-size: 12px; margin: 8px 0 0; }
+.bl-dialog-body .bl-work { margin-top: 0; padding-top: 0; border-top: 0; }
+.bl-dialog-body .bl-work-line { font-size: 13px; }
+.bl-dialog-body .bl-work-bar { height: 6px; }
+
+/* Til gennemlæsning: hvem der har tjekket teksten (kun fra beviserne). */
+.bl-checked { margin-top: 8px; font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.bl-checked [data-old="true"] { color: var(--red); }
+
 .bl-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .bl-card-title { font-size: 13px; font-weight: 700; color: var(--text); }
 .bl-score-badge {
@@ -93,6 +124,8 @@
   background: var(--surface); color: var(--text); font-size: 13px; font-family: var(--font-body);
 }
 .bl-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Låste felter (Arbejder/Publicer/Udgivet) skal se låste ud. */
+.bl-input:disabled { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
 .bl-textarea { height: auto; min-height: 68px; padding: 9px 11px; resize: vertical; }
 
 .bl-counter { font-family: var(--font-mono); font-weight: 700; color: var(--text-dim); }
@@ -204,5 +237,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bl-dialog, .bl-card, .bl-ab-cand, .bl-drop-toast, .bl-jev-bar-fill { animation: none !important; transition: none !important; }
+  .bl-dialog, .bl-card, .bl-ab-cand, .bl-drop-toast, .bl-jev-bar-fill, .bl-work-bar > span { animation: none !important; transition: none !important; }
 }

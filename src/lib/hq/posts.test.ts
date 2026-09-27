@@ -34,6 +34,12 @@ import {
   seoMissing,
   SCORE_AXES,
   updatePost,
+  claimWork,
+  failWork,
+  readWork,
+  retryWork,
+  workProgress,
+  workQueue,
 } from "./posts.ts";
 import type { BlogImages } from "./posts.ts";
 
@@ -303,6 +309,221 @@ test("sletning kræver menneske og kun i Idéer eller Arbejder", async () => {
 
   await assert.rejects(deletePost(db, "00000000-0000-0000-0000-000000000000", "lucas"), /findes ikke/);
   assert.equal((await listPosts(db)).length, 3);
+});
+
+// --- Arbejder er Hermes' arbejdsbord (spec 27-09) ---------------------------
+test("et menneske kan ikke sætte Klar selv — hverken fra Idéer eller Arbejder", async () => {
+  const fraIde = await seed("Fra Idéer");
+  await assert.rejects(updatePost(db, fraIde.id, { stage: "klar" }, "lucas"), /nås kun gennem Hermes/);
+  const [efterIde] = await db.select().from(blogPost).where(eq(blogPost.id, fraIde.id));
+  assert.equal(efterIde.stage, "ide");
+
+  const fraArbejder = await seed("Fra Arbejder");
+  await updatePost(db, fraArbejder.id, { stage: "arbejder" }, "hermes");
+  await assert.rejects(updatePost(db, fraArbejder.id, { stage: "klar" }, "charlie"), /under arbejde hos Hermes/);
+  const [efterArbejder] = await db.select().from(blogPost).where(eq(blogPost.id, fraArbejder.id));
+  assert.equal(efterArbejder.stage, "arbejder");
+
+  // Hermes må stadig som i dag.
+  const hermesFlyt = await updatePost(db, fraArbejder.id, { stage: "klar" }, "hermes");
+  assert.equal(hermesFlyt.stage, "klar");
+});
+
+test("fra Arbejder må et menneske kun gå tilbage til Idéer", async () => {
+  const post = await seed("I arbejde");
+  await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+
+  // Tilbage til Idéer er OK.
+  const tilbage = await updatePost(db, post.id, { stage: "ide" }, "lucas");
+  assert.equal(tilbage.stage, "ide");
+
+  // Videre til Publicer direkte fra Arbejder er ikke OK.
+  await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+  await assert.rejects(updatePost(db, post.id, { stage: "publicer" }, "charlie"), /under arbejde hos Hermes/);
+});
+
+test("et menneske kan ikke redigere et kort mens det ligger i Arbejder", async () => {
+  const post = await seed("Redigeres ikke");
+  await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+  await assert.rejects(updatePost(db, post.id, { note: "Lucas prøver at rette" }, "lucas"), /kan ikke redigeres nu/);
+  // Agenten må stadig arbejde videre på kortet.
+  const agentRet = await updatePost(db, post.id, { note: "hermes retter videre" }, "hermes");
+  assert.equal(agentRet.note, "hermes retter videre");
+});
+
+test("det fælles delt-login er også låst ude af Arbejder", async () => {
+  const post = await seed("Delt-login");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await assert.rejects(updatePost(db, post.id, { note: "ret" }, "delt"), /kan ikke redigeres nu/);
+  await assert.rejects(updatePost(db, post.id, { stage: "klar" }, "delt"), /under arbejde hos Hermes/);
+});
+
+// --- work: bestilling, kø, claim, fremdrift, fejl, prøv igen ----------------
+const workOf = async (id: string) => readWork((await db.select().from(blogPost).where(eq(blogPost.id, id)))[0].work);
+const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+async function setWork(id: string, work: Record<string, unknown>) {
+  await db.update(blogPost).set({ work }).where(eq(blogPost.id, id));
+}
+
+test("menneske til Arbejder bestiller (friskt objekt), tilbage til Idéer rydder, Hermes til Klar stempler færdig", async () => {
+  const post = await seed("Bestilling");
+  await setWork(post.id, { step: 7, steps: 9, label: "gammelt", error: "gammel fejl" });
+  const bestilt = await updatePost(db, post.id, { stage: "arbejder" }, "charlie");
+  const w = readWork(bestilt.work);
+  assert.equal(w.requestedBy, "charlie");
+  assert.ok(w.requestedAt);
+  assert.deepEqual(Object.keys(w).sort(), ["requestedAt", "requestedBy"]);
+
+  const tilbage = await updatePost(db, post.id, { stage: "ide" }, "lucas");
+  assert.deepEqual(tilbage.work, {});
+
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, post.id);
+  await workProgress(db, post.id, { step: 9, steps: 9, label: "Færdig" });
+  const klar = await updatePost(db, post.id, { stage: "klar" }, "hermes");
+  const wk = readWork(klar.work);
+  assert.ok(wk.finishedAt);
+  assert.equal(wk.requestedBy, "lucas");
+  assert.equal(wk.step, 9);
+  assert.equal(wk.label, "Færdig");
+});
+
+test("Hermes der selv flytter til Arbejder bestiller intet — kortet kommer ikke i køen", async () => {
+  const post = await seed("Hermes' egen");
+  const moved = await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+  assert.deepEqual(moved.work, {});
+  assert.equal((await workQueue(db)).length, 0);
+});
+
+test("køen: bestilte, ikke-startede eller hængte kort — ældste bestilling først, fejlede ikke med", async () => {
+  const nyeste = await seed("Nyeste bestilling");
+  const aeldste = await seed("Ældste bestilling");
+  const kører = await seed("Kører lige nu");
+  const haengt = await seed("Hængt");
+  const fejlet = await seed("Fejlet");
+  for (const p of [nyeste, aeldste, kører, haengt, fejlet]) await updatePost(db, p.id, { stage: "arbejder" }, "lucas");
+  await setWork(nyeste.id, { requestedBy: "lucas", requestedAt: ago(1) });
+  await setWork(aeldste.id, { requestedBy: "charlie", requestedAt: ago(30) });
+  await setWork(kører.id, { requestedBy: "lucas", requestedAt: ago(40), startedAt: ago(20), updatedAt: ago(2), step: 3, steps: 9 });
+  await setWork(haengt.id, { requestedBy: "lucas", requestedAt: ago(200), startedAt: ago(180), updatedAt: ago(91), step: 2, steps: 9 });
+  await setWork(fejlet.id, { requestedBy: "lucas", requestedAt: ago(300), startedAt: ago(290), updatedAt: ago(280), error: "timeout" });
+
+  const q = await workQueue(db);
+  assert.deepEqual(q.map((c) => c.title), ["Hængt", "Ældste bestilling", "Nyeste bestilling"]);
+  assert.equal(q[1].work.requestedBy, "charlie");
+});
+
+test("claim er atomisk: to samtidige kald — præcis én vinder; startet kort afvises", async () => {
+  const post = await seed("Kapløb");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  const results = await Promise.allSettled([claimWork(db, post.id), claimWork(db, post.id)]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  const w = await workOf(post.id);
+  assert.ok(w.startedAt);
+  assert.equal(w.step, 0);
+  assert.equal(w.requestedBy, "lucas");
+  await assert.rejects(claimWork(db, post.id), /allerede i gang/);
+  assert.equal((await workQueue(db)).length, 0);
+});
+
+test("claim afviser kort uden for Arbejder, ubestilte og fejlede — men tager et hængt kort igen", async () => {
+  const ide = await seed("Står i Idéer");
+  await assert.rejects(claimWork(db, ide.id), /står ikke i Arbejder/);
+  const egen = await seed("Ubestilt");
+  await updatePost(db, egen.id, { stage: "arbejder" }, "hermes");
+  await assert.rejects(claimWork(db, egen.id), /ikke bestilt/);
+  const fejlet = await seed("Fejlet kort");
+  await updatePost(db, fejlet.id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, fejlet.id);
+  await failWork(db, fejlet.id, "Kilde-API svarede 500");
+  await assert.rejects(claimWork(db, fejlet.id), /Prøv igen/);
+
+  const haengt = await seed("Hængt kort");
+  await updatePost(db, haengt.id, { stage: "arbejder" }, "lucas");
+  await setWork(haengt.id, { requestedBy: "lucas", requestedAt: ago(200), startedAt: ago(180), updatedAt: ago(95), step: 5, steps: 9, label: "gammelt trin" });
+  const igen = await claimWork(db, haengt.id);
+  assert.equal(igen.work.step, 0);
+  assert.equal(igen.work.label, undefined);
+  assert.equal(igen.work.steps, undefined);
+  assert.ok(Date.parse(igen.work.startedAt!) > Date.now() - 60_000);
+});
+
+test("progress: kun på et claimet kort, validerer trin og label", async () => {
+  const post = await seed("Fremdrift");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await assert.rejects(workProgress(db, post.id, { step: 1, steps: 9, label: "for tidligt" }), /ikke startet/);
+  await claimWork(db, post.id);
+  await assert.rejects(workProgress(db, post.id, { step: 5, steps: 4, label: "x" }), /større end steps/);
+  await assert.rejects(workProgress(db, post.id, { step: 1, steps: 21, label: "x" }), /0-20/);
+  await assert.rejects(workProgress(db, post.id, { step: 1.5, steps: 9, label: "x" }), /helt tal/);
+  await assert.rejects(workProgress(db, post.id, { step: "2", steps: 9, label: "x" }), /helt tal/);
+  await assert.rejects(workProgress(db, post.id, { step: 1, steps: 9, label: "x".repeat(121) }), /for lang/);
+  const ok = await workProgress(db, post.id, { step: 4, steps: 9, label: "Kilder hentet" });
+  assert.equal(ok.work.step, 4);
+  assert.equal(ok.work.steps, 9);
+  assert.equal(ok.work.label, "Kilder hentet");
+  assert.ok(ok.work.updatedAt);
+  assert.equal(ok.work.requestedBy, "lucas");
+});
+
+test("fail: fejlen gemmes, kortet bliver i Arbejder, og fremdrift afvises bagefter", async () => {
+  const post = await seed("Fejler");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, post.id);
+  await workProgress(db, post.id, { step: 3, steps: 9, label: "Skriver" });
+  const f = await failWork(db, post.id, "  " + "x".repeat(400));
+  assert.equal(f.work.error!.length, 300);
+  assert.equal(f.work.step, 3);
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  assert.equal(row.stage, "arbejder");
+  await assert.rejects(workProgress(db, post.id, { step: 4, steps: 9, label: "videre" }), /fejlet/);
+  await assert.rejects(failWork(db, post.id, "   "), /error mangler/);
+  const ide = await seed("Ikke i Arbejder");
+  await assert.rejects(failWork(db, ide.id, "fejl"), /står ikke i Arbejder/);
+});
+
+test("Prøv igen: kun menneske, kun på fejlet eller hængt kort — bestiller forfra", async () => {
+  const post = await seed("Prøv igen");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, post.id);
+  await workProgress(db, post.id, { step: 2, steps: 9, label: "Skriver" });
+  await assert.rejects(retryWork(db, post.id, "lucas"), /fejlet eller ikke har rykket sig/);
+  await failWork(db, post.id, "timeout");
+  await assert.rejects(retryWork(db, post.id, "hermes"), /menneskes knap/);
+  const igen = await retryWork(db, post.id, "charlie");
+  const w = readWork(igen.work);
+  assert.deepEqual(Object.keys(w).sort(), ["requestedAt", "requestedBy"]);
+  assert.equal(w.requestedBy, "charlie");
+  assert.equal((await workQueue(db)).length, 1);
+
+  const haengt = await seed("Hængt igen");
+  await updatePost(db, haengt.id, { stage: "arbejder" }, "lucas");
+  await setWork(haengt.id, { requestedBy: "lucas", requestedAt: ago(200), startedAt: ago(180), updatedAt: ago(120), step: 1, steps: 9 });
+  assert.ok(readWork((await retryWork(db, haengt.id, "lucas")).work).requestedAt);
+});
+
+test("work er ikke en del af revisionen: fremdrift ugyldiggør hverken faktatjek eller tjekliste", async () => {
+  const post = await seed();
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, post.id);
+  // Hermes skriver kortet grønt, Lucas' faktatjek er gjort for denne revision (sat direkte:
+  // et menneske kan ikke redigere i Arbejder).
+  const [slugRow] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  await updatePost(db, post.id, { category: "pris", excerpt: GREEN_EXCERPT, body: greenBody(slugRow.slug), proofs: { ...GREEN_PROOFS }, images: GREEN_IMAGES }, "hermes");
+  const [before] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
+  const rev = revisionOf(before);
+  await db.update(blogPost).set({ proofs: { ...readProofs(before.proofs), factcheck: { by: "lucas", at: new Date().toISOString(), note: "", revision: rev } } }).where(eq(blogPost.id, post.id));
+
+  await workProgress(db, post.id, { step: 8, steps: 9, label: "Council færdig" });
+  const moved = await updatePost(db, post.id, { stage: "klar" }, "hermes");
+  assert.equal(revisionOf(moved), rev);
+  assert.equal(readChecklist(moved.checklist).revision, rev);
+  assert.ok(!readChecklist(moved.checklist).missing.some((m) => m.includes("faktatjek")), readChecklist(moved.checklist).missing.join("; "));
+  const [card] = await listPosts(db, { stage: "klar" });
+  assert.equal(card.factcheck?.by, "lucas");
+  assert.equal(card.factcheck?.revision, rev);
+  assert.equal(card.council?.reviewer, GREEN_COUNCIL.reviewer);
+  assert.ok(card.work.finishedAt);
 });
 
 test("listPosts filtrerer på kolonne og sorterer position asc, derefter nyeste rettelse", async () => {

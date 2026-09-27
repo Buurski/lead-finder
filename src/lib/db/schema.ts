@@ -321,6 +321,10 @@ export const blogPost = pgTable(
     // Serverens tjekliste for den aktuelle revision: {revision, ok, missing, at}.
     // Genberegnes ved hver skrivning — klienter må aldrig sætte den selv.
     checklist: jsonb("checklist").notNull().default({}),
+    // Hermes' arbejde på kortet mens det står i Arbejder (spec 27-09):
+    // {requestedBy, requestedAt, startedAt, step, steps, label, updatedAt,
+    // finishedAt, error}. Kun fremdrift — indgår ikke i revisionOf.
+    work: jsonb("work").notNull().default({}),
     publishRequestedAt: timestamp("publish_requested_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     publishedUrl: text("published_url"),

@@ -8,12 +8,16 @@
 import { getDb, pgEnabled } from "../../../../lib/db/client.ts";
 import {
   BlogInputError,
+  claimWork,
   createPost,
+  failWork,
   getPost,
   listPosts,
   readJev,
   recordJev,
   updatePost,
+  workProgress,
+  workQueue,
 } from "../../../../lib/hq/posts.ts";
 import { assessPost } from "../../../../lib/hq/post-score.ts";
 import { choice as jevChoice, jevAsk, jevEnabled, noul as jevNoul, type JevQuestion } from "../../../../lib/jev.ts";
@@ -133,13 +137,14 @@ function scheduleAssessment(id: string, input: { title: string; category: string
     .catch(() => {});
 }
 
-// POST { actor, action, ... } — blog-pipelinen (create/update/move/list/get/precheck/published).
+// POST { actor, action, ... } — blog-pipelinen (create/update/move/list/get/precheck/published)
+// + Hermes' arbejde i Arbejder (queue/claim/progress/fail, spec 27-09 — se BlogWork i posts.ts).
 export async function POST(req: Request) {
   const body = await req.text();
   if (body.length > MAX_BODY) return json({ ok: false, error: "for stor" }, 413);
   if (!verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET), body)) return json({ ok: false, error: "unauthorized" }, 401);
   if (!pgEnabled()) return json({ ok: false, error: "CRM kører ikke på Postgres" }, 503);
-  let input: { actor?: unknown; action?: unknown; id?: unknown; slug?: unknown; stage?: unknown; fields?: unknown; url?: unknown; note?: unknown };
+  let input: { actor?: unknown; action?: unknown; id?: unknown; slug?: unknown; stage?: unknown; fields?: unknown; url?: unknown; note?: unknown; step?: unknown; steps?: unknown; label?: unknown; error?: unknown };
   try {
     input = JSON.parse(body);
   } catch {
@@ -178,6 +183,15 @@ export async function POST(req: Request) {
         const cards = await listPosts(getDb(), input.stage === undefined || input.stage === null ? {} : { stage: String(input.stage) });
         return json({ ok: true, cards });
       }
+      // Hermes' arbejdskø: kort et menneske har bestilt ved at lægge dem i Arbejder.
+      case "queue":
+        return json({ ok: true, cards: await workQueue(getDb()) });
+      case "claim":
+        return json({ ok: true, card: await claimWork(getDb(), postId(input.id)) });
+      case "progress":
+        return json({ ok: true, card: await workProgress(getDb(), postId(input.id), input) });
+      case "fail":
+        return json({ ok: true, card: await failWork(getDb(), postId(input.id), input.error) });
       case "get": {
         const post = await getPost(getDb(), keyOf(input));
         return json({ ok: true, post });

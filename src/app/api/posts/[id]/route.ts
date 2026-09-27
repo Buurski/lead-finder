@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { BlogInputError, deletePost, getPost, updatePost } from "@/lib/hq/posts";
+import { BlogInputError, deletePost, getPost, retryWork, updatePost } from "@/lib/hq/posts";
 import { authorizedRead, hqWrite, jsonBody, uuid } from "@/lib/hq/api";
 
 export const runtime = "nodejs";
@@ -24,7 +24,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return hqWrite(req, async (actor) => {
     const { id } = await ctx.params;
-    return { post: await updatePost(getDb(), uuid(id, "indlægs-id"), await jsonBody(req), actor) };
+    const body = await jsonBody(req);
+    // { retry: true } = "Prøv igen" på et fejlet/hængt kort i Arbejder (guards i retryWork).
+    if (body.retry === true) return { post: await retryWork(getDb(), uuid(id, "indlægs-id"), actor) };
+    return { post: await updatePost(getDb(), uuid(id, "indlægs-id"), body, actor) };
   });
 }
 

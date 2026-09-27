@@ -6,9 +6,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/shell/Icon";
-import type { BlogChecklist, BlogImageCandidate, BlogImages, BlogProofs, BlogStage, PostCard } from "@/lib/hq/posts";
+import type { BlogChecklist, BlogImageCandidate, BlogImages, BlogProofs, BlogStage, BlogWork, PostCard } from "@/lib/hq/posts";
 import type { StageInfo } from "./BlogBoard";
-import { BLOG_CATEGORIES, IMAGE_SLOTS, SCORE_AXES, SCORE_LABEL, SEO_LIMITS, categoryLabel, chosenSlots, countWords, isCustomerImage, overallScore, readScores, scoreLevel, type ImageSlot } from "./blog-utils";
+import WorkStatus from "./WorkStatus";
+import { BLOG_CATEGORIES, IMAGE_SLOTS, SCORE_AXES, SCORE_LABEL, SEO_LIMITS, categoryLabel, chosenSlots, countWords, isCustomerImage, overallScore, readScores, readWork, scoreLevel, type ImageSlot } from "./blog-utils";
 
 type SlotText = Record<ImageSlot, string>;
 const EMPTY_SLOTS: SlotText = { a: "", b: "", c: "" };
@@ -27,6 +28,7 @@ interface FullPost {
   checklist: BlogChecklist;
   publishedUrl: string | null;
   note: string;
+  work: unknown;
   /** Rå jsonb — getPost() returnerer db-rækken uendret, se readScores i blog-utils.ts. */
   scores: unknown;
 }
@@ -56,12 +58,17 @@ function Counter({ value, min, max }: { value: number; min?: number; max: number
 export default function PostDialog({
   id,
   stages,
+  work,
+  now,
   onClose,
   onSaved,
   onDeleted,
 }: {
   id: string;
   stages: StageInfo[];
+  /** Kortets work fra tavlen (opdateres af tavlens 30-sek-poll). */
+  work: BlogWork;
+  now: number;
   onClose: () => void;
   onSaved: (patch: Partial<PostCard>) => void;
   onDeleted: (id: string) => void;
@@ -110,7 +117,7 @@ export default function PostDialog({
     try {
       const next = await patchPost(id, body);
       setPost(next);
-      onSaved({ title: next.title, category: next.category, checklist: next.checklist, images: next.images, stage: next.stage });
+      onSaved({ title: next.title, category: next.category, checklist: next.checklist, images: next.images, stage: next.stage, work: readWork(next.work) });
       setNotice({ kind: "success", text: "Gemt." });
       return next;
     } catch (e) {
@@ -222,8 +229,11 @@ export default function PostDialog({
   const dirty = post ? title !== post.title || slug !== post.slug || category !== post.category || excerpt !== post.excerpt || altDirty : false;
   const idx = post ? stages.findIndex((s) => s.stage === post.stage) : -1;
   const canPublish = post ? post.stage !== "publicer" && post.stage !== "udgivet" : false;
-  // Publicer og Udgivet: alle felt-rettelser er låst server-side — felterne skal også se låste ud.
-  const locked = post?.stage === "publicer" || post?.stage === "udgivet";
+  // Publicer, Udgivet og Arbejder (Hermes skriver): felt-rettelser er låst server-side —
+  // felterne skal også se låste ud. I Arbejder er kun "Tilbage til Idéer" og "Slet" åbne.
+  const hermesLock = post?.stage === "arbejder";
+  const locked = post?.stage === "publicer" || post?.stage === "udgivet" || hermesLock;
+  const lockReason = hermesLock ? "Låst mens Hermes arbejder på kortet" : "Låst i Publicer/Udgivet";
   const canDelete = post ? post.stage === "ide" || post.stage === "arbejder" : false;
   const prevBlocked = post?.stage === "udgivet"; // "et udgivet indlæg kan ikke flyttes tilbage"
   const nextBlocked = post?.stage === "publicer"; // "Udgivet sættes automatisk" — kun markPublished må
@@ -270,6 +280,12 @@ export default function PostDialog({
 
           {!loading && post && (
             <div className="bl-dialog-body">
+              {hermesLock && (
+                <section className="bl-section">
+                  <WorkStatus work={work} now={now} busy={busy} onRetry={() => void run({ retry: true })} />
+                  <p className="cc-dim bl-work-note">Kortet kan ikke rettes, mens Hermes skriver. Det flytter selv til Til gennemlæsning, når det er færdigt og tjekket.</p>
+                </section>
+              )}
               {/* --- SEO --- */}
               <section className="bl-section">
                 <h3 className="bl-section-title">SEO</h3>
@@ -346,7 +362,7 @@ export default function PostDialog({
                               aria-pressed={pos >= 0}
                               disabled={busy || locked || full}
                               onClick={() => toggleImage(slot)}
-                              title={locked ? "Låst i Publicer/Udgivet" : full ? "Der er allerede valgt to — fravælg et først" : pos >= 0 ? `Fravælg ${letter}` : order.length ? `Vælg ${letter} som billede i teksten` : `Vælg ${letter} som topbillede`}
+                              title={locked ? lockReason : full ? "Der er allerede valgt to — fravælg et først" : pos >= 0 ? `Fravælg ${letter}` : order.length ? `Vælg ${letter} som billede i teksten` : `Vælg ${letter} som topbillede`}
                             >
                               <span className="bl-ab-crop">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -439,7 +455,7 @@ export default function PostDialog({
                         <p className="bl-jev-empty">Endnu ikke bedømt.</p>
                       )}
                       <div className="bl-dialog-actions">
-                        <button type="button" className="cc-btn" onClick={() => void rescore()} disabled={scoreBusy}>{scoreBusy ? "Bedømmer…" : "Bedøm igen"}</button>
+                        <button type="button" className="cc-btn" onClick={() => void rescore()} disabled={scoreBusy || hermesLock} title={hermesLock ? lockReason : undefined}>{scoreBusy ? "Bedømmer…" : "Bedøm igen"}</button>
                       </div>
                     </>
                   );
@@ -467,6 +483,7 @@ export default function PostDialog({
                     {post.proofs.factcheck.revision !== post.checklist.revision && " — gælder en ældre version"}
                   </p>
                 )}
+                {hermesLock && !post.proofs.factcheck && <p className="cc-dim">Faktatjekket laves, når Hermes er færdig.</p>}
                 {!locked && (
                   <>
                     <label className="bl-field">
@@ -483,6 +500,13 @@ export default function PostDialog({
               {/* --- fase --- */}
               <section className="bl-section">
                 <h3 className="bl-section-title">Fase</h3>
+                {hermesLock ? (
+                <div className="bl-dialog-actions">
+                  <span className="bl-stage-current">{stages[idx]?.label ?? post.stage}</span>
+                  <button type="button" className="cc-btn" onClick={() => void run({ stage: "ide" })} disabled={busy}>Tilbage til Idéer</button>
+                  <button type="button" className="cc-btn bl-btn-danger" onClick={() => void handleDelete()} disabled={busy}>Slet</button>
+                </div>
+                ) : (
                 <div className="bl-dialog-actions">
                   <button type="button" className="cc-btn cc-focus" aria-label="Forrige fase" onClick={() => moveStage(-1)} disabled={busy || idx <= 0 || prevBlocked} title={prevBlocked ? "Et udgivet indlæg kan ikke flyttes tilbage" : undefined}>
                     <Icon name="ChevronRight" style={{ width: 15, height: 15, transform: "rotate(180deg)" }} />
@@ -499,6 +523,7 @@ export default function PostDialog({
                     <button type="button" className="cc-btn bl-btn-danger" onClick={() => void handleDelete()} disabled={busy}>Slet</button>
                   )}
                 </div>
+                )}
               </section>
 
               {/* --- brødtekst (read-only) --- */}
