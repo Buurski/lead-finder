@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
+import { safeHref } from "@/lib/safe-href";
 
 interface Item {
   name: string;
@@ -322,16 +323,17 @@ export default function LeadgenPanel() {
                     </div>
                     <div className="cc-dim" style={{ fontSize: 12.5 }}>{[it.branch, it.city].filter(Boolean).join(" · ")}{it.reviews ? ` · ${it.reviews} anmeldelser` : ""}{it.gap ? ` · gap: ${it.gap}` : ""}</div>
                   </div>
-                  {/* Always clickable: open the website if there is one, else Google the business. */}
+                  {/* Always clickable: open the website if there is one, else Google the business.
+                      it.website kommer fra Sheets/Places (udefra) og skal gennem safeHref — ellers
+                      kunne et javascript:-skema køre i CRM-sessionen. Google-fallback er en konstant. */}
                   <a
                     className="cc-link"
-                    href={it.website
-                      ? (it.website.startsWith("http") ? it.website : `https://${it.website}`)
-                      : `https://www.google.com/search?q=${encodeURIComponent([it.name, it.city].filter(Boolean).join(" "))}`}
+                    href={safeHref(it.website)
+                      ?? `https://www.google.com/search?q=${encodeURIComponent([it.name, it.city].filter(Boolean).join(" "))}`}
                     target="_blank"
                     rel="noreferrer"
                     style={{ fontSize: 12, fontWeight: 600, flexShrink: 0 }}
-                  >{it.website ? "Åbn →" : "Google →"}</a>
+                  >{safeHref(it.website) ? "Åbn →" : "Google →"}</a>
                 </li>
               ))}
               {shown.length === 0 && (
