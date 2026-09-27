@@ -8,10 +8,11 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
+import { customerSiteLinks, hasDemoLink, linkGateReason, missingReferenceLinks, referenceIntro, referenceLines, subjectGateReason } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
-import { formatSignature, stripSignature, type SenderId } from "./senders.ts";
+import { applySignature, formatSignature, stripSignature, type SenderId } from "./senders.ts";
 import { personalGreetingName } from "./qualify.ts";
 
 export interface Draft {
@@ -69,7 +70,62 @@ export function validateDraft(text: string): ValidationResult {
   for (const dead of DEAD_DEMO_HOSTS) {
     if (text.includes(dead)) errors.push(`dødt demo-link: ${dead} — vælg andre demoer`);
   }
+  // Kunde-link (kundens domæne eller vores preview) må aldrig i et udkast —
+  // samme værn som sendegaten (demos.ts#customerSiteLinks).
+  for (const u of customerSiteLinks(text)) {
+    errors.push(`kunde-link: ${u} — brug kinly.dk-casen, ikke kundens egen side`);
+  }
   return { ok: errors.length === 0, errors };
+}
+
+/** Voice-guide-gaten som grundtekst — den streng sendeløkken altid har vist. */
+export function voiceGateReason(body: string): string | null {
+  const check = validateDraft(body);
+  return check.ok ? null : `voice-guide: ${check.errors.join("; ")}`;
+}
+
+export interface GateDraft {
+  body: string;
+  subject: string;
+  branch: string;
+  name?: string;
+}
+
+/**
+ * ÉN blokårsag for et udkast, med fast præcedens:
+ *   1. link-politik (demos.ts#linkGateReason) — på kroppen
+ *   2. voice-guide (validateDraft)            — på kroppen
+ *   3. signatur-reglen (præcis én afsluttende hilsen) — på den signerede tekst
+ *   4. emne-gaten (demos.ts#subjectGateReason) — på emnet
+ *
+ * GET /api/approve/send (preflighten) og POST (sendeløkken) kalder BEGGE denne,
+ * så den samme kladde altid får den samme grund. Uden den fælles rækkefølge
+ * svarede preflighten "link-politik: kundens egen side må ikke linkes (…)" og
+ * sendeløkken "voice-guide: kunde-link: …" for præcis samme kunde-URL, fordi
+ * begge regler ser det samme link (27/9). Signaturen er af samme grund med her:
+ * en krop med "Med venlig hilsen" midt i teksten stopper i sendeløkken, så
+ * preflighten må ikke tælle den som sendbar.
+ * Fail-closed: en grund her = intet send. null = ingen indvending.
+ * Ingen I/O — grundene læses, intet skrives og intet sendes.
+ */
+export function draftGateReason(d: GateDraft, senderId: SenderId): string | null {
+  return (
+    linkGateReason(d.body, d.branch, d.name ?? "") ??
+    voiceGateReason(d.body) ??
+    signatureGateReason(d, senderId) ??
+    subjectGateReason(d.subject)
+  );
+}
+
+/**
+ * Signatur-reglen fra send-løkkens sidste hegn (2026-07-16): den signerede tekst
+ * skal indeholde præcis én "Med venlig hilsen". 0 eller 2+ = kladden er stablet
+ * eller klippet, og den må ikke ud.
+ */
+export function signatureGateReason(d: GateDraft, senderId: SenderId): string | null {
+  const finalText = applySignature(d.body, senderId);
+  const antal = (finalText.match(/Med venlig hilsen/g) ?? []).length;
+  return antal === 1 ? null : "signatur-fejl i body (ikke præcis én)";
 }
 
 // ---- Deterministic composer ----------------------------------------------
@@ -186,7 +242,7 @@ function branchValueLine(branch: string): string {
 }
 
 function composeDeterministic(lead: ResearchLead, research: ResearchResult, sender: SenderId = "lucas"): Draft {
-  const demos = research.demoPair; const name = firstName(lead.name);
+  const name = firstName(lead.name);
   // 2026-06-26: closing line is now sender-specific. Lucas = "Mvh, Lucas",
   // Charlie = "Mvh, Charlie Nielsen" — no hardcoded name left in the draft.
   const signature = formatSignature(sender);
@@ -211,13 +267,15 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     `Det er kun for at vise idéen. En rigtig side til ${name} ville følge jeres egne farver og udtryk.`,
   ]);
 
-  // For single-demo leads (skønhedsklinikker) use the softer
-  // "Eksempel på en hjemmeside for en kunde"-framing.
-  const demoLines = demos.length <= 1
-    ? (demos[0]
-        ? [`Eksempel på en hjemmeside for en kunde:`, `→ ${demos[0].url}`]
-        : [])
-    : [`→ ${demos[0].url}`, `→ ${demos[1].url}`];
+  // Link-politik (Lucas 24/9): kinly.dk-forside + matchende case (eller bedste
+  // demo når branchen ingen case har) + branche-side — fra ÉN kilde i demos.ts.
+  // demoPair bliver kladdens metadata, men kroppen viser kun de tre link-roller.
+  const linkLines = referenceLines(lead.branch, lead.name);
+  // 26/9: har mailen intet at vise, må demoIntro/tailorLine ikke love demoer.
+  // 27/9: rollen afgør — ikke antallet. Forside + case + branche-side er tre
+  // links uden en enkelt demo. Først når et link er et rigtigt demo-site,
+  // står demoIntro/tailorLine; ellers kommer introen fra referenceIntro.
+  const hasDemo = hasDemoLink(linkLines);
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
@@ -229,10 +287,9 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ``,
     branchValueLine(lead.branch),
     ``,
-    mix.demoIntro,
-    ...demoLines,
-    ``,
-    tailorLine,
+    ...(hasDemo ? [mix.demoIntro] : [referenceIntro(linkLines)]),
+    ...linkLines,
+    ...(hasDemo ? [``, tailorLine] : []),
     ``,
     offerLine,
     ``,
@@ -271,28 +328,21 @@ async function composeWithLLM(
   sender: SenderId = "lucas"
 ): Promise<string | null> {
   if (!isAiEnabled()) return null;
-  const demos = research.demoPair;
   const signature = formatSignature(sender);
   const senderName = sender === "lucas" ? "Lucas" : "Charlie Nielsen";
-  // Skønhedsklinikker får ÉN demo med softer "Eksempel på en hjemmeside for en
-  // kunde"-framing; andre brancher får to demoer. Prompt afspejler dette.
-  const singleDemo = demos.length <= 1;
-  const demoBlock = singleDemo
-    ? [
-        `Inkludér PRÆCIS denne demo-linje, indledt med "Eksempel på en hjemmeside for en kunde:" og linket på næste linje med "→ ":`,
-        demos[0] ? `→ ${demos[0].url}` : ``,
-      ]
-    : [
-        `Inkludér PRÆCIS disse to demo-links, hver på sin egen linje med "→ ":`,
-        `→ ${demos[0].url}`,
-        `→ ${demos[1].url}`,
-      ];
+  // Link-politikken (demos.ts) bestemmer de PRÆCISE link-linjer prompten skal
+  // gengive. Gengiver modellen dem ikke, falder kladden tilbage til den
+  // deterministiske tekst (link-kravet er fail-closed, se draft_personal_message).
+  const linkBlock = [
+    `Inkludér PRÆCIS disse link-linjer, i denne rækkefølge, hver på sin egen linje og uændret:`,
+    ...referenceLines(lead.branch, lead.name),
+  ];
   const prompt = [
     `Skriv en kort, varm, personlig dansk besked fra ${senderName} til virksomheden "${lead.name}" (en ${safeBranchNoun(lead.branch)} i ${lead.city}).`,
     research.hooks.length ? `Brug denne ægte detalje som åbning: ${research.hooks.join("; ")}` : `Ingen specifik detalje fundet. Hold åbningen ærlig og lokal.`,
     `Påstå ALDRIG hvad de konkret laver eller tilbyder som et faktum, medmindre det står i detaljen ovenfor. Vi gætter deres branche fra en søgning, så et forkert gæt (fx "permanent makeup" til en der ikke laver det) ødelægger beskeden. Hold dig til brede, sikre formuleringer ("et sted som jeres", "en ${safeBranchNoun(lead.branch)} som jer").`,
     `Skriv ÉN konkret sætning om hvad en rigtig hjemmeside ville gøre for et sted som jeres (fx booking/galleri/at blive fundet i Google), ikke bare "her er to demoer".`,
-    ...demoBlock,
+    ...linkBlock,
     `Slut med en naturlig dansk sætning. Signaturen "${signature.closing}" tilføjes separat af pipeline.`,
     `Brug ALDRIG em-dash (—). Brug komma, punktum eller linjeskift i stedet.`,  ].join("\n\n");
 
@@ -331,10 +381,9 @@ export async function draft_personal_message(
     if (llm) {
       let body = llm;
       if (!validateDraft(body).ok) body = sanitize(body);
-      // Ensure both demo links survived sanitisation; otherwise fall back.
-          const demos = research.demoPair;
-          const urlsOk = demos.every((d) => body.includes(d.url));
-          if (validateDraft(body).ok && urlsOk) {
+      // Ensure the required links survived sanitisation; otherwise fall back.
+          const linksOk = missingReferenceLinks(body, lead.branch, lead.name).length === 0;
+          if (validateDraft(body).ok && linksOk) {
             // Post-generation signatur-injection (Bundle G): prompten LOVER at
             // pipelinen tilføjer signaturen, så gør det faktisk. stripSignature
             // fjerner et eventuelt modellen-improviseret "Mvh …" først, så vi

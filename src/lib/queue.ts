@@ -14,10 +14,26 @@ import { pgEnabled } from "./db/client.ts";
 import { bizKey } from "./leads/suppress.ts";
 
 import type { Demo } from "./demos.ts";
+import { missingReferenceLinks } from "./demos.ts";
 import type { SenderId } from "./senders.ts";
 
 // "sending" = reserveret lige før SMTP (se reserveForSend). Kun send-ruten flytter den videre.
 export type DraftStatus = "pending" | "approved" | "edited" | "rejected" | "sending" | "sent";
+
+/**
+ * Kastes når en prospekt-kladde skrives med en tekst der bryder link-politikken
+ * (kinly.dk-forside + matchende case + branche-side, se demos.ts). Køen er
+ * fail-closed: hellere afvise skrivningen end at gemme en kladde der ikke må
+ * sendes. Kundesvar bruger ikke denne kø.
+ */
+export class LinkPolicyError extends Error {
+  readonly issues: string[];
+  constructor(issues: string[]) {
+    super(`link-politik: ${issues.join("; ")}`);
+    this.name = "LinkPolicyError";
+    this.issues = issues;
+  }
+}
 
 export interface QueueDraft {
   id: string;
@@ -156,6 +172,12 @@ export async function appendDrafts(
     if (k) blockedBizKeys.add(k);
     deduped.push(d);
   }
+  // Link-politik (Lucas 24/9) håndhæves IKKE her: køen må gerne indeholde en kladde
+  // der endnu mangler links — Lucas' body-backfill (jf. de ventende kladder) retter
+  // netop dem. Værnene sidder der hvor et lead ikke tabes: compose
+  // (draft_personal_message), redigering (updateDraft) og sidste hegn før
+  // afsendelse (approve/send). Ellers ville en ingest-kladde uden links forsvinde
+  // tavst, og main's bizKey-dedupe-tests (queue.test.ts) holde op med at gælde.
   const merged = [...existing, ...deduped];
   await writeQueue(merged);
   return merged;
@@ -167,6 +189,18 @@ export async function updateDraft(
   id: string,
   patch: { status?: DraftStatus; subject?: string; body?: string; demoPair?: Demo[]; recipientEmail?: string; sender?: SenderId; sentBy?: SenderId; website?: string; reviewsCount?: number; businessStatus?: string }
 ): Promise<QueueDraft | null> {
+  // Link-politik (Lucas 24/9): enhver skrivning der ÆNDRER teksten skal stadig
+  // leve op til kravene. Status-/mail-opdateringer (sent, recipientEmail) rører
+  // ikke body og går uhindret igennem, så gamle kladder ikke låser uden grund.
+  // Tjekket ligger FØR backend-grenene: pg-stien (prod) returnerer tidligt, så et
+  // tjek efter den ville aldrig køre i produktion.
+  if (patch.body !== undefined) {
+    const current = (await readQueue()).find((d) => d.id === id);
+    if (current) {
+      const issues = missingReferenceLinks(patch.body, current.branch ?? "", current.name ?? "");
+      if (issues.length) throw new LinkPolicyError(issues);
+    }
+  }
   if (pgEnabled()) {
     // Ét betinget række-UPDATE: to samtidige redigeringer kan ikke overskrive hinanden
     // med et forældet hel-kø-snapshot, og endelige kladder (sendt/sending) røres ikke (Sol 25/9).
@@ -176,6 +210,13 @@ export async function updateDraft(
   const drafts = await readQueue();
   const idx = drafts.findIndex((d) => d.id === id);
   if (idx === -1) return null;
+  // Link-politik (Lucas 24/9): enhver skrivning der ÆNDRER teksten skal stadig
+  // leve op til kravene. Status-/mail-opdateringer (sent, recipientEmail) rører
+  // ikke body og går uhindret igennem, så gamle kladder ikke låser uden grund.
+  if (patch.body !== undefined) {
+    const issues = missingReferenceLinks(patch.body, drafts[idx].branch ?? "", drafts[idx].name ?? "");
+    if (issues.length) throw new LinkPolicyError(issues);
+  }
   const next = {
     ...drafts[idx],
     ...(patch.status ? { status: patch.status } : {}),

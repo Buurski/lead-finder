@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -16,13 +16,33 @@ const DEMO_URLS = {
   foodInter: DEMO_SITES.zaytoon,
   foodCafe: DEMO_SITES.jernbanecafeenCase,
   photo: DEMO_SITES.buurfoto,
-  craftUtility: DEMO_SITES.ktvvs,
+  // VVS/el: KT VVS er en rigtig kunde. DM'en linker casen på kinly.dk — aldrig
+  // kundens eget preview/domæne (demos.ts#CUSTOMER_SITES, Lucas 23/9).
+  craftUtility: DEMO_SITES.ktvvsCase,
   craft: DEMO_SITES.denlillemaler,
   service: DEMO_SITES.ikastCase,
 };
 
+// Fitness/træning er ikke skønhed: "wellness"/"spa" fangede et træningscenter i
+// beauty-gruppen og bød det VIDA-casen (en skønhedsklinik) som eksempel. Samme
+// ord som demos.ts bruger, så de to veje ikke driver fra hinanden.
+const FITNESS = /fitness|træningscenter|traeningscenter|crossfit|\bgym\b|personlig træner|personlig traener|\bpt\b|yoga|pilates|spinning|bootcamp|kampsport|boksning/i;
+// Massage/kropsterapi har ingen demo der ligner — Salon Artec er en frisørsalon.
+// Samme greb som fitness: projektoversigten er vores eget arbejde, ikke en
+// fremmed branches case. NB: samme streng står i demos.ts (D.projekter); hold
+// dem i takt indtil værterne udledes fra én kilde.
+const MASSAGE = /massage|kropsterapi/i;
+// Træning og massage har ingen demo der ligner. Projektoversigten er vores
+// eget arbejde — ikke en fremmed branches case.
+const PROJEKTER = "https://kinly.dk/projekter/";
+
 export function branchGroupFor(branch: string, name: string): MsgGroup {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  // Træning og massage har ingen egen MsgGroup; gruppen er kun intern (kvote
+  // og reservelabel i select.ts/UI'et), mens demo-link og visningsnavn styres
+  // i de to næste funktioner.
+  if (FITNESS.test(b)) return "service";
+  if (MASSAGE.test(b)) return "service";
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
   if (/foto|photo|photograph/.test(b)) return "photo";
@@ -33,6 +53,8 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
 
 export function demoUrlFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (FITNESS.test(b)) return PROJEKTER;
+  if (MASSAGE.test(b)) return PROJEKTER;
   if (group === "beauty") {
     if (/barber|herrefr/.test(b)) return DEMO_URLS.beautyBarber;
     // Skønhedsklinik (hud/kosmetolog/spa/laser) → Vida; frisør/salon → Salon Artec.
@@ -52,10 +74,14 @@ export function demoUrlFor(group: MsgGroup, branch: string, name: string): strin
 
 export function branchDisplayFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (FITNESS.test(b)) return "træningscenter";
+  if (MASSAGE.test(b)) return "massageklinik";
   if (group === "beauty") {
     if (/barber/.test(b)) return "barbersalon";
     if (/negl|nail/.test(b)) return "negleklinik";
-    if (/hud|spa|kosmet/.test(b)) return "hudklinik";
+    // "klinik" med, så visningsnavnet følger demoUrlFor's klinik-gren: en
+    // skønhedsklinik blev ellers kaldt "frisørsalon" i udkastet.
+    if (/hud|spa|kosmet|klinik/.test(b)) return "hudklinik";
     return "frisørsalon";
   }
   if (group === "food") {
@@ -89,14 +115,20 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
 // samme princip som draft.ts). Bemærk: kroppene indeholder "salgselev" (Lucas'
 // differentiator), så Messenger-drafts er Lucas-only indtil der findes
 // Charlie-varianter af teksterne.
+function demoClause(branchDisp: string, demoUrl: string): string {
+  return demoUrl === PROJEKTER
+    ? `her er noget af det jeg selv har bygget: ${demoUrl}`
+    : `her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}`;
+}
+
 function patternA(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
+  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Skriv hvis du vil se mere :)`;
 }
 function patternB(city: string, branchDisp: string, demoUrl: string): string {
-  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Helt uforpligtende selvfølgelig :)`;
+  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Helt uforpligtende selvfølgelig :)`;
 }
 function patternC(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
+  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Skriv hvis du vil se mere :)`;
 }
 
 /** Signaturnavn pr. afsender. Bevidst kort fornavn for Lucas (uændret output
@@ -135,16 +167,23 @@ export function buildMessengerDraft(
     lead.pattern === "A" ? patternA(lead.reviews, branchDisp, demoUrl)
     : lead.pattern === "B" ? patternB(lead.city, branchDisp, demoUrl)
     : patternC(lead.reviews, branchDisp, demoUrl);
-  const text = `${body}\n\nMvh, ${messengerSignatureName(sender)}`;
+  // Link-politik (Lucas 24/9): også DM'en bærer kinly.dk-forsiden. Demo-/case-
+  // linket ovenfor kommer fra DEMO_SITES (samme kilde som mail-politikken), og
+  // her bruges demoUrlFor-grupperingen — DM'en er kort, så der er plads til én
+  // reference ud over eksemplet.
+  const text = `${body}\n\nMin egen side: ${KINLY_FRONT}\n\nMvh, ${messengerSignatureName(sender)}`;
   return { text, pattern: lead.pattern, demoUrl, branchDisp, group };
 }
 
-/** Mirror of the script's validateDraft — guards tone/price/CTA/signature. */
+/** Mirror of the script's validateDraft — guards tone/price/CTA/signature/link. */
 export function validateMessengerDraft(text: string, sender: "lucas" | "charlie" = "lucas"): string[] {
   const issues: string[] = [];
   if (text.length > 650) issues.push(`too long (${text.length} chars)`);
   if (/\d+\s*k(?:r|R)\b|\d+\.\d{3}\s*kr|alt\s+inklusiv|\bfra\s+\d|prisvenlig/.test(text)) issues.push("contains price/kr");
   if (/skriv\s+bare|send\s+(?:mig\s+)?mockup|svar\s+ja|\b200\+\s*kund/i.test(text)) issues.push("hard-sell CTA");
+  if (!hasKinlyFront(text)) issues.push("mangler kinly.dk-link");
+  // 26/9: kundens egen side må aldrig stå i en DM — kun via kinly.dk-casen.
+  for (const u of customerSiteLinks(text)) issues.push(`kunde-link: ${u} — brug kinly.dk-casen`);
   if (!text.endsWith(`Mvh, ${messengerSignatureName(sender)}`)) issues.push("missing signature");
   return issues;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MAIL_LINKS, suggestMailLinks } from "@/lib/demos";
+import { MAIL_LINKS, isCustomerSiteUrl, pairLinkHref, suggestMailLinks } from "@/lib/demos";
 import { previewSignature, stripSignature } from "@/lib/leads/signature-preview";
 import Icon from "@/components/shell/Icon";
 import { GRADE_META, prettyUrl, WARMTH_META, type ActFn, type Demo, type QueueDraft } from "./types";
@@ -22,6 +22,13 @@ const CATALOG_GROUPS: [string, { label: string; url: string }[]][] = (() => {
   return [...m.entries()];
 })();
 const KNOWN_URLS = new Set(MAIL_LINKS.map((l) => l.url));
+
+// Kunde-preview og javascript:/data:-skema vises som tekst — fail-closed.
+function PairLink({ demo, text }: { demo: Demo; text: string }) {
+  const href = pairLinkHref(demo.url);
+  if (!href) return <span className="cc-dim" style={{ fontSize: 12 }}>Link vises ikke — {prettyUrl(demo.url) || demo.label || "demo"}</span>;
+  return <a href={href} target="_blank" rel="noopener noreferrer">{text} ↗</a>;
+}
 
 export default function InboxDetail({
   draft,
@@ -312,8 +319,14 @@ export default function InboxDetail({
           <div className="inbox-cardrow">
             {(decided ? draft.demoPair : demos).map((d, i) => (
               <div key={i} className="inbox-democard" data-active={!decided && i === activeSlot ? "true" : undefined} onFocusCapture={() => setActiveSlot(i)} onClick={() => setActiveSlot(i)}>
-                {decided ? (
-                  <a href={d.url} target="_blank" rel="noopener noreferrer">{d.label} — {prettyUrl(d.url)} ↗</a>
+                {/* Gamle kladder kan have kundens preview i demoPair (sat før 26/9):
+                    ikke link, ikke valgbart — kun kinly.dk-casen linkes. */}
+                {isCustomerSiteUrl(d.url) ? (
+                  <span className="cc-dim" style={{ fontSize: 12 }}>
+                    Kunde-link — vises ikke. Kun kundens kinly.dk-case linkes.
+                  </span>
+                ) : decided ? (
+                  <PairLink demo={d} text={`${d.label} — ${prettyUrl(d.url)}`} />
                 ) : (
                   <>
                     <select value={d.url} onChange={(e) => changeDemo(i, e.target.value)}>
@@ -324,7 +337,7 @@ export default function InboxDetail({
                         </optgroup>
                       ))}
                     </select>
-                    <a href={d.url} target="_blank" rel="noopener noreferrer">{prettyUrl(d.url)} ↗</a>
+                    <PairLink demo={d} text={prettyUrl(d.url)} />
                   </>
                 )}
               </div>

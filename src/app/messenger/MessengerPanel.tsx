@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
+import { safeHref } from "@/lib/safe-href";
 
 interface Candidate {
   id: string;
@@ -18,6 +19,7 @@ interface Candidate {
   status: string;
 }
 interface Pool {
+  gated: number;
   eligible: number;
   remaining: number;
   shown: number;
@@ -48,7 +50,7 @@ function CandidateCard({ c, onMark }: { c: Candidate; onMark: (id: string, actio
           <div className="cc-dim" style={{ fontSize: 12.5 }}>{c.branch || c.category} · {c.city || "ukendt by"} · {c.reviews} anmeldelser</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a className="cc-btn" href={c.fbPageUrl} target="_blank" rel="noreferrer"><Icon name="Search" style={{ width: 14, height: 14 }} /> FB-side</a>
+          <a className="cc-btn" href={safeHref(c.fbPageUrl)} target="_blank" rel="noreferrer"><Icon name="Search" style={{ width: 14, height: 14 }} /> FB-side</a>
           <a className="cc-btn cc-btn-accent" href={c.messengerUrl} target="_blank" rel="noreferrer"><Icon name="MessageSquare" style={{ width: 14, height: 14 }} /> Åbn Messenger</a>
         </div>
       </div>
@@ -136,6 +138,13 @@ export default function MessengerPanel() {
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 600, fontSize: 13.5 }}>{pool.remaining} tilbage i puljen · {candidates.length} vist</div>
             <div className="cc-dim" style={{ fontSize: 12 }}>{pool.sent} sendt · {pool.skipped} sprunget over · {pool.eligible} egnede i alt</div>
+            {pool.gated > 0 && (
+              <div className="cc-dim" style={{ fontSize: 12 }}>
+                {pool.gated === 1
+                  ? "1 kandidat er skjult, fordi kladden ikke passede til branchen."
+                  : `${pool.gated} kandidater er skjult, fordi kladden ikke passede til branchen.`}
+              </div>
+            )}
           </div>
           <button className="cc-btn" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
         </div>

@@ -37,9 +37,45 @@ export function scoreLabel(score: number): string {
   return "Kunder har svært ved at finde jer";
 }
 
+// Afsluttende HTML-entitet, evt. dobbelt-escaped (rå "&gt;" i kilden bliver
+// "&amp;gt;"): den hører til sætningen og skal ud i ét stykke, så href aldrig
+// ender med fx "…/p&gt" og et løst semikolon ude i teksten.
+// Anden del kræver sit eget semikolon: en ægte query-flag i escapt tekst
+// ("…?a=1&amp;debug") er IKKE en entitet og må ikke klippes ud af href.
+const ENTITY_TAIL = /&(?:[a-zA-Z][a-zA-Z0-9]*|#\d+);(?:[a-zA-Z][a-zA-Z0-9]*;)?$/;
+
+// Klippende tegnsætning (.,;:!?—…) og ubalancerede lukke-klammer ryger ud af
+// adressen, mens balancerede par (fx /wiki/Foo_(bar)) bliver i den.
+// Sikkerhed: teksten er escaped først, regexen stopper ved &quot;/&#39; og
+// udelukker " og ' — så intet i href kan lukke attributten (attribute breakout).
 function paragraphs(text: string): string {
   return esc(text.trim())
-    .replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" style="color:${C.emberDeep};">${u}</a>`)
+    .replace(/https?:\/\/(?:(?!&quot;|&#39;)[^\s<"'])+/gi, (u) => {
+      let href = u;
+      let tail = "";
+      for (;;) {
+        const ent = href.match(ENTITY_TAIL);
+        const last = href.slice(-1);
+        const closer = last === ")" ? "(" : last === "]" ? "[" : null;
+        if (ent) {
+          tail = ent[0] + tail;
+          href = href.slice(0, -ent[0].length);
+          continue;
+        }
+        if (/[.,;:!?—…]/.test(last)) {
+          tail = last + tail;
+          href = href.slice(0, -1);
+          continue;
+        }
+        if (closer && href.split(last).length > href.split(closer).length) {
+          tail = last + tail;
+          href = href.slice(0, -1);
+          continue;
+        }
+        break;
+      }
+      return `<a href="${href}" style="color:${C.emberDeep};">${href}</a>${tail}`;
+    })
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, "<br>")}</p>`)
     .join("\n");

@@ -7,7 +7,8 @@ import { wrongPersonText } from "@/lib/tone-mixer";
 
 export const runtime = "nodejs";
 
-// POST { sender, body } → { html } — samme komposition som send-ruten, så det I ser er det der sendes.
+// POST { sender, subject, body } → { html } — samme komposition og samme krav som send-ruten,
+// så det I ser er det der sendes (emnet tælles med, F1 27/9).
 // Ren rendering: sender intet og skriver intet.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   if (!(await authorizedRead(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -18,9 +19,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const rec = (await readPreviewRequests()).find((r) => r.id === id);
   if (!rec) return NextResponse.json({ error: "findes ikke" }, { status: 404 });
   const body = String(b.body ?? "");
+  const subject = String(b.subject ?? "");
   const invalid = wrongPersonText(sender, body)
     ? "teksten nævner den anden person som afsender — ret den eller skift afsender"
-    : previewBodyError(body, rec.previewUrl, Boolean(rec.seoTjek));
+    : previewBodyError(subject, body, rec.previewUrl, Boolean(rec.seoTjek));
   if (invalid) return NextResponse.json({ error: invalid }, { status: 422 });
   const { html } = composePreviewMail(body.trim(), sender, rec.seoTjek);
   return NextResponse.json({ html, report: Boolean(rec.seoTjek) });
