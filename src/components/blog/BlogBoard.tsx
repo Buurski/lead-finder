@@ -135,13 +135,13 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
     }
   }
 
-  // Kø-plads for ventende kort (ældste bestilling først, som serverens workQueue),
-  // så hvert kort kan sige "nr. 3 · forventet ca. i morgen".
+  // Kø-plads for ventende kort — samme rækkefølge som serverens workQueue: kort med
+  // Lucas' besked (rettelser) først, derefter ældste bestilling først.
   const running = cards.filter((c) => c.stage === "arbejder" && workState(c.work, now) === "running").length;
   const spots = new Map<string, QueueSpot>(
     cards
       .filter((c) => c.stage === "arbejder" && workState(c.work, now) === "waiting")
-      .sort((a, b) => (a.work.requestedAt ?? "").localeCompare(b.work.requestedAt ?? ""))
+      .sort((a, b) => Number(!a.work.instructions) - Number(!b.work.instructions) || (a.work.requestedAt ?? "").localeCompare(b.work.requestedAt ?? ""))
       .map((c, i) => [c.id, { pos: i + 1, running }]),
   );
 

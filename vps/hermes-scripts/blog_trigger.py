@@ -24,7 +24,7 @@ import crm_posts  # noqa: E402
 BLOG_JOB_ID = "fc9f43db4b74"  # blog-drafter-nat
 STATE = Path("/root/.hermes/state/blog-trigger.json")
 PER_DAY = 2  # spejles af BLOG_PER_DAY i HQ
-CLAIM_GRACE = 30 * 60  # en netop startet kørsel når at claime sit kort, før næste startes
+CLAIM_GRACE = 10 * 60  # en netop startet kørsel når at claime sit kort (tager ~4 min), før næste startes
 DAY = 86400
 
 
