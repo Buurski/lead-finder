@@ -969,9 +969,7 @@ def run(liste_path: Path, dry_run: bool, no_places: bool, max_jev: int) -> int:
                 print("[analyse]", json.dumps(ares, ensure_ascii=False)[:200])
             except Exception as exc:  # noqa: BLE001
                 print(f"[analyse] ikke gemt: {exc}")
-        if content_ideas:
-            created = blogscan.create_hq_cards(content_ideas)
-            print(f"Oprettet {len(created)} HQ-kort: {', '.join(created) or '(ingen)'}")
+        # 27/9: idékort oprettes kun af blog_ide_paafyld.py, når der er <= 3 idéer tilbage (Lucas).
 
     print(section)
     return 0
