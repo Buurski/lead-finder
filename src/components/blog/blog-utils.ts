@@ -161,7 +161,14 @@ export function workLine(w: BlogWork, now: number, spot?: QueueSpot): { state: W
   if (state === "stale") return { state, pct, text: "Ingen fremdrift i 90 min — hænger måske" };
   if (state === "waiting") {
     const waited = now - Date.parse(w.requestedAt!);
-    if (spot && (spot.pos > 1 || spot.running > 0)) {
+    // Rettelser med besked går uden om døgnloftet (blog_trigger.py): altid næste.
+    if (w.instructions && spot?.running) {
+      return { state, pct: null, text: "Din rettelse er næste · Hermes gør det indlæg færdigt, han er i gang med, og tager så dette" };
+    }
+    if (w.instructions && spot && spot.pos > 1) {
+      return { state, pct: null, text: `Din rettelse: nr. ${spot.pos} blandt rettelser · går foran de andre` };
+    }
+    if (spot && !w.instructions && (spot.pos > 1 || spot.running > 0)) {
       return { state, pct: null, text: `I kø: nr. ${spot.pos} · Hermes skriver ét ad gangen · forventet ca. ${expectedDay(spot, now)}` };
     }
     return { state, pct: null, text: waited > 2 * QUEUE_EVERY_MIN * 60_000 ? `Venter på Hermes — bestilt ${clock(w.requestedAt!)}` : `Venter på Hermes — starter inden for ca. ${QUEUE_EVERY_MIN} min` };
