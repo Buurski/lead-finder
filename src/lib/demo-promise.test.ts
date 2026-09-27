@@ -13,6 +13,7 @@ import { composeColdEmail } from "./compose.ts";
 import { composeStep } from "./hq/sequence.ts";
 import { DEMO_SITES, KINLY_FRONT, REFERENCE_INTRO, referenceLines } from "./demos.ts";
 import type { ResearchLead, ResearchResult } from "./research.ts";
+import { __setStore, InMemoryStore } from "./store.ts";
 
 const OWN_SITE_INTRO = "Her er min egen side.";
 const EKSEMPEL_INTRO = "Hvis I hellere vil se det end læse om det, har jeg lagt min side nedenfor.";
@@ -113,9 +114,14 @@ test("LLM-kladde med demo-løfte kasseres uden et demo-link — og bevares når 
   const realFetch = globalThis.fetch;
   const realKey = process.env.ANTHROPIC_API_KEY;
   const realGateway = process.env.AI_GATEWAY_API_KEY;
+  const realDisabled = process.env.AI_DISABLED;
   let reply = "";
   let calls = 0;
   try {
+    // Ingen rigtig hukommelse: isOverDailyCap læser spend-loggen FØR fetch, og
+    // trackSpend skriver bagefter. Begge skal ramme InMemoryStore, ellers læser
+    // testen den ægte .send_queue/spend.jsonl og skriver syntetiske rækker i den.
+    __setStore(new InMemoryStore());
     delete process.env.AI_GATEWAY_API_KEY;
     delete process.env.AI_DISABLED;
     process.env.ANTHROPIC_API_KEY = "test-no-network";
@@ -148,8 +154,10 @@ test("LLM-kladde med demo-løfte kasseres uden et demo-link — og bevares når 
     assert.ok(maler.body.includes(LLM_PROMISE_LINE), maler.body);
     assert.ok(maler.body.includes(DEMO_SITES.denlillemaler), maler.body);
   } finally {
+    __setStore(null);
     globalThis.fetch = realFetch;
     if (realKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = realKey;
     if (realGateway === undefined) delete process.env.AI_GATEWAY_API_KEY; else process.env.AI_GATEWAY_API_KEY = realGateway;
+    if (realDisabled === undefined) delete process.env.AI_DISABLED; else process.env.AI_DISABLED = realDisabled;
   }
 });
