@@ -37,4 +37,3 @@ test("jev-shadow-siden sender r.url gennem safeHref", () => {
   assert.ok(!src.includes("href={r.url}"), "jev-shadow/page.tsx må ikke bruge r.url råt i href");
   assert.ok(src.includes("safeHref(r.url)"), "jev-shadow/page.tsx skal bruge safeHref(r.url)");
 });
-
