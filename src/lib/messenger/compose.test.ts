@@ -107,6 +107,8 @@ test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra 
     ["mekaniker", "Mekanikeren ApS"],
     ["bilmekaniker", "Bilerne"],
     ["mekanik", "Mekanikeren"],
+    ["mekanikeren", "Mekanikeren"],
+    ["mekanikerne", "Mekanikerne"],
   ] as [string, string][]) {
     const where = `${branch} | ${name}`;
     assert.equal(branchGroupFor(branch, name), "service", where);

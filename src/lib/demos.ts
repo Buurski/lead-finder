@@ -164,26 +164,26 @@ const BARBER = /barber|herrefrisør|herre ?frisør|herreklip/i;
 const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|laser|botox|filler|wax|wellness|spa\b|klinik|cosmetic|aesthet|microblading|vipper|vippe|fillers/i;
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
-// Håndværksordene VVS/el/kloak/varme bor her og bruges to steder: CRAFT_UTIL
-// nedenfor og isAutoBranch's præcedens. Én kilde, så de to ikke kan drive fra
-// hinanden.
-const UTILITY_TRADE = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
-const CRAFT_UTIL = new RegExp(`${UTILITY_TRADE.source}|mekaniker`, "i");
+// VVS/el/kloak/varme — de ægte håndværksord. "mekaniker" står ikke her: ordet er
+// tvetydigt og ejes af AUTO/auto-sporet (se isAutoBranch nedenfor).
+const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 // "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
 // Ordgrænsen (27/9): "mekanisk" er ikke en mekaniker — et maskinværksted hører
 // hverken til auto eller VVS, og udkastet flagges i stedet (fail-closed).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik(?:er|ere|erne)?\b/i;
+const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik(?:er(?:en|ne|e)?)?\b/i;
 
 // Præcedensen mellem de to spor, ét sted: et ægte VVS-/el-/kloak-/varme-ord
-// vinder over "mekanik". Et firma der både er "VVS & Mekanik" er en VVS-kunde
-// (KT VVS) og ikke et autoværksted, så "mekanik" må ikke alene sende leadet i
-// auto-sporet — hverken til Ikast-casen eller til automekaniker-siden. AUTO
-// testes derfor ikke længere direkte i branchKind: rækkefølgen er låst af test
+// (CRAFT_UTIL) vinder over "mekanik". Et firma der både er "VVS & Mekanik" er en
+// VVS-kunde (KT VVS) og ikke et autoværksted, så "mekanik" må ikke alene sende
+// leadet i auto-sporet — hverken til Ikast-casen eller til automekaniker-siden.
+// Et mekanik-ord som AUTO ikke fanger ("mekanisk", "mekanikken") falder videre
+// til other = fail-closed: ingen case, udkastet flagges — ikke VVS. AUTO testes
+// derfor ikke længere direkte i branchKind: rækkefølgen er låst af test
 // (demos.test.ts, messenger/compose.test.ts), og DM- og mail-vejen trækker på
 // samme funktion, så de ikke kan drive fra hinanden.
 export function isAutoBranch(text: string): boolean {
-  return AUTO.test(text) && !UTILITY_TRADE.test(text);
+  return AUTO.test(text) && !CRAFT_UTIL.test(text);
 }
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;

@@ -527,11 +527,21 @@ test("et ægte VVS-/el-ord slår \"mekanik\": VVS & Mekanik → KT VVS, ikke aut
 });
 
 test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => {
-  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik"]) {
+  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik", "mekanikeren", "mekanikerne"]) {
     assert.equal(branchKind(branch, "Bilerne"), "auto", branch);
     const r = referenceLinks(branch, "Bilerne");
     assert.equal(r.caseUrl, DEMO_SITES.ikastCase, branch);
     assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, branch);
+  }
+  // Bestemt/plural form ("mekanikeren", "mekanikerne") må ikke falde i CRAFT_UTIL:
+  // ordet er auto, så hverken KT VVS-casen eller VVS-siden må dukke op.
+  for (const [branch, name] of [["mekanikeren", "Mekanikeren"], ["mekanikerne", "Mekanikerne"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "auto", where);
+    const r = referenceLinks(branch, name);
+    assert.equal(r.caseUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, where);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen staar i mekaniker-linjerne`);
   }
   // Ordgrænsen: "mekanisk" matcher ikke længere AUTO, og ingen af de to cases må
   // loves for et maskinværksted — udkastet flagges i stedet (fail-closed).
