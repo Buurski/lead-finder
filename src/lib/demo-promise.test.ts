@@ -153,6 +153,22 @@ test("LLM-kladde med demo-løfte kasseres uden et demo-link — og bevares når 
     const maler = await draft_personal_message(leadFor("Maler Mikkelsen", "maler"), researchFor("maler", "Maler Mikkelsen"), voice, { useLLM: true });
     assert.ok(maler.body.includes(LLM_PROMISE_LINE), maler.body);
     assert.ok(maler.body.includes(DEMO_SITES.denlillemaler), maler.body);
+
+    // Maler med løftet, men KUN forsiden i kroppen: demo-linket (denlillemaler)
+    // mangler. Maler-branchen har hverken case eller branche-side, så linksOk er
+    // stadig sand — kun demo-løfte-værnet kan kassere kladden. RØD før rettelsen:
+    // løftet gik igennem på forsiden alene og lovede en demo kroppen ikke viste.
+    reply = [
+      "Hej,",
+      "",
+      `${LLM_PROMISE_LINE}. En side til Maler Mikkelsen kunne samle det hele ét sted.`,
+      "",
+      `→ ${KINLY_FRONT}`,
+    ].join("\n");
+    const malerUdenDemo = await draft_personal_message(leadFor("Maler Mikkelsen", "maler"), researchFor("maler", "Maler Mikkelsen"), voice, { useLLM: true });
+    assert.equal(malerUdenDemo.body.includes(LLM_PROMISE_LINE), false, malerUdenDemo.body);
+    const malerUdenDemoDet = await draft_personal_message(leadFor("Maler Mikkelsen", "maler"), researchFor("maler", "Maler Mikkelsen"), voice);
+    assert.equal(malerUdenDemo.body, malerUdenDemoDet.body, malerUdenDemo.body);
   } finally {
     __setStore(null);
     globalThis.fetch = realFetch;

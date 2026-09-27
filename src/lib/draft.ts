@@ -332,11 +332,17 @@ export async function draft_personal_message(
       let body = llm;
       if (!validateDraft(body).ok) body = sanitize(body);
       // Ensure the required links survived sanitisation; otherwise fall back.
+          const refLines = referenceLines(lead.branch, lead.name);
           const linksOk = missingReferenceLinks(body, lead.branch, lead.name).length === 0;
           // 27/9: kroppen må ikke påstå demoer/eksempler som linkblokken ikke
           // viser. LLM-teksten omskrives IKKE — kladden kasseres og den
           // deterministiske (ærlig pr. konstruktion) overtager, som ved linksOk.
-          const promiseOk = !hasDemoPromise(body) || hasDemoLink(referenceLines(lead.branch, lead.name));
+          // Løftet er kun sandt hvis det ÆGTE demo-link fra blokken også står i
+          // kroppen: maler har kun forside + én demo, så forsiden alene opfyldte
+          // linksOk og et løfte slap igennem uden demo at vise.
+          const shownDemos = refLines.filter((l) => hasDemoLink([l])).map((l) => l.replace(/^→\s*/, ""));
+          const promiseOk =
+            !hasDemoPromise(body) || (hasDemoLink(refLines) && shownDemos.every((u) => body.includes(u)));
           if (validateDraft(body).ok && linksOk && promiseOk) {
             // Post-generation signatur-injection (Bundle G): prompten LOVER at
             // pipelinen tilføjer signaturen, så gør det faktisk. stripSignature
