@@ -1,5 +1,6 @@
 import PageHeader from "@/components/shell/PageHeader";
 import { loadShadow } from "@/lib/leads/jev-shadow";
+import { safeHref } from "@/lib/safe-href";
 import RunButton from "./run-button";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,7 @@ export default async function JevShadowPage() {
                 <tr key={r.leadId}>
                   <td style={td}>
                     {r.url ? (
-                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="cc-link">{r.name}</a>
+                      <a href={safeHref(r.url)} target="_blank" rel="noopener noreferrer" className="cc-link">{r.name}</a>
                     ) : (
                       r.name
                     )}
