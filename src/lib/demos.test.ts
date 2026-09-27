@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -331,4 +331,78 @@ test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", asyn
     assert.ok(!pickDemos(branch, name).some((d) => isCustomerSiteUrl(d.url)), `kunde-side i demo-parret for ${branch}`);
     assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.denlillemaler) || n > 0, branch);
   }
+});
+
+// ---- Fitness-routing, ét sted før CLINIC (27/9) ----------------------------
+// pickDemos havde sit eget FITNESS-værn, men branchKind gjorde stadig et
+// træningscenter til "clinic" når branchen indeholdt "wellness" eller navnet
+// indeholdt "Spa". Så krævede referenceLines VIDA-casen og skønhedsklinik-siden
+// i mailen til et fitnesscenter — og suggestMailLinks bød dem direkte. Nu
+// routes fitness FØR CLINIC i branchKind, og hele kæden følger den.
+const FITNESS_LEADS: [string, string][] = [
+  ["Fitnesscenter / wellness", "Pure Performance Fitness"],
+  ["Træningscenter", "Test Spa"],              // "Spa" i navnet = CLINIC-fælden
+  ["Yoga", "Yoga Huset"],
+  ["Fitnesscenter", "Fitness 3"],              // hash-routede før til VIDA-casen
+];
+
+test("fitness/træning routes som fitness hele vejen — ingen VIDA-case, ingen klinik-side", () => {
+  for (const [branch, name] of FITNESS_LEADS) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "fitness", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, null, where);
+    assert.equal(refs.caseLabel, null, where);
+    assert.equal(refs.verticalUrl, null, where);
+    assert.equal(refs.caseMissing, true, where);
+    const lines = referenceLines(branch, name);
+    assert.deepEqual(lines, [`→ ${KINLY_FRONT}`], where);
+    assert.deepEqual(missingReferenceLinks(lines.join("\n"), branch, name), [], where);
+    assert.equal(verticalPageFor(branch, name), null, where);
+    assert.equal(verticalPageFor(branch), null, where);
+    // Neutral-casen må ikke være skønhedsklinikkens (VIDA) for et træningscenter.
+    const demos = pickDemos(branch, name);
+    assert.equal(demos.length, 2, where);
+    assert.equal(demos[1].url, "https://kinly.dk/projekter/", where);
+    assert.ok(!demos.some((d) => d.url === DEMO_SITES.vidaCase), `VIDA i demo-paret: ${where}`);
+    assert.ok(!suggestMailLinks(branch, name).some((l) => l.url === DEMO_SITES.vidaCase), `VIDA foreslået: ${where}`);
+    assert.ok(
+      !suggestMailLinks(branch, name).some((l) => l.url === "https://kinly.dk/hjemmeside-til-skoenhedsklinik/"),
+      `klinik-side foreslået: ${where}`,
+    );
+  }
+});
+
+test("fitness-routingen rører ikke hudklinik, salon eller de øvrige brancher", () => {
+  // "Spa" uden træning er stadig en skønhedsklinik.
+  for (const [branch, name] of [["hudklinik", "Glow"], ["skønhedsklinik & spa", "Test"], ["Træningscenter", "Fitness Test"]]) {
+    const kind = branchKind(branch, name);
+    if (name === "Fitness Test") assert.equal(kind, "fitness", `${branch} | ${name}`);
+    else assert.equal(kind, "clinic", `${branch} | ${name}`);
+  }
+  assert.equal(verticalPageFor("hudklinik"), "https://kinly.dk/hjemmeside-til-skoenhedsklinik/");
+  assert.equal(pickDemos("Hudklinik", "Glow")[0].url, DEMO_SITES.vidaCase);
+  assert.equal(branchKind("frisør", "Salon Test"), "beauty");
+  assert.equal(branchKind("vvs", "VVS Test"), "craftUtility");
+  assert.equal(suggestMailLinks("hudklinik", "Glow")[0].url, DEMO_SITES.vidaCase);
+});
+
+// ---- Delte gate-grunde: preflight og sendeløkke (27/9) ---------------------
+// GET-preflight tæller ikke et udkast som "sendes nu", når sendeløkkens
+// link-gate ville stoppe det. Grundteksten kommer fra ÉN kilde, så preflight og
+// sendeløkke ikke kan svare forskelligt på samme kladde.
+test("link- og emne-gaten har én kilde og samme grundtekst i begge veje", () => {
+  const complete = referenceLines("skønhedsklinik", "Klinik Test").join("\n");
+  assert.equal(linkGateReason(complete, "skønhedsklinik", "Klinik Test"), null);
+  assert.equal(subjectGateReason("En lille hilsen til Klinik Test"), null);
+  // Kun forsiden = manglende case/branche-side → kladden stoppes med samme ord.
+  const bare = "Hej,\n\nHer er min egen side.\n→ https://kinly.dk/";
+  const issues = missingReferenceLinks(bare, "skønhedsklinik", "Klinik Test");
+  assert.ok(issues.length > 0);
+  assert.equal(linkGateReason(bare, "skønhedsklinik", "Klinik Test"), `link-politik: ${issues.join("; ")}`);
+  assert.match(linkGateReason(bare, "skønhedsklinik", "Klinik Test") ?? "", /^link-politik: mangler case-link/);
+  // Kunde-preview i kroppen og i emnet giver hver sin grund — samme tekst som før.
+  const preview = `${bare}\n→ ${DEMO_SITES.ktvvs}`;
+  assert.match(linkGateReason(preview, "skønhedsklinik", "Klinik Test") ?? "", /^link-politik: kundens egen side må ikke linkes/);
+  assert.equal(subjectGateReason(`Tilbud til KT VVS ${DEMO_SITES.ktvvs}`), `kunde-link i emne: ${DEMO_SITES.ktvvs} — brug kinly.dk-casen`);
 });

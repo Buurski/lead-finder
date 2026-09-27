@@ -64,6 +64,9 @@ test("tømrer uden demo-par: ingen demo-løfte, kun forside-linket", async () =>
   assert.equal(PROMISE.test(d.body), false, d.body);
   assert.deepEqual(linksIn(d.body), referenceLines("tømrer", name).map((l) => l.slice(2)));
   assert.deepEqual(linksIn(d.body), ["https://kinly.dk/"]);
+  // 27/9: en nøgen URL alene læser skidt — introen kommer fra referenceIntro,
+  // præcis som i compose.ts.
+  assert.equal(d.body.split("\n\n").find((p) => p.includes("→ ")), "Her er min egen side.\n→ https://kinly.dk/", d.body);
 });
 
 test("vinduespudser uden demo-par: ingen demo-løfte", async () => {

@@ -9,7 +9,7 @@
 
 import { mixForLead } from "./tone-mixer.ts";
 import type { MixLead, OpenerKind } from "./tone-mixer.ts";
-import { pickDemos, referenceLines, missingReferenceLinks } from "./demos.ts";
+import { pickDemos, referenceIntro, referenceLines, missingReferenceLinks } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { validateDraft } from "./draft.ts";
 import { personalGreetingName } from "./qualify.ts";
@@ -94,6 +94,9 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
   const links = demoLeadLine(branch, name);
   // 26/9: samme rodårsag som i draft.ts — uden andet end forside-linket har
   // mailen intet at vise, og demoIntro/tailorLine må ikke love noget der ikke er.
+  // 27/9: så stod en nøgen URL alene. Har mailen kun forsiden, kommer introen
+  // fra referenceIntro ("Her er min egen side."), og linket står i sit eget
+  // afsnit — tilbuddet må ikke havne i samme HTML-<p> som linket.
   const hasExamples = links.length > 1;
   return [
     greetingLine(name),
@@ -103,7 +106,7 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
     `${disclosure}`,
     ...(valueText ? [``, valueText] : []),
     ``,
-    ...(hasExamples ? [demoIntro] : []),
+    ...(hasExamples ? [demoIntro] : [referenceIntro(links)]),
     ...links,
     ...(hasExamples ? [``, tailorLine(name)] : []),
     ...(offerText ? [``, offerText] : []),

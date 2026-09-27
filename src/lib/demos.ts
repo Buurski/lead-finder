@@ -56,10 +56,13 @@ const D = {
 // fast pr. navn, så samme lead altid får samme — plus projektoversigten på kinly.dk
 // (Lucas 26/9: aldrig et skønhedsklinik-link til et fitnesscenter).
 const REAL_CASES = [D.ikastCase, D.jernbanecafeenCase, D.lejEnKokCase, D.vidaCase];
-function neutralPair(name: string): Demo[] {
+// Fitness/træning må ikke arve skønhedsklinikkens case: VIDA er en klinik, ikke
+// et træningscenter (samme værn som branchKind, 27/9).
+const FITNESS_CASES = REAL_CASES.filter((c) => c !== D.vidaCase);
+function neutralPair(name: string, pool: Demo[] = REAL_CASES): Demo[] {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return [REAL_CASES[h % REAL_CASES.length], D.projekter];
+  return [pool[h % pool.length], D.projekter];
 }
 
 // Catalog for the Studio grid — every demo we can show a lead, tagged by the
@@ -118,14 +121,13 @@ const PROFESSIONAL = /advokat|jurist|jura|revisor|revision|bogholder|regnskab|ej
 export function pickDemos(branch: string, name: string): Demo[] {
   const t = `${name} ${branch}`.toLowerCase();
 
-  // Fitness/træning har ingen egen demo og må ikke falde i CLINIC på "wellness"
-  // (E2E 26/9): en rigtig case + projektoversigten i stedet.
-  if (FITNESS.test(t)) return neutralPair(name);
-
   // Rigtige kunder linkes via kinly.dk-casesiden (Lucas 23/9), aldrig direkte til
   // kundens eget domæne — heller ikke når kunden (KT VVS) kun findes som vores
   // preview. VIDA-casen er altid hovedpunktet for skønhed/klinik.
   switch (branchKind(branch, name)) {
+    // Fitness/træning har ingen egen demo og må ikke falde i CLINIC på
+    // "wellness" (E2E 26/9): neutral-casen (uden VIDA) + projektoversigten.
+    case "fitness": return neutralPair(name, FITNESS_CASES);
     case "clinic": return [D.vidaCase, D.salonArtec];
     case "barber": return [D.salonArtec, D.streetcut];
     case "beauty": return [D.vidaCase, D.salonArtec];
@@ -196,11 +198,15 @@ export function customerSiteLinks(text: string): string[] {
 
 export type BranchKind =
   | "clinic" | "barber" | "beauty" | "photo" | "foodIntl" | "food"
-  | "professional" | "auto" | "craftUtility" | "craft" | "service" | "other";
+  | "professional" | "auto" | "craftUtility" | "craft" | "service" | "fitness" | "other";
 
 /** Første led i branch-routing. Samme rækkefølge som pickDemos altid har haft. */
 export function branchKind(branch: string, name = ""): BranchKind {
   const t = `${name} ${branch}`.toLowerCase();
+  // Fitness/træning FØR CLINIC (27/9): "wellness" i branchen eller "Spa" i
+  // navnet gjorde et træningscenter til en skønhedsklinik, så udkastet krævede
+  // VIDA-casen og skønhedsklinik-siden. Ét sted at route fitness: her.
+  if (FITNESS.test(t)) return "fitness";
   if (CLINIC.test(t)) return "clinic";
   if (BARBER.test(t)) return "barber";
   if (BEAUTY.test(t)) return "beauty";
@@ -245,10 +251,10 @@ const VERTICAL_FOR: Partial<Record<BranchKind, string>> = {
   craftUtility: "https://kinly.dk/hjemmeside-til-vvs/",
 };
 
-export function verticalPageFor(branch: string): string | null {
-  // Fitness/træning må ikke ramme klinik-siden (samme værn som pickDemos, 26/9).
-  if (FITNESS.test(branch.toLowerCase())) return null;
-  return VERTICAL_FOR[branchKind(branch)] ?? null;
+export function verticalPageFor(branch: string, name = ""): string | null {
+  // branchKind bærer fitness-værnet (27/9), så træning/wellness ikke rammer
+  // klinik-siden — men et navn med "Spa" alene er stadig en skønhedsklinik.
+  return VERTICAL_FOR[branchKind(branch, name)] ?? null;
 }
 
 export interface ReferenceLinks {
@@ -318,6 +324,23 @@ export function missingReferenceLinks(body: string, branch: string, name = ""): 
   return issues;
 }
 
+// ---- Gate-grundene, delt mellem preflight og sendeløkke (27/9) -------------
+// GET /api/approve/send (preflight) og POST (selve sendeløkken) skal svare ens
+// om hvorfor et udkast IKKE går ud. Grundteksten bor her, så de to veje ikke kan
+// rapportere forskellige grunde for den samme kladde. null = ingen indvending.
+
+/** Link-politikken på de bytes der sendes (krop). Samme regel som sidste hegn i POST. */
+export function linkGateReason(body: string, branch: string, name = ""): string | null {
+  const issues = missingReferenceLinks(body, branch, name);
+  return issues.length ? `link-politik: ${issues.join("; ")}` : null;
+}
+
+/** Emnet er ikke dækket af link-politikken på kroppen: et kunde-domæne i subject må ikke ud. */
+export function subjectGateReason(subject: string): string | null {
+  const bad = customerSiteLinks(subject)[0];
+  return bad ? `kunde-link i emne: ${bad} — brug kinly.dk-casen` : null;
+}
+
 export interface ReferenceFix {
   body: string;
   /** De URL'er der blev tilføjet. Tom = kroppen havde dem alle i forvejen. */
@@ -381,17 +404,23 @@ export const MAIL_LINKS: MailLink[] = [
 export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[] {
   const byUrl = new Map(MAIL_LINKS.map((l) => [l.url, l]));
   const t = `${name} ${branch}`.toLowerCase();
+  const kind = branchKind(branch, name);
   const urls: string[] = [...pickDemos(branch, name).map((d) => d.url)];
-  const vertical = verticalPageFor(`${branch} ${name}`);
+  const vertical = verticalPageFor(branch, name);
   if (vertical) urls.push(vertical);
   if (FOOD.test(t) || FOOD_INTL.test(t)) urls.push(DEMO_SITES.jernbanecafeenCase, DEMO_SITES.lejEnKokCase);
-  else if (CLINIC.test(t) || BEAUTY.test(t) || BARBER.test(t)) urls.push(DEMO_SITES.vidaCase);
+  // kind — ikke CLINIC/BEAUTY-regexerne — så et træningscenter med "wellness"
+  // ikke bliver budt VIDA-casen (27/9).
+  else if (kind === "clinic" || kind === "beauty" || kind === "barber") urls.push(DEMO_SITES.vidaCase);
   // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
   // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
   // !AUTO: "mekaniker" rammer også automekanikere, men de routes til auto og har
   // Ikast-casen som deres (branchKind tjekker AUTO før CRAFT_UTIL).
   else if (CRAFT_UTIL.test(t) && !AUTO.test(t)) urls.push(DEMO_SITES.ktvvsCase);
-  else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
+  else if (kind === "fitness") {
+    // Træning/wellness: neutral-parret (uden VIDA) + projektoversigten er hele
+    // forslaget — hverken VIDA-casen eller skønhedsklinik-siden (27/9).
+  } else urls.push(DEMO_SITES.ikastCase, DEMO_SITES.vidaCase);
   urls.push("https://kinly.dk/projekter/");
   const out: MailLink[] = [];
   for (const u of urls) {

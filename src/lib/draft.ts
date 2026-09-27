@@ -8,7 +8,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { customerSiteLinks, missingReferenceLinks, referenceLines } from "./demos.ts";
+import { customerSiteLinks, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
@@ -224,6 +224,7 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
   // 26/9: er forside-linket det eneste, har mailen intet at vise (tømrer,
   // vinduespudser). Så må demoIntro/tailorLine ikke love demoer eller eksempler
   // der ikke er der — kun de ærlige linklinjer står tilbage.
+  // 27/9: samme intro som compose.ts, ellers står en nøgen URL alene i mailen.
   const hasExamples = linkLines.length > 1;
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
@@ -236,7 +237,7 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ``,
     branchValueLine(lead.branch),
     ``,
-    ...(hasExamples ? [mix.demoIntro] : []),
+    ...(hasExamples ? [mix.demoIntro] : [referenceIntro(linkLines)]),
     ...linkLines,
     ...(hasExamples ? [``, tailorLine] : []),
     ``,
