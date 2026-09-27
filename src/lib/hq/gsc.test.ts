@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import { company } from "../db/schema.ts";
-import { fetchGsc, fetchKinlyGsc, gscWindow, latestGscFor, syncGsc, type GscQuery } from "./gsc.ts";
+import { fetchGsc, fetchKinlyGsc, gscWindow, inspectBlogUrls, latestGscFor, syncGsc, type GscQuery } from "./gsc.ts";
 
 const denied = Object.assign(new Error("forbidden"), { code: 403 });
 
@@ -34,14 +34,32 @@ test("fetchKinlyGsc: 28 dage mod de 28 før, pr. søgning med forrige position; 
   const seen: string[] = [];
   const q: GscQuery = async (property, body) => {
     if (property !== "sc-domain:kinly.dk") throw denied;
-    seen.push(`${body.startDate}..${body.endDate}${body.dimensions ? " q" : ""}`);
+    seen.push(`${body.startDate}..${body.endDate}${body.dimensions ? ` ${body.dimensions.join("+")}` : ""}${body.dimensionFilterGroups ? " /blog/" : ""}`);
     const prev = body.startDate === "2026-07-29";
     if (!body.dimensions) return [{ clicks: prev ? 4 : 9, impressions: prev ? 200 : 410, position: 14.26 }];
+    if (body.dimensions.join() === "page") return prev
+      ? [{ keys: ["https://kinly.dk/blog/pris/"], clicks: 1, impressions: 30, position: 12.04 }, { keys: ["https://kinly.dk/blog/gammel/"], clicks: 2, impressions: 9, position: 20 }]
+      : [{ keys: ["https://kinly.dk/blog/pris/"], clicks: 3, impressions: 50, position: 9.26 }];
+    if (body.dimensions.join() === "page,query") return [
+      { keys: ["https://kinly.dk/blog/pris/", "pris hjemmeside"], clicks: 0, impressions: 20, position: 8 },
+      { keys: ["https://kinly.dk/blog/pris/", "hvad koster en hjemmeside"], clicks: 2, impressions: 10, position: 6 },
+      { keys: ["https://kinly.dk/blog/pris/", "a"], clicks: 0, impressions: 1, position: 30 },
+      { keys: ["https://kinly.dk/blog/pris/", "b"], clicks: 1, impressions: 5, position: 11 },
+    ];
     return prev ? [{ keys: ["webdesign herning"], clicks: 1, impressions: 40, position: 15.04 }]
       : [{ keys: ["webdesign herning"], clicks: 0, impressions: 80, position: 8.44 }, { keys: ["kinly"], clicks: 9, impressions: 20, position: 1 }];
   };
   const k = await fetchKinlyGsc(q, "2026-09-25");
-  assert.deepEqual(seen, ["2026-08-26..2026-09-22", "2026-07-29..2026-08-25", "2026-08-26..2026-09-22 q", "2026-07-29..2026-08-25 q"]);
+  assert.deepEqual(seen, [
+    "2026-08-26..2026-09-22", "2026-07-29..2026-08-25", "2026-08-26..2026-09-22 query", "2026-07-29..2026-08-25 query",
+    "2026-08-26..2026-09-22 page /blog/", "2026-07-29..2026-08-25 page /blog/", "2026-08-26..2026-09-22 page+query /blog/",
+  ]);
+  // Blog-sider: forrige periode med, side der er faldet til 0 bevares, top-3 søgeord efter klik.
+  assert.deepEqual(k.pages?.[0], {
+    path: "/blog/pris/", clicks: 3, impressions: 50, position: 9.3, prev: { clicks: 1, impressions: 30, position: 12 },
+    topQueries: [{ query: "hvad koster en hjemmeside", clicks: 2, impressions: 10, position: 6 }, { query: "b", clicks: 1, impressions: 5, position: 11 }, { query: "pris hjemmeside", clicks: 0, impressions: 20, position: 8 }],
+  });
+  assert.deepEqual(k.pages?.[1], { path: "/blog/gammel/", clicks: 0, impressions: 0, position: null, prev: { clicks: 2, impressions: 9, position: 20 }, topQueries: [] });
   assert.equal(k.property, "sc-domain:kinly.dk");
   assert.deepEqual([k.totals.clicks, k.prevTotals.clicks, k.totals.position], [9, 4, 14.3]);
   assert.deepEqual(k.queries[0], { query: "webdesign herning", clicks: 0, impressions: 80, position: 8.4, prevClicks: 1, prevPosition: 15 });
@@ -49,6 +67,20 @@ test("fetchKinlyGsc: 28 dage mod de 28 før, pr. søgning med forrige position; 
   const none = await fetchKinlyGsc(fake, "2026-09-25");
   assert.equal(none.property, null);
   assert.deepEqual(none.queries, []);
+});
+
+test("inspectBlogUrls: PASS = indekseret, ellers dækning/crawl; fejl på én url er en fejl, ikke 'ikke indekseret'", async () => {
+  const r = await inspectBlogUrls(async (prop, url) => {
+    assert.equal(prop, "sc-domain:kinly.dk");
+    if (url.endsWith("/a/")) return { verdict: "PASS", coverageState: "Indsendt og indekseret", lastCrawlTime: "2026-09-26T10:00:00Z" };
+    if (url.endsWith("/b/")) return { verdict: "NEUTRAL", coverageState: "Webadressen er ikke kendt af Google" };
+    throw Object.assign(new Error("quota"), { code: 429 });
+  }, "sc-domain:kinly.dk", ["https://kinly.dk/blog/a/", "https://kinly.dk/blog/b/", "https://kinly.dk/blog/c/"]);
+  assert.deepEqual(r, [
+    { url: "https://kinly.dk/blog/a/", indexed: true, coverage: "Indsendt og indekseret", lastCrawl: "2026-09-26T10:00:00Z" },
+    { url: "https://kinly.dk/blog/b/", indexed: false, coverage: "Webadressen er ikke kendt af Google", lastCrawl: null },
+    { url: "https://kinly.dk/blog/c/", indexed: false, coverage: "", lastCrawl: null, error: "429" },
+  ]);
 });
 
 test("syncGsc: gemmer for kunder med adgang, 'ingen adgang' er ikke en fejl, ikke-kunder springes over", async () => {

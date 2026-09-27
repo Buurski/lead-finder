@@ -23,6 +23,14 @@
 .seo-row-side { font-size: 12px; overflow-wrap: anywhere; }
 .seo-group { margin-left: 8px; font-size: 11px; color: var(--text-dim); background: var(--surface-2); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 
+.seo-sub { margin: 6px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--text-dim); }
+.seo-traffic-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.seo-traffic-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.seo-traffic-title { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.seo-traffic-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-variant-numeric: tabular-nums; }
+.seo-traffic-stats > span { white-space: nowrap; }
+.seo-traffic-note { font-size: 12px; overflow-wrap: anywhere; }
+
 .seo-issues { margin: 0; padding-left: 17px; font-size: 12.5px; color: var(--text-muted); display: grid; gap: 3px; }
 
 @media (max-width: 480px) {

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { __setStore, InMemoryStore } from "../store.ts";
 import type { CompetitorReport } from "./competitors.ts";
 import {
-  compareWithCompetitors, geoCompetitorCounts, gscFlag, isMoneyQuery, loadBlogCheck, loadGeo,
-  saveBlogCheck, saveGeo, seoActions, type KinlyGsc,
+  blogTraffic, compareWithCompetitors, geoCompetitorCounts, gscFlag, isMoneyQuery, loadBlogCheck, loadBlogReview, loadGeo,
+  saveBlogCheck, saveBlogReview, saveGeo, seoActions, type KinlyGsc,
 } from "./seo-signals.ts";
 
 beforeEach(() => __setStore(new InMemoryStore()));
@@ -76,4 +76,37 @@ test("seoActions: regler i fast rækkefølge, maks 6, ingen ved tomme data", () 
   assert.equal(a[2].blog?.category, "ai-soegning");
   assert.match(a[2].detail, /webko\.dk, klartstudio\.dk/);
   assert.match(a[4].detail, /hvad koster det/);
+});
+
+test("blogTraffic: side matches på slug, indeks på url; under 14 dage = for tidligt", () => {
+  const gsc = {
+    fetchedAt: "2026-10-05T06:00:00Z", property: "sc-domain:kinly.dk", periodStart: "2026-09-05", periodEnd: "2026-10-02",
+    totals: { clicks: 0, impressions: 0, position: null }, prevTotals: { clicks: 0, impressions: 0, position: null }, queries: [],
+    pages: [{ path: "/blog/pris/", clicks: 3, impressions: 50, position: 9.3, prev: null, topQueries: [] }],
+    index: [{ url: "https://kinly.dk/blog/pris/", indexed: true, coverage: "Indsendt og indekseret", lastCrawl: null }],
+  } satisfies KinlyGsc;
+  const posts = [
+    { id: "1", title: "Pris", slug: "pris", publishedAt: "2026-09-10T08:00:00Z", publishedUrl: "https://kinly.dk/blog/pris" },
+    { id: "2", title: "Ny", slug: "ny", publishedAt: "2026-09-27T08:00:00Z", publishedUrl: "https://kinly.dk/blog/ny/" },
+  ];
+  const [a, b] = blogTraffic(posts, gsc, "2026-10-05");
+  assert.equal(a.page?.clicks, 3);
+  assert.equal(a.index?.indexed, true);
+  assert.equal(a.tooEarlyUntil, null);
+  assert.equal(b.page, null);
+  assert.equal(b.index, null);
+  assert.equal(b.tooEarlyUntil, "2026-10-11");
+  assert.equal(blogTraffic(posts, null, "2026-10-05")[0].page, null);
+});
+
+test("saveBlogReview: ok kræver punkter; for-tidligt uden; lofter og ukendte felter", async () => {
+  await saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "for-tidligt", measured: 1 });
+  assert.equal((await loadBlogReview())?.status, "for-tidligt");
+  const pts = Array.from({ length: 6 }, (_, i) => ({ title: `p${i}`, detail: "d" }));
+  const r = await saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "ok", measured: 3, points: pts, suggestions: [{ post: "Pris", change: "Tilføj graf", from: "Anmeldelser" }] });
+  assert.equal(r.points.length, 4);
+  assert.equal(r.suggestions[0].from, "Anmeldelser");
+  await assert.rejects(saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "ok", measured: 3, points: [] }), /points mangler/);
+  await assert.rejects(saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "ok", measured: 3, points: [{ title: "x", detail: "y", extra: 1 }] }), /kendes ikke/);
+  await assert.rejects(saveBlogReview({ reviewedAt: "x", status: "ok", measured: 3, points: pts }), /ISO-dato/);
 });

@@ -2,7 +2,8 @@ import { after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { POST } from "./route.ts";
 import { __setStore, InMemoryStore } from "../../../../lib/store.ts";
-import { loadBlogCheck, loadGeo } from "../../../../lib/hq/seo-signals.ts";
+import { loadBlogCheck, loadBlogReview, loadGeo, saveKinlyGsc } from "../../../../lib/hq/seo-signals.ts";
+import { openIdeaCleanup } from "../../../../lib/hq/idea-cleanup.ts";
 import { hermesSignature } from "../../../../lib/hermes-hmac.ts";
 
 const SECRET = "test-hemmelig-hmac";
@@ -38,6 +39,22 @@ test("blogcheck gemmes og kan læses tilbage", async () => {
   const r = await call(blog);
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal((await loadBlogCheck())?.posts[0].id, "p1");
+});
+
+test("blogtraffic læser kinly.dk-dokumentet; blogreview og ideacleanup gemmes", async () => {
+  assert.deepEqual((await call({ action: "blogtraffic" })).body, { ok: true, gsc: null });
+  await saveKinlyGsc({ fetchedAt: "2026-10-05T06:00:00Z", property: "sc-domain:kinly.dk", periodStart: "2026-09-05", periodEnd: "2026-10-02", totals: { clicks: 1, impressions: 2, position: 3 }, prevTotals: { clicks: 0, impressions: 0, position: null }, queries: [], pages: [{ path: "/blog/pris/", clicks: 1, impressions: 2, position: 3, prev: null, topQueries: [] }] });
+  const t = (await call({ action: "blogtraffic" })).body as unknown as { gsc: { pages: unknown[]; index: unknown[] } };
+  assert.equal(t.gsc.pages.length, 1);
+  assert.deepEqual(t.gsc.index, []);
+  assert.equal((await call({ action: "blogtraffic", x: 1 })).status, 400);
+  const r = await call({ action: "blogreview", reviewedAt: "2026-10-05T07:00:00Z", status: "for-tidligt", measured: 1 });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal((await loadBlogReview())?.measured, 1);
+  const c = await call({ action: "ideacleanup", checkedAt: "2026-10-05T07:00:00Z", ideas: 11, suggestions: [{ id: "a", title: "A", kind: "for-mange", reason: "Over 10 idéer" }] });
+  assert.equal(c.status, 200, JSON.stringify(c.body));
+  assert.equal((await openIdeaCleanup(new Set(["a"]))).suggestions.length, 1);
+  assert.equal((await call({ action: "ideacleanup", checkedAt: "2026-10-05T07:00:00Z", ideas: 1, suggestions: [{ id: "a" }] })).status, 400);
 });
 
 test("usigneret/forkert signatur ⇒ 401, intet gemt", async () => {
