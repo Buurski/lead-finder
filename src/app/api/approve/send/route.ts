@@ -14,8 +14,7 @@ import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
 import { isExcludedBranch } from "@/lib/leads/branch-policy";
 import { getTransporter, formatFrom, defaultSender, isSenderAvailable, applySignature, applySignatureHtml, type SenderId } from "@/lib/senders";
-import { validateDraft } from "@/lib/draft";
-import { linkGateReason, subjectGateReason } from "@/lib/demos";
+import { draftGateReason } from "@/lib/draft";
 import { parseIds, onlyIds } from "@/lib/send-ids";
 
 // POST /api/approve/send — send the approved drafts FOR REAL (Lucas authorized
@@ -187,17 +186,14 @@ export async function GET(req: Request) {
       skipped.push({ name: d.name, reason: dailyCapReason(sid) });
       continue;
     }
-    // Spejl POST'ens link- og emne-gate (6b/6c) FØR cap og budget tælles: et
-    // udkast sendeløkkens sidste hegn ville stoppe, må preflighten ikke love
-    // sendt. Grundteksten kommer fra demos.ts, så de to veje svarer ens.
-    const linkIssue = linkGateReason(d.body, d.branch, d.name);
-    if (linkIssue) {
-      skipped.push({ name: d.name, reason: linkIssue });
-      continue;
-    }
-    const subjectIssue = subjectGateReason(d.subject);
-    if (subjectIssue) {
-      skipped.push({ name: d.name, reason: subjectIssue });
+    // Samme FÆLLES hegn som sendeløkken (draft.ts#draftGateReason) FØR cap og
+    // budget tælles: et udkast sendeløkkens gate ville stoppe, må preflighten
+    // ikke love sendt — og grunden skal være den samme streng i begge veje, ikke
+    // blot "en grund". Rækkefølgen (link-politik → voice-guide → signatur → emne)
+    // bor ét sted. Afsenderen afgør signaturen, præcis som i løkken.
+    const blocked = draftGateReason(d, sid);
+    if (blocked) {
+      skipped.push({ name: d.name, reason: blocked });
       continue;
     }
     if (wouldSend >= SEND_CAP) {
@@ -434,41 +430,21 @@ export async function POST(req: Request) {
             continue;
           }
 
-          // 6. SIDSTE HEGN (2026-07-16): validateDraft kørte før kun ved
-          // edit/set-demos — ren Godkend og bulk-godkend havde ingen server-
-          // validering. Alt passerer dette punkt, så hegnet fanger alle veje.
-          // Signatur-tjekket fanger enhver fremtidig stabling-regression.
+          // 6. SIDSTE HEGN (2026-07-16: server-validering også for ren Godkend og
+          // bulk-godkend) — nu som ÉN fælles gate med preflighten: link-politik →
+          // voice-guide → signatur → emne, samme streng som GET viser for den
+          // samme kladde. Grunden bor i draft.ts#draftGateReason; routen holder
+          // ingen egen rækkefølge, for det var netop en sekundær rækkefølge
+          // (voice-guide før link-politikken) der gav to svar på samme kunde-URL
+          // (27/9) — og et signatur-tjek uden om gaten gav preflighten lov at
+          // love et send, løkken ville springe over.
+          const blocked = draftGateReason(fresh, transportFor(fresh.sender).id);
+          if (blocked) {
+            skipped.push({ name: d.name, reason: blocked });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: blocked });
+            continue;
+          }
           const finalText = applySignature(fresh.body, transportFor(fresh.sender).id);
-          const check = validateDraft(fresh.body);
-          if (!check.ok) {
-            skipped.push({ name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
-            send({ type: "skipped", index: processed, total, name: d.name, reason: `voice-guide: ${check.errors.join("; ")}` });
-            continue;
-          }
-          // 6b. LINK-POLITIK (Lucas 24/9): sidste hegn på de bytes der faktisk
-          // sendes. Mangler kinly.dk-forsiden eller den matchende case/branche-
-          // side, går mailen IKKE ud — også hvis en menneske-edit eller en ældre
-          // kladde er smuttet forbi de tidligere gates. Fail-closed, intet send.
-          const linkIssue = linkGateReason(fresh.body, fresh.branch, fresh.name);
-          if (linkIssue) {
-            skipped.push({ name: d.name, reason: linkIssue });
-            send({ type: "skipped", index: processed, total, name: d.name, reason: linkIssue });
-            continue;
-          }
-          if ((finalText.match(/Med venlig hilsen/g) || []).length !== 1) {
-            skipped.push({ name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
-            send({ type: "skipped", index: processed, total, name: d.name, reason: "signatur-fejl i body (ikke præcis én)" });
-            continue;
-          }
-          // 6c. EMNE-GATE (26/9): emnet er ikke dækket af link-politikken ovenfor.
-          // Et kendt kunde-domæne (fx et preview) i subject-linjen må ikke ud —
-          // samme kilde som krops-værnet (demos.ts#customerSiteLinks).
-          const subjectIssue = subjectGateReason(fresh.subject);
-          if (subjectIssue) {
-            skipped.push({ name: d.name, reason: subjectIssue });
-            send({ type: "skipped", index: processed, total, name: d.name, reason: subjectIssue });
-            continue;
-          }
 
           // 7. FRISK MODTAGER + GATES for ALLE kladder (Sol R2/inspektion): modtageren kan
           // være rettet, og et svar/afmelding/kunde kan være landet siden run-start.

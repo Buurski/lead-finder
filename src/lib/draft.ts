@@ -8,11 +8,11 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { customerSiteLinks, hasDemoLink, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
+import { customerSiteLinks, hasDemoLink, linkGateReason, missingReferenceLinks, referenceIntro, referenceLines, subjectGateReason } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
-import { formatSignature, stripSignature, type SenderId } from "./senders.ts";
+import { applySignature, formatSignature, stripSignature, type SenderId } from "./senders.ts";
 import { personalGreetingName } from "./qualify.ts";
 
 export interface Draft {
@@ -76,6 +76,56 @@ export function validateDraft(text: string): ValidationResult {
     errors.push(`kunde-link: ${u} — brug kinly.dk-casen, ikke kundens egen side`);
   }
   return { ok: errors.length === 0, errors };
+}
+
+/** Voice-guide-gaten som grundtekst — den streng sendeløkken altid har vist. */
+export function voiceGateReason(body: string): string | null {
+  const check = validateDraft(body);
+  return check.ok ? null : `voice-guide: ${check.errors.join("; ")}`;
+}
+
+export interface GateDraft {
+  body: string;
+  subject: string;
+  branch: string;
+  name?: string;
+}
+
+/**
+ * ÉN blokårsag for et udkast, med fast præcedens:
+ *   1. link-politik (demos.ts#linkGateReason) — på kroppen
+ *   2. voice-guide (validateDraft)            — på kroppen
+ *   3. signatur-reglen (præcis én afsluttende hilsen) — på den signerede tekst
+ *   4. emne-gaten (demos.ts#subjectGateReason) — på emnet
+ *
+ * GET /api/approve/send (preflighten) og POST (sendeløkken) kalder BEGGE denne,
+ * så den samme kladde altid får den samme grund. Uden den fælles rækkefølge
+ * svarede preflighten "link-politik: kundens egen side må ikke linkes (…)" og
+ * sendeløkken "voice-guide: kunde-link: …" for præcis samme kunde-URL, fordi
+ * begge regler ser det samme link (27/9). Signaturen er af samme grund med her:
+ * en krop med "Med venlig hilsen" midt i teksten stopper i sendeløkken, så
+ * preflighten må ikke tælle den som sendbar.
+ * Fail-closed: en grund her = intet send. null = ingen indvending.
+ * Ingen I/O — grundene læses, intet skrives og intet sendes.
+ */
+export function draftGateReason(d: GateDraft, senderId: SenderId): string | null {
+  return (
+    linkGateReason(d.body, d.branch, d.name ?? "") ??
+    voiceGateReason(d.body) ??
+    signatureGateReason(d, senderId) ??
+    subjectGateReason(d.subject)
+  );
+}
+
+/**
+ * Signatur-reglen fra send-løkkens sidste hegn (2026-07-16): den signerede tekst
+ * skal indeholde præcis én "Med venlig hilsen". 0 eller 2+ = kladden er stablet
+ * eller klippet, og den må ikke ud.
+ */
+export function signatureGateReason(d: GateDraft, senderId: SenderId): string | null {
+  const finalText = applySignature(d.body, senderId);
+  const antal = (finalText.match(/Med venlig hilsen/g) ?? []).length;
+  return antal === 1 ? null : "signatur-fejl i body (ikke præcis én)";
 }
 
 // ---- Deterministic composer ----------------------------------------------
