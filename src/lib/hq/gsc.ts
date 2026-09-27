@@ -8,9 +8,9 @@ import { jevJudge, recordGscUpdate, type Judge } from "./gsc-updates.ts";
 import type { BlogIndexStatus, KinlyGsc, KinlyGscPage } from "./seo-signals.ts";
 
 export interface GscRow { keys?: string[]; clicks: number; impressions: number; position: number }
-type GscFilter = { filters: { dimension: string; operator: string; expression: string }[] };
 /** Én searchanalytics.query. Kaster { code: 403|404 } når ejendommen ikke findes/ikke er delt. */
-export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number; dimensionFilterGroups?: GscFilter[] }) => Promise<GscRow[]>;
+export type GscFilter = { dimension: "page" | "query"; operator: "equals" | "contains"; expression: string };
+export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number; dimensionFilterGroups?: { filters: GscFilter[] }[] }) => Promise<GscRow[]>;
 /** Én urlInspection.index.inspect (virker med "Begrænset bruger" + read-only scope — testet 27/9). */
 export type GscInspect = (property: string, url: string) => Promise<{ verdict?: string | null; coverageState?: string | null; lastCrawlTime?: string | null }>;
 
@@ -31,8 +31,8 @@ export function hostOf(website: string): string | null {
   }
 }
 
-const candidates = (host: string) => [`sc-domain:${host}`, `https://${host}/`, `https://www.${host}/`];
-const noAccess = (err: unknown) => [403, 404].includes(Number((err as { code?: number }).code));
+export const candidates = (host: string) => [`sc-domain:${host}`, `https://${host}/`, `https://www.${host}/`];
+export const noAccess = (err: unknown) => [403, 404].includes(Number((err as { code?: number }).code));
 
 export interface GscSnapshotInput {
   property: string;
@@ -105,7 +105,7 @@ export async function fetchKinlyGsc(q: GscQuery, today: string, host = "kinly.dk
     const prev = await q(property, { startDate: prevStart, endDate: prevEnd });
     const rows = await q(property, { startDate: w.start, endDate: w.end, dimensions: ["query"], rowLimit: 250 });
     const prevRows = new Map((await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["query"], rowLimit: 250 })).map((r) => [String(r.keys?.[0]), r]));
-    const blogOnly = [{ filters: [{ dimension: "page", operator: "contains", expression: "/blog/" }] }];
+    const blogOnly: { filters: GscFilter[] }[] = [{ filters: [{ dimension: "page", operator: "contains", expression: "/blog/" }] }];
     const pages = blogPages(
       await q(property, { startDate: w.start, endDate: w.end, dimensions: ["page"], rowLimit: 200, dimensionFilterGroups: blogOnly }),
       await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["page"], rowLimit: 200, dimensionFilterGroups: blogOnly }),

@@ -14,6 +14,7 @@ import {
   loadBlogCheck, loadBlogReview, loadGeo, loadKinlyGsc, seoActions, type BlogTrafficRow, type GscTotals,
 } from "@/lib/hq/seo-signals";
 import BlogIdeaButton from "./BlogIdeaButton";
+import AfproevButton from "@/components/konkurrenter/AfproevButton";
 import "@/components/konkurrenter/konkurrenter.css";
 import "./seo.css";
 
@@ -246,6 +247,7 @@ export default async function SeoHistoryPage() {
             <p className="konk-finding-detail konk-finding-detail-open">{a.detail}</p>
             <div className="konk-finding-actions">
               {a.blog && <BlogIdeaButton {...a.blog} />}
+              <AfproevButton title={a.title} detail={a.detail} source={{ kind: a.id.split("-")[0], from: "seo", ...(a.href?.startsWith("http") ? { url: a.href } : {}) }} />
               {a.href && (a.href.startsWith("/") ? <Link href={a.href} className="cc-btn">{a.hrefLabel}</Link> : <a href={a.href} target="_blank" rel="noreferrer" className="cc-btn">{a.hrefLabel} ↗</a>)}
             </div>
           </div>)}
