@@ -59,10 +59,13 @@ def main() -> None:
     card = pick(data.get("cards") or [], int(data.get("running") or 0), starts, now)
     if not card:
         return
-    subprocess.run(["hermes", "cron", "run", BLOG_JOB_ID], check=True, capture_output=True, timeout=60)
+    # Gem starten FØR kaldet: `hermes cron run` kan blokere >60 s når det kaldes inde fra
+    # schedulerens tick (27/9 crashede triggeren på timeout efter at kørslen var sat i gang,
+    # så døgnloftet aldrig blev talt op). Kaldet løsrives og ventes ikke på.
     starts = [s for s in starts if now - s < 7 * DAY] + [now]
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps({"starts": starts}), encoding="utf-8")
+    subprocess.Popen(["hermes", "cron", "run", BLOG_JOB_ID], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     print(f"blog-trigger: satte Hermes i gang med '{card.get('title')}'")
 
 
