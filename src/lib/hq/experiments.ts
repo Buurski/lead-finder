@@ -20,7 +20,15 @@ export const METRIC_TYPES = ["gsc_page", "gsc_query", "geo", "manuel"] as const;
 export interface ExperimentSource { kind: string; url?: string; competitor?: string; from: "konkurrent" | "seo" }
 export interface ReviewScore { navn: string; rating: number; conf: number }
 export interface ExperimentReview { at: string; scores: ReviewScore[]; verdict: "test" | "drop"; reason: string }
-export interface ExperimentPlan { hypothesis: string; change: string; metric: { type: MetricType; target: string }; days: 7; success: string }
+/** council = Hermes' dyre model (gpt-6-sol) med 5 råd + Google-research; notes er rådenes korte domme. */
+export interface ExperimentPlan {
+  hypothesis: string;
+  change: string;
+  metric: { type: MetricType; target: string };
+  days: number;
+  success: string;
+  council?: { model: string; notes: string[] };
+}
 /** Én måling. GSC-tal for et vindue, eller AI-søgningens svar (mentioned). note = hvorfor der ikke kunne måles. */
 export interface Measurement {
   at: string;
@@ -51,7 +59,8 @@ const DONE: ExperimentStatus[] = ["droppet", "beholdt", "afvist"];
 export const MAX_ACTIVE = 50;
 const MAX_DONE = 100;
 const DAY_MS = 86_400_000;
-const TEST_DAYS = 7;
+// 14 dage: Kinlys ugevolumen i Search Console er lille — én uge giver mest "uklart" (Lucas 27/9).
+export const TEST_DAYS = 14;
 
 const isActive = (e: Experiment) => !DONE.includes(e.status);
 
@@ -176,7 +185,7 @@ export const reviewExperiment = (id: unknown, raw: unknown) =>
 
 export function validatePlan(raw: unknown): ExperimentPlan {
   const o = obj(raw, "plan");
-  noUnknownKeys(o, ["hypothesis", "change", "metric", "days", "success"], "plan");
+  noUnknownKeys(o, ["hypothesis", "change", "metric", "days", "success", "council"], "plan");
   const m = obj(o.metric, "plan.metric");
   noUnknownKeys(m, ["type", "target"], "plan.metric");
   const type = enumOf(m.type, "plan.metric.type", METRIC_TYPES, true)!;
@@ -185,14 +194,33 @@ export function validatePlan(raw: unknown): ExperimentPlan {
     throw new CompetitorInputError("plan.metric.target skal være en https://kinly.dk-side ved gsc_page");
   }
   if (o.days !== undefined && o.days !== TEST_DAYS) throw new CompetitorInputError(`plan.days skal være ${TEST_DAYS}`);
-  return {
+  const plan: ExperimentPlan = {
     hypothesis: str(o.hypothesis, "plan.hypothesis", 400, true)!,
     change: str(o.change, "plan.change", 600, true)!,
     metric: { type, target },
     days: TEST_DAYS,
     success: str(o.success, "plan.success", 300, true)!,
   };
+  if (o.council !== undefined) {
+    const c = obj(o.council, "plan.council");
+    noUnknownKeys(c, ["model", "notes"], "plan.council");
+    if (!Array.isArray(c.notes)) throw new CompetitorInputError("plan.council.notes skal være en liste");
+    plan.council = {
+      model: str(c.model, "plan.council.model", 40, true)!,
+      notes: c.notes.slice(0, 6).map((n, i) => str(n, `plan.council.notes[${i}]`, 240, true)!),
+    };
+  }
+  return plan;
 }
+
+/** Council (dyr model) siger nej efter Jev sagde "test" → droppet med rådets grund. */
+export const councilDrop = (id: unknown, rawReason: unknown) =>
+  update(id, (e) => {
+    need(e, "vurderes");
+    if (e.review?.verdict !== "test") throw new CompetitorInputError("council-drop kræver et review med verdict test");
+    const reason = str(rawReason, "reason", 360, true)!;
+    return { ...e, status: "droppet", review: { ...e.review, verdict: "drop", reason: `Council: ${reason}` } };
+  });
 
 export const planExperiment = (id: unknown, raw: unknown) =>
   update(id, (e) => {

@@ -2,7 +2,8 @@
 // /api/agent/competitors. Hermes' eksperimenter.py (dagligt, no_agent):
 //   { action: "list" }                                   → { ok, experiments (vurderes+tester), geoQueries }
 //   { action: "review", id, review: { scores, verdict: test|drop, reason } }
-//   { action: "plan", id, plan: { hypothesis, change, metric: { type, target }, days: 7, success } }
+//   { action: "plan", id, plan: { hypothesis, change, metric: { type, target }, days: 14, success, council?: { model, notes } } }
+//   { action: "councilDrop", id, reason }                 (council-agenten afviser en idé Jev sagde test til)
 //   { action: "measure", metric: { type: gsc_page|gsc_query|geo, target }, start?, end? }  (kun læsning)
 //   { action: "baseline", id, baseline: <Measurement> }
 //   { action: "result", id, result?: <Measurement>, outcome: { verdict: behold|drop|uklart, summary } }
@@ -11,7 +12,7 @@
 // Ingen "next/server"-import: route.test.ts kalder handleren direkte under node:test.
 import { CompetitorInputError, enumOf, noUnknownKeys, obj, str } from "../../../../lib/hq/competitors.ts";
 import {
-  agentQueue, measureGeo, measureKinlyGsc, planExperiment, reviewExperiment, saveBaseline, saveResult,
+  agentQueue, councilDrop, measureGeo, measureKinlyGsc, planExperiment, reviewExperiment, saveBaseline, saveResult,
 } from "../../../../lib/hq/experiments.ts";
 import { loadGeo } from "../../../../lib/hq/seo-signals.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
@@ -55,6 +56,9 @@ export async function POST(req: Request) {
       case "plan":
         noUnknownKeys(input, ["action", "id", "plan"], "body");
         return json({ ok: true, experiment: await planExperiment(input.id, input.plan) });
+      case "councilDrop":
+        noUnknownKeys(input, ["action", "id", "reason"], "body");
+        return json({ ok: true, experiment: await councilDrop(input.id, input.reason) });
       case "baseline":
         noUnknownKeys(input, ["action", "id", "baseline"], "body");
         return json({ ok: true, experiment: await saveBaseline(input.id, input.baseline) });
@@ -74,7 +78,7 @@ export async function POST(req: Request) {
         return json({ ok: true, measurement: await measureKinlyGsc(type, target, start, end) });
       }
       default:
-        return json({ ok: false, error: "ukendt action — brug list, review, plan, measure, baseline eller result" }, 400);
+        return json({ ok: false, error: "ukendt action — brug list, review, plan, councilDrop, measure, baseline eller result" }, 400);
     }
   } catch (err) {
     if (err instanceof CompetitorInputError) return json({ ok: false, error: err.message }, 400);

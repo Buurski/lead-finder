@@ -18,7 +18,7 @@ const METRIC_LABEL: Record<MetricType, (t: string) => string> = {
   gsc_page: (t) => `Google-klik på ${t.replace(/^https:\/\/(www\.)?/, "")}`,
   gsc_query: (t) => `Google-søgningen “${t}”`,
   geo: (t) => `Om AI nævner Kinly på “${t}”`,
-  manuel: () => "Du vurderer selv efter en uge",
+  manuel: () => "Du vurderer selv efter 14 dage",
 };
 const VERDICT_LABEL = { behold: "Hermes siger: behold", drop: "Hermes siger: drop", uklart: "Hermes: uklart — du afgør" } as const;
 
@@ -75,7 +75,8 @@ function Card({ e, now, onChange }: { e: Experiment; now: number; onChange: (id:
       setBusy(null);
     }
   }
-  const day = e.test ? Math.min(7, Math.max(1, Math.floor((now - Date.parse(e.test.startedAt)) / DAY_MS) + 1)) : 0;
+  const total = e.test ? Math.max(1, Math.round((Date.parse(e.test.endsAt) - Date.parse(e.test.startedAt)) / DAY_MS)) : 14;
+  const day = e.test ? Math.min(total, Math.max(1, Math.floor((now - Date.parse(e.test.startedAt)) / DAY_MS) + 1)) : 0;
   const measuring = e.test ? now >= Date.parse(e.test.endsAt) : false;
 
   return (
@@ -88,7 +89,7 @@ function Card({ e, now, onChange }: { e: Experiment; now: number; onChange: (id:
       {e.detail && <p className="konk-finding-detail">{e.detail}</p>}
 
       {e.status === "vurderes" && !e.review && <p className="tests-note">Hermes vurderer den i nat.</p>}
-      {e.review && e.status === "vurderes" && <p className="tests-note">Jev: {e.review.reason} Planen skrives i nat.</p>}
+      {e.review && e.status === "vurderes" && <p className="tests-note">Jev: {e.review.reason} Nu tjekker Hermes' council (dyr model + Google) den og skriver planen, eller dropper den.</p>}
       {e.review && e.status !== "vurderes" && <p className="tests-reason"><strong>Jev:</strong> {e.review.reason}</p>}
 
       {e.plan && (
@@ -96,16 +97,17 @@ function Card({ e, now, onChange }: { e: Experiment; now: number; onChange: (id:
           <div><dt>Ændring</dt><dd>{e.plan.change}</dd></div>
           <div><dt>Måles</dt><dd>{METRIC_LABEL[e.plan.metric.type](e.plan.metric.target)}</dd></div>
           <div><dt>Succes</dt><dd>{e.plan.success}</dd></div>
+          {e.plan.council && <div><dt>Council</dt><dd><ul className="tests-council">{e.plan.council.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></dd></div>}
         </dl>
       )}
 
       {e.status === "tester" && e.test && (
         <div className="tests-progress">
           <div className="tests-progress-row">
-            <span className="cc-chip tests-day">{measuring ? "Måles i nat" : `Dag ${day}/7`}</span>
+            <span className="cc-chip tests-day">{measuring ? "Måles i nat" : `Dag ${day}/${total}`}</span>
             <span className="konk-dim">slutter {date(e.test.endsAt)}</span>
           </div>
-          <div className="tests-bar" aria-hidden="true"><span style={{ width: `${(day / 7) * 100}%` }} /></div>
+          <div className="tests-bar" aria-hidden="true"><span style={{ width: `${(day / total) * 100}%` }} /></div>
           {e.test.baseline && <span className="tests-measure">Før: {fmtMeasure(e.test.baseline)}</span>}
         </div>
       )}

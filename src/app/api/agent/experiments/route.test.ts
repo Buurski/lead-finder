@@ -47,7 +47,7 @@ test("review → plan → klar via agenten", async () => {
   const e = await seed();
   const rv = await call({ action: "review", id: e.id, review: { scores: [{ navn: "relevans", rating: 4, conf: 0.8 }], verdict: "test", reason: "God idé." } });
   assert.equal(rv.status, 200, JSON.stringify(rv.body));
-  const pl = await call({ action: "plan", id: e.id, plan: { hypothesis: "h", change: "c", metric: { type: "gsc_query", target: "webdesign herning" }, days: 7, success: "s" } });
+  const pl = await call({ action: "plan", id: e.id, plan: { hypothesis: "h", change: "c", metric: { type: "gsc_query", target: "webdesign herning" }, days: 14, success: "s" } });
   assert.equal(pl.body.experiment?.status, "klar");
 });
 

@@ -48,3 +48,5 @@
   .tests-folded-row { flex-direction: row; }
 }
 @media (prefers-reduced-motion: reduce) { .tests-bar span { transition: none; } }
+
+.tests-council { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }

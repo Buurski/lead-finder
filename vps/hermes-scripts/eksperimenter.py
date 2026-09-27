@@ -7,18 +7,18 @@ Lucas sender en idé hertil med "→ Afprøv hos os" (Konkurrenter/SEO). Dette s
             SEO-idéer med et citeret søgeord får først en gratis efterspørgsels-måling
             (Google-autofuldførelse via kundespoergsmaal.py), som Jev ser.
             Tydeligt lav relevans/effekt → droppet med grund (stille, ingen opgave).
-            Ellers ÉT DeepSeek-kald der skriver 1-uges-planen → klar.
-  tester:   første kørsel efter start gemmer baseline; når ugen (+ GSC's 3 dages
+            Ellers → council-kø: Hermes-agenten (gpt-6-sol) tjekker idéen på Google med 5 råd og
+  tester:   første kørsel efter start gemmer baseline; når de 14 dage (+ GSC's 3 dages
             forsinkelse) er gået, måles igen og tallene sammenlignes UDEN LLM →
             resultat + ÉN HQ-opgave "Test færdig: X — behold eller drop?".
 
 Kun Lucas starter, beholder og dropper — HQ-ruten kan slet ikke andet for agenten.
-Token-regel: Jev først (0 LLM-tokens), højst ét DeepSeek-kald pr. idé pr. trin.
+Token-regel: Jev først (0 LLM-tokens); kun idéer Jev siger "test" til når den dyre council-agent.
 
   eksperimenter.py              # rigtig kørsel (cron, dagligt)
-  eksperimenter.py --dry-run    # ingen skrivninger til HQ; Jev/DeepSeek kaldes stadig
+  eksperimenter.py --dry-run    # ingen skrivninger til HQ; Jev kaldes stadig, council-agenten startes ikke
   eksperimenter.py --selftest   # offline
-Miljø: KINLY_HQ_URL (standard: prod), HERMES_API_SECRET, TYPESAFE_API_KEY, DEEPSEEK_API_KEY.
+Miljø: KINLY_HQ_URL (standard: prod), HERMES_API_SECRET, TYPESAFE_API_KEY, TESTS_COUNCIL_JOB_ID.
 """
 from __future__ import annotations
 
@@ -38,13 +38,13 @@ sys.path.insert(0, str(HERE))
 import jev_lib  # noqa: E402
 import kundespoergsmaal  # noqa: E402
 from crm_agent_log import load_secret, sign  # noqa: E402
-from konkurrent_analyse import NO_THINKING, load_key as deepseek_key  # noqa: E402
 
 HQ = os.environ.get("KINLY_HQ_URL", "https://lead-finder-three-beta.vercel.app").rstrip("/")
 PATH = "/api/agent/experiments"
 TASKS_PATH = "/api/agent/tasks"
-DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
+TEST_DAYS = 14  # Lucas 27/9: 14 dage giver mere data end en uge
+_JOB_FILE = Path.home() / ".hermes" / "tests-council-job-id"  # Hermes-agentjobbet der laver testplaner
+COUNCIL_JOB_ID = os.environ.get("TESTS_COUNCIL_JOB_ID") or (_JOB_FILE.read_text().strip() if _JOB_FILE.exists() else "")
 CONF_MIN = 0.6
 GSC_LAG_DAYS = 3  # GSC-data er ~2-3 dage forsinket (samme regel som HQ's gsc.ts)
 GEO_GRACE_DAYS = 8  # AI-målingen kører om mandagen; venter højst en uge ekstra på en ny
@@ -71,17 +71,6 @@ COUNCIL = [
      ("stærkt", "Konkrete tal, flere konkurrenter der gør det, eller målt efterspørgsel"),
      ("svagt", "Kun en enkelt påstand eller en fornemmelse")),
 ]
-
-PLAN_PROMPT = """Du planlægger en 1-uges test på kinly.dk for Kinly (lille webbureau i Herning/Ikast, håndkodede hjemmesider fra 3.997 kr., kunde-CMS, lokal SEO/GEO).
-Du får idéen, Jevs vurdering, evt. målt efterspørgsel og listen over de AI-søgnings-spørgsmål der måles hver uge.
-Skriv planen. Regler:
-- "change": ÉN konkret ændring på kinly.dk (hvilken side, hvad der ændres), som én person kan lave på under en dag. Max 2 sætninger.
-- "metric.type": "gsc_page" (target = fuld https://kinly.dk/...-url på siden der ændres), "gsc_query" (target = den præcise Google-søgning), "geo" (target = ét spørgsmål fra "ai_spoergsmaal", ordret) eller "manuel" (target = "", kun hvis intet andet kan måle det).
-- "hypothesis": én sætning: hvis vi gør X, så sker Y.
-- "success": målbart for de 7 dage efter ændringen mod ugen før (fx "flere klik end ugen før og position under 10").
-Dansk, jordnært, ingen buzzwords. Opfind ingen tal.
-Svar KUN med JSON: {"hypothesis":"...","change":"...","metric":{"type":"...","target":"..."},"success":"..."}"""
-
 
 # ---------------------------------------------------------------- HQ
 
@@ -193,16 +182,10 @@ def measure_demand(keyword: str | None, get=kundespoergsmaal.get_questions) -> d
     return {"søgeord": keyword, "google_forslag": len(qs), "eksempler": qs[:5]}
 
 
-# ---------------------------------------------------------------- plan (DeepSeek, ét kald)
-
-def plan_input(e: dict, review: dict, demand: dict | None, geo_queries: list[str]) -> str:
-    return json.dumps({"idé": {"titel": e.get("title"), "detalje": e.get("detail"), "kilde": e.get("source")},
-                       "jev": review.get("reason"), "efterspørgsel": demand, "ai_spoergsmaal": geo_queries[:30]},
-                      ensure_ascii=False, separators=(",", ":"))[:8000]
-
+# ---------------------------------------------------------------- plan (council-agenten, gpt-6-sol)
 
 def parse_plan(text: str, geo_queries: list[str], reachable=None) -> dict:
-    """DeepSeek-svar → plan. Ugyldig/uverificerbar metrik falder tilbage til manuel (planen overlever)."""
+    """Agentens plan-JSON → plan. Ugyldig/uverificerbar metrik falder tilbage til manuel (planen overlever)."""
     m = re.search(r"\{.*\}", text or "", re.S)
     if not m:
         raise ValueError("intet JSON i svaret")
@@ -226,24 +209,25 @@ def parse_plan(text: str, geo_queries: list[str], reachable=None) -> dict:
         mtype = "manuel"
     if mtype == "manuel":
         target = ""
-    return {"hypothesis": out["hypothesis"][:400], "change": out["change"][:600],
-            "metric": {"type": mtype, "target": target[:300]}, "days": 7, "success": out["success"][:300]}
+    plan = {"hypothesis": out["hypothesis"][:400], "change": out["change"][:600],
+            "metric": {"type": mtype, "target": target[:300]}, "days": TEST_DAYS, "success": out["success"][:300]}
+    council = p.get("council") if isinstance(p.get("council"), dict) else {}
+    notes = [str(n).strip()[:240] for n in (council.get("notes") or []) if str(n).strip()][:6]
+    if notes:
+        plan["council"] = {"model": str(council.get("model") or "gpt-6-sol")[:40], "notes": notes}
+    return plan
 
 
-def deepseek_plan(user: str) -> str:
-    body = json.dumps({
-        "model": DEEPSEEK_MODEL,
-        "messages": [{"role": "system", "content": PLAN_PROMPT}, {"role": "user", "content": user}],
-        "max_tokens": 700, "temperature": 0.3, "response_format": {"type": "json_object"},
-        **NO_THINKING,
-    }).encode("utf-8")
-    req = Request(DEEPSEEK_URL, data=body, method="POST",
-                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {deepseek_key()}"})
-    with urlopen(req, timeout=90) as res:
-        data = json.loads(res.read().decode("utf-8"))
-    usage = data.get("usage") or {}
-    print(f"  [deepseek] tokens ind={usage.get('prompt_tokens')} ud={usage.get('completion_tokens')}")
-    return data["choices"][0]["message"]["content"]
+def council_queue(items: list[dict]) -> list[dict]:
+    """Idéer Jev sagde "test" til, som endnu ingen plan har — dem skal council-agenten tage."""
+    return [e for e in items if e.get("status") == "vurderes" and (e.get("review") or {}).get("verdict") == "test" and not e.get("plan")]
+
+
+def trigger_council() -> None:
+    """Start agent-jobbet i baggrunden (samme mønster som blog_trigger)."""
+    if COUNCIL_JOB_ID:
+        import subprocess
+        subprocess.Popen(["hermes", "cron", "run", COUNCIL_JOB_ID], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
 
 # ---------------------------------------------------------------- måling (ingen LLM)
@@ -254,10 +238,10 @@ def parse_ts(s: str) -> datetime:
 
 
 def windows(started_at: str) -> tuple[tuple[str, str], tuple[str, str]]:
-    """(baseline, resultat): 7 dage der allerede er endelige i GSC før start, og de 7 dage fra start."""
+    """(baseline, resultat): TEST_DAYS dage der allerede er endelige i GSC før start, og TEST_DAYS dage fra start."""
     s = parse_ts(started_at).date()
-    base = (s - timedelta(days=GSC_LAG_DAYS + 7), s - timedelta(days=GSC_LAG_DAYS + 1))
-    res = (s, s + timedelta(days=6))
+    base = (s - timedelta(days=GSC_LAG_DAYS + TEST_DAYS), s - timedelta(days=GSC_LAG_DAYS + 1))
+    res = (s, s + timedelta(days=TEST_DAYS - 1))
     return (base[0].isoformat(), base[1].isoformat()), (res[0].isoformat(), res[1].isoformat())
 
 
@@ -285,7 +269,7 @@ def compare_gsc(before: dict, after: dict) -> tuple[str, str]:
         better += p1 < p0
         worse += p1 > p0
     verdict = "behold" if better >= 2 and not worse else "drop" if worse >= 2 and not better else "uklart"
-    summary = f"Klik {c0} → {c1}, visninger {i0} → {i1}, position {fmt_pos(p0)} → {fmt_pos(p1)} (7 dage mod ugen før)."
+    summary = f"Klik {c0} → {c1}, visninger {i0} → {i1}, position {fmt_pos(p0)} → {fmt_pos(p1)} ({TEST_DAYS} dage mod de {TEST_DAYS} dage før)."
     tail = {"behold": " Tallene peger op.", "drop": " Tallene peger ned.", "uklart": " For lidt forskel til at sige noget sikkert."}
     return verdict, summary + tail[verdict]
 
@@ -324,12 +308,12 @@ def measure(metric: dict, window: tuple[str, str] | None, post=call) -> dict:
 class Runner:
     """Al I/O er udskiftelig, så testene kører uden netværk."""
 
-    def __init__(self, dry_run=False, post=call, jev=jev_lib.ask, llm=deepseek_plan, demand_get=kundespoergsmaal.get_questions,
+    def __init__(self, dry_run=False, post=call, jev=jev_lib.ask, demand_get=kundespoergsmaal.get_questions,
                  reachable=None, now=None, log=print):
-        self.dry, self.post, self.jev, self.llm, self.demand_get = dry_run, post, jev, llm, demand_get
+        self.dry, self.post, self.jev, self.demand_get = dry_run, post, jev, demand_get
         self.reachable, self.log = reachable, log
         self.now = now or datetime.now(timezone.utc)
-        self.stats = {"jev": 0, "llm": 0, "droppet": 0, "klar": 0, "baseline": 0, "resultat": 0, "opgaver": 0}
+        self.stats = {"jev": 0, "council": 0, "droppet": 0, "klar": 0, "baseline": 0, "resultat": 0, "opgaver": 0}
 
     def write(self, payload: dict, path: str = PATH) -> dict:
         if self.dry:
@@ -355,17 +339,8 @@ class Runner:
                 self.stats["droppet"] += 1
                 self.log(f"  droppet: {review['reason']}")
                 return
-        if review.get("verdict") != "test":
-            return
-        self.stats["llm"] += 1
-        try:
-            plan = parse_plan(self.llm(plan_input(e, review, demand, geo_queries)), geo_queries, self.reachable)
-        except Exception as err:  # planen prøves igen i morgen (reviewet er gemt, Jev kaldes ikke igen)
-            self.log(f"  plan fejlede: {str(err)[:200]}")
-            return
-        if self.write({"action": "plan", "id": e["id"], "plan": plan}).get("ok"):
-            self.stats["klar"] += 1
-            self.log(f"  klar: {plan['metric']['type']} {plan['metric']['target']}")
+        if review.get("verdict") == "test":
+            self.log("  → council-kø (Hermes-agenten laver testplanen)")
 
     def follow(self, e: dict) -> None:
         test, plan = e.get("test") or {}, e.get("plan") or {}
@@ -385,7 +360,7 @@ class Runner:
         if self.now < ends + lag:
             return
         if metric["type"] == "manuel":
-            result, (verdict, summary) = None, ("uklart", f"Ugen er gået. Mål selv: {plan.get('success') or 'virkede det?'}")
+            result, (verdict, summary) = None, ("uklart", f"De {TEST_DAYS} dage er gået. Mål selv: {plan.get('success') or 'virkede det?'}")
         elif metric["type"] == "geo":
             result = measure(metric, None, self.post)
             fresh = not result.get("note") and parse_ts(result["at"]) >= parse_ts(test["startedAt"])
@@ -419,6 +394,14 @@ class Runner:
         for e in todo:
             self.log(f"vurderer: {e['title']}")
             self.assess(e, geo_queries)
+        if todo:  # hent igen: nye Jev-reviews er gemt i HQ
+            items = (self.post({"action": "list"}, PATH).get("experiments") or items) if not self.dry else items
+        queue = council_queue(items)
+        if queue:
+            self.stats["council"] = len(queue)
+            self.log(f"council-kø: {len(queue)} idé(er) → starter Hermes-agenten")
+            if not self.dry:
+                trigger_council()
         for e in (e for e in items if e.get("status") == "tester"):
             self.log(f"tester: {e['title']}")
             try:
@@ -433,13 +416,13 @@ def _selftest() -> None:
     assert conf_rating(0.6) == 1 and conf_rating(1.0) == 5 and conf_rating(0.8) == 3
     assert seo_keyword({"title": 'Få klik på "webdesign herning"', "source": {"from": "seo", "kind": "gsc"}}) == "webdesign herning"
     assert seo_keyword({"title": "Tilbyd logo-pakke", "detail": "3 bureauer gør det", "source": {"from": "konkurrent", "kind": "ydelse"}}) is None
-    assert windows("2026-09-28T08:00:00Z") == (("2026-09-18", "2026-09-24"), ("2026-09-28", "2026-10-04"))
+    assert windows("2026-09-28T08:00:00Z") == (("2026-09-11", "2026-09-24"), ("2026-09-28", "2026-10-11"))
     assert compare_gsc({"clicks": 2, "impressions": 80, "position": 9.1}, {"clicks": 5, "impressions": 120, "position": 7.4})[0] == "behold"
     assert compare_gsc({"clicks": 5, "impressions": 120, "position": 7.0}, {"clicks": 1, "impressions": 60, "position": 7.2})[0] == "drop"
     assert compare_gsc({"clicks": 1, "impressions": 40, "position": 12}, {"clicks": 1, "impressions": 44, "position": 11.6})[0] == "uklart"
     assert compare_geo({"mentioned": False}, {"mentioned": True}, "q")[0] == "behold"
     p = parse_plan('{"hypothesis":"h","change":"c","metric":{"type":"geo","target":"WEBBUREAU HERNING"},"success":"s"}', ["webbureau herning"])
-    assert p["metric"] == {"type": "geo", "target": "webbureau herning"} and p["days"] == 7
+    assert p["metric"] == {"type": "geo", "target": "webbureau herning"} and p["days"] == TEST_DAYS
     assert parse_plan('{"hypothesis":"h","change":"c","metric":{"type":"gsc_page","target":"https://evil.dk"},"success":"s"}', [])["metric"]["type"] == "manuel"
     print("eksperimenter selftest ok")
 
@@ -448,11 +431,34 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--selftest", action="store_true")
-    ap.add_argument("--limit", type=int, default=10, help="maks idéer der vurderes pr. kørsel (Jev/DeepSeek-loft)")
+    ap.add_argument("--limit", type=int, default=10, help="maks idéer der vurderes pr. kørsel (Jev-loft)")
+    ap.add_argument("--queue", action="store_true", help="council-agenten: print idéer der mangler testplan (JSON)")
+    ap.add_argument("--plan", metavar="ID", help="council-agenten: gem testplan for ID (plan-JSON fra --file)")
+    ap.add_argument("--drop", metavar="ID", help="council-agenten: afvis ID med --reason")
+    ap.add_argument("--file", help="fil med plan-JSON")
+    ap.add_argument("--reason", default="")
     a = ap.parse_args()
     if a.selftest:
         _selftest()
         return 0
+    if a.queue:
+        r = call({"action": "list"})
+        if not r.get("ok"):
+            raise SystemExit(f"HQ svarede ikke: {r.get('error')}")
+        q = [{k: e.get(k) for k in ("id", "title", "detail", "source", "review")} for e in council_queue(r.get("experiments") or [])]
+        print(json.dumps({"ideer": q, "geoQueries": r.get("geoQueries") or []}, ensure_ascii=False, indent=1))
+        return 0
+    if a.plan:
+        from crm_posts import reachable
+        geo = call({"action": "list"}).get("geoQueries") or []
+        plan = parse_plan(Path(a.file).read_text(encoding="utf-8"), geo, reachable)
+        r = call({"action": "plan", "id": a.plan, "plan": plan})
+        print(json.dumps(r, ensure_ascii=False)[:400])
+        return 0 if r.get("ok") else 1
+    if a.drop:
+        r = call({"action": "councilDrop", "id": a.drop, "reason": a.reason[:400]})
+        print(json.dumps(r, ensure_ascii=False)[:400])
+        return 0 if r.get("ok") else 1
     from crm_posts import reachable
     Runner(dry_run=a.dry_run, reachable=reachable).run(a.limit)
     return 0

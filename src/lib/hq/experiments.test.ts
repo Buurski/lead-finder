@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { __setStore, InMemoryStore } from "../store.ts";
 import { CompetitorInputError } from "./competitors.ts";
 import {
-  MAX_ACTIVE, createExperiment, decideExperiment, deleteExperiment, listExperiments, measureGeo, measureGsc,
+  MAX_ACTIVE, councilDrop, createExperiment, decideExperiment, deleteExperiment, listExperiments, measureGeo, measureGsc,
   planExperiment, reviewExperiment, saveBaseline, saveResult, startExperiment,
 } from "./experiments.ts";
 
@@ -14,7 +14,7 @@ const input = (title = "Test lange title-tags med lokale ord") => ({
   title, detail: "Konkurrenterne har bynavne i title.", source: { kind: "seo", from: "konkurrent", url: "https://bureau-a.dk", competitor: "Bureau A" },
 });
 const review = (verdict: "test" | "drop") => ({ scores: [{ navn: "relevans", rating: 4, conf: 0.8 }], verdict, reason: "Relevant for lokale kunder." });
-const plan = { hypothesis: "Bynavne i title giver flere klik.", change: "Skriv title om på /webdesign-herning.", metric: { type: "gsc_page", target: "https://kinly.dk/webdesign-herning" }, days: 7, success: "Flere klik end ugen før." };
+const plan = { hypothesis: "Bynavne i title giver flere klik.", change: "Skriv title om på /webdesign-herning.", metric: { type: "gsc_page", target: "https://kinly.dk/webdesign-herning" }, days: 14, success: "Flere klik end de 14 dage før.", council: { model: "gpt-6-sol", notes: ["SEO: bynavn i title matcher søgningen.", "Skeptiker: lille volumen, men billig at teste."] } };
 const rejects = (p: Promise<unknown>) => assert.rejects(p, CompetitorInputError);
 
 test("hele livsløbet: vurderes → klar → tester → resultat → beholdt", async () => {
@@ -22,10 +22,12 @@ test("hele livsløbet: vurderes → klar → tester → resultat → beholdt", a
   assert.equal(e.status, "vurderes");
   assert.equal(e.createdBy, "lucas");
   assert.equal((await reviewExperiment(e.id, review("test"))).status, "vurderes");
-  assert.equal((await planExperiment(e.id, plan)).status, "klar");
+  const planned = await planExperiment(e.id, plan);
+  assert.equal(planned.status, "klar");
+  assert.equal(planned.plan?.council?.notes.length, 2);
   const started = await startExperiment(e.id, new Date("2026-09-28T08:00:00Z"));
   assert.equal(started.status, "tester");
-  assert.equal(started.test?.endsAt, "2026-10-05T08:00:00.000Z");
+  assert.equal(started.test?.endsAt, "2026-10-12T08:00:00.000Z");
   await saveBaseline(e.id, { at: "2026-09-28T09:00:00Z", window: { start: "2026-09-18", end: "2026-09-24" }, clicks: 2, impressions: 80, ctr: 0.025, position: 9.1 });
   await rejects(saveBaseline(e.id, { at: "2026-09-28T09:00:00Z" })); // kun én baseline
   const res = await saveResult(e.id, { at: "2026-10-08T09:00:00Z", clicks: 5, impressions: 120, position: 7.4 }, { verdict: "behold", summary: "Klik 2 → 5." });
@@ -40,6 +42,16 @@ test("review drop ⇒ droppet med grund; kan ikke planlægges bagefter", async (
   assert.equal(d.status, "droppet");
   assert.equal(d.review?.reason, "Relevant for lokale kunder.");
   await rejects(planExperiment(e.id, plan));
+});
+
+test("council-drop: kun efter Jev-test, sætter droppet med rådets grund", async () => {
+  const e = await createExperiment(input("Council-dropper"), "lucas");
+  await rejects(councilDrop(e.id, "for lille effekt")); // intet review endnu
+  await reviewExperiment(e.id, review("test"));
+  const d = await councilDrop(e.id, "Google viser ingen efterspørgsel.");
+  assert.equal(d.status, "droppet");
+  assert.equal(d.review?.reason, "Council: Google viser ingen efterspørgsel.");
+  await rejects(councilDrop(e.id, "igen")); // ikke længere vurderes
 });
 
 test("forkerte overgange afvises", async () => {
@@ -61,6 +73,8 @@ test("streng validering: ukendte felter, forkert metrik, forkert kilde", async (
   await rejects(planExperiment(e.id, { ...plan, metric: { type: "gsc_page", target: "https://evil.dk/" } }));
   await rejects(planExperiment(e.id, { ...plan, metric: { type: "tal", target: "x" } }));
   await rejects(planExperiment(e.id, { ...plan, days: 30 }));
+  await rejects(planExperiment(e.id, { ...plan, days: 7 }));
+  await rejects(planExperiment(e.id, { ...plan, council: { model: "x", notes: "ikke en liste" } }));
   await rejects(reviewExperiment(e.id, { ...review("test"), scores: [{ navn: "x", rating: 9, conf: 0.8 }] }));
   const long = await createExperiment({ ...input("x".repeat(500)), detail: "y".repeat(5000) }, "lucas");
   assert.equal(long.title.length, 120);
