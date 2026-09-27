@@ -115,4 +115,15 @@ test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra 
     assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, where);
     assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
   }
+  // "mekanisk" (et maskinværksted) er hverken auto eller VVS. Mail-vejen er
+  // fail-closed: branchKind giver "other", så udkastet kræver ingen case.
+  // DM'en har kun seks grupper og ingen "uden case"-tilstand, så den falder til
+  // håndværksgruppen — kendt og ikke-blokerende. Det der SKAL holde i begge veje
+  // er at et mekanik-ord AUTO ikke fanger aldrig giver auto-sporet.
+  for (const [branch, name] of [["mekanisk værksted", "Mekanisk Værksted ApS"], ["mekanisk", "KB Mekanisk"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.notEqual(branchGroupFor(branch, name), "service", `${where}: DM'en bruger auto-sporet`);
+    assert.notEqual(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
+    assert.notEqual(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, `${where}: Ikast-casen bruges for et maskinværksted`);
+  }
 });
