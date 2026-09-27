@@ -9,7 +9,8 @@ import type { KinlyGsc } from "./seo-signals.ts";
 
 export interface GscRow { keys?: string[]; clicks: number; impressions: number; position: number }
 /** Én searchanalytics.query. Kaster { code: 403|404 } når ejendommen ikke findes/ikke er delt. */
-export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number }) => Promise<GscRow[]>;
+export type GscFilter = { dimension: "page" | "query"; operator: "equals"; expression: string };
+export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number; dimensionFilterGroups?: { filters: GscFilter[] }[] }) => Promise<GscRow[]>;
 
 const DAY = 86_400_000;
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -28,8 +29,8 @@ export function hostOf(website: string): string | null {
   }
 }
 
-const candidates = (host: string) => [`sc-domain:${host}`, `https://${host}/`, `https://www.${host}/`];
-const noAccess = (err: unknown) => [403, 404].includes(Number((err as { code?: number }).code));
+export const candidates = (host: string) => [`sc-domain:${host}`, `https://${host}/`, `https://www.${host}/`];
+export const noAccess = (err: unknown) => [403, 404].includes(Number((err as { code?: number }).code));
 
 export interface GscSnapshotInput {
   property: string;

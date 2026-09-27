@@ -46,6 +46,7 @@ const NAV_SEARCHABLE_EXTRA: NavItem[] = [
   { href: "/blog", label: "Blog", icon: "Rss", hint: "Blogindlæg: idé til udgivet" },
   { href: "/konkurrenter", label: "Konkurrenter", icon: "Users", hint: "Konkurrentanalyse, mønstre og huller" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
+  { href: "/tests", label: "Tests", icon: "Target", hint: "Idéer vi afprøver på kinly.dk i en uge" },
 ];
 
 // Flad liste til ⌘K: hele IA'en, rail-item først.
@@ -120,6 +121,7 @@ export const SECTIONS: Section[] = [
       { href: "/blog", label: "Blog" },
       { href: "/konkurrenter", label: "Konkurrenter" },
       { href: "/seo", label: "SEO" },
+      { href: "/tests", label: "Tests" },
     ],
   },
 ];

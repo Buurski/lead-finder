@@ -22,6 +22,7 @@ import type {
   MessagingAngle,
 } from "@/lib/hq/competitors";
 import Icon from "@/components/shell/Icon";
+import AfproevButton from "./AfproevButton";
 import "./konkurrenter.css";
 
 export interface KinlyRow {
@@ -278,6 +279,16 @@ function FindingCard({ f, big = false, onDismiss }: { f: DisplayFinding; big?: b
             {btnLabel("gem", "Gem til senere", "✓ Gemt")}
           </button>
         )}
+        <AfproevButton
+          title={f.title}
+          detail={f.detail}
+          source={{
+            kind: f.category,
+            from: "konkurrent",
+            ...(f.url ? { url: f.url } : {}),
+            ...(f.evidence.length ? { competitor: f.evidence.join(", ").slice(0, 120) } : {}),
+          }}
+        />
         <button type="button" className="cc-btn konk-action-dismiss" onClick={doDismiss}>Afvis</button>
       </div>
       {error && <span className="konk-finding-error">{error}</span>}
