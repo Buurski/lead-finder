@@ -23,17 +23,25 @@ const DEMO_URLS = {
   service: DEMO_SITES.ikastCase,
 };
 
+// Fitness/træning er ikke skønhed: "wellness"/"spa" fangede et træningscenter i
+// beauty-gruppen og bød det VIDA-casen (en skønhedsklinik) som eksempel. Samme
+// ord som demos.ts bruger, så de to veje ikke driver fra hinanden.
+const FITNESS = /fitness|træningscenter|traeningscenter|crossfit|\bgym\b|personlig træner|personlig traener|\bpt\b|yoga|pilates|spinning|bootcamp|kampsport|boksning/i;
 // Massage/kropsterapi har ingen demo der ligner — Salon Artec er en frisørsalon.
 // Samme greb som fitness: projektoversigten er vores eget arbejde, ikke en
 // fremmed branches case. NB: samme streng står i demos.ts (D.projekter); hold
 // dem i takt indtil værterne udledes fra én kilde.
 const MASSAGE = /massage|kropsterapi/i;
+// Træning og massage har ingen demo der ligner. Projektoversigten er vores
+// eget arbejde — ikke en fremmed branches case.
 const PROJEKTER = "https://kinly.dk/projekter/";
 
 export function branchGroupFor(branch: string, name: string): MsgGroup {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
-  // Massage har ingen egen MsgGroup; gruppen er kun intern (kvote og reservelabel
-  // i select.ts/UI'et), mens demo-link og visningsnavn styres i de to næste funktioner.
+  // Træning og massage har ingen egen MsgGroup; gruppen er kun intern (kvote
+  // og reservelabel i select.ts/UI'et), mens demo-link og visningsnavn styres
+  // i de to næste funktioner.
+  if (FITNESS.test(b)) return "service";
   if (MASSAGE.test(b)) return "service";
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
@@ -45,6 +53,7 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
 
 export function demoUrlFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (FITNESS.test(b)) return PROJEKTER;
   if (MASSAGE.test(b)) return PROJEKTER;
   if (group === "beauty") {
     if (/barber|herrefr/.test(b)) return DEMO_URLS.beautyBarber;
@@ -65,11 +74,13 @@ export function demoUrlFor(group: MsgGroup, branch: string, name: string): strin
 
 export function branchDisplayFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (FITNESS.test(b)) return "træningscenter";
   if (MASSAGE.test(b)) return "massageklinik";
   if (group === "beauty") {
     if (/barber/.test(b)) return "barbersalon";
     if (/negl|nail/.test(b)) return "negleklinik";
-    // "klinik" med, så visningsnavnet følger demoUrlFor's klinik-gren: en skønhedsklinik blev ellers kaldt "frisørsalon" i udkastet.
+    // "klinik" med, så visningsnavnet følger demoUrlFor's klinik-gren: en
+    // skønhedsklinik blev ellers kaldt "frisørsalon" i udkastet.
     if (/hud|spa|kosmet|klinik/.test(b)) return "hudklinik";
     return "frisørsalon";
   }
