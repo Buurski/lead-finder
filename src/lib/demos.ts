@@ -455,8 +455,16 @@ const DEMO_PROMISE_PATTERNS: RegExp[] = [
   /\bet par eksempler\b/i, // "et par eksempler"
   // "eksempel" og "eksempler" har ikke samme stamme (eksemp-el / eksemp-ler),
   // så begge endelser står eksplicit her.
-  /\beksemp(?:el|ler)\b[^.!?\n]{0,40}\b(?:jeg|vi)\s+har\s+(?:lavet|bygget)/i, // "et eksempel jeg har bygget"
+  /\beksemp(?:el|ler)\b[^.!?\n]{0,40}\b(?:jeg|vi)\s+(?:selv\s+)?har\s+(?:lavet|bygget|kodet)/i, // "et eksempel jeg har bygget", "et eksempel jeg selv har bygget"
   /\bnogle af de sider (?:jeg|vi) har bygget\b/i,
+  // 28/9: synonymerne. "sider/hjemmesider/eksempler/demoer" i nærheden af
+  // "(jeg|vi) selv har lavet|bygget|kodet" — begge rækkefølger, for påstanden
+  // skrives både "et par sider jeg har lavet" og "jeg har lavet et par sider".
+  // De ærlige linjer ("Her er min side og nogle relevante links:", "Her er min
+  // egen side.") og udkast-tilbuddet ("laver jeg gerne et gratis udkast ...")
+  // har ingen af delene og rammes ikke.
+  /\b(?:sider|hjemmesider?|eksemp(?:el|ler)|demo(?:er|en)?)\b[^.!?\n]{0,40}\b(?:jeg|vi)\s+(?:selv\s+)?har\s+(?:lavet|bygget|kodet)\b/i,
+  /\b(?:jeg|vi)\s+(?:selv\s+)?har\s+(?:lavet|bygget|kodet)\b[^.!?\n]{0,40}\b(?:sider|hjemmesider?|eksemp(?:el|ler)|demo(?:er|en)?)\b/i,
   /\bsådan (?:kan|kunne) det\b[^.!?\n]{0,20}\bse ud\b/i, // demoIntro: "Sådan kunne det fx se ud"
   /\bdet er (?:bare|kun) (?:eksempler|demoer)\b/i,
   /\bdet er kun for at vise idéen\b/i,
@@ -466,7 +474,7 @@ const DEMO_PROMISE_PATTERNS: RegExp[] = [
 // når der faktisk er et link i teksten at vise det med. Udkast-tilbuddet
 // ("...hvordan en side for X kunne se ud, ...") er fremtid og rammer ikke mønstret.
 const DEMO_LOOK_NOW = /\bsådan (?:kan|kunne) (?:jeres|din|en)\s+side\b[^.!?\n]{0,25}\bse ud\b/i;
-const LINK_LINE = /^\s*→\s*https?:\/\//m;
+const LINK_LINE = /^\s*(?:→|[-*]|Se:|Her:)\s*https?:\/\//im;
 
 export function hasDemoPromise(text: string): boolean {
   if (DEMO_PROMISE_PATTERNS.some((re) => re.test(text))) return true;

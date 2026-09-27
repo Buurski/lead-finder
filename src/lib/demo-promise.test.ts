@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { draft_personal_message } from "./draft.ts";
 import { composeColdEmail } from "./compose.ts";
 import { composeStep } from "./hq/sequence.ts";
-import { DEMO_SITES, KINLY_FRONT, REFERENCE_INTRO, referenceLines } from "./demos.ts";
+import { DEMO_SITES, KINLY_FRONT, REFERENCE_INTRO, hasDemoPromise, referenceLines } from "./demos.ts";
 import type { ResearchLead, ResearchResult } from "./research.ts";
 import { __setStore, InMemoryStore } from "./store.ts";
 
@@ -89,6 +89,39 @@ test("sequence 'eksempel': ingen påstand om sider vi ikke viser", () => {
     assert.ok(s.body.includes("Skal jeg sende et udkast?"), where);
     const linkPara = s.body.split("\n\n").find((p) => p.includes("→ "));
     assert.equal(linkPara, para(c.links), `${where}: ${s.body}`);
+  }
+});
+
+// ---- 28/9: de sidste to huller i demo-løfte-heuristikken --------------------
+// RØD på agent/0928-0056-lead-system @ 14d4ffd: "sider jeg har lavet" og "sider
+// vi selv har bygget" slap igennem, og DEMO_LOOK_NOW tændte kun på "→ https://"
+// — ikke på "- ", "* ", "Se: " og "Her: ".
+test("hasDemoPromise: synonym-påstande om egne sider fanges", () => {
+  for (const t of [
+    "her er et par sider jeg har lavet",
+    "to sider vi selv har bygget",
+    "se et par eksempler jeg selv har lavet",
+  ]) {
+    assert.equal(hasDemoPromise(t), true, t);
+  }
+});
+
+test("hasDemoPromise: andre linklinje-præfikser tæller med DEMO_LOOK_NOW", () => {
+  const lookNow = "Sådan kan jeres side se ud";
+  for (const p of ["→ ", "- ", "* ", "Se: ", "Her: "]) {
+    assert.equal(hasDemoPromise(`${p}https://kinly.dk/\n${lookNow}`), true, p);
+  }
+  // Uden linklinje er nutids-præsentationen alene ikke et løfte.
+  assert.equal(hasDemoPromise(`Her er min egen side.\n${lookNow}`), false);
+});
+
+test("hasDemoPromise: de ærlige linjer og udkast-tilbuddet er ikke et løfte", () => {
+  for (const t of [
+    REFERENCE_INTRO,
+    "Her er min egen side.",
+    "Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for Test VVS ApS kunne se ud, så kan I vurdere idéen helt konkret.",
+  ]) {
+    assert.equal(hasDemoPromise(t), false, t);
   }
 });
 
