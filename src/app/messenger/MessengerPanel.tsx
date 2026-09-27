@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "@/components/shell/Icon";
+import { safeHref } from "@/lib/safe-href";
 
 interface Candidate {
   id: string;
@@ -48,7 +49,7 @@ function CandidateCard({ c, onMark }: { c: Candidate; onMark: (id: string, actio
           <div className="cc-dim" style={{ fontSize: 12.5 }}>{c.branch || c.category} · {c.city || "ukendt by"} · {c.reviews} anmeldelser</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a className="cc-btn" href={c.fbPageUrl} target="_blank" rel="noreferrer"><Icon name="Search" style={{ width: 14, height: 14 }} /> FB-side</a>
+          <a className="cc-btn" href={safeHref(c.fbPageUrl)} target="_blank" rel="noreferrer"><Icon name="Search" style={{ width: 14, height: 14 }} /> FB-side</a>
           <a className="cc-btn cc-btn-accent" href={c.messengerUrl} target="_blank" rel="noreferrer"><Icon name="MessageSquare" style={{ width: 14, height: 14 }} /> Åbn Messenger</a>
         </div>
       </div>
