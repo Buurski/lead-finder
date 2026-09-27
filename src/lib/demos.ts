@@ -165,21 +165,32 @@ const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|lase
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
 // VVS/el/kloak/varme — de ægte håndværksord. "mekaniker" står ikke her: ordet er
-// tvetydigt og ejes af AUTO/auto-sporet (se isAutoBranch nedenfor).
+// tvetydigt og ejes af mekanik-sporet (se isAutoBranch nedenfor).
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
-// Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
-// "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
+// Entydige autoværksted-ord. De vinder over et håndværksord i firmanavnet:
+// "Smedegaard Autoservice" er et værksted, ikke en smed.
+const AUTO_STRONG = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
+// "mekanik" alene er tvetydigt: en mekaniker er auto, men "VVS & Mekanik" er en
+// VVS-kunde. Derfor taber det til et ægte håndværksord (CRAFT_UTIL) og vinder
+// ellers. Rækkefølgen er låst af test i både mail- og DM-vejen.
+const AUTO_MECHANIC = /mekanik/i;
 
-// Præcedensen mellem de to spor, ét sted: et ægte VVS-/el-/kloak-/varme-ord
-// (CRAFT_UTIL) vinder over "mekanik". Et firma der både er "VVS & Mekanik" er en
-// VVS-kunde (KT VVS) og ikke et autoværksted, så "mekanik" må ikke alene sende
-// leadet i auto-sporet — hverken til Ikast-casen eller til automekaniker-siden.
-// Ellers er et mekanik-ord auto. Rækkefølgen er låst af test (demos.test.ts,
+// Præcedensen mellem de tre ordgrupper, ét sted, i denne rækkefølge:
+//   1. AUTO_STRONG — et entydigt autoværksted-ord afgør sagen med det samme, også
+//      når firmanavnet samtidig bærer et kort håndværks-ord ("El-Biler Autoservice"
+//      rammer "el-", "Smedegaard Autoservice" rammer "smed"). Uden dette trin
+//      vandt håndværksordet og kladden krævede KT VVS-casen + VVS-siden for et
+//      rigtigt værksted.
+//   2. AUTO_MECHANIC over CRAFT_UTIL — "mekanik" er tvetydigt, så et ægte
+//      VVS-/el-/kloak-/varme-ord vinder. Et firma der både er "VVS & Mekanik" er
+//      en VVS-kunde (KT VVS), ikke et autoværksted.
+//   3. Ellers er et rent mekanik-ord auto (mekaniker, bilmekaniker, mekanikeren).
+// Rækkefølgen er låst af test i begge veje (demos.test.ts,
 // messenger/compose.test.ts), og DM- og mail-vejen deler denne funktion, så de
 // ikke kan drive fra hinanden.
 export function isAutoBranch(text: string): boolean {
-  return AUTO.test(text) && !CRAFT_UTIL.test(text);
+  if (AUTO_STRONG.test(text)) return true;
+  return AUTO_MECHANIC.test(text) && !CRAFT_UTIL.test(text);
 }
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;

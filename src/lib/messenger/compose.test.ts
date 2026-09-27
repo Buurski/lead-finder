@@ -103,7 +103,11 @@ test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra 
     assert.deepEqual(validateMessengerDraft(d.text), [], where);
   }
   // Den rene mekaniker skal fortsat i service-gruppen (Ikast-casen + "mekaniker").
+  // Også når firmanavnet bærer et håndværksord: "Smedegaard Autoservice" rammer
+  // CRAFT_UTIL, men AUTO_STRONG ("autoservice") vinder og holder den i auto-sporet.
   for (const [branch, name] of [
+    ["autoservice", "Smedegaard Autoservice"],
+    ["autoservice", "El-Biler Autoservice"],
     ["mekaniker", "Mekanikeren ApS"],
     ["bilmekaniker", "Bilerne"],
     ["mekanik", "Mekanikeren"],

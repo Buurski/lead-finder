@@ -524,6 +524,18 @@ test("et ægte VVS-/el-ord slår \"mekanik\": VVS & Mekanik → KT VVS, ikke aut
     assert.ok(links.some((l) => l.url === DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen mangler i forslaget`);
     assert.ok(!links.some((l) => l.url === DEMO_SITES.ikastCase), `${where}: Ikast-casen foreslås for en VVS-kunde`);
   }
+  // Den modsatte vej (27/9): et entydigt værksted-ord slår et håndværksord i
+  // firmanavnet. "Smedegaard Autoservice" rammer CRAFT_UTIL ("smed") og
+  // "El-Biler Autoservice" rammer "el-", men begge er værksteder — AUTO_STRONG
+  // afgør sagen, før håndværksordet kommer i spil.
+  for (const [branch, name] of [["autoservice", "Smedegaard Autoservice"], ["autoservice", "El-Biler Autoservice"], ["autoværksted", "Smed Autoværksted"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "auto", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(refs.verticalUrl, AUTOMEKANIKER_SIDE, where);
+    assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen staar i vaerksted-linjerne`);
+  }
 });
 
 test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => {
