@@ -40,7 +40,9 @@ export function scoreLabel(score: number): string {
 // Afsluttende HTML-entitet, evt. dobbelt-escaped (rå "&gt;" i kilden bliver
 // "&amp;gt;"): den hører til sætningen og skal ud i ét stykke, så href aldrig
 // ender med fx "…/p&gt" og et løst semikolon ude i teksten.
-const ENTITY_TAIL = /&(?:[a-zA-Z][a-zA-Z0-9]*|#\d+);(?:[a-zA-Z][a-zA-Z0-9]*;?)?$/;
+// Anden del kræver sit eget semikolon: en ægte query-flag i escapt tekst
+// ("…?a=1&amp;debug") er IKKE en entitet og må ikke klippes ud af href.
+const ENTITY_TAIL = /&(?:[a-zA-Z][a-zA-Z0-9]*|#\d+);(?:[a-zA-Z][a-zA-Z0-9]*;)?$/;
 
 // Klippende tegnsætning (.,;:!?—…) og ubalancerede lukke-klammer ryger ud af
 // adressen, mens balancerede par (fx /wiki/Foo_(bar)) bliver i den.

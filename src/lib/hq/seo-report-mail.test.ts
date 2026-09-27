@@ -101,6 +101,35 @@ test("rapport-mail: afsluttende HTML-entiteter rives ikke over (intet løst semi
   assert.ok(hrefs(body("Se https://demo.dk/p&amp; her")).every((h) => !/[&;]$/.test(h)));
 });
 
+// Bug (27-09): anden del af ENTITY_TAIL var valgfri MED semikolon (`;?`), så en
+// ægte query-flag i escapt tekst (&amp;debug) blev revet ud af href og endte som
+// synlig hale. Kun hele, reelle entiteter må klippes.
+test("rapport-mail: query-flag efter &amp; bliver i href", () => {
+  const keep: [string, string][] = [
+    ["Se https://demo.dk/p?a=1&debug her", "https://demo.dk/p?a=1&amp;debug"],
+    ["Se https://demo.dk/p?a=1&b=2 her", "https://demo.dk/p?a=1&amp;b=2"],
+    ["Se https://demo.dk/p&debug her", "https://demo.dk/p&amp;debug"],
+  ];
+  for (const [b, want] of keep) {
+    const html = body(b);
+    assert.ok(hrefs(html).includes(want), `${b} → ${hrefs(html).join(", ")}`);
+    assert.match(html, new RegExp(`href="${rx(want)}" style="color:#a63b05;">${rx(want)}</a> her`), b);
+  }
+
+  // Reelle og dobbelt-escapede entiteter klippes stadig helt ud, uden løst semikolon.
+  const strip: [string, string][] = [
+    ["Se https://demo.dk/p> her", "&gt;"],
+    ["Se https://demo.dk/p& her", "&amp;"],
+    ["Se https://demo.dk/p&quot; her", "&amp;quot;"],
+    ["Se https://demo.dk/p&gt; her", "&amp;gt;"],
+  ];
+  for (const [b, tail] of strip) {
+    const html = body(b);
+    assert.match(html, new RegExp(`href="https://demo\\.dk/p" style="color:#a63b05;">https://demo\\.dk/p</a>${rx(tail)} her`), b);
+    assert.doesNotMatch(html, /<\/a>;/, b);
+  }
+});
+
 test("rapport-mail: path, query, fragment og case bevares i href og linktekst", () => {
   const html = body("Se https://Demo.DK/Sti/Side?a=1&b=2#Anker her");
   assert.ok(hrefs(html).includes("https://Demo.DK/Sti/Side?a=1&amp;b=2#Anker"));
