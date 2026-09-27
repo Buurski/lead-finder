@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, CUSTOMER_SITES } from "./demos.ts";
+import { previewBodyError } from "./hq/preview-send.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -410,4 +411,35 @@ test("link- og emne-gaten har én kilde og samme grundtekst i begge veje", () =>
   const preview = `${bare}\n→ ${DEMO_SITES.ktvvs}`;
   assert.match(linkGateReason(preview, "skønhedsklinik", "Klinik Test") ?? "", /^link-politik: kundens egen side må ikke linkes/);
   assert.equal(subjectGateReason(`Tilbud til KT VVS ${DEMO_SITES.ktvvs}`), `kunde-link i emne: ${DEMO_SITES.ktvvs} — brug kinly.dk-casen`);
+});
+
+// ---- Kunde-værnet: én kilde, hver kundevært (27/9) -------------------------
+// Testen læser registeret selv — en ny linje i CUSTOMER_SITES bliver dækket i
+// alle tre udgående veje automatisk: kroppen, emnet og udkastets preview-link.
+test("hver kundevært fanges i krop, emne og preview — casen er den eneste vej ud", () => {
+  const sites = Object.entries(CUSTOMER_SITES);
+  assert.ok(sites.length >= 13, "kunde-registeret er tømt");
+  for (const [key, url] of sites) {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    // Både adressen selv og dens www-form (begge er kundens egen side).
+    for (const u of [url, `https://www.${host}/x?y=1`]) {
+      const where = `${key}: ${u}`;
+      assert.equal(isCustomerSiteUrl(u), true, where);
+      const body = [...referenceLines("vvs", "KT VVS Test"), `-> ${u}`].join("\n");
+      const issues = missingReferenceLinks(body, "vvs", "KT VVS Test");
+      assert.ok(issues.some((i) => i.includes(host)), `${where} slap gennem kroppen: ${issues.join("; ")}`);
+      assert.ok((subjectGateReason(`Udkast til ${u}`) ?? "").includes(host), `${where} slap gennem emnet`);
+      const err = previewBodyError("Emne", `Hej\n\n${u}\n\n${KINLY_FRONT}`, u);
+      assert.ok(err && err.includes("kundens egen side"), `${where} slap gennem preview-linket: ${err}`);
+    }
+  }
+  // Den tilladte vej ud: kundens kinly.dk-case. Nøgler der ender på "Case"
+  // fanges automatisk, så en ny case ikke kan glemme sin egen test.
+  const cases = Object.entries(DEMO_SITES).filter(([k]) => k.endsWith("Case"));
+  assert.ok(cases.length >= 5, "case-listen er tom");
+  for (const [key, caseUrl] of cases) {
+    assert.equal(isCustomerSiteUrl(caseUrl), false, key);
+    assert.equal(subjectGateReason(`Udsendt udkast — ${caseUrl}`), null, key);
+    assert.equal(previewBodyError("Emne", `Hej\n\nSe ${caseUrl}\n\n${KINLY_FRONT}`, caseUrl), null, key);
+  }
 });

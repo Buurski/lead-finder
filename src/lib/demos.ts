@@ -9,20 +9,70 @@ export interface Demo {
   verticalUrl?: string;
 }
 
+// ---- Kunde-værn (Lucas 23/9) ---------------------------------------------
+// Værnets ENESTE kilde. DEMO_SITES' kunde-adresser peger herind (ktvvsPreview,
+// vida, ikast), så demo-register og værn ikke kan drive fra hinanden — og ingen
+// gate har sin egen liste.
+// Regel: en kundes egen side må ALDRIG linkes i en udgående tekst, kun kundens
+// kinly.dk-case. Findes der ingen case, er svaret fail-closed: intet link.
+// Ny kunde: én linje her. Værn, emne-gate, preview-gate og link-gate følger
+// automatisk. En undtagelse — en kunde der eksplicit er godkendt til at blive
+// linket direkte — må kun stå som en navngivet post med begrundelse og dato,
+// aldrig som en stille udvidelse. Ingen undtagelser pr. 27/9.
+export const CUSTOMER_SITES = {
+  // Kunder (aftale + kinly.dk-case)
+  ktvvs: "https://ktvvs.dk/", // KT VVS — kundens eget domæne; linkes via kinly.dk/case/kt-vvs/
+  ktvvsPreview: "https://ktvvs.vercel.app/", // KT VVS — VORES preview til dem; upubliceret, derfor ikke linkbar
+  vida: "https://vida-klinik.dk/", // VIDA Skønhedsklinik — eget domæne; linkes via kinly.dk/case/vida-klinik/
+  vidaShop: "https://vida-shop.dk/", // VIDA — webshoppen (Dandomain); ingen case for shoppen
+  ikast: "https://ikastautoservice.dk/", // Ikast AutoService — eget domæne; linkes via kinly.dk/case/ikast-autoservice/
+  jbcafeen: "https://jbcafeen.dk/", // Jernbanecafeen — kundens live-side (www.jbcafeen.dk); linkes via kinly.dk/case/jernbanecafeen/
+  lejEnKok: "https://lej-en-kok.dk/", // Lej en Kok — canonical; linkes via kinly.dk/case/lej-en-kok/
+  lejenkok: "https://lejenkok.dk/", // Lej en Kok — 301 → www.lejenkok.dk (samme kunde, to værter)
+  // Demo bygget, ingen aftale (prospekt) — ingen case, derfor intet link
+  lillemaler: "https://lillemaler.dk/", // Den Lille Maler
+  streetcut: "https://street-cut.dk/", // Street Cut
+  mellow: "https://restaurantmellow.dk/", // Restaurant Mellow
+  midtadvokaterne: "https://midtadvokaterne.dk/", // MidtAdvokaterne
+  laCour: "https://kliniklacour.dk/", // la Cour Kosmetisk Klinik
+} as const;
+
+function hostKey(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
+}
+
+const CUSTOMER_HOSTS = new Set([...Object.values(CUSTOMER_SITES)].map(hostKey).filter(Boolean));
+
+export function isCustomerSiteUrl(url: string): boolean {
+  return CUSTOMER_HOSTS.has(hostKey(url));
+}
+
+// Kandidat uden whitespace-krav; (?<!@) = e-mail.
+export function customerSiteLinks(text: string): string[] {
+  const hits: string[] = [];
+  for (const m of text.matchAll(/(?<!@)(?:(?:https?:\/\/|\/\/)(?:[^\s/@]+@)?)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
+    const u = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
+    if (isCustomerSiteUrl(u) && !hits.includes(m[0])) hits.push(m[0]);
+  }
+  return hits;
+}
+
 // SINGLE SOURCE OF TRUTH for every demo-site URL. email.ts + messenger/compose.ts
 // import from here so a URL only ever changes in one place (consolidated 2026-06-06).
+// Kundeadresserne peger på kunde-værnet ovenfor, ikke på egne strenge.
 export const DEMO_SITES = {
   underKlippen: "https://under-klippen.vercel.app/",
   zaytoon: "https://zaytoon-six.vercel.app/",
   denlillemaler: "https://denlillemaler.vercel.app/",
-  ktvvs: "https://ktvvs.vercel.app/",
+  // Kunde-adresser peger på kunde-værnet (CUSTOMER_SITES) — én kilde.
+  ktvvs: CUSTOMER_SITES.ktvvsPreview,
   buurfoto: "https://buurfoto.vercel.app/",
   streetcut: "https://streetcut.vercel.app/",
   salonArtec: "https://salon-artec.vercel.app/Salon%20Artec.html",
   // VIDA reference-projekt ligger på eget domæne siden 2026-06-17.
-  vida: "https://vida-klinik.dk/",
+  vida: CUSTOMER_SITES.vida,
   // Ikast AutoService — reel kunde på eget domæne (autoværksted), live 2026-07-07.
-  ikastAutoservice: "https://ikastautoservice.dk/",
+  ikastAutoservice: CUSTOMER_SITES.ikast,
   vestfjends: "https://vestfjends.vercel.app/",
   midtadvokaterne: "https://midtadvokaterne-dttc.vercel.app/",
   // Rigtige kinly.dk case-sider (reelle kunder) — stærkere social proof end en
@@ -168,34 +218,6 @@ export function hasKinlyFront(text: string): boolean {
   return KINLY_FRONT_LINK.test(text);
 }
 
-/**
- * Rigtige kunders egne sider — også når de (som KT VVS) kun findes som vores
- * preview. De må kun optræde via deres kinly.dk-case (Lucas 23/9). KT VVS'
- * preview er upubliceret, så den er ikke et linkbart "demo" i et udkast: casen
- * er privacy-reviewet, det er preview-linket ikke.
- */
-const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
-
-function hostKey(url: string): string {
-  try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
-}
-
-const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
-
-export function isCustomerSiteUrl(url: string): boolean {
-  return CUSTOMER_HOSTS.has(hostKey(url));
-}
-
-// Kandidat uden whitespace-krav; (?<!@) = e-mail.
-export function customerSiteLinks(text: string): string[] {
-  const hits: string[] = [];
-  for (const m of text.matchAll(/(?<!@)(?:(?:https?:\/\/|\/\/)(?:[^\s/@]+@)?)?[a-z0-9.-]+\.[a-z]{2,}\.?(?:[/?#]\S*)?/gi)) {
-    const u = /^https?:/i.test(m[0]) ? m[0] : `https://${m[0].replace(/^\/\//, "")}`;
-    if (isCustomerSiteUrl(u) && !hits.includes(m[0])) hits.push(m[0]);
-  }
-  return hits;
-}
-
 export type BranchKind =
   | "clinic" | "barber" | "beauty" | "photo" | "foodIntl" | "food"
   | "professional" | "auto" | "craftUtility" | "craft" | "service" | "fitness" | "other";
@@ -295,7 +317,7 @@ export function referenceLines(branch: string, name = ""): string[] {
   // derfor fail-closed: intet case-link, ingen fremmed reference.
   const primary = pickDemos(branch, name)[0]?.url ?? null;
   const demoFallback =
-    l.caseUrl || !primary || CUSTOMER_SITES.has(primary) || primary.startsWith(KINLY_FRONT) ? null : primary;
+    l.caseUrl || !primary || isCustomerSiteUrl(primary) || primary.startsWith(KINLY_FRONT) ? null : primary;
   const urls: string[] = [];
   for (const u of [l.front, l.caseUrl ?? demoFallback, l.verticalUrl]) {
     if (u && !urls.includes(u)) urls.push(u);
