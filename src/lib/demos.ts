@@ -166,7 +166,8 @@ const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|m
 const PHOTO = /fotograf|foto|photo/i;
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter/i;
+// "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
+const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.

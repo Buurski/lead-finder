@@ -457,3 +457,44 @@ test("hver kundevært fanges i krop, emne og preview — casen er den eneste vej
     assert.equal(previewBodyError("Emne", `Hej\n\nSe ${caseUrl}\n\n${KINLY_FRONT}`, caseUrl), null, key);
   }
 });
+
+// ---- Mekaniker hører til auto, ikke VVS (27/9) -----------------------------
+// CRAFT_UTIL bar "mekaniker" alene, så et autoværksted med branchen "mekaniker"
+// blev craftUtility: udkastet krævede KT VVS-casen og VVS-siden. Nu står
+// "mekanik" også i AUTO, og branchKind tjekker AUTO før CRAFT_UTIL.
+const AUTOMEKANIKER_SIDE = "https://kinly.dk/hjemmeside-til-automekaniker/";
+const VVS_SIDE = "https://kinly.dk/hjemmeside-til-vvs/";
+
+test("mekaniker → auto (Ikast-casen + automekaniker-siden), VVS/el → KT VVS", () => {
+  // Mekaniker uden auto-forstavelse: casen er Ikast AutoService, ikke KT VVS.
+  assert.equal(branchKind("mekaniker", "Mekanikeren ApS"), "auto");
+  const refs = referenceLinks("mekaniker", "Mekanikeren ApS");
+  assert.equal(refs.caseUrl, DEMO_SITES.ikastCase);
+  assert.equal(refs.verticalUrl, AUTOMEKANIKER_SIDE);
+  assert.equal(refs.caseMissing, false);
+  const lines = referenceLines("mekaniker", "Mekanikeren ApS").join("\n");
+  assert.ok(lines.includes(DEMO_SITES.ikastCase), "Ikast-casen mangler");
+  assert.ok(lines.includes(AUTOMEKANIKER_SIDE), "automekaniker-siden mangler");
+  assert.ok(!lines.includes(DEMO_SITES.ktvvsCase), "KT VVS-casen står i mekaniker-linjerne");
+  const links = suggestMailLinks("mekaniker", "Mekanikeren ApS");
+  assert.ok(links.some((l) => l.url === DEMO_SITES.ikastCase), "Ikast-casen mangler i forslaget");
+  assert.ok(!links.some((l) => l.url === DEMO_SITES.ktvvsCase), "KT VVS-casen foreslås for en mekaniker");
+  // De to varianter der allerede ramte auto, skal blive der.
+  for (const branch of ["automekaniker", "autoværksted"]) {
+    assert.equal(branchKind(branch, "Bilerne"), "auto", branch);
+    const r = referenceLinks(branch, "Bilerne");
+    assert.equal(r.caseUrl, DEMO_SITES.ikastCase, branch);
+    assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, branch);
+  }
+  // VVS og el er uændret craftUtility — de skal have KT VVS, ikke Ikast.
+  for (const [branch, name] of [["vvs", "VVS Test"], ["elektriker", "El Test"]]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "craftUtility", where);
+    const r = referenceLinks(branch, name);
+    assert.equal(r.caseUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(r.verticalUrl, VVS_SIDE, where);
+    const l = suggestMailLinks(branch, name);
+    assert.ok(l.some((x) => x.url === DEMO_SITES.ktvvsCase), `KT VVS-casen mangler for ${where}`);
+    assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), `Ikast-casen foreslået for ${where}`);
+  }
+});
