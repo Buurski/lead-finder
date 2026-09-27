@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, MAIL_LINKS, pairLinkHref } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -410,4 +410,18 @@ test("link- og emne-gaten har én kilde og samme grundtekst i begge veje", () =>
   const preview = `${bare}\n→ ${DEMO_SITES.ktvvs}`;
   assert.match(linkGateReason(preview, "skønhedsklinik", "Klinik Test") ?? "", /^link-politik: kundens egen side må ikke linkes/);
   assert.equal(subjectGateReason(`Tilbud til KT VVS ${DEMO_SITES.ktvvs}`), `kunde-link i emne: ${DEMO_SITES.ktvvs} — brug kinly.dk-casen`);
+});
+test("pairLinkHref: kunde-preview og farlige skemaer er ikke klikbare, legitime par er", () => {
+  for (const u of ["https://ktvvs.vercel.app/", "ktvvs.vercel.app", "https://vida-klinik.dk/", "https://ikastautoservice.dk/"]) {
+    assert.equal(pairLinkHref(u), undefined, `kunde-preview må ikke linkes: ${u}`);
+  }
+  for (const u of ["javascript:alert(1)", "data:text/html,<b>x", ""]) {
+    assert.equal(pairLinkHref(u), undefined, `må ikke blive et href: ${u}`);
+  }
+  assert.equal(pairLinkHref("https://kinly.dk/case/vida-klinik/"), "https://kinly.dk/case/vida-klinik/");
+  assert.equal(pairLinkHref("https://under-klippen.vercel.app/"), "https://under-klippen.vercel.app/");
+  for (const l of MAIL_LINKS) {
+    if (isCustomerSiteUrl(l.url)) continue;
+    assert.equal(typeof pairLinkHref(l.url), "string", `${l.url} skal kunne klikkes`);
+  }
 });
