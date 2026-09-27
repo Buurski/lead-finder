@@ -29,3 +29,12 @@ test("StudioGrid tegner demo-kataloget gennem safeHref", () => {
   assert.ok(src.includes("href={safeHref(d.url)}"), "demo-ankeret gaar ikke gennem safeHref");
   assert.ok(!src.includes("href={d.url}"), "raa href={d.url} findes stadig");
 });
+
+// Jev-skyggesiden tegner lead.website (scrapet kolonne) direkte i et anker.
+// (60d4462: negativ/positiv kontrol ovenfor, kildekode-tjek her.)
+test("jev-shadow-siden sender r.url gennem safeHref", () => {
+  const src = readFileSync(new URL("../app/jev-shadow/page.tsx", import.meta.url), "utf8");
+  assert.ok(!src.includes("href={r.url}"), "jev-shadow/page.tsx må ikke bruge r.url råt i href");
+  assert.ok(src.includes("safeHref(r.url)"), "jev-shadow/page.tsx skal bruge safeHref(r.url)");
+});
+
