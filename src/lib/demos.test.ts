@@ -338,7 +338,12 @@ test("kunde-previewet er ude af demo-kataloget og af craft/service-parret", asyn
 // træningscenter til "clinic" når branchen indeholdt "wellness" eller navnet
 // indeholdt "Spa". Så krævede referenceLines VIDA-casen og skønhedsklinik-siden
 // i mailen til et fitnesscenter — og suggestMailLinks bød dem direkte. Nu
-// routes fitness FØR CLINIC i branchKind, og hele kæden følger den.
+// routes fitness FØR CLINIC i branchKind, og mail-/compose-kæden følger den:
+// branchKind, referenceLinks, referenceLines, pickDemos og suggestMailLinks.
+// KENDT ÅBEN: DM-/Messenger-vejen har sin EGEN gruppering i
+// src/lib/messenger/compose.ts (group()) og giver et fitnesscenter beauty,
+// "frisørsalon" og VIDA-klinikcasen endnu. Den har sit eget kanban-kort
+// t_a44305e8 og rettes ikke her.
 const FITNESS_LEADS: [string, string][] = [
   ["Fitnesscenter / wellness", "Pure Performance Fitness"],
   ["Træningscenter", "Test Spa"],              // "Spa" i navnet = CLINIC-fælden
@@ -346,7 +351,7 @@ const FITNESS_LEADS: [string, string][] = [
   ["Fitnesscenter", "Fitness 3"],              // hash-routede før til VIDA-casen
 ];
 
-test("fitness/træning routes som fitness hele vejen — ingen VIDA-case, ingen klinik-side", () => {
+test("fitness/træning routes som fitness i mail-/compose-vejen — ingen VIDA-case, ingen klinik-side", () => {
   for (const [branch, name] of FITNESS_LEADS) {
     const where = `${branch} | ${name}`;
     assert.equal(branchKind(branch, name), "fitness", where);

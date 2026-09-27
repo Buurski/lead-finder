@@ -5,7 +5,7 @@ import type { Db } from "../db/client.ts";
 import { activity } from "../db/schema.ts";
 import { claimBlocksStatus, hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
 import { acquireLock, releaseLock } from "../send-safety.ts";
-import { KINLY_FRONT } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT } from "../demos.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -154,10 +154,12 @@ test("sendt krav er endeligt: kun 'sendt/lukket' tilladt; intet krav blokerer in
 test("previewBodyError: samme krav som send (Sol w4a-r2 R2)", async () => {
   const { previewBodyError } = await import("./preview-send.ts");
   const url = "https://kinly.dk/udkast/x";
-  assert.equal(previewBodyError(`Se ${url}`, url), null);
-  assert.match(previewBodyError("uden link", url) ?? "", /linket/);
-  assert.match(previewBodyError("x".repeat(5001) + url, url) ?? "", /for lang/);
-  assert.match(previewBodyError(`Se ${url}`, undefined) ?? "", /intet link/);
+  // F1 27/9: front-linket er nu også en del af previewBodyError, så en gyldig tekst skal bære det.
+  assert.equal(previewBodyError("Emne", `Se ${url}\n\nMin egen side: ${KINLY_FRONT}`, url), null);
+  assert.match(previewBodyError("Emne", `Se ${url}`, url) ?? "", /linket til kinly\.dk/);
+  assert.match(previewBodyError("Emne", "uden link", url) ?? "", /linket/);
+  assert.match(previewBodyError("Emne", "x".repeat(5001) + url, url) ?? "", /for lang/);
+  assert.match(previewBodyError("Emne", `Se ${url}`, undefined) ?? "", /intet link/);
 });
 
 test("SEO-tjek-henvendelse: sendes uden demo-link fra 'ny', lukker svar-opgaven; afvist kan ikke sendes (E2E 25/9)", async () => {
@@ -167,7 +169,7 @@ test("SEO-tjek-henvendelse: sendes uden demo-link fra 'ny', lukker svar-opgaven;
   assert.equal(isSendable(seo), true);
   assert.equal(isSendable({ ...seo, status: "afvist" }), false);
   assert.equal(isSendable({ status: "ny", previewUrl: url }), false); // demo-henvendelse venter stadig på Hermes
-  assert.equal(previewBodyError("Hej, tak for tjekket", undefined, true), null);
+  assert.equal(previewBodyError("Dit SEO-tjek af example.com", "Hej, tak for tjekket", undefined, true), null);
   await db.insert(task).values({ legacyId: "inbound:preview_seo1", title: "Svar på SEO-tjek (22/100)", owner: "lucas" });
   const x = deps(seo);
   await sendPreview(db, seo.id, { subject: "Dit SEO-tjek af example.com", body: "Hej, tak for tjekket" }, "lucas", x.d);
@@ -253,4 +255,47 @@ test("legitim demo-preview i previewUrl og body sendes", async () => {
   const x = deps(req);
   await sendPreview(db, req.id, msg, "lucas", x.d);
   assert.deepEqual(x.sent, ["maja@salonlux.dk"]);
+});
+
+// F1 (27/9): før dette var forhåndsvisningen og send-ruten to sæt regler —
+// send-ruten afviste med 422 på tekst forhåndsvisningen havde vist som OK.
+// Nu kalder begge previewBodyError, og testen måler begge veje på SAMME input.
+test("forhåndsvisning og send svarer præcis det samme på samme tekst (F1)", async () => {
+  const { previewBodyError } = await import("./preview-send.ts");
+  const gyldigBody = `Hej Maja\n\nHer er udkastet: ${url}\n\nMin egen side: ${KINLY_FRONT}`;
+
+  async function begge(rec: PreviewLike, subject: string, body: string): Promise<string | null> {
+    const forhaand = previewBodyError(subject, body, rec.previewUrl, Boolean(rec.seoTjek));
+    let send: string | null = null;
+    try {
+      await sendPreview(db, rec.id, { subject, body }, "lucas", deps(rec).d);
+    } catch (err) {
+      assert.ok(err instanceof PreviewSendError, `send fejlede med andet end PreviewSendError: ${err}`);
+      send = (err as Error).message;
+    }
+    assert.equal(forhaand, send, `forhåndsvisning og send er uenige (${rec.id})`);
+    return forhaand;
+  }
+
+  // (i) body uden kinly.dk-forsiden
+  const udenForside = (await begge({ ...req, id: "preview_f1a" }, "Jeres udkast", `Se ${url}`)) ?? "";
+  assert.match(udenForside, /linket til kinly\.dk/);
+
+  // (ii) kundelink i body
+  const kundeLinkBody = (await begge({ ...req, id: "preview_f1b" }, "Jeres udkast", `${gyldigBody}\n\nSe ${DEMO_SITES.ktvvs}`)) ?? "";
+  assert.match(kundeLinkBody, /kundens egen side/);
+
+  // (iii) kundelink i emnet
+  const kundeLinkEmne = (await begge({ ...req, id: "preview_f1c" }, `Udkast til KT VVS (${DEMO_SITES.ktvvs})`, gyldigBody)) ?? "";
+  assert.match(kundeLinkEmne, /kundens egen side/);
+
+  // (iv) SEO-rapportmail uden demo-link: skal slippe igennem BEGGE veje
+  const seo: PreviewLike = {
+    id: "preview_f1d",
+    company: "example.com",
+    email: "ejer@example.com",
+    status: "ny",
+    seoTjek: { host: "example.com", score: 22, mangler: ["Sidetitel"] },
+  };
+  assert.equal(await begge(seo, "Dit SEO-tjek af example.com", "Hej, tak for tjekket"), null);
 });

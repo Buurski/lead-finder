@@ -424,7 +424,7 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
             <span className="cc-kicker">Mail til {item.email}</span>
             <textarea className="gu-textarea" style={{ marginTop: 5 }} rows={10} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Mailtekst" />
           </label>
-          <MailPreview id={item.id} sender={sender} body={body} />
+          <MailPreview id={item.id} sender={sender} subject={subject} body={body} />
           <div className="gu-mail-row">
             <span className="cc-kicker" style={{ marginRight: 2 }}>Afsender</span>
             <div className="gu-sender-pick">
@@ -500,7 +500,7 @@ function SenderButton({ id, label, active, connected, onPick }: { id: "lucas" | 
  * Kom henvendelsen fra SEO-tjekket, er det den designede rapport med tal, huller og tilbud.
  * Sandboxet iframe: ingen scripts, ingen navigation fra mailens links.
  */
-function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "charlie"; body: string }) {
+function MailPreview({ id, sender, subject, body }: { id: string; sender: "lucas" | "charlie"; subject: string; body: string }) {
   const [html, setHtml] = useState<string | null>(null);
   const [report, setReport] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -512,7 +512,7 @@ function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "char
       fetch(`/api/previews/${id}/mail-preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender, body }),
+        body: JSON.stringify({ sender, subject, body }),
         signal: ctrl.signal,
       })
         .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
@@ -532,7 +532,7 @@ function MailPreview({ id, sender, body }: { id: string; sender: "lucas" | "char
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [open, id, sender, body]);
+  }, [open, id, sender, subject, body]);
   return (
     <div>
       <button type="button" className="cc-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

@@ -23,13 +23,37 @@ export function isSendable(r: { status: string; previewUrl?: string; seoTjek?: u
 }
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
-/** Samme tekstkrav i send og forhåndsvisning, så forhåndsvisningen aldrig viser en mail send-ruten afviser (Sol w4a R2). */
-export function previewBodyError(body: string, previewUrl: string | undefined, seoReport = false): string | null {
+/**
+ * DEN ENESTE kilde til tekstkravene: både send-ruten (sendPreview) og
+ * forhåndsvisningen (POST .../mail-preview) kalder her, i denne rækkefølge, så
+ * forhåndsvisningen aldrig viser en mail send-ruten afviser (Sol w4a R2).
+ * Rækkefølgen er send-rutens: udkastets link, emne, tekst, demo-links, kunde-links.
+ */
+export function previewBodyError(subject: string, body: string, previewUrl: string | undefined, seoReport = false): string | null {
+  const s = subject.trim();
   const b = body.trim();
+  // 26/9: previewUrl ER mailens link. Peger udkastet selv på en kendt kundeside
+  // (KT VVS-previewet), må mailen ikke gå ud — også når body'en ikke har linket.
+  const badPreview = previewUrl ? customerSiteLinks(previewUrl)[0] : undefined;
+  if (badPreview) return `udkastets link peger på kundens egen side (${badPreview}) — brug kinly.dk-casen`;
+  if (!s || s.length > 200) return "emne mangler eller er for langt";
   if (!b || b.length > 5000) return "teksten mangler eller er for lang";
-  if (seoReport) return null; // rapportmailen har intet demo-link
-  if (!previewUrl) return "udkastet har intet link endnu";
-  if (!b.includes(previewUrl)) return "mailen skal indeholde linket til udkastet";
+  if (!seoReport) {
+    if (!previewUrl) return "udkastet har intet link endnu";
+    if (!b.includes(previewUrl)) return "mailen skal indeholde linket til udkastet";
+    // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
+    // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
+    // SEO-tjek-henvendelser har intet demo-link og er undtaget — ellers kunne
+    // rapportmailen aldrig sendes.
+    if (!hasKinlyFront(b)) return "mailen skal indeholde linket til kinly.dk";
+  }
+  // 26/9: kundens egen side må kun linkes via sin kinly.dk-case. Emnet er en
+  // selvstændig vej ud (fx et preview-domæne i subject-linjen), og gaten gælder
+  // OGSÅ SEO-rapportmailen — send-ruten afviser den slags i dag.
+  for (const part of [s, b]) {
+    const link = customerSiteLinks(part)[0];
+    if (link) return `kundens egen side må ikke linkes i mailen (${link}) — brug kinly.dk-casen`;
+  }
   return null;
 }
 
@@ -61,30 +85,14 @@ export async function sendPreview(
     if (!isSendable(r)) throw new PreviewSendError(r.previewUrl || r.seoTjek ? `kan ikke sendes i status "${r.status}"` : "udkastet har intet link endnu");
     // 26/9: previewUrl ER mailens link. Peger udkastet selv på en kendt kundeside
     // (KT VVS-previewet), må mailen ikke gå ud — også når body'en ikke har linket.
-    const badPreview = r.previewUrl ? customerSiteLinks(r.previewUrl)[0] : undefined;
-    if (badPreview) {
-      throw new PreviewSendError(`udkastets link peger på kundens egen side (${badPreview}) — brug kinly.dk-casen`);
-    }
     const to = r.email.trim();
     if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
     const subject = input.subject.trim();
     const body = input.body.trim();
-    if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
-    const bodyErr = previewBodyError(body, r.previewUrl, Boolean(r.seoTjek));
+    // Alle tekstkrav (link, emne, tekst, demo-links, kunde-links) står i previewBodyError,
+    // så forhåndsvisningen og send-ruten ikke kan drive fra hinanden (F1, 27/9).
+    const bodyErr = previewBodyError(subject, body, r.previewUrl, Boolean(r.seoTjek));
     if (bodyErr) throw new PreviewSendError(bodyErr);
-    // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
-    // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
-    // SEO-tjek-henvendelser har intet demo-link og er undtaget, præcis som i
-    // previewBodyError — ellers kunne rapportmailen aldrig sendes.
-    if (!r.seoTjek && !hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
-    // 26/9: kundens egen side må kun linkes via sin kinly.dk-case — gaten står FØR
-    // db. Emnet er en selvstændig vej ud (fx et preview-domæne i subject-linjen).
-    for (const part of [subject, body]) {
-      const customerLinks = customerSiteLinks(part);
-      if (customerLinks.length) {
-        throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);
-      }
-    }
 
     const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
     const legacyId = `preview-sent:${id}`;
