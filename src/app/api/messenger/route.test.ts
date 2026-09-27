@@ -196,8 +196,9 @@ test("et afvist kandidat skubber ikke et friskt kandidat ud af limit-vinduet", a
 
 // ── Sheets-vejen ────────────────────────────────────────────────────────────
 // Vault-vejen er testet ovenfor. Her måles den anden vej: ingen brugbar vault,
-// så ruten vælger selv kandidater fra Sheets (select.ts → compose.ts), og
-// gate-droppet skal både holdes ude af svaret OG trækkes fra puljen.
+// så ruten vælger selv kandidater fra Sheets (select.ts → compose.ts). Fitness-
+// leads skal komme IGENNEM med en kladde uden beauty-ord — drop-bogføringen
+// (pool.gated/remaining/depleted) måles på vault-vejen, hvor dropet sker.
 
 /** Bygger en Lead-række i samme form som sheets.ts, med tomme standardfelter. */
 function leadFixture(p: { id: string; name: string; branch: string; city: string; website: string; reviewsCount: number }): Lead {
@@ -222,8 +223,8 @@ function leadFixture(p: { id: string; name: string; branch: string; city: string
   };
 }
 
-// Fitnesscenter med "wellness" i branch: branchGroupFor sender den til beauty,
-// og compose.ts giver den derfor VIDA-casen (vida-klinik) + "frisørsalon".
+// Fitnesscenter med "wellness" i branch: fitness-værnet i compose.ts ruter
+// den til service + projektoversigten — ikke til beauty/VIDA-casen.
 const S1: Lead = leadFixture({ id: "s1", name: "Herning Fitness & Wellness", branch: "Fitnesscenter / wellness", city: "Herning", website: "https://www.facebook.com/herningfitness", reviewsCount: 120 });
 // Legitim frisør — gaten rammer kun fitness-ord.
 const S2: Lead = leadFixture({ id: "s2", name: "Salon Arte Nørrebro", branch: "Frisørsalon", city: "København", website: "https://www.facebook.com/salonarte", reviewsCount: 140 });
@@ -236,7 +237,7 @@ function sheetsOnly(leads: Lead[]): void {
   __setVaultJsonForTest("data/messenger.json", { at: VAULT.at, candidates: [] });
 }
 
-test("sheets-vejen: fejlklassificeret fitness droppes, bogføres og lækker ikke", async () => {
+test("sheets-vejen: fitness-lead droppes ikke — compose.ts klassificerer den rigtigt", async () => {
   sheetsOnly([S1, S2, S3]);
 
   const body = await feed();
@@ -246,35 +247,44 @@ test("sheets-vejen: fejlklassificeret fitness droppes, bogføres og lækker ikke
   // Bevis for at det er Sheets-vejen der måles (vault-vejen svarer "cowork").
   assert.notEqual(body.pool.source, "cowork", "testen ramte vault-vejen, ikke Sheets-vejen");
 
-  // s1 (wellness → beauty + VIDA-link + "frisørsalon") er væk …
-  assert.ok(!ids.includes("s1"), `s1 lækkede: ${ids.join(",")}`);
-  // … og dens kladde findes intet sted i body. Kladden bygges af compose.ts selv,
-  // så assertions kan ikke drifte fra den kode der faktisk lækker.
-  const s1Draft = buildMessengerDraft({ name: S1.name, branch: S1.branch, city: S1.city, reviews: S1.reviewsCount, pattern: "A" }).text;
-  assert.ok(s1Draft.includes("vida-klinik"), "compose.ts lækker ikke længere VIDA-casen — opdatér fixturen");
-  assert.ok(!raw.includes(s1Draft), "den fejlklassificerede kladde ligger stadig i body");
-  assert.ok(!raw.includes("vida-klinik"), "VIDA-casen lækker til en fitness-kandidat");
+  // s1 (wellness i branch) er en legitim træningslead og skal MED: fitness-værnet
+  // i compose.ts sender den til service + projektoversigten, ikke til beauty.
+  // Kladden sammenlignes med compose.ts' egen, så assertions ikke kan drifte.
+  const s1 = body.candidates.find((c) => c.id === "s1");
+  assert.ok(s1, `s1 mangler: ${ids.join(",")}`);
+  const s1Draft = buildMessengerDraft({ name: S1.name, branch: S1.branch, city: S1.city, reviews: S1.reviewsCount, pattern: s1.pattern }).text;
+  assert.equal(s1.draft, s1Draft, "kladden i body er ikke compose.ts' egen");
+  assert.equal(s1.category, "service", `s1 blev kategoriseret som ${s1.category}`);
+  assert.ok(s1Draft.includes("her er noget af det jeg selv har bygget: https://kinly.dk/projekter/"), s1Draft);
+  assert.ok(!s1Draft.includes("til en træningscenter"), s1Draft);
+  assert.ok(!/vida-klinik|frisør|frisor|salon|hudklinik|kosmetolog/i.test(s1Draft), `beauty-lækage i fitness-kladde: ${s1Draft}`);
 
-  // De legitime kandidater går uændret igennem.
+  // De øvrige legitime kandidater går uændret igennem.
   assert.ok(ids.includes("s2"), `s2 mangler: ${ids.join(",")}`);
   assert.ok(ids.includes("s3"), `s3 mangler: ${ids.join(",")}`);
 
-  // Droppet er bogført, og tallene siger det samme som listen.
-  assert.equal(body.pool.gated, 1, `ventede 1 afvist kandidat, fik ${body.pool.gated}`);
+  // Ingen kladde i svaret må bære VIDA-casen, og intet drop skal bogføres:
+  // fejlklassificeringen findes ikke længere på denne vej.
+  assert.ok(!raw.includes("vida-klinik"), "VIDA-casen lækker til en fitness-kandidat");
+  assert.equal(body.pool.gated, 0, `ventede 0 afviste kandidater, fik ${body.pool.gated}`);
   assert.equal(body.pool.shown, body.candidates.length);
   assert.equal(body.pool.eligible, 3);
+  // Uden et Sheets-drop står der 3 tilbage — ikke 2, som da gaten kasserede s1.
+  assert.equal(body.pool.remaining, 3);
 });
 
-test("sheets-vejen: kun afviste kandidater tømmer puljen i stedet for at stå fast", async () => {
-  sheetsOnly([S1]);
+test("kun afviste kandidater tømmer puljen i stedet for at stå fast", async () => {
+  // Sheets-vejen dropper ikke længere legitime fitness-leads, så forløbet "alt
+  // afvist" måles hvor dropet faktisk sker: vault-kandidater gennem gaten.
+  __setLeadsForTest([]);
+  __setVaultJsonForTest("data/messenger.json", { at: VAULT.at, candidates: [FITNESS] });
 
   const body = await feed();
 
-  assert.notEqual(body.pool.source, "cowork", "testen ramte vault-vejen, ikke Sheets-vejen");
   assert.deepEqual(body.candidates, []);
   assert.equal(body.pool.shown, 0);
   assert.equal(body.pool.gated, 1);
-  // Uden sheets-droppet i regnestykket stod der "1 tilbage i puljen · 0 vist" for evigt.
+  // Uden dropet i regnestykket stod der "1 tilbage i puljen · 0 vist" for evigt.
   assert.equal(body.pool.remaining, 0);
   assert.equal(body.pool.depleted, true);
 });
