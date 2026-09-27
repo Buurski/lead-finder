@@ -15,7 +15,9 @@ import { __setVaultJsonForTest } from "../../../lib/vault.ts";
 import { __setLeadsForTest } from "../../../lib/sheets.ts";
 import { InMemoryStore, __setStore } from "../../../lib/store.ts";
 import { DEMO_SITES } from "../../../lib/demos.ts";
+import { buildMessengerDraft } from "../../../lib/messenger/compose.ts";
 import type { MessengerCandidate } from "../../../lib/messenger/select.ts";
+import type { Lead } from "../../../lib/sheets.ts";
 
 interface Feed {
   ok: boolean;
@@ -190,4 +192,101 @@ test("et afvist kandidat skubber ikke et friskt kandidat ud af limit-vinduet", a
   assert.equal(body.candidates.length, 1);
   assert.equal(body.pool.shown, 1);
   assert.notEqual(body.candidates[0].id, "v1"); // gaten kører før slice
+});
+
+// ── Sheets-vejen ────────────────────────────────────────────────────────────
+// Vault-vejen er testet ovenfor. Her måles den anden vej: ingen brugbar vault,
+// så ruten vælger selv kandidater fra Sheets (select.ts → compose.ts), og
+// gate-droppet skal både holdes ude af svaret OG trækkes fra puljen.
+
+/** Bygger en Lead-række i samme form som sheets.ts, med tomme standardfelter. */
+function leadFixture(p: { id: string; name: string; branch: string; city: string; website: string; reviewsCount: number }): Lead {
+  return {
+    phone: "",
+    score: 0,
+    source: "",
+    websiteStatus: "none",
+    status: "new",
+    notes: "",
+    lastUpdated: "",
+    websiteQualityTier: "",
+    enrichedInfo: "",
+    email: "",
+    emailSentAt: "",
+    emailOpenedAt: "",
+    emailClickedAt: "",
+    emailStatus: "none",
+    followupSentAt: "",
+    callbackDate: "",
+    ...p,
+  };
+}
+
+// Fitnesscenter med "wellness" i branch: branchGroupFor sender den til beauty,
+// og compose.ts giver den derfor VIDA-casen (vida-klinik) + "frisørsalon".
+const S1: Lead = leadFixture({ id: "s1", name: "Herning Fitness & Wellness", branch: "Fitnesscenter / wellness", city: "Herning", website: "https://www.facebook.com/herningfitness", reviewsCount: 120 });
+// Legitim frisør — gaten rammer kun fitness-ord.
+const S2: Lead = leadFixture({ id: "s2", name: "Salon Arte Nørrebro", branch: "Frisørsalon", city: "København", website: "https://www.facebook.com/salonarte", reviewsCount: 140 });
+// Fitness uden beauty-lækage: gaten fyrer kun på fitness+beauty-kombinationen.
+const S3: Lead = leadFixture({ id: "s3", name: "Vejle Fitness Center", branch: "Fitnesscenter", city: "Vejle", website: "https://www.facebook.com/vejlefitness", reviewsCount: 90 });
+
+/** Ingen brugbar vault + de givne Sheets-leads → ruten går på Sheets-vejen. */
+function sheetsOnly(leads: Lead[]): void {
+  __setLeadsForTest(leads);
+  __setVaultJsonForTest("data/messenger.json", { at: VAULT.at, candidates: [] });
+}
+
+test("sheets-vejen: fejlklassificeret fitness droppes, bogføres og lækker ikke", async () => {
+  sheetsOnly([S1, S2, S3]);
+
+  const body = await feed();
+  const raw = JSON.stringify(body);
+  const ids = body.candidates.map((c) => c.id);
+
+  // Bevis for at det er Sheets-vejen der måles (vault-vejen svarer "cowork").
+  assert.notEqual(body.pool.source, "cowork", "testen ramte vault-vejen, ikke Sheets-vejen");
+
+  // s1 (wellness → beauty + VIDA-link + "frisørsalon") er væk …
+  assert.ok(!ids.includes("s1"), `s1 lækkede: ${ids.join(",")}`);
+  // … og dens kladde findes intet sted i body. Kladden bygges af compose.ts selv,
+  // så assertions kan ikke drifte fra den kode der faktisk lækker.
+  const s1Draft = buildMessengerDraft({ name: S1.name, branch: S1.branch, city: S1.city, reviews: S1.reviewsCount, pattern: "A" }).text;
+  assert.ok(s1Draft.includes("vida-klinik"), "compose.ts lækker ikke længere VIDA-casen — opdatér fixturen");
+  assert.ok(!raw.includes(s1Draft), "den fejlklassificerede kladde ligger stadig i body");
+  assert.ok(!raw.includes("vida-klinik"), "VIDA-casen lækker til en fitness-kandidat");
+
+  // De legitime kandidater går uændret igennem.
+  assert.ok(ids.includes("s2"), `s2 mangler: ${ids.join(",")}`);
+  assert.ok(ids.includes("s3"), `s3 mangler: ${ids.join(",")}`);
+
+  // Droppet er bogført, og tallene siger det samme som listen.
+  assert.equal(body.pool.gated, 1, `ventede 1 afvist kandidat, fik ${body.pool.gated}`);
+  assert.equal(body.pool.shown, body.candidates.length);
+  assert.equal(body.pool.eligible, 3);
+});
+
+test("sheets-vejen: kun afviste kandidater tømmer puljen i stedet for at stå fast", async () => {
+  sheetsOnly([S1]);
+
+  const body = await feed();
+
+  assert.notEqual(body.pool.source, "cowork", "testen ramte vault-vejen, ikke Sheets-vejen");
+  assert.deepEqual(body.candidates, []);
+  assert.equal(body.pool.shown, 0);
+  assert.equal(body.pool.gated, 1);
+  // Uden sheets-droppet i regnestykket stod der "1 tilbage i puljen · 0 vist" for evigt.
+  assert.equal(body.pool.remaining, 0);
+  assert.equal(body.pool.depleted, true);
+});
+
+test("sheets-vejen: en rigtig frisør rammes ikke af gaten", async () => {
+  sheetsOnly([S2]);
+
+  const body = await feed();
+
+  assert.notEqual(body.pool.source, "cowork", "testen ramte vault-vejen, ikke Sheets-vejen");
+  assert.equal(body.pool.gated, 0);
+  assert.equal(body.pool.shown, 1);
+  assert.equal(body.pool.remaining, 1);
+  assert.equal(body.pool.depleted, false);
 });

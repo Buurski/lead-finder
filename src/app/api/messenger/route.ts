@@ -57,7 +57,9 @@ export async function GET(req: Request) {
       return Response.json({
         ok: true,
         candidates: fresh,
-        pool: { gated: gatedCount, eligible: gated.length, remaining: gated.length - handled.size, shown: fresh.length, sent: Object.keys(state.sent).length, skipped: Object.keys(state.skipped).length, depleted: false, source: "cowork" },
+        // eligible er listen EFTER gaten, og et drop kan derfor overstige det
+        // arbejdede antal → remaining må ikke kunne blive negativ.
+        pool: { gated: gatedCount, eligible: gated.length, remaining: Math.max(0, gated.length - handled.size), shown: fresh.length, sent: Object.keys(state.sent).length, skipped: Object.keys(state.skipped).length, depleted: false, source: "cowork" },
       });
     }
   }
@@ -67,11 +69,16 @@ export async function GET(req: Request) {
   // på denne gren, indtil 478013e er merget. Detaljer i vault-gate.ts.
   const picked = selectMessengerCandidates(leads, { limit, excludeIds: handled });
   const candidates = gateMessengerCandidates(picked);
-  gatedCount += picked.length - candidates.length;
+  // Sheets-droppet bogføres for sig: det er en anden population end vaultens,
+  // og det skal trækkes fra puljen her — ellers står panelet med "N tilbage ·
+  // 0 vist" i det uendelige når alle egnede er droppet.
+  const gatedSheets = picked.length - candidates.length;
+  gatedCount += gatedSheets;
 
   const eligibleTotal = leads.filter(isMessengerEligible).length;
   const sentCount = Object.keys(state.sent).length;
   const skippedCount = Object.keys(state.skipped).length;
+  const remaining = Math.max(0, eligibleTotal - handled.size - gatedSheets);
 
   return Response.json({
     ok: true,
@@ -79,11 +86,11 @@ export async function GET(req: Request) {
     pool: {
       gated: gatedCount,                // droppet af gaten (fitness/beauty-lækage)
       eligible: eligibleTotal,          // currently eligible in the sheet
-      remaining: Math.max(0, eligibleTotal - handled.size), // not yet worked
+      remaining,                        // not yet worked, minus det gaten kasserede
       shown: candidates.length,
       sent: sentCount,
       skipped: skippedCount,
-      depleted: eligibleTotal - handled.size <= 0,
+      depleted: remaining <= 0,
     },
   });
 }
