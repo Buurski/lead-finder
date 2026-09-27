@@ -65,6 +65,14 @@
 .bl-dialog-body .bl-work-line { font-size: 13px; }
 .bl-dialog-body .bl-work-bar { height: 6px; }
 
+/* Mobil: træk-og-slip virker ikke på touch, så kortet får en flyt-vælger (kun på touch-skærme). */
+.bl-card-move {
+  display: none; margin-top: 10px; width: 100%; min-height: 40px; padding: 8px 10px;
+  font: inherit; font-size: 13px; color: var(--text); background: var(--surface, transparent);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+@media (pointer: coarse) { .bl-card-move { display: block; } }
+
 /* Til gennemlæsning: hvem der har tjekket teksten (kun fra beviserne). */
 .bl-checked { margin-top: 8px; font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .bl-checked [data-old="true"] { color: var(--red); }

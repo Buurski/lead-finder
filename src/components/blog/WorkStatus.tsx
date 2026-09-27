@@ -4,14 +4,14 @@
 // uenige — derfor suppressHydrationWarning på de tidsafhængige elementer.
 import type { BlogWork } from "@/lib/hq/posts";
 import Icon from "@/components/shell/Icon";
-import { workLine } from "./blog-utils";
+import { workLine, type QueueSpot } from "./blog-utils";
 
-export default function WorkStatus({ work, now, onRetry, busy }: { work: BlogWork; now: number; onRetry?: () => void; busy?: boolean }) {
-  const { state, text, pct } = workLine(work, now);
+export default function WorkStatus({ work, now, onRetry, busy, spot }: { work: BlogWork; now: number; onRetry?: () => void; busy?: boolean; spot?: QueueSpot }) {
+  const { state, text, pct } = workLine(work, now, spot);
   return (
     <div className="bl-work" data-state={state} suppressHydrationWarning>
       <div className="bl-work-lock">
-        <Icon name="Lock" style={{ width: 12, height: 12 }} /> Under arbejde hos Hermes
+        <Icon name="Lock" style={{ width: 12, height: 12 }} /> {state === "waiting" ? "I kø hos Hermes" : "Under arbejde hos Hermes"}
       </div>
       {text && <div className="bl-work-line" suppressHydrationWarning>{text}</div>}
       {state !== "idle" && (

@@ -11,7 +11,7 @@ import type { BlogStage, PostCard } from "@/lib/hq/posts";
 import Icon from "@/components/shell/Icon";
 import PostDialog from "./PostDialog";
 import WorkStatus from "./WorkStatus";
-import { IMAGE_SLOTS, categoryLabel, chosenSlots, dayMonth, overallScore, personName, readWork, scoreLevel } from "./blog-utils";
+import { IMAGE_SLOTS, categoryLabel, chosenSlots, dayMonth, overallScore, personName, readWork, scoreLevel, workState, type QueueSpot } from "./blog-utils";
 import "./blog.css";
 
 export interface StageInfo {
@@ -28,7 +28,6 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
   const [ideaError, setIdeaError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
-  const [touchDevice] = useState(() => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches);
   const [dropError, setDropError] = useState<string | null>(null);
   const dropErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -135,6 +134,16 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
     }
   }
 
+  // Kø-plads for ventende kort (ældste bestilling først, som serverens workQueue),
+  // så hvert kort kan sige "nr. 3 · forventet ca. i morgen".
+  const running = cards.filter((c) => c.stage === "arbejder" && workState(c.work, now) === "running").length;
+  const spots = new Map<string, QueueSpot>(
+    cards
+      .filter((c) => c.stage === "arbejder" && workState(c.work, now) === "waiting")
+      .sort((a, b) => (a.work.requestedAt ?? "").localeCompare(b.work.requestedAt ?? ""))
+      .map((c, i) => [c.id, { pos: i + 1, running }]),
+  );
+
   return (
     <>
       <div className="bl-board">
@@ -217,7 +226,7 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                       className="bl-card"
                       data-dragging={dragId === card.id}
                       data-locked={card.stage === "arbejder"}
-                      draggable={!touchDevice}
+                      draggable
                       onDragStart={(e) => {
                         e.dataTransfer.setData("text/plain", card.id);
                         e.dataTransfer.effectAllowed = "move";
@@ -278,7 +287,7 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                       )}
                       </button>
                       {card.stage === "arbejder" && (
-                        <WorkStatus work={card.work} now={now} busy={retryBusy === card.id} onRetry={() => void retryCard(card.id)} />
+                        <WorkStatus work={card.work} now={now} spot={spots.get(card.id)} busy={retryBusy === card.id} onRetry={() => void retryCard(card.id)} />
                       )}
                       {/* Kun det beviserne rummer: council-loggen (Hermes' reviewer) og menneskets faktatjek. */}
                       {card.stage === "klar" && (card.council || card.factcheck) && (
@@ -292,6 +301,25 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                             </div>
                           )}
                         </div>
+                      )}
+                      {/* Træk-og-slip virker ikke med fingre (HTML5-drag er mus-only) — på touch
+                          flyttes med en indbygget vælger. Samme moveCard/server-gate som trækket. */}
+                      {card.stage !== "udgivet" && (
+                        <select
+                          className="bl-card-move cc-focus"
+                          aria-label={`Flyt "${card.title}" til en anden fase`}
+                          value=""
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const s = e.target.value as BlogStage;
+                            if (s) void moveCard(card.id, s);
+                          }}
+                        >
+                          <option value="">Flyt til…</option>
+                          {stages.filter((s) => s.stage !== card.stage && s.stage !== "udgivet").map((s) => (
+                            <option key={s.stage} value={s.stage}>{s.label}</option>
+                          ))}
+                        </select>
                       )}
                     </div>
                   );

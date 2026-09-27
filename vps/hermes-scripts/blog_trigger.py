@@ -2,10 +2,13 @@
 """Starter Hermes' blog-skriver, når Lucas har trukket et kort til Arbejder i HQ.
 
 Kører hvert 5. minut som no-agent-job (0 tokens): spørger HQ om kort der venter
-(`crm_posts queue`), og hvis ét ikke er sat i gang for nylig, beder den Hermes'
-scheduler køre blog-drafter-nat ved næste tick (`hermes cron run <id>`). Selve
-skrivningen (agent) tager kortet med `claim` — så to kørsler aldrig skriver samme kort.
-Uden ventende kort: ingen output, intet kald ud over ét HQ-opslag.
+(`crm_posts queue`) og beder Hermes' scheduler køre blog-drafter-nat ved næste tick
+(`hermes cron run <id>`). Selve skrivningen (agent) tager kortet med `claim`.
+
+Tempo (Lucas 27/9: "de behøver ikke laves samme dag, men de skal laves ordentligt"):
+ÉT indlæg ad gangen, og højst PER_DAY starter pr. døgn — hver kørsel er et
+agent-run (2-4 mio. tokens). HQ viser kø-plads og forventet dag ud fra samme tal
+(BLOG_PER_DAY i src/components/blog/blog-utils.ts).
 """
 from __future__ import annotations
 
@@ -20,12 +23,30 @@ import crm_posts  # noqa: E402
 
 BLOG_JOB_ID = "fc9f43db4b74"  # blog-drafter-nat
 STATE = Path("/root/.hermes/state/blog-trigger.json")
-RETRIGGER_AFTER = 30 * 60  # samme kort sættes højst i gang hver 30. min (ellers hænger det — HQ viser det)
+PER_DAY = 2  # spejles af BLOG_PER_DAY i HQ
+CLAIM_GRACE = 30 * 60  # en netop startet kørsel når at claime sit kort, før næste startes
+DAY = 86400
 
 
-def due(cards: list[dict], state: dict, now: float) -> list[dict]:
-    """Kort der skal sættes i gang: ikke trigget inden for RETRIGGER_AFTER."""
-    return [c for c in cards if c.get("id") not in state or now - float(state[c["id"]]) >= RETRIGGER_AFTER]
+def pick(cards: list[dict], running: int, starts: list[float], now: float) -> dict | None:
+    """Det kort der skal startes nu, eller None. Køen er allerede ældste-først fra HQ."""
+    if not cards or running > 0:
+        return None
+    if starts and now - max(starts) < CLAIM_GRACE:
+        return None
+    if sum(1 for s in starts if now - s < DAY) >= PER_DAY:
+        return None
+    return cards[0]
+
+
+def load_starts() -> list[float]:
+    try:
+        data = json.loads(STATE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    # Gammelt format var {kort-id: tidspunkt}; værdierne er stadig starttidspunkter.
+    raw = data.get("starts", []) if isinstance(data, dict) and "starts" in data else list(data.values()) if isinstance(data, dict) else []
+    return [float(s) for s in raw]
 
 
 def main() -> None:
@@ -33,32 +54,28 @@ def main() -> None:
     if not data.get("ok"):
         print(f"blog-trigger: HQ-fejl {data.get('error')}")
         sys.exit(1)
-    cards = data.get("cards") or []
-    if not cards:
-        return
-    try:
-        state = json.loads(STATE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        state = {}
     now = time.time()
-    todo = due(cards, state, now)
-    if not todo:
+    starts = load_starts()
+    card = pick(data.get("cards") or [], int(data.get("running") or 0), starts, now)
+    if not card:
         return
-    # Én kørsel pr. ventende kort; hver kørsel claimer det ældste ledige.
-    for c in todo:
-        subprocess.run(["hermes", "cron", "run", BLOG_JOB_ID], check=True, capture_output=True, timeout=60)
-        state[c["id"]] = now
-        print(f"blog-trigger: satte Hermes i gang med '{c.get('title')}'")
-    state = {k: v for k, v in state.items() if now - float(v) < 7 * 86400}
+    subprocess.run(["hermes", "cron", "run", BLOG_JOB_ID], check=True, capture_output=True, timeout=60)
+    starts = [s for s in starts if now - s < 7 * DAY] + [now]
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps(state), encoding="utf-8")
+    STATE.write_text(json.dumps({"starts": starts}), encoding="utf-8")
+    print(f"blog-trigger: satte Hermes i gang med '{card.get('title')}'")
 
 
 def _selftest() -> None:
-    cards = [{"id": "a"}, {"id": "b"}]
-    assert [c["id"] for c in due(cards, {}, 1000.0)] == ["a", "b"]
-    assert [c["id"] for c in due(cards, {"a": 900.0}, 1000.0)] == ["b"]
-    assert [c["id"] for c in due(cards, {"a": 1000.0 - RETRIGGER_AFTER}, 1000.0)] == ["a", "b"]
+    a, b = {"id": "a"}, {"id": "b"}
+    now = 100 * DAY
+    assert pick([a, b], 0, [], now) == a
+    assert pick([], 0, [], now) is None
+    assert pick([a], 1, [], now) is None, "kører allerede ét"
+    assert pick([a], 0, [now - 60], now) is None, "netop startet — vent på claim"
+    assert pick([a], 0, [now - 3 * 3600], now) == a
+    assert pick([a], 0, [now - 3 * 3600, now - 5 * 3600], now) is None, "døgnloft nået"
+    assert pick([a], 0, [now - 25 * 3600, now - 26 * 3600], now) == a, "loftet er rullende 24 t"
     print("selftest ok")
 
 

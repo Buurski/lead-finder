@@ -40,6 +40,7 @@ import {
   retryWork,
   workProgress,
   workQueue,
+  workRunning,
 } from "./posts.ts";
 import type { BlogImages } from "./posts.ts";
 
@@ -411,6 +412,8 @@ test("køen: bestilte, ikke-startede eller hængte kort — ældste bestilling f
   const q = await workQueue(db);
   assert.deepEqual(q.map((c) => c.title), ["Hængt", "Ældste bestilling", "Nyeste bestilling"]);
   assert.equal(q[1].work.requestedBy, "charlie");
+  // Kun "Kører lige nu" tæller som i gang — hængt og fejlet gør ikke (triggeren venter på 0).
+  assert.equal(await workRunning(db), 1);
 });
 
 test("claim er atomisk: to samtidige kald — præcis én vinder; startet kort afvises", async () => {

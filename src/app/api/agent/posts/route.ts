@@ -18,6 +18,7 @@ import {
   updatePost,
   workProgress,
   workQueue,
+  workRunning,
 } from "../../../../lib/hq/posts.ts";
 import { assessPost } from "../../../../lib/hq/post-score.ts";
 import { choice as jevChoice, jevAsk, jevEnabled, noul as jevNoul, type JevQuestion } from "../../../../lib/jev.ts";
@@ -185,7 +186,7 @@ export async function POST(req: Request) {
       }
       // Hermes' arbejdskø: kort et menneske har bestilt ved at lægge dem i Arbejder.
       case "queue":
-        return json({ ok: true, cards: await workQueue(getDb()) });
+        return json({ ok: true, cards: await workQueue(getDb()), running: await workRunning(getDb()) });
       case "claim":
         return json({ ok: true, card: await claimWork(getDb(), postId(input.id)) });
       case "progress":

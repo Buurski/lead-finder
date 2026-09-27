@@ -1232,6 +1232,18 @@ export async function workQueue(db: Db) {
   return rows.map((r) => ({ id: r.id, title: r.title, work: readWork(r.work) }));
 }
 
+/** Antal kort Hermes skriver lige nu (startet, ikke færdigt, ikke fejlet, ikke hængt).
+ *  Triggeren starter kun et nyt, når dette er 0 — ét indlæg ad gangen. */
+export async function workRunning(db: Db): Promise<number> {
+  const cutoff = staleCutoff();
+  const rows = await db
+    .select({ id: blogPost.id })
+    .from(blogPost)
+    .where(sql`${IN_ARBEJDER} and ${W}->>'startedAt' is not null and ${W}->>'finishedAt' is null
+               and ${W}->>'error' is null and not ${staleSince(cutoff)}`);
+  return rows.length;
+}
+
 async function workRefusal(db: Db, id: string, what: string): Promise<BlogInputError> {
   const [row] = await db.select({ stage: blogPost.stage, work: blogPost.work }).from(blogPost).where(eq(blogPost.id, id));
   if (!row) return new BlogInputError("indlægget findes ikke");

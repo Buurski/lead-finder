@@ -137,8 +137,23 @@ export const clock = (iso: string) => new Intl.DateTimeFormat("da-DK", { hour: "
 export const dayMonth = (iso: string) => new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "numeric", timeZone: TZ }).format(new Date(iso)).replace(/\.$/, "").replace(".", "/");
 export const personName = (actor: string) => (actor ? actor[0].toUpperCase() + actor.slice(1) : "");
 
+// Hermes skriver ét indlæg ad gangen og højst så mange pr. døgn (spejler PER_DAY i
+// vps/hermes-scripts/blog_trigger.py) — så de laves ordentligt og tokens holdes nede.
+export const BLOG_PER_DAY = 2;
+
+/** Kø-plads (1 = næste) + antal der skrives nu, for kort der venter. */
+export type QueueSpot = { pos: number; running: number };
+
+/** "i dag" / "i morgen" / ugedag for et kort på plads `pos` i køen. Groft skøn. */
+export function expectedDay(spot: QueueSpot, now: number): string {
+  const days = Math.floor((spot.running + spot.pos - 1) / BLOG_PER_DAY);
+  if (days === 0) return "i dag";
+  if (days === 1) return "i morgen";
+  return new Intl.DateTimeFormat("da-DK", { weekday: "long", timeZone: TZ }).format(new Date(now + days * 86_400_000));
+}
+
 /** Statuslinje + fremdrift (0-100, null = ukendt) for et kort i Arbejder. */
-export function workLine(w: BlogWork, now: number): { state: WorkState; text: string; pct: number | null } {
+export function workLine(w: BlogWork, now: number, spot?: QueueSpot): { state: WorkState; text: string; pct: number | null } {
   const state = workState(w, now);
   const trin = w.steps ? `trin ${w.step ?? 0}/${w.steps}` : "";
   const pct = w.steps ? Math.round(((w.step ?? 0) / w.steps) * 100) : null;
@@ -146,6 +161,9 @@ export function workLine(w: BlogWork, now: number): { state: WorkState; text: st
   if (state === "stale") return { state, pct, text: "Ingen fremdrift i 90 min — hænger måske" };
   if (state === "waiting") {
     const waited = now - Date.parse(w.requestedAt!);
+    if (spot && (spot.pos > 1 || spot.running > 0)) {
+      return { state, pct: null, text: `I kø: nr. ${spot.pos} · Hermes skriver ét ad gangen · forventet ca. ${expectedDay(spot, now)}` };
+    }
     return { state, pct: null, text: waited > 2 * QUEUE_EVERY_MIN * 60_000 ? `Venter på Hermes — bestilt ${clock(w.requestedAt!)}` : `Venter på Hermes — starter inden for ca. ${QUEUE_EVERY_MIN} min` };
   }
   if (state === "running") {
