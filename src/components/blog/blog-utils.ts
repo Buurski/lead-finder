@@ -137,16 +137,22 @@ export const clock = (iso: string) => new Intl.DateTimeFormat("da-DK", { hour: "
 export const dayMonth = (iso: string) => new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "numeric", timeZone: TZ }).format(new Date(iso)).replace(/\.$/, "").replace(".", "/");
 export const personName = (actor: string) => (actor ? actor[0].toUpperCase() + actor.slice(1) : "");
 
-// Hermes skriver ét indlæg ad gangen og højst så mange pr. døgn (spejler PER_DAY i
-// vps/hermes-scripts/blog_trigger.py) — så de laves ordentligt og tokens holdes nede.
-export const BLOG_PER_DAY = 2;
+// Hermes skriver ét indlæg ad gangen, ét pr. hverdag = 5 om ugen (Lucas 27/9; spejler
+// blog_trigger.py på VPS'en) — få, gode indlæg og tokens holdes nede.
+const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: TZ });
+const isWeekend = (t: number) => ["Sat", "Sun"].includes(WEEKDAY.format(new Date(t)));
 
 /** Kø-plads (1 = næste) + antal der skrives nu, for kort der venter. */
 export type QueueSpot = { pos: number; running: number };
 
-/** "i dag" / "i morgen" / ugedag for et kort på plads `pos` i køen. Groft skøn. */
+/** "i dag" / "i morgen" / ugedag for et kort på plads `pos` i køen. Groft skøn: én pr. hverdag. */
 export function expectedDay(spot: QueueSpot, now: number): string {
-  const days = Math.floor((spot.running + spot.pos - 1) / BLOG_PER_DAY);
+  let days = 0;
+  while (isWeekend(now + days * 86_400_000)) days++;
+  for (let slots = spot.running + spot.pos - 1; slots > 0; ) {
+    days++;
+    if (!isWeekend(now + days * 86_400_000)) slots--;
+  }
   if (days === 0) return "i dag";
   if (days === 1) return "i morgen";
   return new Intl.DateTimeFormat("da-DK", { weekday: "long", timeZone: TZ }).format(new Date(now + days * 86_400_000));

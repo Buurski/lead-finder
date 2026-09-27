@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import crm_agent_log
 import crm_read
 import jev_lib
-from mail_sync_common import (DEFAULT_AUDIT, DeltaCache, content_hash, content_is_image,
+from mail_sync_common import (mask_pii, DEFAULT_AUDIT, DeltaCache, content_hash, content_is_image,
                                fetch_gmail_window, jev_input_tokens, kr_for_tokens,
                                message_body, message_fields, write_mail_audit)
 
@@ -318,7 +318,7 @@ def main() -> int:
         if result:
             cached += 1
         else:
-            raw = jev_lib.ask({"email": {"from": sender, "subject": subject, "body": body[:12000]}}, QUESTIONS)
+            raw = jev_lib.ask({"email": {"from": sender, "subject": subject, "body": mask_pii(body)[:12000]}}, QUESTIONS)
             result = classify(raw)
             result["model"] = str((raw or {}).get("model") or MODEL)
             jev_calls += 1
@@ -381,7 +381,7 @@ def main() -> int:
             continue
         try:
             text = thread_text(recent)
-            raw = jev_lib.ask({"thread": text}, STATUS_QUESTIONS)
+            raw = jev_lib.ask({"thread": mask_pii(text)}, STATUS_QUESTIONS)
             jev_calls += 1
             input_tokens += jev_input_tokens(raw, text)
             result = classify_status(raw)

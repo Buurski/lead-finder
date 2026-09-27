@@ -21,6 +21,17 @@ DEFAULT_AUDIT = Path.home() / ".hermes/cron/usage_audit.jsonl"
 JEV_KR_PER_MTOKEN = 0.30
 
 
+_CPR = re.compile(r"\b\d{6}-?\d{4}\b")
+_MAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_TLF = re.compile(r"(?<!\d)(?:\+45[ -]?)?\d{2}[ -]?\d{2}[ -]?\d{2}[ -]?\d{2}(?!\d)")
+
+
+def mask_pii(text: str) -> str:
+    """Maskér CPR, e-mails og danske tlf.-numre i brødtekst før den sendes til Jev (26/9-beslutning:
+    kun maskering, intet trim). Cache-nøglen bygges stadig på rå tekst."""
+    return _TLF.sub("[tlf]", _MAIL.sub("[email]", _CPR.sub("[cpr]", text)))
+
+
 def content_hash(*parts: object) -> str:
     raw = json.dumps(parts, ensure_ascii=False, sort_keys=True, default=str).encode()
     return hashlib.sha256(raw).hexdigest()

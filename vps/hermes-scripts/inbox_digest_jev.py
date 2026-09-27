@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jev_lib
-from mail_sync_common import (DEFAULT_AUDIT, DeltaCache, content_hash, content_is_image,
+from mail_sync_common import (mask_pii, DEFAULT_AUDIT, DeltaCache, content_hash, content_is_image,
                                fetch_gmail_window, iso_at, jev_input_tokens, kr_for_tokens,
                                message_body, message_fields, write_mail_audit)
 import inbox_digest_sync
@@ -126,7 +126,7 @@ def main() -> int:
             result = triage("billede/ukendt krop")
             manual += 1
         else:
-            raw = jev_lib.ask({"email": {"from": sender, "subject": subject, "body": body[:12000]}}, QUESTIONS)
+            raw = jev_lib.ask({"email": {"from": sender, "subject": subject, "body": mask_pii(body)[:12000]}}, QUESTIONS)
             result = classify(raw)
             result["model"] = str((raw or {}).get("model") or MODEL)
             jev_calls += 1

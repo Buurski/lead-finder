@@ -253,7 +253,9 @@ def render_bars_vertical(draw: ImageDraw.ImageDraw, spec: dict, content_top: int
     total_w = bar_w * n + gap * (n - 1)
     start_x = MARGIN + (usable_w - total_w) // 2
 
-    floor_y = H - 14 - 120  # over footeren
+    # Etiket (op til 2 linjer) + underetiket skal holde sig over kilde/note-linjerne i footeren
+    # (27/9: "Kvalitet / kan forklare" lå oven i kilden på et udgivet indlæg).
+    floor_y = H - 14 - (200 if spec.get("note") else 175)
     max_bar_h = floor_y - content_top - 130  # plads til tal ovenpå
     max_value = max(float(b["value"]) for b in bars) or 1
 
