@@ -61,3 +61,26 @@ test("frisør, barber og hudklinik er uændret", () => {
   assert.equal(branchGroupFor("skønhedsklinik & spa", "Test"), "beauty");
   assert.deepEqual(validateMessengerDraft(buildMessengerDraft({ name: "Klinik Test", branch: "skønhedsklinik", city: "Herning", reviews: 80, pattern: "A" }).text), []);
 });
+
+test("mekaniker får ikke KT VVS-casen i DM'en", () => {
+  // DM-vejen skal følge samme ord og samme case som AUTO-vejen i demos.ts.
+  for (const [branch, name] of [["mekaniker", "Mekanikeren ApS"], ["automekaniker", "Bilerne"], ["autoværksted", "Ikast Autoværksted"]]) {
+    const where = `${branch} | ${name}`;
+    assert.notEqual(branchGroupFor(branch, name), "craftUtility", where);
+    assert.notEqual(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ktvvsCase, where);
+    assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, where);
+    assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
+    const d = buildMessengerDraft({ name, branch, city: "Ikast", reviews: 40, pattern: "A" });
+    assert.notEqual(d.demoUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(d.demoUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(d.branchDisp, "mekaniker", where);
+    assert.ok(!d.text.includes("kt-vvs"), d.text);
+    assert.deepEqual(validateMessengerDraft(d.text), [], where);
+  }
+  for (const [branch, name, disp] of [["vvs", "VVS Test", "VVS-firma"], ["elektriker", "El Test", "elektriker"]]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchGroupFor(branch, name), "craftUtility", where);
+    assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ktvvsCase, where);
+    assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), disp, where);
+  }
+});
