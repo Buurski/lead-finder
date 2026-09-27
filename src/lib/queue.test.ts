@@ -76,3 +76,37 @@ test("appendDrafts blokerer IKKE opfølgnings-kladder mod en allerede sendt før
   assert.equal(merged.length, 2, "opfølgningen skal komme igennem");
   assert.ok(merged.some((d) => d.id === "d_step2"));
 });
+
+// Link-politik (Lucas 24/9): en body-redigering skal afvises i BEGGE backends.
+// Filen kører med DATA_BACKEND=pg, så testen dækker prod-stien (pg/queue.ts) —
+// ellers lå tjekket efter det tidlige return i updateDraft og kørte aldrig i drift.
+test("updateDraft afviser en body uden reference-links — også i pg-stien", async () => {
+  await freshTestDb();
+  const { updateDraft, LinkPolicyError } = await import("./queue.ts");
+  const { referenceLines } = await import("./demos.ts");
+  await appendDrafts([draft({ id: "d_edit", leadId: "1", name: "Kagehuset", branch: "café", city: "Herning" })]);
+  await assert.rejects(
+    () => updateDraft("d_edit", { body: "Hej\n\nJeg laver hjemmesider.\n\nMvh" }),
+    (e: unknown) => e instanceof LinkPolicyError,
+    "en body uden links skal afvises",
+  );
+  const okBody = ["Hej", "", ...referenceLines("café", "Kagehuset"), "", "Mvh"].join("\n");
+  const updated = await updateDraft("d_edit", { body: okBody });
+  assert.equal(updated?.body, okBody, "en komplet body skal gemmes");
+});
+
+// 26/9: link-kravet alene var ikke nok — en body med alle tre links PLUS
+// kunde-previewet slap igennem. Kladden må hverken gemmes eller slippe i pg-stien.
+test("updateDraft afviser kunde-previewet selvom alle tre links er der — også i pg-stien", async () => {
+  await freshTestDb();
+  const { updateDraft, LinkPolicyError } = await import("./queue.ts");
+  const { referenceLines } = await import("./demos.ts");
+  await appendDrafts([draft({ id: "d_prev", leadId: "9", name: "KT VVS Test", branch: "vvs", city: "Ikast" })]);
+  const body = [...referenceLines("vvs", "KT VVS Test"), "", "→ https://ktvvs.vercel.app/path?x=y"].join("\n");
+  await assert.rejects(
+    () => updateDraft("d_prev", { body }),
+    (e: unknown) => e instanceof LinkPolicyError,
+  );
+  const stored = (await readQueue()).find((d) => d.id === "d_prev");
+  assert.ok(!(stored?.body ?? "").includes("ktvvs.vercel.app"));
+});

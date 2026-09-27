@@ -10,6 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildLeadEmail, previewEmailTemplate, getEmailTemplate } from "./email.ts";
 import { formatSignature } from "./senders.ts";
+import { REFERENCE_INTRO } from "./demos.ts";
 
 const baseLead = {
   id: "lead-test-123",
@@ -277,4 +278,14 @@ test("buildLeadEmail: Charlie + CHARLIE_SENDER_TITLE env viser titel", () => {
     delete process.env.CHARLIE_SENDER_TITLE;
     clearCharlie();
   }
+});
+
+// 26/9: legacy-skabelonen må ikke love "et par eksempler" når kun forsiden linkes.
+// (De to sendLeadEmail-tests om kundehost i body/emne hørte til en direkte SMTP-vej
+// som main slettede i 05f7fbf — "døde send-veje fjernet". Kundehost-gaten på de
+// faktiske send-veje dækkes i preview-send.test.ts og approve/send.)
+test("26/9: legacy-skabelonen lover ikke eksempler når kun forsiden linkes", () => {
+  const tpl = (b: string) => getEmailTemplate(b, "cold", { ...baseLead, branch: b, leadId: "l", daysSince: 7, sender: "lucas" });
+  for (const b of ["tømrer", "vinduespudser", "boghandel"]) { assert.equal(tpl(b).text.includes("et par eksempler"), false, b); assert.equal(tpl(b).html.includes("et par eksempler"), false, b); assert.ok(tpl(b).text.includes("Her er min egen side."), b); }
+  for (const b of ["frisør", "café", "maler"]) assert.ok(tpl(b).text.includes(REFERENCE_INTRO), b);
 });

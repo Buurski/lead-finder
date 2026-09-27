@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { safeHref } from "@/lib/safe-href";
+import { defaultPreviewBody } from "@/lib/hq/preview-body";
 import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { timeAgo } from "@/components/hq/time";
@@ -56,8 +57,10 @@ function defaultBody(item: PreviewRequest): string {
 Tak fordi du tjekkede ${item.seoTjek.host} hos os. Herunder er resultatet og de ting, jeg ville rette først.
 
 Skriv eller ring, hvis du vil have hjælp til det.`;
-  const link = item.previewUrl ?? "";
-  return `${hilsen}\n\nTak fordi I spurgte. Her er et første udkast til en ny hjemmeside til ${item.company}:\n${link}\n\nDet er et udkast — alt kan rettes. Sig til hvad I synes, så tager vi den derfra.`;
+  // Demo-udkastet bærer link-politikkens forside-linje: sendPreview afviser
+  // mailen uden kinly.dk-forsiden, så standardteksten kommer fra preview-body.ts
+  // (samme tekst som testen i preview-send.test.ts binder til gaten).
+  return defaultPreviewBody(item);
 }
 
 function groupOf(r: PreviewRequest): "ready" | "working" | "sent" | "rejected" {

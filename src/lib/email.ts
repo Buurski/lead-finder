@@ -1,4 +1,4 @@
-import { DEMO_SITES } from "./demos.ts";
+import { DEMO_SITES, referenceIntro, referenceLines, referenceLinks, withReferenceLinks } from "./demos.ts";
 import { defaultSender, formatSignature, type SenderId } from "./senders.ts";
 
 // The transporter is resolved per-send via senders.ts — there is no module-
@@ -10,7 +10,6 @@ import { defaultSender, formatSignature, type SenderId } from "./senders.ts";
 const DEMO_URLS = {
   food: [DEMO_SITES.underKlippen, DEMO_SITES.zaytoon],
   craft: DEMO_SITES.denlillemaler,
-  craftUtility: DEMO_SITES.ktvvs,
   photo: DEMO_SITES.buurfoto,
   gallery: DEMO_SITES.buurfoto,
   professional: DEMO_SITES.midtadvokaterne,
@@ -19,14 +18,17 @@ const DEMO_URLS = {
   beautySalon: DEMO_SITES.salonArtec,
 } as const;
 
-// Trade branches use the real KT VVS customer demo first; the maler demo is
-// secondary for visual variation.
+// Håndværk uden kunde-case (maler/tømrer/murer) bruger maler-demoen. Brancher
+// med en rigtig kunde bag sig (VVS/el → KT VVS, auto → Ikast AutoService) linkes
+// i stedet til kinly.dk-casen: kundens eget preview/domæne må kun optræde via sin
+// case (Lucas 23/9) — se demos.ts#CUSTOMER_SITES. Ellers røg det upublicerede
+// KT VVS-preview (ktvvs.vercel.app) med i VVS-mails herfra.
 
 // Beauty: per Lucas (2026-05-20) — always send BOTH demos to every beauty lead,
 // no per-sub-branch specialisation. Salon-artec leads (broadest appeal), streetcut second.
 
-function pickCraftDemo(): string {
-  return DEMO_URLS.craftUtility;
+function pickCraftDemo(branch: string, name: string): string {
+  return referenceLinks(branch, name).caseUrl ?? DEMO_URLS.craft;
 }
 
 function pickFoodDemoOrder(name: string, branch: string): { primary: string; secondary: string } {
@@ -295,17 +297,26 @@ ${signature.html}`),
     cold: (v) => {
       const signature = formatSignature(v.sender);      const ws = websiteLine(v);
       const compliment = complimentLine("craft", v.name, v.city);
-      const demo = pickCraftDemo();
+      const demo = pickCraftDemo(v.branch, v.name);
+      // En case er en RIGTIG kundes side, ikke vores egen demo — teksten må ikke
+      // kalde den en demo, og "Den er kun en demo" ville være direkte forkert.
+      const isCase = demo.includes("/case/");
+      const demoIntro = isCase
+        ? `Jeg har bygget hjemmesider for ${v.branchDisplay} før. se et eksempel her:`
+        : `Jeg har lavet en demo-hjemmeside til ${v.branchDisplay}. se den her:`;
+      const demoHead = isCase ? "En" : "Den er kun en demo. en";
+      const demoTail = `${demoHead} fuld version til ${v.name} ville selvfølgelig bære jeres egne projekter, farver og udtryk.`;
+      const demoTailHtml = `${demoHead} fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.`;
       const text = `Hej ${v.name},
 
 ${compliment} Jeres arbejde taler for sig selv. hjemmesiden fortjener at gøre det samme.
 
 ${ws}
 
-Jeg har lavet en demo-hjemmeside til ${v.branchDisplay}. se den her:
+${demoIntro}
 → ${demo}
 
-Den er kun en demo. en fuld version til ${v.name} ville selvfølgelig bære jeres egne projekter, farver og udtryk.
+${demoTail}
 
 Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.
 
@@ -317,20 +328,21 @@ ${signature.text}`;
 <p>Hej ${v.name},</p>
 <p>${compliment} Jeres arbejde taler for sig selv. hjemmesiden fortjener at gøre det samme.</p>
 <p>${ws}</p>
-<p>Jeg har lavet en demo-hjemmeside til ${v.branchDisplay}. se den her:<br>
+<p>${demoIntro}<br>
 → <a href="${demo}">${demo}</a></p>
-<p>Den er kun en demo. en fuld version til <strong>${v.name}</strong> ville selvfølgelig bære jeres egne projekter, farver og udtryk.</p>
+<p>${demoTailHtml}</p>
 <p>Hvis det er noget I bare vil høre lidt mere om, så skriv eller ring.</p>
 ${signature.html}`),
       };
     },
     followup: (v) => {
-      const signature = formatSignature(v.sender);      const demo = pickCraftDemo();
+      const signature = formatSignature(v.sender);      const demo = pickCraftDemo(v.branch, v.name);
+      const demoHeading = demo.includes("/case/") ? "Eksemplet ligger her:" : "Demoen ligger her:";
       const text = `Hej igen ${v.name},
 
 Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.
 
-Demoen ligger her:
+${demoHeading}
 → ${demo}
 
 Hvis I er nysgerrige, kan jeg lave en hurtig skitse til ${v.name} med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.
@@ -344,7 +356,7 @@ ${signature.text}`;
         html: buildHtml(`
 <p>Hej igen ${v.name},</p>
 <p>Lille opfølgning på min mail fra ${v.daysSince} dage siden. Jeg har faktisk overvejet hvordan en hjemmeside kunne fremhæve jeres egne projekter. det er der mange håndværkere der har god gavn af.</p>
-<p>Demoen ligger her:<br>
+<p>${demoHeading}<br>
 → <a href="${demo}">${demo}</a></p>
 <p>Hvis I er nysgerrige, kan jeg lave en hurtig skitse til <strong>${v.name}</strong> med 2-3 af jeres egne projekter. helt uforpligtende. Sig endelig til hvis det lyder interessant.</p>
 <p>Og er det ikke aktuelt nu, så er ét enkelt "nej tak" alt jeg har brug for. så lader jeg jer være.</p>
@@ -634,6 +646,13 @@ ${signature.html}`),
   },
 };
 
+/** Indsætter et afsnit før signaturen (eller til sidst hvis den ikke findes). */
+function insertBefore(text: string, marker: string, block: string): string {
+  const at = marker ? text.lastIndexOf(marker) : -1;
+  if (at < 0) return `${text.replace(/\s+$/, "")}\n\n${block}`;
+  return `${text.slice(0, at).replace(/\s+$/, "")}\n\n${block}\n\n${text.slice(at)}`;
+}
+
 export function getEmailTemplate(
   branch: string,
   type: "cold" | "followup",
@@ -648,7 +667,24 @@ export function getEmailTemplate(
   const template = TEMPLATES[group]?.[type] ?? TEMPLATES.craft[type];
   const branchDisplay = getBranchDisplay(branch);
   const result = template({ ...vars, branchDisplay, sender });
-  return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
+  // Link-politik (Lucas 24/9): legacy-skabelonerne her har demo-/case-links, men
+  // ikke altid kinly.dk-forsiden og branche-siden. Samme politik som køen
+  // (demos.ts#withReferenceLinks) lægges på her, så SendQueue-vejene
+  // (bulk-send, review/approve, send-email, preview) ikke kan sende uden links.
+  // Blokken sættes FØR signaturen — links efter "Med venlig hilsen" læser skævt.
+  const fix = withReferenceLinks(result.text, branch, vars.name);
+  if (fix.added.length === 0) return { ...result, text: result.text + UNSUBSCRIBE_TEXT };
+  const sig = formatSignature(sender);
+  const intro = referenceIntro(referenceLines(branch, vars.name));
+  return {
+    ...result,
+    text: insertBefore(result.text, sig.text, [intro, ...fix.added.map((u) => `→ ${u}`)].join("\n")) + UNSUBSCRIBE_TEXT,
+    html: insertBefore(
+      result.html,
+      sig.html,
+      [`<p>${intro}<br>`, ...fix.added.map((u) => `→ <a href="${u}">${u}</a><br>`), `</p>`].join(""),
+    ),
+  };
 }
 
 // Thrown when no template group resolves for a lead. The command-center email.ts

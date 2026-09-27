@@ -5,6 +5,7 @@
 import { and, eq, like, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, task } from "../db/schema.ts";
+import { customerSiteLinks, hasKinlyFront } from "../demos.ts";
 import { failedBeforeAccept, withLock } from "../send-safety.ts";
 
 export class PreviewSendError extends Error {}
@@ -58,6 +59,12 @@ export async function sendPreview(
     const r = await deps.get(id);
     if (!r) throw new PreviewSendError("udkastet findes ikke");
     if (!isSendable(r)) throw new PreviewSendError(r.previewUrl || r.seoTjek ? `kan ikke sendes i status "${r.status}"` : "udkastet har intet link endnu");
+    // 26/9: previewUrl ER mailens link. Peger udkastet selv på en kendt kundeside
+    // (KT VVS-previewet), må mailen ikke gå ud — også når body'en ikke har linket.
+    const badPreview = r.previewUrl ? customerSiteLinks(r.previewUrl)[0] : undefined;
+    if (badPreview) {
+      throw new PreviewSendError(`udkastets link peger på kundens egen side (${badPreview}) — brug kinly.dk-casen`);
+    }
     const to = r.email.trim();
     if (!EMAIL.test(to)) throw new PreviewSendError("modtagerens mail er ugyldig");
     const subject = input.subject.trim();
@@ -65,6 +72,19 @@ export async function sendPreview(
     if (!subject || subject.length > 200) throw new PreviewSendError("emne mangler eller er for langt");
     const bodyErr = previewBodyError(body, r.previewUrl, Boolean(r.seoTjek));
     if (bodyErr) throw new PreviewSendError(bodyErr);
+    // Link-politik (Lucas 24/9): det gratis udkast er også et prospekt-udkast, så
+    // kinly.dk-forsiden skal med (udkast-linket peger på vores egen demo).
+    // SEO-tjek-henvendelser har intet demo-link og er undtaget, præcis som i
+    // previewBodyError — ellers kunne rapportmailen aldrig sendes.
+    if (!r.seoTjek && !hasKinlyFront(body)) throw new PreviewSendError("mailen skal indeholde linket til kinly.dk");
+    // 26/9: kundens egen side må kun linkes via sin kinly.dk-case — gaten står FØR
+    // db. Emnet er en selvstændig vej ud (fx et preview-domæne i subject-linjen).
+    for (const part of [subject, body]) {
+      const customerLinks = customerSiteLinks(part);
+      if (customerLinks.length) {
+        throw new PreviewSendError(`kundens egen side må ikke linkes i mailen (${customerLinks[0]}) — brug kinly.dk-casen`);
+      }
+    }
 
     const [link] = await db.select({ companyId: activity.companyId }).from(activity).where(eq(activity.legacyId, `preview:${id}`));
     const legacyId = `preview-sent:${id}`;
