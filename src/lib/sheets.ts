@@ -95,7 +95,16 @@ export interface Client {
 const LEADS_RANGE = "Leads!A2:V";
 const CLIENTS_RANGE = "Clients!A2:O";
 
+// Kun til test: når sat leverer getLeads() denne liste i stedet for at hente fra
+// Sheets/pg. Produktionsadfærden (null) er uændret. Samme mønster som __setDb.
+let testLeads: Lead[] | null = null;
+
+export function __setLeadsForTest(leads: Lead[] | null): void {
+  testLeads = leads;
+}
+
 export async function getLeads(): Promise<Lead[]> {
+  if (testLeads !== null) return testLeads;
   if (pgEnabled()) return (await import("./pg/leads.ts")).getLeads();
 
   const sheets = getSheetsClient();
