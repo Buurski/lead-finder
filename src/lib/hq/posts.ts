@@ -756,6 +756,10 @@ export function runChecklist(p: {
   if (!slug || !bodyLinks(body).some((l) => l.href.includes(`ref=blog-${slug}`))) {
     missing.push(`CTA til /seo-tjek/ eller kontakt med ?ref=blog-${slug || "<slug>"} mangler`);
   }
+  // Udgiveren laver "Hvad kan du gøre nu"-boksen af denne sektion — uden punkter blev den tom på kinly.dk (27-09).
+  const todo = /^#{2,3}\s.*(gøre nu|tjekliste|kom i gang|næste skridt)[^\n]*\n([\s\S]*?)(?=^#{2,3}\s|(?![\s\S]))/im.exec(body);
+  const todoItems = todo ? todo[2].split("\n").filter((l) => /^\s*[-*]\s+\S/.test(l)).length : 0;
+  if (todoItems < 3) missing.push(`sektionen "Hvad kan du gøre nu" skal have mindst 3 konkrete punkter (har ${todoItems})`);
   const words = countWords(body);
   if (words < 600 || words > 900) missing.push(`brødteksten er ${words} ord — den skal være 600-900`);
   // Tomme slots er ok; hver kandidat der FINDES skal være komplet.

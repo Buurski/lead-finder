@@ -100,6 +100,8 @@ function greenBody(slug = GREEN_SLUG): string {
     "# Hvad koster en hjemmeside",
     ...afsnit,
     "Læs også om [branchesiden for håndværkere](https://kinly.dk/brancher/haandvaerk) og [vores case med Ikast AutoService](https://kinly.dk/cases/ikast-autoservice).",
+    "## Hvad kan du gøre nu",
+    "- Tjek siden på mobilen\n- Find tre konkurrenter\n- Skriv prisen op",
     `[Tag SEO-tjekket](/seo-tjek/?ref=blog-${slug})`,
   ].join("\n\n");
 }

@@ -40,7 +40,7 @@ function body(slug: string): string {
     ...Array.from({ length: 8 }, (_, i) => para(i + 9)),
     "Læs [branchesiden](https://kinly.dk/brancher/haandvaerk) og [casen](https://kinly.dk/cases/ikast-autoservice).",
     "## Hvad kan du gøre nu",
-    "- Tjek din egen side på mobilen\n- Find tre konkurrenter",
+    "- Tjek din egen side på mobilen\n- Find tre konkurrenter\n- Skriv prisen op",
     `[Tag SEO-tjekket](/seo-tjek/?ref=blog-${slug})`,
   ].join("\n\n");
 }
@@ -70,7 +70,7 @@ test("grønt kort i Publicer eksporteres i kinly.dk-format; tjeklisten flyttes u
   assert.equal(post.hook, "Kort åbning om prisen.");
   assert.equal(post.shortAnswer, "Det korte svar: det afhænger af opgaven.");
   assert.deepEqual(post.sections.map((s) => s.heading), ["Hvad prisen består af", "Drift"]);
-  assert.deepEqual(post.tjekliste, { heading: "Hvad kan du gøre nu", items: ["Tjek din egen side på mobilen", "Find tre konkurrenter"] });
+  assert.deepEqual(post.tjekliste, { heading: "Hvad kan du gøre nu", items: ["Tjek din egen side på mobilen", "Find tre konkurrenter", "Skriv prisen op"] });
   assert.ok(post.sections[1].paragraphs.some((x) => x.includes(`?ref=blog-${p.slug}`)), "CTA'en følger med");
   assert.equal(post.cover.src, `/img/blog/${p.slug}-hero.png`);
   assert.equal(post.images?.[0].src, `/img/blog/${p.slug}-billede.png`);
