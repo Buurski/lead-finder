@@ -169,19 +169,15 @@ const PHOTO = /fotograf|foto|photo/i;
 const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 // "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
-// Ordgrænsen (27/9): "mekanisk" er ikke en mekaniker — et maskinværksted hører
-// hverken til auto eller VVS, og udkastet flagges i stedet (fail-closed).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik(?:er(?:en|ne|e)?)?\b/i;
+const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
 
 // Præcedensen mellem de to spor, ét sted: et ægte VVS-/el-/kloak-/varme-ord
 // (CRAFT_UTIL) vinder over "mekanik". Et firma der både er "VVS & Mekanik" er en
 // VVS-kunde (KT VVS) og ikke et autoværksted, så "mekanik" må ikke alene sende
 // leadet i auto-sporet — hverken til Ikast-casen eller til automekaniker-siden.
-// Et mekanik-ord som AUTO ikke fanger ("mekanisk", "mekanikken") falder videre
-// til other = fail-closed: ingen case, udkastet flagges — ikke VVS. AUTO testes
-// derfor ikke længere direkte i branchKind: rækkefølgen er låst af test
-// (demos.test.ts, messenger/compose.test.ts), og DM- og mail-vejen trækker på
-// samme funktion, så de ikke kan drive fra hinanden.
+// Ellers er et mekanik-ord auto. Rækkefølgen er låst af test (demos.test.ts,
+// messenger/compose.test.ts), og DM- og mail-vejen deler denne funktion, så de
+// ikke kan drive fra hinanden.
 export function isAutoBranch(text: string): boolean {
   return AUTO.test(text) && !CRAFT_UTIL.test(text);
 }

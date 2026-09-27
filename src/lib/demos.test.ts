@@ -527,7 +527,7 @@ test("et ægte VVS-/el-ord slår \"mekanik\": VVS & Mekanik → KT VVS, ikke aut
 });
 
 test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => {
-  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik", "mekanikeren", "mekanikerne"]) {
+  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik", "mekanikeren", "mekanikerne", "mekanikerværksted", "mekanikken"]) {
     assert.equal(branchKind(branch, "Bilerne"), "auto", branch);
     const r = referenceLinks(branch, "Bilerne");
     assert.equal(r.caseUrl, DEMO_SITES.ikastCase, branch);
@@ -543,8 +543,9 @@ test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => 
     assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, where);
     assert.ok(!referenceLines(branch, name).join("\n").includes(DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen staar i mekaniker-linjerne`);
   }
-  // Ordgrænsen: "mekanisk" matcher ikke længere AUTO, og ingen af de to cases må
-  // loves for et maskinværksted — udkastet flagges i stedet (fail-closed).
+  // "mekanisk" indeholder ikke "mekanik" (mekani+s+k), så AUTO rammer den ikke.
+  // Et maskinværksted hører hverken til auto eller VVS, og udkastet flagges i
+  // stedet (fail-closed).
   for (const [branch, name] of [["mekanisk værksted", "Mekanisk Værksted ApS"], ["mekanisk", "KB Mekanisk"]] as [string, string][]) {
     const where = `${branch} | ${name}`;
     assert.notEqual(branchKind(branch, name), "auto", where);
