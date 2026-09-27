@@ -10,7 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import type { BlogStage, PostCard } from "@/lib/hq/posts";
 import Icon from "@/components/shell/Icon";
 import PostDialog from "./PostDialog";
-import { IMAGE_SLOTS, categoryLabel, chosenSlots, overallScore, scoreLevel } from "./blog-utils";
+import WorkStatus from "./WorkStatus";
+import { IMAGE_SLOTS, categoryLabel, chosenSlots, dayMonth, overallScore, personName, readWork, scoreLevel } from "./blog-utils";
 import "./blog.css";
 
 export interface StageInfo {
@@ -32,6 +33,43 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
   const dropErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (dropErrorTimer.current) clearTimeout(dropErrorTimer.current); }, []);
+
+  // Mens noget ligger i Arbejder, hentes tavlen hvert 30. sekund, så Hermes'
+  // fremdrift rykker sig uden reload. Stopper af sig selv når Arbejder er tom.
+  const [now, setNow] = useState(() => Date.now());
+  const [retryBusy, setRetryBusy] = useState<string | null>(null);
+  const working = cards.some((c) => c.stage === "arbejder");
+  useEffect(() => {
+    if (!working) return;
+    const t = setInterval(async () => {
+      setNow(Date.now());
+      if (document.hidden) return;
+      try {
+        const res = await fetch("/api/posts");
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(data.cards)) setCards(data.cards);
+      } catch {
+        // Næste runde prøver igen — et mistet poll er ikke en fejl at vise.
+      }
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [working]);
+
+  // "Prøv igen" på et fejlet/hængt kort: serveren (retryWork) afgør om det er tilladt.
+  async function retryCard(id: string) {
+    setRetryBusy(id);
+    try {
+      const res = await fetch(`/api/posts/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ retry: true }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "kunne ikke starte igen");
+      updateCard(id, { work: readWork(data.post?.work) });
+      setNow(Date.now());
+    } catch (err) {
+      notifyDropError(err instanceof Error ? err.message : "kunne ikke starte igen");
+    } finally {
+      setRetryBusy(null);
+    }
+  }
 
   function updateCard(id: string, patch: Partial<PostCard>) {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -64,6 +102,9 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
       });
       const data = await res.json().catch(() => ({}) as { error?: string });
       if (!res.ok) throw new Error(data.error || "kunne ikke flytte indlægget");
+      // Flytningen kan have bestilt eller ryddet Hermes' arbejde (workOnMove i posts.ts).
+      updateCard(id, { work: readWork(data.post?.work) });
+      setNow(Date.now());
     } catch (err) {
       setCards(prevCards);
       notifyDropError(err instanceof Error ? err.message : "kunne ikke flytte indlægget");
@@ -167,12 +208,15 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                 {list.map((card) => {
                   const chosen = chosenSlots(card.images.choice);
                   const samlet = overallScore(card.scores);
+                  const fcOld = card.factcheck ? card.factcheck.revision !== card.checklist.revision : false;
+                  // Kortet er en div med en knap indeni, så "Prøv igen" kan være sin egen knap
+                  // (knap-i-knap er ugyldigt). Klik hvor som helst på kortet åbner dialogen.
                   return (
-                    <button
+                    <div
                       key={card.id}
-                      type="button"
                       className="bl-card"
                       data-dragging={dragId === card.id}
+                      data-locked={card.stage === "arbejder"}
                       draggable={!touchDevice}
                       onDragStart={(e) => {
                         e.dataTransfer.setData("text/plain", card.id);
@@ -182,6 +226,7 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                       onDragEnd={() => { setDragId(null); setDragOverStage(null); }}
                       onClick={() => setOpenId(card.id)}
                     >
+                      <button type="button" className="bl-card-main">
                       <div className="bl-card-top">
                         <span className="bl-card-title">{card.title || "(uden titel)"}</span>
                         {samlet !== null && (
@@ -209,7 +254,8 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                             "Live"
                           )}
                         </div>
-                      ) : (
+                      ) : card.stage === "arbejder" ? null : (
+                        // I Arbejder er tjeklisten Hermes' sag — statuslinjen nedenfor siger mere.
                         <div className="bl-card-checklist" data-ok={card.checklist.ok}>
                           {card.checklist.ok ? "Klar til publicering" : `${card.checklist.missing.length} mangler`}
                         </div>
@@ -230,7 +276,24 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                           })}
                         </div>
                       )}
-                    </button>
+                      </button>
+                      {card.stage === "arbejder" && (
+                        <WorkStatus work={card.work} now={now} busy={retryBusy === card.id} onRetry={() => void retryCard(card.id)} />
+                      )}
+                      {/* Kun det beviserne rummer: council-loggen (Hermes' reviewer) og menneskets faktatjek. */}
+                      {card.stage === "klar" && (card.council || card.factcheck) && (
+                        <div className="bl-checked">
+                          {card.council && (
+                            <div>Tjekket af {card.council.reviewer}{card.council.retest ? ` · retest ${card.council.retest}` : ""}</div>
+                          )}
+                          {card.factcheck && (
+                            <div data-old={fcOld}>
+                              Faktatjek: {personName(card.factcheck.by)} {card.factcheck.at ? dayMonth(card.factcheck.at) : ""}{fcOld ? " — ældre version" : ""}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -243,6 +306,8 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
         <PostDialog
           id={openId}
           stages={stages}
+          work={cards.find((c) => c.id === openId)?.work ?? {}}
+          now={now}
           onClose={() => setOpenId(null)}
           onSaved={(patch) => updateCard(openId, patch)}
           onDeleted={(deletedId) => removeCard(deletedId)}

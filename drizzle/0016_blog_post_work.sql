@@ -1,0 +1,1 @@
+ALTER TABLE "blog_post" ADD COLUMN "work" jsonb DEFAULT '{}'::jsonb NOT NULL;

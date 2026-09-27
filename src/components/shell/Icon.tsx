@@ -10,7 +10,7 @@ import {
   TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
   Home, MessagesSquare, ListChecks, FolderTree, Network, BarChart3,
   Plus, Send, Paperclip, Mic, Save, RefreshCw, ArrowUp, Power,
-  Building2, MoreHorizontal, Phone, Copy, NotebookPen,
+  Building2, MoreHorizontal, Phone, Copy, NotebookPen, Lock,
   type LucideProps,
 } from "lucide-react";
 
@@ -25,7 +25,7 @@ const MAP = {
   TrendingUp, TrendingDown, AlertTriangle, Trophy, Filter, Hourglass, Globe,
   Home, MessagesSquare, ListChecks, FolderTree, Network, BarChart3,
   Plus, Send, Paperclip, Mic, Save, RefreshCw, ArrowUp, Power,
-  Building2, MoreHorizontal, Phone, Copy, NotebookPen,
+  Building2, MoreHorizontal, Phone, Copy, NotebookPen, Lock,
 } as const;
 
 export type IconName = keyof typeof MAP;

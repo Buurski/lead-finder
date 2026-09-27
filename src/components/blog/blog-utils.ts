@@ -2,6 +2,8 @@
 // ikke importeres fra klient-komponenter — samme mønster som
 // pipeline-utils.ts' stepState: små, stabile konstanter duplikeres herfra
 // med en kommentar, typerne importeres stadig type-only (elimineres af TS).
+import type { BlogWork } from "@/lib/hq/posts";
+
 export const BLOG_CATEGORIES = ["lokal-synlighed", "ai-soegning", "hjemmeside", "kundecases", "pris", "kinly"] as const;
 export type BlogCategory = (typeof BLOG_CATEGORIES)[number];
 
@@ -100,6 +102,62 @@ export function chosenSlots(choice: unknown): ImageSlot[] {
 /** Spejler isCustomerImage() i hq/posts.ts. */
 export function isCustomerImage(k: { url: string; source: string }): boolean {
   return /\/img\/cases\//.test(k.url) || /^kunde/i.test((k.source || "").trim());
+}
+
+// --- Hermes' arbejde i Arbejder (spejler BlogWork/readWork i hq/posts.ts) ----
+export const WORK_STALE_MS = 90 * 60_000;
+// Hermes-jobbet der tjekker køen kører hvert 5. minut (orkestratorens cron).
+const QUEUE_EVERY_MIN = 5;
+
+/** Tolerant læsning af work-jsonb (dialogen og flyt-svaret får rå db-rækker). */
+export function readWork(v: unknown): BlogWork {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const o = v as Record<string, unknown>;
+  const out: BlogWork = {};
+  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error"] as const) {
+    if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
+  }
+  for (const k of ["step", "steps"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
+  return out;
+}
+
+export type WorkState = "waiting" | "running" | "stale" | "failed" | "idle";
+
+/** Samme regler som serveren: fejl vinder, startet uden fremdrift i 90 min = hængt. */
+export function workState(w: BlogWork, now: number): WorkState {
+  if (w.error) return "failed";
+  if (w.startedAt && !w.finishedAt) return now - Date.parse(w.updatedAt ?? w.startedAt) > WORK_STALE_MS ? "stale" : "running";
+  if (w.requestedAt && !w.startedAt) return "waiting";
+  return "idle";
+}
+
+// Fast tidszone, så server og browser skriver samme klokkeslæt (ingen hydration-forskel).
+const TZ = "Europe/Copenhagen";
+export const clock = (iso: string) => new Intl.DateTimeFormat("da-DK", { hour: "2-digit", minute: "2-digit", timeZone: TZ }).format(new Date(iso)).replace(".", ":");
+export const dayMonth = (iso: string) => new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "numeric", timeZone: TZ }).format(new Date(iso)).replace(/\.$/, "").replace(".", "/");
+export const personName = (actor: string) => (actor ? actor[0].toUpperCase() + actor.slice(1) : "");
+
+/** Statuslinje + fremdrift (0-100, null = ukendt) for et kort i Arbejder. */
+export function workLine(w: BlogWork, now: number): { state: WorkState; text: string; pct: number | null } {
+  const state = workState(w, now);
+  const trin = w.steps ? `trin ${w.step ?? 0}/${w.steps}` : "";
+  const pct = w.steps ? Math.round(((w.step ?? 0) / w.steps) * 100) : null;
+  if (state === "failed") return { state, pct, text: `Fejlede${w.step !== undefined ? ` ved trin ${w.step}` : ""}: ${w.error}` };
+  if (state === "stale") return { state, pct, text: "Ingen fremdrift i 90 min — hænger måske" };
+  if (state === "waiting") {
+    const waited = now - Date.parse(w.requestedAt!);
+    return { state, pct: null, text: waited > 2 * QUEUE_EVERY_MIN * 60_000 ? `Venter på Hermes — bestilt ${clock(w.requestedAt!)}` : `Venter på Hermes — starter inden for ca. ${QUEUE_EVERY_MIN} min` };
+  }
+  if (state === "running") {
+    // Groft skøn: gennemsnitstid pr. færdigt trin × trin tilbage.
+    let eta = "";
+    if (w.steps && w.step && w.step < w.steps) {
+      const left = Math.max(1, Math.round(((now - Date.parse(w.startedAt!)) / w.step) * (w.steps - w.step) / 60_000));
+      eta = `ca. ${left} min tilbage`;
+    }
+    return { state, pct, text: ["Hermes skriver", trin, w.label, `startet ${clock(w.startedAt!)}`, eta].filter(Boolean).join(" · ") };
+  }
+  return { state, pct: null, text: "" };
 }
 
 // Spejler countWords() i hq/posts.ts — kun til den levende ord-tæller i

@@ -496,3 +496,86 @@ test("agenten kan ikke rate, faktatjekke eller kalde sig manuel — og ikke publ
   assert.equal(ratinger[0].stage, "ide");
   assert.equal(ratinger[0].revision, revisionOf(rated));
 });
+
+// --- Hermes' arbejde i Arbejder: queue/claim/progress/fail (spec 27-09) -------
+test("queue → claim → progress → move klar: hele Hermes-vejen over ruten", async () => {
+  const created = await (await post({ actor: "hermes", action: "create", title: "Bestilt af Lucas" })).json();
+  const id = created.post.id;
+  await updatePost(db, id, { stage: "arbejder" }, "lucas");
+
+  const q = await (await post({ action: "queue" })).json();
+  assert.equal(q.ok, true);
+  assert.deepEqual(q.cards.map((c: { id: string }) => c.id), [id]);
+  assert.equal(q.cards[0].title, "Bestilt af Lucas");
+  assert.equal(q.cards[0].work.requestedBy, "lucas");
+
+  const claim = await post({ actor: "hermes", action: "claim", id });
+  assert.equal(claim.status, 200);
+  const claimed = await claim.json();
+  assert.equal(claimed.card.work.step, 0);
+  assert.ok(claimed.card.work.startedAt);
+
+  const igen = await post({ action: "claim", id });
+  assert.equal(igen.status, 400);
+  assert.match((await igen.json()).error, /allerede i gang/);
+  assert.deepEqual((await (await post({ action: "queue" })).json()).cards, []);
+
+  const prog = await post({ action: "progress", id, step: 4, steps: 9, label: "Kilder hentet" });
+  assert.equal(prog.status, 200);
+  const p = await prog.json();
+  assert.equal(p.card.work.step, 4);
+  assert.equal(p.card.work.label, "Kilder hentet");
+
+  const moved = await (await post({ action: "move", id, stage: "klar" })).json();
+  assert.equal(moved.post.stage, "klar");
+  assert.ok(moved.post.work.finishedAt);
+  assert.equal(moved.post.work.step, 4);
+});
+
+test("progress og fail afvises med 400 når input eller tilstand er forkert", async () => {
+  const created = await (await post({ action: "create", title: "Afvisninger" })).json();
+  const id = created.post.id;
+  // Ikke i Arbejder endnu.
+  for (const payload of [{ action: "claim", id }, { action: "progress", id, step: 1, steps: 2, label: "x" }, { action: "fail", id, error: "x" }]) {
+    const res = await post(payload);
+    assert.equal(res.status, 400, JSON.stringify(payload));
+    assert.match((await res.json()).error, /står ikke i Arbejder/);
+  }
+  await updatePost(db, id, { stage: "arbejder" }, "charlie");
+  const tidlig = await post({ action: "progress", id, step: 1, steps: 2, label: "x" });
+  assert.equal(tidlig.status, 400);
+  assert.match((await tidlig.json()).error, /ikke startet/);
+  await post({ action: "claim", id });
+  for (const bad of [{ step: 3, steps: 2 }, { step: -1, steps: 2 }, { step: 1, steps: 25 }, { step: "1", steps: 2 }]) {
+    const res = await post({ action: "progress", id, label: "x", ...bad });
+    assert.equal(res.status, 400, JSON.stringify(bad));
+  }
+  const langLabel = await post({ action: "progress", id, step: 1, steps: 2, label: "x".repeat(121) });
+  assert.equal(langLabel.status, 400);
+  assert.equal((await post({ action: "claim", id: "ikke-et-id" })).status, 400);
+
+  const fail = await post({ action: "fail", id, error: "Kilde-API svarede 500" });
+  assert.equal(fail.status, 200);
+  const f = await fail.json();
+  assert.equal(f.card.work.error, "Kilde-API svarede 500");
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
+  assert.equal(row.stage, "arbejder");
+  assert.equal((await post({ action: "fail", id })).status, 400); // error mangler
+  const efterFejl = await post({ action: "progress", id, step: 2, steps: 2, label: "x" });
+  assert.equal(efterFejl.status, 400);
+  assert.match((await efterFejl.json()).error, /fejlet/);
+  assert.deepEqual((await (await post({ action: "queue" })).json()).cards, []);
+});
+
+test("queue/claim/progress/fail kræver hermes som actor og en gyldig signatur", async () => {
+  const created = await (await post({ action: "create", title: "Kun Hermes" })).json();
+  await updatePost(db, created.post.id, { stage: "arbejder" }, "lucas");
+  for (const action of ["queue", "claim", "progress", "fail"]) {
+    const res = await post({ actor: "lucas", action, id: created.post.id, step: 1, steps: 2, label: "x", error: "x" });
+    assert.equal(res.status, 400, action);
+    assert.match((await res.json()).error, /skriver som hermes/);
+  }
+  assert.equal((await post({ action: "queue" }, { secret: "forkert" })).status, 401);
+  const [row] = await db.select().from(blogPost).where(eq(blogPost.id, created.post.id));
+  assert.equal(row.work && (row.work as { startedAt?: string }).startedAt, undefined);
+});

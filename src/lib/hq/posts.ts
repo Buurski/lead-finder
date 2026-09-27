@@ -3,7 +3,7 @@
 // findes ét sted. Mønster: hq/deals.ts.
 import "server-only";
 import crypto from "node:crypto";
-import { asc, desc, eq, max } from "drizzle-orm";
+import { and, asc, desc, eq, max, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
 
@@ -27,6 +27,14 @@ export const STAGE_LABEL: Record<BlogStage, string> = {
 // flytte mellem de tre første kolonner.
 const HUMAN_ACTORS = new Set<string>(["lucas", "charlie"]);
 const AGENT_STAGES: readonly string[] = ["ide", "arbejder", "klar"];
+
+// Arbejder er Hermes' arbejdsbord (spec 27-09): et menneske kan tage et kort
+// tilbage til Idéer (eller slette det, se deletePost), men hverken redigere det
+// mens det ligger der eller sætte det i Klar selv — heller ikke direkte fra
+// Idéer. Klar nås kun via Hermes' arbejde, undtagen på vej ud af Publicer
+// (den flytning er en aflyst udgivelsesaftale, ikke en genvej uden om Hermes).
+const HERMES_WORKING_MSG = "Kortet er under arbejde hos Hermes — det flytter selv til Til gennemlæsning, når det er færdigt og tjekket.";
+const HERMES_EDIT_LOCK_MSG = "Kortet er under arbejde hos Hermes — det kan ikke redigeres nu. Tag det tilbage til Idéer, hvis du vil ændre noget.";
 
 // Kortets oprindelse (spec 24-09 §Datamodel). "manuel" kan kun sættes af et
 // menneske i sessionen — også når idéen kommer ind via dock eller Telegram.
@@ -943,6 +951,20 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
       if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes automatisk, når opslaget er live på kinly.dk");
       if (!moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg er låst — ret det direkte på kinly.dk");
+      // Arbejder er låst for alle andre end Hermes (spec 27-09) — også det fælles
+      // "delt"-login: ingen felt-rettelser mens Hermes arbejder på kortet, og herfra
+      // må man kun gå tilbage til Idéer.
+      if (!moving && from === "arbejder" && actor !== "hermes") {
+        throw new BlogInputError(HERMES_EDIT_LOCK_MSG);
+      }
+      if (moving && from === "arbejder" && actor !== "hermes" && target !== "ide") {
+        throw new BlogInputError(HERMES_WORKING_MSG);
+      }
+      // Til Klar går kun gennem Hermes' arbejde — hverken fra Idéer eller Arbejder må
+      // et menneske sætte kortet der selv. Undtaget: aftalen aflyses ud af Publicer.
+      if (moving && target === "klar" && from !== "publicer" && actor !== "hermes") {
+        throw new BlogInputError(from === "arbejder" ? HERMES_WORKING_MSG : "Til gennemlæsning nås kun gennem Hermes — læg kortet i Arbejder, så skriver han det.");
+      }
       if (!moving && from === "publicer" && patch.images !== undefined) {
         throw new BlogInputError("indlægget står i Publicer — flyt det tilbage til Klar før du skifter billede");
       }
@@ -1025,6 +1047,8 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
         const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, target));
         set.position = (top[0]?.value ?? 0) + 1;
         set.publishRequestedAt = target === "publicer" ? new Date() : null;
+        const work = workOnMove(readWork(before.work), from, target, actor);
+        if (work) set.work = work;
       }
 
       const [after] = await tx.update(blogPost).set(set).where(eq(blogPost.id, id)).returning();
@@ -1137,6 +1161,151 @@ export async function deletePost(db: Db, id: string, actor: string) {
   });
 }
 
+// --- Hermes' arbejde i Arbejder (spec 27-09) ---------------------------------
+// Et menneske flytter et kort til Arbejder = "Hermes, skriv den". Hermes henter
+// køen, claimer ét kort, melder fremdrift og flytter det selv til Klar. `work` er
+// kun fremdrift: den indgår ikke i revisionOf, så faktatjek og tjekliste ikke
+// ugyldiggøres af et nyt trin.
+export interface BlogWork {
+  requestedBy?: string;
+  requestedAt?: string;
+  startedAt?: string;
+  step?: number;
+  steps?: number;
+  label?: string;
+  updatedAt?: string;
+  finishedAt?: string;
+  error?: string;
+}
+
+/** Et startet job uden fremdrift så længe regnes som hængt: det må claimes igen. */
+export const WORK_STALE_MS = 90 * 60_000;
+const WORK_MAX_STEPS = 20;
+
+export function readWork(v: unknown): BlogWork {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const o = v as Record<string, unknown>;
+  const out: BlogWork = {};
+  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error"] as const) {
+    if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
+  }
+  for (const k of ["step", "steps"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
+  return out;
+}
+
+/** Nyt work-objekt ved en flytning, eller null = uændret. */
+function workOnMove(before: BlogWork, from: BlogStage, target: BlogStage, actor: string): BlogWork | null {
+  const now = new Date().toISOString();
+  if (target === "ide") return {};
+  // Et menneske der lægger kortet i Arbejder bestiller arbejdet (friskt objekt, gammel
+  // fremdrift væk). Flytter Hermes det selv derhen, er der ingen bestilling at vente på.
+  if (target === "arbejder") return actor === "hermes" ? {} : { requestedBy: actor, requestedAt: now };
+  if (from === "arbejder" && target === "klar" && actor === "hermes") return { ...before, finishedAt: now };
+  return null;
+}
+
+// SQL-udgaver af tilstandene, så claim/progress/retry er ét betinget UPDATE (intet
+// læs-så-skriv-kapløb). Samme 90-minutters-grænse som WORK_STALE_MS.
+const W = sql`${blogPost.work}`;
+const IN_ARBEJDER = sql`${blogPost.stage} = 'arbejder'`;
+const staleSince = (cutoff: string) =>
+  sql`(${W}->>'startedAt' is not null and ${W}->>'finishedAt' is null
+       and coalesce(${W}->>'updatedAt', ${W}->>'startedAt')::timestamptz < ${cutoff}::timestamptz)`;
+// Fejlede kort er med vilje ikke med: de venter på et menneskes "Prøv igen", så en
+// fejl der bliver ved ikke brænder et agent-run af hver 90. minut.
+const claimable = (cutoff: string) =>
+  sql`${IN_ARBEJDER} and ${W}->>'requestedAt' is not null and ${W}->>'error' is null
+      and (${W}->>'startedAt' is null or ${staleSince(cutoff)})`;
+const staleCutoff = () => new Date(Date.now() - WORK_STALE_MS).toISOString();
+
+/** Hermes' kø: bestilte kort der ikke er startet (eller er hængt), ældste bestilling først. */
+export async function workQueue(db: Db) {
+  const rows = await db
+    .select({ id: blogPost.id, title: blogPost.title, work: blogPost.work })
+    .from(blogPost)
+    .where(claimable(staleCutoff()))
+    .orderBy(sql`${W}->>'requestedAt'`);
+  return rows.map((r) => ({ id: r.id, title: r.title, work: readWork(r.work) }));
+}
+
+async function workRefusal(db: Db, id: string, what: string): Promise<BlogInputError> {
+  const [row] = await db.select({ stage: blogPost.stage, work: blogPost.work }).from(blogPost).where(eq(blogPost.id, id));
+  if (!row) return new BlogInputError("indlægget findes ikke");
+  if (row.stage !== "arbejder") return new BlogInputError(`${what}: kortet står ikke i Arbejder`);
+  const w = readWork(row.work);
+  if (w.error) return new BlogInputError(`${what}: kortet er markeret som fejlet — det kræver et menneskes "Prøv igen"`);
+  if (!w.requestedAt) return new BlogInputError(`${what}: kortet er ikke bestilt af et menneske`);
+  if (w.finishedAt) return new BlogInputError(`${what}: arbejdet er allerede færdigt`);
+  if (w.startedAt) return new BlogInputError(`${what}: kortet er allerede i gang (startet ${w.startedAt})`);
+  return new BlogInputError(`${what}: kortet er ikke startet — claim det først`);
+}
+
+/** Hermes tager kortet. Atomisk: kun ét kald kan vinde et ledigt eller hængt kort. */
+export async function claimWork(db: Db, id: string) {
+  const now = new Date().toISOString();
+  const [row] = await db
+    .update(blogPost)
+    .set({ work: sql`(${W} - 'label' - 'steps' - 'finishedAt') || jsonb_build_object('startedAt', ${now}::text, 'updatedAt', ${now}::text, 'step', 0)` })
+    .where(and(eq(blogPost.id, id), claimable(staleCutoff())))
+    .returning({ id: blogPost.id, title: blogPost.title, work: blogPost.work });
+  if (!row) throw await workRefusal(db, id, "kan ikke claimes");
+  return { id: row.id, title: row.title, work: readWork(row.work) };
+}
+
+function stepOf(v: unknown, label: string): number {
+  if (!Number.isInteger(v) || (v as number) < 0 || (v as number) > WORK_MAX_STEPS) {
+    throw new BlogInputError(`${label} skal være et helt tal 0-${WORK_MAX_STEPS}`);
+  }
+  return v as number;
+}
+
+/** Fremdrift fra Hermes: trin x af y og en kort tekst. Kun på et claimet, igangværende kort. */
+export async function workProgress(db: Db, id: string, p: { step?: unknown; steps?: unknown; label?: unknown }) {
+  const step = stepOf(p.step, "step");
+  const steps = stepOf(p.steps, "steps");
+  if (step > steps) throw new BlogInputError("step kan ikke være større end steps");
+  const label = text(p.label, "label", 120) ?? "";
+  const now = new Date().toISOString();
+  const [row] = await db
+    .update(blogPost)
+    .set({ work: sql`${W} || jsonb_build_object('step', ${step}::int, 'steps', ${steps}::int, 'label', ${label}::text, 'updatedAt', ${now}::text)` })
+    .where(and(eq(blogPost.id, id), sql`${IN_ARBEJDER} and ${W}->>'startedAt' is not null and ${W}->>'finishedAt' is null and ${W}->>'error' is null`))
+    .returning({ id: blogPost.id, work: blogPost.work });
+  if (!row) throw await workRefusal(db, id, "fremdrift afvist");
+  return { id: row.id, work: readWork(row.work) };
+}
+
+/** Hermes melder fejl. Kortet bliver i Arbejder og venter på et menneskes "Prøv igen". */
+export async function failWork(db: Db, id: string, error: unknown) {
+  const msg = typeof error === "string" ? error.trim().slice(0, 300) : "";
+  if (!msg) throw new BlogInputError("error mangler");
+  const now = new Date().toISOString();
+  const [row] = await db
+    .update(blogPost)
+    .set({ work: sql`${W} || jsonb_build_object('error', ${msg}::text, 'updatedAt', ${now}::text)` })
+    .where(and(eq(blogPost.id, id), IN_ARBEJDER))
+    .returning({ id: blogPost.id, work: blogPost.work });
+  if (!row) throw await workRefusal(db, id, "fejl afvist");
+  return { id: row.id, work: readWork(row.work) };
+}
+
+/** Menneskets "Prøv igen": kun på et fejlet eller hængt kort. Bestiller arbejdet på ny. */
+export async function retryWork(db: Db, id: string, actor: string) {
+  if (actor === "hermes") throw new BlogInputError("Prøv igen er et menneskes knap");
+  const now = new Date();
+  const [row] = await db
+    .update(blogPost)
+    .set({
+      work: sql`jsonb_build_object('requestedBy', ${actor}::text, 'requestedAt', ${now.toISOString()}::text)`,
+      updatedBy: actor,
+      updatedAt: now,
+    })
+    .where(and(eq(blogPost.id, id), sql`${IN_ARBEJDER} and (${W}->>'error' is not null or ${staleSince(staleCutoff())})`))
+    .returning();
+  if (!row) throw new BlogInputError("Prøv igen virker kun på et kort i Arbejder, som er fejlet eller ikke har rykket sig i 90 min");
+  return row;
+}
+
 export interface PostCard {
   id: string;
   title: string;
@@ -1156,6 +1325,10 @@ export interface PostCard {
   publishedAt: string | null;
   publishedUrl: string | null;
   updatedAt: string;
+  work: BlogWork;
+  /** Hvem der har tjekket teksten — kun det beviserne faktisk rummer (til "Til gennemlæsning"). */
+  council: { reviewer: string; retest: string } | null;
+  factcheck: { by: string; at: string; revision: string } | null;
 }
 
 /** Kort-listen til tavlen — uden body. position asc, derefter nyeste rettelse først. */
@@ -1181,23 +1354,33 @@ export async function listPosts(db: Db, opts: { stage?: string } = {}): Promise<
       publishedAt: blogPost.publishedAt,
       publishedUrl: blogPost.publishedUrl,
       updatedAt: blogPost.updatedAt,
+      work: blogPost.work,
+      proofs: blogPost.proofs,
     })
     .from(blogPost)
     .where(stage ? eq(blogPost.stage, stage) : undefined)
     .orderBy(asc(blogPost.position), desc(blogPost.updatedAt));
-  return rows.map((r) => ({
-    ...r,
-    stage: r.stage as BlogStage,
-    source: ((BLOG_SOURCES as readonly string[]).includes(r.source) ? r.source : "agent") as BlogSource,
-    images: readImages(r.images),
-    scores: readScores(r.scores),
-    ratings: readRatings(r.ratings),
-    checklist: readChecklist(r.checklist),
-    jev: readJev(r.jev),
-    publishRequestedAt: r.publishRequestedAt ? r.publishRequestedAt.toISOString() : null,
-    publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
-    updatedAt: r.updatedAt.toISOString(),
-  }));
+  return rows.map(({ proofs: rawProofs, ...r }) => {
+    const proofs = readProofs(rawProofs);
+    return {
+      ...r,
+      stage: r.stage as BlogStage,
+      source: ((BLOG_SOURCES as readonly string[]).includes(r.source) ? r.source : "agent") as BlogSource,
+      images: readImages(r.images),
+      scores: readScores(r.scores),
+      ratings: readRatings(r.ratings),
+      checklist: readChecklist(r.checklist),
+      jev: readJev(r.jev),
+      publishRequestedAt: r.publishRequestedAt ? r.publishRequestedAt.toISOString() : null,
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      updatedAt: r.updatedAt.toISOString(),
+      work: readWork(r.work),
+      council: proofs.council ? { reviewer: String(proofs.council.reviewer ?? ""), retest: String(proofs.council.retest ?? "") } : null,
+      factcheck: proofs.factcheck
+        ? { by: String(proofs.factcheck.by ?? ""), at: String(proofs.factcheck.at ?? ""), revision: String(proofs.factcheck.revision ?? "") }
+        : null,
+    };
+  });
 }
 
 /** Fuld post inkl. body. Slår op på id (uuid) eller slug. */
