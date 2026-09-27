@@ -52,7 +52,7 @@ test("fetchKinlyGsc: 28 dage mod de 28 før, pr. søgning med forrige position; 
   const k = await fetchKinlyGsc(q, "2026-09-25");
   assert.deepEqual(seen, [
     "2026-08-26..2026-09-22", "2026-07-29..2026-08-25", "2026-08-26..2026-09-22 query", "2026-07-29..2026-08-25 query",
-    "2026-08-26..2026-09-22 page /blog/", "2026-07-29..2026-08-25 page /blog/", "2026-08-26..2026-09-22 page+query /blog/",
+    "2026-08-26..2026-09-22 page /blog/", "2026-07-29..2026-08-25 page /blog/", "2026-08-26..2026-09-22 page+query /blog/", "2026-06-25..2026-09-22 date",
   ]);
   // Blog-sider: forrige periode med, side der er faldet til 0 bevares, top-3 søgeord efter klik.
   assert.deepEqual(k.pages?.[0], {

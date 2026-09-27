@@ -35,7 +35,7 @@ function Stat({ label, value, children }: { label: string; value: string; childr
   );
 }
 
-function ClicksChart({ daily, marks }: { daily: GscView["daily"]; marks: WorkMark[] }) {
+export function ClicksChart({ daily, marks }: { daily: GscView["daily"]; marks: WorkMark[] }) {
   // Linjen strækkes til bredden (non-scaling stroke); tekst og markeringer er HTML,
   // så de har samme størrelse på mobil og desktop.
   const H = 100;

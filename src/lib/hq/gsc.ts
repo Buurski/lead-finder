@@ -111,8 +111,10 @@ export async function fetchKinlyGsc(q: GscQuery, today: string, host = "kinly.dk
       await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["page"], rowLimit: 200, dimensionFilterGroups: blogOnly }),
       await q(property, { startDate: w.start, endDate: w.end, dimensions: ["page", "query"], rowLimit: 1000, dimensionFilterGroups: blogOnly }),
     );
+    const days = await q(property, { startDate: w.dailyStart, endDate: w.end, dimensions: ["date"], rowLimit: 100 });
     return {
       pages,
+      daily: fillDays(days, w.dailyStart, w.end),
       ...base,
       property,
       totals: tot(cur),

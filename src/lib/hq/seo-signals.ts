@@ -30,6 +30,8 @@ export interface KinlyGsc {
   queries: KinlyGscQuery[];
   /** /blog/-sider (samme 28 dage mod de 28 før). Mangler i dokumenter fra før 27/9. */
   pages?: KinlyGscPage[];
+  /** Klik/visninger pr. dag i 90 dage (grafen). Mangler i dokumenter fra før 28/9. */
+  daily?: { date: string; clicks: number; impressions: number }[];
   /** URL Inspection pr. udgivet indlæg (samme mandags-kørsel). */
   index?: BlogIndexStatus[];
 }

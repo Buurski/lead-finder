@@ -14,6 +14,8 @@ import {
   loadBlogCheck, loadBlogReview, loadGeo, loadKinlyGsc, seoActions, type BlogTrafficRow, type GscTotals,
 } from "@/lib/hq/seo-signals";
 import BlogIdeaButton from "./BlogIdeaButton";
+import RefreshGscButton from "./RefreshGscButton";
+import { ClicksChart } from "@/components/seo/GscCard";
 import AfproevButton from "@/components/konkurrenter/AfproevButton";
 import "@/components/konkurrenter/konkurrenter.css";
 import "./seo.css";
@@ -98,11 +100,14 @@ export default async function SeoHistoryPage() {
     <section className="cc-card cc-card-pad seo-section" aria-labelledby="seo-google">
       <div className="seo-head">
         <h2 id="seo-google" className="konk-section-title">Google · kinly.dk</h2>
-        {gsc?.property && <a href={GSC_URL} target="_blank" rel="noreferrer" className="cc-link seo-headlink">Search Console ↗</a>}
+        <span className="seo-headlink" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <RefreshGscButton />
+          {gsc?.property && <a href={GSC_URL} target="_blank" rel="noreferrer" className="cc-link">Search Console ↗</a>}
+        </span>
       </div>
       {!gsc?.property ? (
         <Empty>
-          Search Console for kinly.dk er ikke koblet på HQ endnu. Tilføj HQ&apos;s service-account som &quot;Begrænset bruger&quot; på ejendommen <code>sc-domain:kinly.dk</code> (mailen står under <Link className="cc-link" href="/settings">Indstillinger</Link>). Tallene hentes hver mandag.
+          Ingen Search Console-tal for kinly.dk endnu. Har I lige givet HQ adgang, så tryk „Hent tal nu“. Ellers: tilføj HQ&apos;s service-account som &quot;Begrænset bruger&quot; på ejendommen <code>sc-domain:kinly.dk</code> (mailen står under <Link className="cc-link" href="/settings">Indstillinger</Link>). Tallene hentes også automatisk hver mandag.
           {gsc && <> Sidst forsøgt {date(gsc.fetchedAt)}: ingen adgang.</>}
         </Empty>
       ) : <>
@@ -113,6 +118,7 @@ export default async function SeoHistoryPage() {
           <Stat label="CTR" value={ctr(gsc.totals)} change={<span className="konk-dim">før {ctr(t(gsc.prevTotals))}</span>} />
           <Stat label="Gns. position" value={gsc.totals.position == null ? "—" : nf(gsc.totals.position)} change={<Change now={gsc.totals.position} before={t(gsc.prevTotals).position} lowerIsBetter />} />
         </div>
+        {gsc.daily && gsc.daily.length > 1 && <div style={{ marginTop: 6 }}><div className="konk-dim" style={{ fontSize: 12, marginBottom: 6 }}>Klik pr. dag, 90 dage · prikker = udgivet blogindlæg</div><ClicksChart daily={gsc.daily} marks={published.filter((p) => p.publishedAt).map((p) => ({ date: String(p.publishedAt).slice(0, 10), text: p.title }))} /></div>}
         {money.length === 0 ? <Empty>Ingen søgninger efter hjemmeside, webdesign eller webbureau har givet visninger endnu.</Empty> : (
           <div className="seo-table-wrap">
             <table className="seo-table">
