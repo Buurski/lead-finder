@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront, isAutoBranch } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -32,10 +32,6 @@ const FITNESS = /fitness|træningscenter|traeningscenter|crossfit|\bgym\b|person
 // fremmed branches case. NB: samme streng står i demos.ts (D.projekter); hold
 // dem i takt indtil værterne udledes fra én kilde.
 const MASSAGE = /massage|kropsterapi/i;
-// Autoværksted/automekaniker: strengen spejler AUTO i demos.ts (samme ord, så de
-// to veje ikke driver fra hinanden), og "mekanik" hører her fordi rent
-// mekanik/automekanik er auto, ikke VVS.
-const AUTO_BRANCH = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
 // Træning og massage har ingen demo der ligner. Projektoversigten er vores
 // eget arbejde — ikke en fremmed branches case.
 const PROJEKTER = "https://kinly.dk/projekter/";
@@ -49,7 +45,7 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
   if (MASSAGE.test(b)) return "service";
   // En mekaniker er ikke en VVS-kunde: MsgGroup har ingen auto-gruppe, og
   // DEMO_URLS.service peger på Ikast AutoService-casen (demos.ts AUTO-vejen).
-  if (AUTO_BRANCH.test(b)) return "service";
+  if (isAutoBranch(b)) return "service";
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
   if (/foto|photo|photograph/.test(b)) return "photo";
@@ -85,7 +81,7 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
   if (MASSAGE.test(b)) return "massageklinik";
   // Samme ord som tone-mixer.ts bruger for auto-branchen. Uanset gruppe, ellers
   // blev en mekaniker kaldt "håndværker"/"lokal virksomhed".
-  if (AUTO_BRANCH.test(b)) return "mekaniker";
+  if (isAutoBranch(b)) return "mekaniker";
   if (group === "beauty") {
     if (/barber/.test(b)) return "barbersalon";
     if (/negl|nail/.test(b)) return "negleklinik";

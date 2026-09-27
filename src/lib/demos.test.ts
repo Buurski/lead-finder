@@ -498,3 +498,61 @@ test("mekaniker → auto (Ikast-casen + automekaniker-siden), VVS/el → KT VVS"
     assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), `Ikast-casen foreslået for ${where}`);
   }
 });
+
+// ---- "mekanik" er tvetydigt: et ægte VVS-ord vinder (27/9) -----------------
+test("et ægte VVS-/el-ord slår \"mekanik\": VVS & Mekanik → KT VVS, ikke auto", () => {
+  const varianter: [string, string][] = [
+    ["VVS & Mekanik", "Testfirma"],   // branchenavn
+    ["vvs", "VVS & Mekanik"],         // firmanavn
+    ["mekanik", "VVS & Mekanik"],     // firmanavn, andet felt
+  ];
+  for (const [branch, name] of varianter) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "craftUtility", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(refs.verticalUrl, VVS_SIDE, where);
+    const lines = referenceLines(branch, name).join("\n");
+    assert.ok(!lines.includes(DEMO_SITES.ikastCase), `${where}: Ikast-casen står i VVS-linjerne`);
+    assert.ok(!lines.includes(AUTOMEKANIKER_SIDE), `${where}: automekaniker-siden står i VVS-linjerne`);
+    // Link-gaten skal kræve de RIGTIGE links: forside + KT VVS-case + VVS-side er nok,
+    // og Ikast-casen må hverken kræves eller nævnes.
+    const body = [KINLY_FRONT, DEMO_SITES.ktvvsCase, VVS_SIDE].join("\n");
+    assert.deepEqual(missingReferenceLinks(body, branch, name), [], where);
+    assert.equal(linkGateReason(body, branch, name), null, where);
+    const links = suggestMailLinks(branch, name);
+    assert.ok(links.some((l) => l.url === DEMO_SITES.ktvvsCase), `${where}: KT VVS-casen mangler i forslaget`);
+    assert.ok(!links.some((l) => l.url === DEMO_SITES.ikastCase), `${where}: Ikast-casen foreslås for en VVS-kunde`);
+  }
+});
+
+test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => {
+  for (const branch of ["mekaniker", "bilmekaniker", "automekaniker", "autoværksted", "mekanik"]) {
+    assert.equal(branchKind(branch, "Bilerne"), "auto", branch);
+    const r = referenceLinks(branch, "Bilerne");
+    assert.equal(r.caseUrl, DEMO_SITES.ikastCase, branch);
+    assert.equal(r.verticalUrl, AUTOMEKANIKER_SIDE, branch);
+  }
+  // Ordgrænsen: "mekanisk" matcher ikke længere AUTO, og ingen af de to cases må
+  // loves for et maskinværksted — udkastet flagges i stedet (fail-closed).
+  for (const [branch, name] of [["mekanisk værksted", "Mekanisk Værksted ApS"], ["mekanisk", "KB Mekanisk"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.notEqual(branchKind(branch, name), "auto", where);
+    const refs = referenceLinks(branch, name);
+    assert.equal(refs.caseUrl, null, where);
+    assert.equal(refs.verticalUrl, null, where);
+    assert.equal(refs.caseMissing, true, where);
+    const lines = referenceLines(branch, name).join("\n");
+    assert.ok(!lines.includes(DEMO_SITES.ikastCase), where);
+    assert.ok(!lines.includes(DEMO_SITES.ktvvsCase), where);
+  }
+  // vvs og elektriker er uændret craftUtility: KT VVS-casen + VVS-siden, ingen Ikast-case.
+  for (const [branch, name] of [["vvs", "VVS Test"], ["elektriker", "El Test"]] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchKind(branch, name), "craftUtility", where);
+    assert.equal(referenceLinks(branch, name).caseUrl, DEMO_SITES.ktvvsCase, where);
+    assert.equal(referenceLinks(branch, name).verticalUrl, VVS_SIDE, where);
+    const l = suggestMailLinks(branch, name);
+    assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), where);
+  }
+});

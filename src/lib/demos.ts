@@ -164,10 +164,27 @@ const BARBER = /barber|herrefrisør|herre ?frisør|herreklip/i;
 const CLINIC = /hudplej|hudklinik|kosmetolog|skønhedsklinik|skonhedsklinik|laser|botox|filler|wax|wellness|spa\b|klinik|cosmetic|aesthet|microblading|vipper|vippe|fillers/i;
 const BEAUTY = /frisør|frisor|salon|skønhed|skonhed|hud|negle|kosmetolog|wax|makeup|spa|klinik|beauty|hair/i;
 const PHOTO = /fotograf|foto|photo/i;
-const CRAFT_UTIL = /vvs|elektriker|el-|blikkenslager|mekaniker|smed|kloak|varme/i;
+// Håndværksordene VVS/el/kloak/varme bor her og bruges to steder: CRAFT_UTIL
+// nedenfor og isAutoBranch's præcedens. Én kilde, så de to ikke kan drive fra
+// hinanden.
+const UTILITY_TRADE = /vvs|elektriker|el-|blikkenslager|smed|kloak|varme/i;
+const CRAFT_UTIL = new RegExp(`${UTILITY_TRADE.source}|mekaniker`, "i");
 // Autoværksted/bilværksted (inkl. autoskade/pladeværksted) → Ikast AutoService (reel kunde).
 // "mekanik" hører her: rent mekanik/mekaniker/bilmekaniker er auto, ikke VVS (27/9).
-const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik/i;
+// Ordgrænsen (27/9): "mekanisk" er ikke en mekaniker — et maskinværksted hører
+// hverken til auto eller VVS, og udkastet flagges i stedet (fail-closed).
+const AUTO = /autoværksted|autovaerksted|autoservice|bilværksted|bilvaerksted|automekanik|autoskade|pladeværksted|dækcenter|daekcenter|mekanik(?:er|ere|erne)?\b/i;
+
+// Præcedensen mellem de to spor, ét sted: et ægte VVS-/el-/kloak-/varme-ord
+// vinder over "mekanik". Et firma der både er "VVS & Mekanik" er en VVS-kunde
+// (KT VVS) og ikke et autoværksted, så "mekanik" må ikke alene sende leadet i
+// auto-sporet — hverken til Ikast-casen eller til automekaniker-siden. AUTO
+// testes derfor ikke længere direkte i branchKind: rækkefølgen er låst af test
+// (demos.test.ts, messenger/compose.test.ts), og DM- og mail-vejen trækker på
+// samme funktion, så de ikke kan drive fra hinanden.
+export function isAutoBranch(text: string): boolean {
+  return AUTO.test(text) && !UTILITY_TRADE.test(text);
+}
 const CRAFT = /maler|tømrer|tomrer|snedker|murer|tag|tagdækker|håndværk|entreprenør|anlæg/i;
 const PAINTER = /maler|malermester|malerfirma|facademaler|malerarbejde/i;
 // Service/maintenance: vinduespudser, rengøring, handyman, gartner, flytte, etc.
@@ -253,7 +270,7 @@ export function branchKind(branch: string, name = ""): BranchKind {
   if (FOOD_INTL.test(t)) return "foodIntl";
   if (FOOD.test(t)) return "food";
   if (PROFESSIONAL.test(t)) return "professional";
-  if (AUTO.test(t)) return "auto";
+  if (isAutoBranch(t)) return "auto";
   if (CRAFT_UTIL.test(t)) return "craftUtility";
   if (CRAFT.test(t)) return "craft";
   if (SERVICE_MAINT.test(t)) return "service";
@@ -453,9 +470,10 @@ export function suggestMailLinks(branch: string, name: string, n = 5): MailLink[
   else if (kind === "clinic" || kind === "beauty" || kind === "barber") urls.push(DEMO_SITES.vidaCase);
   // VVS/el: casen er nu obligatorisk i kladden (CASE_FOR.craftUtility), så den
   // skal også kunne vælges/reparieres herfra — ellers kan gaten ikke lukkes i UI'et.
-  // !AUTO: "mekaniker" rammer også automekanikere, men de routes til auto og har
-  // Ikast-casen som deres (branchKind tjekker AUTO før CRAFT_UTIL).
-  else if (CRAFT_UTIL.test(t) && !AUTO.test(t)) urls.push(DEMO_SITES.ktvvsCase);
+  // !isAutoBranch: et lead der både bærer "mekanik" og et ægte VVS-/el-ord er
+  // en VVS-kunde (KT VVS), så det skal have VVS-casen og ikke Ikast-casen
+  // (isAutoBranch i demos.ts holder den præcedens ét sted).
+  else if (CRAFT_UTIL.test(t) && !isAutoBranch(t)) urls.push(DEMO_SITES.ktvvsCase);
   else if (kind === "fitness") {
     // Træning/wellness: neutral-parret (uden VIDA) + projektoversigten er hele
     // forslaget — hverken VIDA-casen eller skønhedsklinik-siden (27/9).

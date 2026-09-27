@@ -84,3 +84,33 @@ test("mekaniker får ikke KT VVS-casen i DM'en", () => {
     assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), disp, where);
   }
 });
+
+test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra demos.ts", () => {
+  for (const [branch, name] of [
+    ["VVS & Mekanik", "Testfirma"],
+    ["vvs", "VVS & Mekanik"],
+    ["mekanik", "VVS & Mekanik"],
+  ] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchGroupFor(branch, name), "craftUtility", where);
+    assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ktvvsCase, where);
+    assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), "VVS-firma", where);
+    const d = buildMessengerDraft({ name, branch, city: "Herning", reviews: 40, pattern: "A" });
+    assert.equal(d.demoUrl, DEMO_SITES.ktvvsCase, where);
+    assert.notEqual(d.demoUrl, DEMO_SITES.ikastCase, where);
+    assert.equal(d.branchDisp, "VVS-firma", where);
+    assert.ok(!d.text.includes("ikast-autoservice"), where);
+    assert.deepEqual(validateMessengerDraft(d.text), [], where);
+  }
+  // Den rene mekaniker skal fortsat i service-gruppen (Ikast-casen + "mekaniker").
+  for (const [branch, name] of [
+    ["mekaniker", "Mekanikeren ApS"],
+    ["bilmekaniker", "Bilerne"],
+    ["mekanik", "Mekanikeren"],
+  ] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    assert.equal(branchGroupFor(branch, name), "service", where);
+    assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, where);
+    assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
+  }
+});
