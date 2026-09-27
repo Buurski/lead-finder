@@ -23,8 +23,18 @@ const DEMO_URLS = {
   service: DEMO_SITES.ikastCase,
 };
 
+// Massage/kropsterapi har ingen demo der ligner — Salon Artec er en frisørsalon.
+// Samme greb som fitness: projektoversigten er vores eget arbejde, ikke en
+// fremmed branches case. NB: samme streng står i demos.ts (D.projekter); hold
+// dem i takt indtil værterne udledes fra én kilde.
+const MASSAGE = /massage|kropsterapi/i;
+const PROJEKTER = "https://kinly.dk/projekter/";
+
 export function branchGroupFor(branch: string, name: string): MsgGroup {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  // Massage har ingen egen MsgGroup; gruppen er kun intern (kvote og reservelabel
+  // i select.ts/UI'et), mens demo-link og visningsnavn styres i de to næste funktioner.
+  if (MASSAGE.test(b)) return "service";
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
   if (/foto|photo|photograph/.test(b)) return "photo";
@@ -35,6 +45,7 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
 
 export function demoUrlFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (MASSAGE.test(b)) return PROJEKTER;
   if (group === "beauty") {
     if (/barber|herrefr/.test(b)) return DEMO_URLS.beautyBarber;
     // Skønhedsklinik (hud/kosmetolog/spa/laser) → Vida; frisør/salon → Salon Artec.
@@ -54,10 +65,12 @@ export function demoUrlFor(group: MsgGroup, branch: string, name: string): strin
 
 export function branchDisplayFor(group: MsgGroup, branch: string, name: string): string {
   const b = `${branch || ""} ${name || ""}`.toLowerCase();
+  if (MASSAGE.test(b)) return "massageklinik";
   if (group === "beauty") {
     if (/barber/.test(b)) return "barbersalon";
     if (/negl|nail/.test(b)) return "negleklinik";
-    if (/hud|spa|kosmet/.test(b)) return "hudklinik";
+    // "klinik" med, så visningsnavnet følger demoUrlFor's klinik-gren: en skønhedsklinik blev ellers kaldt "frisørsalon" i udkastet.
+    if (/hud|spa|kosmet|klinik/.test(b)) return "hudklinik";
     return "frisørsalon";
   }
   if (group === "food") {
@@ -91,14 +104,20 @@ export function branchDisplayFor(group: MsgGroup, branch: string, name: string):
 // samme princip som draft.ts). Bemærk: kroppene indeholder "salgselev" (Lucas'
 // differentiator), så Messenger-drafts er Lucas-only indtil der findes
 // Charlie-varianter af teksterne.
+function demoClause(branchDisp: string, demoUrl: string): string {
+  return demoUrl === PROJEKTER
+    ? `her er noget af det jeg selv har bygget: ${demoUrl}`
+    : `her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}`;
+}
+
 function patternA(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
+  return `Hej! Så lige jeres FB-side med ${reviews} anmeldelser. det er ikke noget der bare sker. Lagde dog mærke til at I ikke har en rigtig hjemmeside endnu, og det er lidt synd når I har bygget så stærk en kundekreds op. Jeg laver hjemmesider ved siden af min salgselev-plads, apprentice-niveau, men med meget omhu i hver enkelt. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Skriv hvis du vil se mere :)`;
 }
 function patternB(city: string, branchDisp: string, demoUrl: string): string {
-  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Helt uforpligtende selvfølgelig :)`;
+  return `Hej! Sad og kiggede på ${city}-området, og faldt over jeres ${branchDisp}. det ser virkelig solidt ud. Bare overrasket over at der ikke ligger en rigtig hjemmeside bag, kun Facebook. Jeg laver hjemmesider ved siden af min salgselev-plads, så det er hobby-niveau, ikke pro. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Helt uforpligtende selvfølgelig :)`;
 }
 function patternC(reviews: number, branchDisp: string, demoUrl: string): string {
-  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Sådan kan jeres hjemmeside se ud — her er et eksempel jeg selv har bygget til en ${branchDisp}: ${demoUrl}. Skriv hvis du vil se mere :)`;
+  return `Hej! Hurtigt spørgsmål. jeg så jeres FB-side med ${reviews} anmeldelser, så det må give jer mange bookings. Tænkte over om I har overvejet en rigtig hjemmeside, eller om Facebook bare gør jobbet? Jeg laver dem som hobby ved siden af min salgselev-plads, så jeg er stadig under oplæring. Sådan kan jeres hjemmeside se ud — ${demoClause(branchDisp, demoUrl)}. Skriv hvis du vil se mere :)`;
 }
 
 /** Signaturnavn pr. afsender. Bevidst kort fornavn for Lucas (uændret output
