@@ -2,6 +2,8 @@
 // two most relevant for the branch. Strip-safe (no enums) so the node engine
 // can import it. URLs mirror src/lib/email.ts DEMO_URLS.
 
+import { safeHref } from "./safe-href.ts";
+
 export interface Demo {
   label: string;
   url: string;
@@ -32,6 +34,36 @@ export const DEMO_SITES = {
   jernbanecafeenCase: "https://kinly.dk/case/jernbanecafeen/",
   lejEnKokCase: "https://kinly.dk/case/lej-en-kok/",
 } as const;
+
+/**
+ * Rigtige kunders egne sider — også når de (som KT VVS) kun findes som vores
+ * preview. De må kun optræde via deres kinly.dk-case (Lucas 23/9).
+ */
+const CUSTOMER_SITES = new Set<string>([DEMO_SITES.ktvvs, DEMO_SITES.vida, DEMO_SITES.ikastAutoservice]);
+
+function hostKey(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, "").replace(/[.,;:!?]+$/, ""); } catch { return ""; }
+}
+
+const CUSTOMER_HOSTS = new Set([...CUSTOMER_SITES].map(hostKey).filter(Boolean));
+
+export function isCustomerSiteUrl(url: string): boolean {
+  return CUSTOMER_HOSTS.has(hostKey(url));
+}
+
+/**
+ * Det href et demo-par må tegnes med i CRM'et — eller undefined, når parret
+ * ikke må være klikbart. Kunde-preview (kundens egen host, med eller uden
+ * skema) og alt der ikke er http(s) (javascript:, data:, …) giver undefined.
+ * Fail-closed, så det også dækker par der allerede ligger i kladden.
+ */
+export function pairLinkHref(raw: string): string | undefined {
+  const v = (raw ?? "").trim();
+  if (!v || v.startsWith("//")) return undefined; // protocol-relative må ikke normaliseres til et eksternt link
+  const host = hostKey(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`);
+  if (!host || CUSTOMER_HOSTS.has(host)) return undefined;
+  return safeHref(v);
+}
 
 const D = {
   underKlippen: { label: "Café / dansk", url: DEMO_SITES.underKlippen },

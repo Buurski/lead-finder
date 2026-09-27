@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, MAIL_LINKS, isCustomerSiteUrl, pairLinkHref } from "./demos.ts";
 import { composeColdEmail } from "./compose.ts";
 
 test("skønhedsklinik → VIDA-case først (reel kunde før demo)", () => {
@@ -72,4 +72,19 @@ test("fitness og ukendte brancher får en rigtig case + projektoversigten, aldri
     assert.deepEqual(pickDemos(branch, name), d, "samme lead → samme case");
   }
   assert.equal(pickDemos("Hudklinik", "Glow")[0].url, "https://kinly.dk/case/vida-klinik/");
+});
+
+test("pairLinkHref: kunde-preview og farlige skemaer er ikke klikbare, legitime par er", () => {
+  for (const u of ["https://ktvvs.vercel.app/", "ktvvs.vercel.app", "https://vida-klinik.dk/", "https://ikastautoservice.dk/"]) {
+    assert.equal(pairLinkHref(u), undefined, `kunde-preview må ikke linkes: ${u}`);
+  }
+  for (const u of ["javascript:alert(1)", "data:text/html,<b>x", ""]) {
+    assert.equal(pairLinkHref(u), undefined, `må ikke blive et href: ${u}`);
+  }
+  assert.equal(pairLinkHref("https://kinly.dk/case/vida-klinik/"), "https://kinly.dk/case/vida-klinik/");
+  assert.equal(pairLinkHref("https://under-klippen.vercel.app/"), "https://under-klippen.vercel.app/");
+  for (const l of MAIL_LINKS) {
+    if (isCustomerSiteUrl(l.url)) continue;
+    assert.equal(typeof pairLinkHref(l.url), "string", `${l.url} skal kunne klikkes`);
+  }
 });
