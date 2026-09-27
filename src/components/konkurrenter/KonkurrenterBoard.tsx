@@ -23,6 +23,7 @@ import type {
 } from "@/lib/hq/competitors";
 import Icon from "@/components/shell/Icon";
 import AfproevButton from "./AfproevButton";
+import { safeHref } from "@/lib/safe-href";
 import "./konkurrenter.css";
 
 export interface KinlyRow {
@@ -168,6 +169,9 @@ function FindingCard({ f, big = false, onDismiss }: { f: DisplayFinding; big?: b
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
 
+  // f.url kommer fra agentrapporten (udefra) — kun http(s) må blive et href.
+  const evidenceUrl = safeHref(f.url);
+
   const primary: ActionKey = f.suggest === "blog" ? "blog" : f.suggest === "annonce" ? "annonce" : "gem";
 
   function noteFor(f: DisplayFinding): string {
@@ -250,8 +254,8 @@ function FindingCard({ f, big = false, onDismiss }: { f: DisplayFinding; big?: b
           {f.evidence.map((e) => (
             <span key={e} className="konk-evidence-chip">{e}</span>
           ))}
-          {f.url && (
-            <a href={f.url} target="_blank" rel="noopener noreferrer" className="cc-link konk-evidence-link">
+          {f.url && evidenceUrl && (
+            <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="cc-link konk-evidence-link">
               Se opslag ↗
             </a>
           )}
@@ -303,12 +307,17 @@ function PatternCard({ pattern }: { pattern: CompetitorPattern }) {
       <p className="konk-pattern-detail">{pattern.detail}</p>
       {pattern.evidence.length > 0 && (
         <div className="konk-pattern-evidence">
-          {pattern.evidence.map((url) => (
-            <a key={url} href={url} target="_blank" rel="noreferrer" className="cc-link konk-evidence-link">
-              <Icon name="ArrowUpRight" style={{ width: 12, height: 12 }} />
-              {domainOf(url) || url}
-            </a>
-          ))}
+          {pattern.evidence.map((raw) => {
+            // Evidence-URL'er kommer fra agentrapporten (scrapede opslag) — kun http(s) bliver et href.
+            const safeUrl = safeHref(raw);
+            if (!safeUrl) return null;
+            return (
+              <a key={raw} href={safeUrl} target="_blank" rel="noreferrer" className="cc-link konk-evidence-link">
+                <Icon name="ArrowUpRight" style={{ width: 12, height: 12 }} />
+                {domainOf(safeUrl) || safeUrl}
+              </a>
+            );
+          })}
         </div>
       )}
     </div>
@@ -329,7 +338,7 @@ function CompetitorCard({ c }: { c: Competitor }) {
   return (
     <div className="konk-comp-card">
       <div className="konk-comp-head">
-        <a href={c.url} target="_blank" rel="noreferrer" className="cc-link konk-comp-name">{c.name}</a>
+        <a href={safeHref(c.url)} target="_blank" rel="noreferrer" className="cc-link konk-comp-name">{c.name}</a>
         {c.city && <span className="konk-dim konk-comp-city">{c.city}</span>}
       </div>
       {c.positioning && <p className="konk-comp-positioning">{c.positioning}</p>}

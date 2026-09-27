@@ -15,6 +15,7 @@ import {
 } from "@/lib/hq/seo-signals";
 import BlogIdeaButton from "./BlogIdeaButton";
 import RefreshGscButton from "./RefreshGscButton";
+import { safeHref } from "@/lib/safe-href";
 import { ClicksChart } from "@/components/seo/GscCard";
 import AfproevButton from "@/components/konkurrenter/AfproevButton";
 import "@/components/konkurrenter/konkurrenter.css";
@@ -53,9 +54,11 @@ function IndexFlag({ r }: { r: BlogTrafficRow }) {
 
 function TrafficRow({ r, measured }: { r: BlogTrafficRow; measured: boolean }) {
   const p = r.page;
+  // r.url er postens publishedUrl fra DB — kan være sat udefra, så den skal gennem safeHref.
+  const safeUrl = safeHref(r.url);
   return <li className="seo-traffic-row">
     <div className="seo-traffic-head">
-      {r.url ? <a className="cc-link seo-traffic-title" href={r.url} target="_blank" rel="noreferrer">{r.title} ↗</a> : <strong className="seo-traffic-title">{r.title}</strong>}
+      {safeUrl ? <a className="cc-link seo-traffic-title" href={safeUrl} target="_blank" rel="noreferrer">{r.title} ↗</a> : <strong className="seo-traffic-title">{r.title}</strong>}
       <span className="konk-dim">{r.publishedAt ? `udgivet ${date(r.publishedAt)}` : "udgivet"}</span>
     </div>
     <div className="konk-comp-flags"><IndexFlag r={r} /></div>
@@ -254,6 +257,9 @@ export default async function SeoHistoryPage() {
             <div className="konk-finding-actions">
               {a.blog && <BlogIdeaButton {...a.blog} />}
               <AfproevButton title={a.title} detail={a.detail} source={{ kind: a.id.split("-")[0], from: "seo", ...(a.href?.startsWith("http") ? { url: a.href } : {}) }} />
+              {/* a.href kommer udelukkende fra seoActions() i src/lib/hq/seo-signals.ts, hvor alle
+                  værdier er interne konstanter (GSC_URL, "/blog", "https://kinly.dk"). Ingen data
+                  udefra — derfor bevidst uden safeHref. Ændres det, skal dette gennem safeHref. */}
               {a.href && (a.href.startsWith("/") ? <Link href={a.href} className="cc-btn">{a.hrefLabel}</Link> : <a href={a.href} target="_blank" rel="noreferrer" className="cc-btn">{a.hrefLabel} ↗</a>)}
             </div>
           </div>)}

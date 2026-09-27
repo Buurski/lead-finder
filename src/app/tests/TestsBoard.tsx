@@ -4,6 +4,7 @@
 // alle overgange ligger i experiments.ts bag /api/tests.
 import { useState } from "react";
 import type { Experiment, ExperimentStatus, Measurement, MetricType } from "@/lib/hq/experiments";
+import { safeHref } from "@/lib/safe-href";
 import "@/components/konkurrenter/konkurrenter.css";
 import "./tests.css";
 
@@ -50,8 +51,11 @@ function Source({ e }: { e: Experiment }) {
   const names = (e.source.competitor ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const who = names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", ");
   const label = [from, who].filter(Boolean).join(" · ");
-  return e.source.url
-    ? <a className="cc-link tests-source" href={e.source.url} target="_blank" rel="noopener noreferrer">{label} ↗</a>
+  // e.source.url kan komme fra en agent/bruger-POST, så den skal gennem safeHref.
+  // Uden gyldig kilde falder vi tilbage til de interne ruter (/seo, /konkurrenter).
+  const safeUrl = safeHref(e.source.url);
+  return safeUrl
+    ? <a className="cc-link tests-source" href={safeUrl} target="_blank" rel="noopener noreferrer">{label} ↗</a>
     : <a className="cc-link tests-source" href={e.source.from === "seo" ? "/seo" : "/konkurrenter"}>{label} →</a>;
 }
 
