@@ -61,21 +61,22 @@ def reachable(url: str, want_image: bool = False) -> str | None:
     """None = ok, ellers en kort fejltekst."""
     if not isinstance(url, str) or not url.startswith("https://"):
         return "skal være https://"
-    for method in ("HEAD", "GET"):
-        try:
-            with urlopen(Request(url, method=method, headers={"User-Agent": UA}), timeout=20) as res:
-                if res.status >= 400:
-                    continue
-                if want_image and not (res.headers.get("Content-Type") or "").startswith("image/"):
-                    return "svarer ikke med et billede"
-                return None
-        except HTTPError as err:
-            if method == "GET":
-                return f"HTTP {err.code}"
-        except (URLError, TimeoutError, OSError) as err:
-            if method == "GET":
-                return f"kan ikke nås ({err.__class__.__name__})"
-    return "kan ikke nås"
+    last = "kan ikke nås"
+    # Nogle bot-værn (fx Simply, HTTP 454) afviser browser-agtige UA'er men godtager en ærlig bot-UA — prøv begge.
+    for ua in (UA, "KinlyBlog/1.0 (lucas@kinly.dk)"):
+        for method in ("HEAD", "GET"):
+            try:
+                with urlopen(Request(url, method=method, headers={"User-Agent": ua}), timeout=20) as res:
+                    if res.status >= 400:
+                        continue
+                    if want_image and not (res.headers.get("Content-Type") or "").startswith("image/"):
+                        return "svarer ikke med et billede"
+                    return None
+            except HTTPError as err:
+                last = f"HTTP {err.code}"
+            except (URLError, TimeoutError, OSError) as err:
+                last = f"kan ikke nås ({err.__class__.__name__})"
+    return last
 
 
 def verify_fields(fields: dict) -> list[str]:
