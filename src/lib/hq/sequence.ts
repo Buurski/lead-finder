@@ -68,8 +68,8 @@ export function composeStep(lead: SequenceLead, angle: Angle): { subject: string
       // casen (og helt mangle på de øvrige vinkler).
       body = [
         `Hej ${n},`,
-        `Hvis det er nemmere at se end at læse om, kan I se nogle af de sider jeg har bygget her.`,
-        `De er lavet ud fra kundernes egne farver og billeder. Jeg kan lave noget tilsvarende til ${n}.`,
+        `Hvis I hellere vil se det end læse om det, har jeg lagt min side nedenfor.`,
+        `En side til ${n} skulle selvfølgelig passe til jeres eget udtryk.`,
         `Skal jeg sende et udkast?`,
       ].join("\n\n");
       break;

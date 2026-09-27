@@ -9,7 +9,7 @@
 
 import { mixForLead } from "./tone-mixer.ts";
 import type { MixLead, OpenerKind } from "./tone-mixer.ts";
-import { pickDemos, referenceIntro, referenceLines, missingReferenceLinks } from "./demos.ts";
+import { hasDemoLink, pickDemos, referenceIntro, referenceLines, missingReferenceLinks } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { validateDraft } from "./draft.ts";
 import { personalGreetingName } from "./qualify.ts";
@@ -97,7 +97,8 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
   // 27/9: så stod en nøgen URL alene. Har mailen kun forsiden, kommer introen
   // fra referenceIntro ("Her er min egen side."), og linket står i sit eget
   // afsnit — tilbuddet må ikke havne i samme HTML-<p> som linket.
-  const hasExamples = links.length > 1;
+  // 27/9: demoIntro/tailorLine kræver et ÆGTE demo-link (hasDemoLink) — case- og branche-sider er kinly.dk-links og tæller ikke.
+  const hasDemo = hasDemoLink(links);
   return [
     greetingLine(name),
     ``,
@@ -106,9 +107,9 @@ function buildText(name: string, opener: string, disclosure: string, demoIntro: 
     `${disclosure}`,
     ...(valueText ? [``, valueText] : []),
     ``,
-    ...(hasExamples ? [demoIntro] : [referenceIntro(links)]),
+    ...(hasDemo ? [demoIntro] : [referenceIntro(links)]),
     ...links,
-    ...(hasExamples ? [``, tailorLine(name)] : []),
+    ...(hasDemo ? [``, tailorLine(name)] : []),
     ...(offerText ? [``, offerText] : []),
     ``,
     closing,

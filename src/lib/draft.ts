@@ -8,7 +8,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { customerSiteLinks, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
+import { customerSiteLinks, hasDemoLink, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
@@ -221,11 +221,11 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
   // demo når branchen ingen case har) + branche-side — fra ÉN kilde i demos.ts.
   // demoPair bliver kladdens metadata, men kroppen viser kun de tre link-roller.
   const linkLines = referenceLines(lead.branch, lead.name);
-  // 26/9: er forside-linket det eneste, har mailen intet at vise (tømrer,
-  // vinduespudser). Så må demoIntro/tailorLine ikke love demoer eller eksempler
-  // der ikke er der — kun de ærlige linklinjer står tilbage.
-  // 27/9: samme intro som compose.ts, ellers står en nøgen URL alene i mailen.
-  const hasExamples = linkLines.length > 1;
+  // 26/9: har mailen intet at vise, må demoIntro/tailorLine ikke love demoer.
+  // 27/9: rollen afgør — ikke antallet. Forside + case + branche-side er tre
+  // links uden en enkelt demo. Først når et link er et rigtigt demo-site,
+  // står demoIntro/tailorLine; ellers kommer introen fra referenceIntro.
+  const hasDemo = hasDemoLink(linkLines);
 
   const offerLine = `Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for ${name} kunne se ud, så kan I vurdere idéen helt konkret.`;
   const body = [
@@ -237,9 +237,9 @@ function composeDeterministic(lead: ResearchLead, research: ResearchResult, send
     ``,
     branchValueLine(lead.branch),
     ``,
-    ...(hasExamples ? [mix.demoIntro] : [referenceIntro(linkLines)]),
+    ...(hasDemo ? [mix.demoIntro] : [referenceIntro(linkLines)]),
     ...linkLines,
-    ...(hasExamples ? [``, tailorLine] : []),
+    ...(hasDemo ? [``, tailorLine] : []),
     ``,
     offerLine,
     ``,

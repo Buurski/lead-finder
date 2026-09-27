@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { draft_personal_message } from "./draft.ts";
 import type { ResearchLead, ResearchResult } from "./research.ts";
-import { DEMO_SITES, pickDemos, referenceLines } from "./demos.ts";
+import { DEMO_SITES, REFERENCE_INTRO, pickDemos, referenceLines } from "./demos.ts";
 
 function lead(name: string): ResearchLead {
   return {
@@ -76,13 +76,16 @@ test("vinduespudser uden demo-par: ingen demo-løfte", async () => {
   assert.equal(PROMISE.test(d.body), false, d.body);
 });
 
-test("maler og VVS beholder demo-linjen og deres links", async () => {
+test("maler beholder demo-linjen; VVS (forside+case+branche) gør ikke", async () => {
   const maler = await draft_personal_message(leadFor("Maler Mikkelsen", "maler"), researchFor("maler", "Maler Mikkelsen"), "voice guide");
   assert.equal(PROMISE.test(maler.body), true, maler.body);
   assert.ok(linksIn(maler.body).includes(DEMO_SITES.denlillemaler));
 
+  // 27/9: tre links (kinly.dk-forside + KT VVS-case + VVS-brancheside) er ingen demo.
   const vvs = await draft_personal_message(leadFor("VVS Hansen", "vvs"), researchFor("vvs", "VVS Hansen"), "voice guide");
-  assert.equal(PROMISE.test(vvs.body), true, vvs.body);
   assert.deepEqual(linksIn(vvs.body), referenceLines("vvs", "VVS Hansen").map((l) => l.slice(2)));
   assert.ok(linksIn(vvs.body).includes(DEMO_SITES.ktvvsCase), vvs.body);
+  assert.equal(PROMISE.test(vvs.body), false, vvs.body);
+  const vvsLinkPara = vvs.body.split("\n\n").find((p) => p.includes("→ "));
+  assert.equal(vvsLinkPara, [REFERENCE_INTRO, ...referenceLines("vvs", "VVS Hansen")].join("\n"), vvs.body);
 });
