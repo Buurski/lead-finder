@@ -303,6 +303,12 @@ export async function readVaultJson<T = unknown>(relInput: string, opts: { prefe
   return value;
 }
 
+// Kun til test: sæt ét rel-låg i cachen med frisk tidsstempel, så en test kan
+// styre hvad appen ser uden fil eller netværk. Produktionsadfærden er uændret.
+export function __setVaultJsonForTest(rel: string, value: unknown): void {
+  jsonCache.set(safeRel(rel), { at: Date.now(), value });
+}
+
 export function vaultStatus(): { localRoot: string; hasLocal: boolean; repo: string; branch: string; tokenSet: boolean } {
   let hasLocal = false;
   try {

@@ -18,6 +18,7 @@ interface Candidate {
   status: string;
 }
 interface Pool {
+  gated: number;
   eligible: number;
   remaining: number;
   shown: number;
@@ -136,6 +137,13 @@ export default function MessengerPanel() {
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 600, fontSize: 13.5 }}>{pool.remaining} tilbage i puljen · {candidates.length} vist</div>
             <div className="cc-dim" style={{ fontSize: 12 }}>{pool.sent} sendt · {pool.skipped} sprunget over · {pool.eligible} egnede i alt</div>
+            {pool.gated > 0 && (
+              <div className="cc-dim" style={{ fontSize: 12 }}>
+                {pool.gated === 1
+                  ? "1 kandidat er skjult, fordi kladden ikke passede til branchen."
+                  : `${pool.gated} kandidater er skjult, fordi kladden ikke passede til branchen.`}
+              </div>
+            )}
           </div>
           <button className="cc-btn" onClick={load}><Icon name="Activity" style={{ width: 14, height: 14 }} /> Opdater</button>
         </div>
