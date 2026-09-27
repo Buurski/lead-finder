@@ -418,6 +418,21 @@ test("køen: bestilte, ikke-startede eller hængte kort — ældste bestilling f
   assert.equal(await workRunning(db), 1);
 });
 
+test("besked til Hermes: følger bestillingen, går forrest i køen, overlever claim; kun mennesker ved flyt til Arbejder", async () => {
+  const gammel = await seed("Gammel bestilling");
+  const rettes = await seed("Skal rettes");
+  await updatePost(db, gammel.id, { stage: "arbejder" }, "lucas");
+  await setWork(gammel.id, { requestedBy: "lucas", requestedAt: ago(60) });
+  const bestilt = await updatePost(db, rettes.id, { stage: "arbejder", instructions: "  nyt billede B efter afsnit 3  " }, "lucas");
+  assert.equal(readWork(bestilt.work).instructions, "nyt billede B efter afsnit 3");
+  assert.deepEqual((await workQueue(db)).map((c) => c.title), ["Skal rettes", "Gammel bestilling"]);
+  await claimWork(db, rettes.id);
+  assert.equal((await workOf(rettes.id)).instructions, "nyt billede B efter afsnit 3");
+  const andet = await seed("Andet");
+  await assert.rejects(updatePost(db, andet.id, { note: "x", instructions: "y" }, "lucas"), /Arbejder/);
+  await assert.rejects(updatePost(db, andet.id, { stage: "arbejder", instructions: "y" }, "hermes"));
+});
+
 test("claim er atomisk: to samtidige kald — præcis én vinder; startet kort afvises", async () => {
   const post = await seed("Kapløb");
   await updatePost(db, post.id, { stage: "arbejder" }, "lucas");

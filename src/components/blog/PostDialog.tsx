@@ -86,6 +86,8 @@ export default function PostDialog({
   const [alts, setAlts] = useState<SlotText>(EMPTY_SLOTS);
   const [consents, setConsents] = useState<SlotText>(EMPTY_SLOTS);
   const [factNote, setFactNote] = useState("");
+  const [hermesNote, setHermesNote] = useState("");
+  const [bodyDraft, setBodyDraft] = useState<string | null>(null); // null = ikke i redigering
 
   useEffect(() => {
     let live = true;
@@ -205,6 +207,22 @@ export default function PostDialog({
     void run({ stage: "publicer" });
   }
 
+  // Send kortet til Hermes med en besked (fx "nyt billede B efter afsnit 3" eller
+  // "vis mere om vores priser mod bureauerne"). Går forrest i køen (spec 27-09).
+  async function sendToHermes() {
+    const next = await run({ stage: "arbejder", instructions: hermesNote.trim() });
+    if (next) {
+      setHermesNote("");
+      setNotice({ kind: "success", text: "Sendt til Hermes — han starter inden for ca. 5 min og følger din besked først." });
+    }
+  }
+
+  async function saveBody() {
+    if (bodyDraft === null) return;
+    const next = await run({ body: bodyDraft });
+    if (next) setBodyDraft(null);
+  }
+
   async function handleDelete() {
     if (!post) return;
     if (!confirm(`Slet "${post.title || "indlægget"}"? Det kan ikke fortrydes.`)) return;
@@ -226,7 +244,9 @@ export default function PostDialog({
     const cand = post?.images[s];
     return Boolean(cand && alts[s].trim() !== cand.alt);
   });
-  const dirty = post ? title !== post.title || slug !== post.slug || category !== post.category || excerpt !== post.excerpt || altDirty : false;
+  const bodyDirty = post !== null && bodyDraft !== null && bodyDraft !== post.body;
+  const dirty = post ? title !== post.title || slug !== post.slug || category !== post.category || excerpt !== post.excerpt || altDirty || bodyDirty : false;
+  const canAskHermes = post?.stage === "ide" || post?.stage === "klar";
   const idx = post ? stages.findIndex((s) => s.stage === post.stage) : -1;
   const canPublish = post ? post.stage !== "publicer" && post.stage !== "udgivet" : false;
   // Publicer, Udgivet og Arbejder (Hermes skriver): felt-rettelser er låst server-side —
@@ -497,6 +517,37 @@ export default function PostDialog({
                 )}
               </section>
 
+              {/* --- besked til Hermes (spec 27-09) --- */}
+              {canAskHermes && (
+                <section className="bl-section">
+                  <h3 className="bl-section-title">{post.stage === "klar" ? "Bed Hermes om ændringer" : "Besked til Hermes"}</h3>
+                  <label className="bl-field">
+                    <span className="cc-dim">Hermes følger din besked før alt andet. Kortet går forrest i køen og starter inden for ca. 5 min.</span>
+                    <textarea
+                      className="bl-input bl-textarea"
+                      rows={3}
+                      maxLength={1000}
+                      value={hermesNote}
+                      onChange={(e) => setHermesNote(e.target.value)}
+                      placeholder={post.stage === "klar"
+                        ? "Fx: nyt billede B efter afsnit 3 · vis mere om vores startpris mod bureauerne · skriv i vi-form"
+                        : "Fx: vinklen skal være pris mod kvalitet, brug vores startpris-graf"}
+                    />
+                  </label>
+                  <div className="bl-dialog-actions">
+                    <button type="button" className="cc-btn cc-btn-accent" onClick={() => void sendToHermes()} disabled={busy || dirty || !hermesNote.trim()} title={dirty ? "Gem dine rettelser først" : undefined}>
+                      {post.stage === "klar" ? "Send tilbage til Hermes" : "Send til Hermes nu"}
+                    </button>
+                  </div>
+                </section>
+              )}
+              {hermesLock && readWork(post.work).instructions && (
+                <section className="bl-section">
+                  <h3 className="bl-section-title">Din besked til Hermes</h3>
+                  <p className="cc-dim" style={{ whiteSpace: "pre-wrap" }}>{readWork(post.work).instructions}</p>
+                </section>
+              )}
+
               {/* --- fase --- */}
               <section className="bl-section">
                 <h3 className="bl-section-title">Fase</h3>
@@ -526,10 +577,28 @@ export default function PostDialog({
                 )}
               </section>
 
-              {/* --- brødtekst (read-only) --- */}
+              {/* --- brødtekst: kan rettes direkte i Klar (ny revision → faktatjek igen) --- */}
               <section className="bl-section">
-                <h3 className="bl-section-title">Brødtekst <span className="cc-dim">({countWords(post.body)} ord)</span></h3>
-                <pre className="bl-body-text">{post.body || "(ingen tekst endnu)"}</pre>
+                <h3 className="bl-section-title">Brødtekst <span className="cc-dim">({countWords(bodyDraft ?? post.body)} ord)</span></h3>
+                {bodyDraft === null ? (
+                  <>
+                    <pre className="bl-body-text">{post.body || "(ingen tekst endnu)"}</pre>
+                    {post.stage === "klar" && post.body && (
+                      <div className="bl-dialog-actions">
+                        <button type="button" className="cc-btn" onClick={() => setBodyDraft(post.body)} disabled={busy}>Ret teksten selv</button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <textarea className="bl-input bl-textarea bl-body-edit" rows={24} value={bodyDraft} onChange={(e) => setBodyDraft(e.target.value)} />
+                    <p className="cc-dim" style={{ fontSize: 12 }}>Markdown: ## mellemrubrik, - punkt, [tekst](/side/). Efter gem skal den faktatjekkes igen.</p>
+                    <div className="bl-dialog-actions">
+                      <button type="button" className="cc-btn cc-btn-accent" onClick={() => void saveBody()} disabled={busy || !bodyDirty}>{busy ? "Gemmer…" : "Gem tekst"}</button>
+                      <button type="button" className="cc-btn" onClick={() => setBodyDraft(null)} disabled={busy}>Annullér</button>
+                    </div>
+                  </>
+                )}
               </section>
             </div>
           )}

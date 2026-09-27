@@ -114,7 +114,7 @@ export function readWork(v: unknown): BlogWork {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const o = v as Record<string, unknown>;
   const out: BlogWork = {};
-  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error"] as const) {
+  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error", "instructions"] as const) {
     if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
   }
   for (const k of ["step", "steps"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;

@@ -135,6 +135,8 @@ export interface BlogPatch {
   rating?: unknown;
   /** Kun ved create: "agent" | "crm-signal" fra den signerede rute (se sourceOf). */
   source?: unknown;
+  /** Menneskets besked til Hermes, når kortet sendes til Arbejder (spec 27-09). */
+  instructions?: unknown;
 }
 
 // --- Billedkontrakt (A/B/C) ------------------------------------------------
@@ -944,6 +946,7 @@ export async function createPost(db: Db, patch: BlogPatch, actor: string) {
 // publishRequestedAt — også når kortet står i Publicer eller Udgivet.
 export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: string) {
   const fields = validPatch(patch);
+  const instructions = text(patch.instructions, "Besked til Hermes", 1000) || undefined;
   try {
     return await db.transaction(async (tx) => {
       const [before] = await tx.select().from(blogPost).where(eq(blogPost.id, id)).for("update");
@@ -980,6 +983,11 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       }
       if (moving && target === "publicer" && !HUMAN_ACTORS.has(actor)) {
         throw new BlogInputError("kun Lucas eller Charlie kan sætte et indlæg i Publicer");
+      }
+      // En besked til Hermes følger altid med en bestilling: kortet skal sendes til
+      // Arbejder af et menneske i samme kald, ellers er der ingen der læser den.
+      if (instructions && (!moving || target !== "arbejder" || actor === "hermes")) {
+        throw new BlogInputError("en besked til Hermes kræver at kortet sendes til Arbejder");
       }
 
       // A/B-billederne: agenten må skrive frie kandidater, men ikke sætte valget
@@ -1050,7 +1058,7 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
         const top = await tx.select({ value: max(blogPost.position) }).from(blogPost).where(eq(blogPost.stage, target));
         set.position = (top[0]?.value ?? 0) + 1;
         set.publishRequestedAt = target === "publicer" ? new Date() : null;
-        const work = workOnMove(readWork(before.work), from, target, actor);
+        const work = workOnMove(readWork(before.work), from, target, actor, instructions);
         if (work) set.work = work;
       }
 
@@ -1179,6 +1187,8 @@ export interface BlogWork {
   updatedAt?: string;
   finishedAt?: string;
   error?: string;
+  /** Menneskets besked: Hermes følger den før alt andet (og kortet går forrest i køen). */
+  instructions?: string;
 }
 
 /** Et startet job uden fremdrift så længe regnes som hængt: det må claimes igen. */
@@ -1189,7 +1199,7 @@ export function readWork(v: unknown): BlogWork {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const o = v as Record<string, unknown>;
   const out: BlogWork = {};
-  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error"] as const) {
+  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error", "instructions"] as const) {
     if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
   }
   for (const k of ["step", "steps"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
@@ -1197,12 +1207,15 @@ export function readWork(v: unknown): BlogWork {
 }
 
 /** Nyt work-objekt ved en flytning, eller null = uændret. */
-function workOnMove(before: BlogWork, from: BlogStage, target: BlogStage, actor: string): BlogWork | null {
+function workOnMove(before: BlogWork, from: BlogStage, target: BlogStage, actor: string, instructions?: string): BlogWork | null {
   const now = new Date().toISOString();
   if (target === "ide") return {};
   // Et menneske der lægger kortet i Arbejder bestiller arbejdet (friskt objekt, gammel
   // fremdrift væk). Flytter Hermes det selv derhen, er der ingen bestilling at vente på.
-  if (target === "arbejder") return actor === "hermes" ? {} : { requestedBy: actor, requestedAt: now };
+  if (target === "arbejder") {
+    if (actor === "hermes") return {};
+    return instructions ? { requestedBy: actor, requestedAt: now, instructions } : { requestedBy: actor, requestedAt: now };
+  }
   if (from === "arbejder" && target === "klar" && actor === "hermes") return { ...before, finishedAt: now };
   return null;
 }
@@ -1232,7 +1245,8 @@ export async function workQueue(db: Db) {
     .select({ id: blogPost.id, title: blogPost.title, work: blogPost.work })
     .from(blogPost)
     .where(claimable(staleCutoff()))
-    .orderBy(sql`${W}->>'requestedAt'`);
+    // Kort med en besked fra Lucas (typisk en rettelse) går forrest.
+    .orderBy(sql`(${W}->>'instructions') is null`, sql`${W}->>'requestedAt'`);
   return rows.map((r) => ({ id: r.id, title: r.title, work: readWork(r.work) }));
 }
 
@@ -1316,7 +1330,8 @@ export async function retryWork(db: Db, id: string, actor: string) {
   const [row] = await db
     .update(blogPost)
     .set({
-      work: sql`jsonb_build_object('requestedBy', ${actor}::text, 'requestedAt', ${now.toISOString()}::text)`,
+      // Beskeden til Hermes følger med, når en fejlet rettelse prøves igen.
+      work: sql`jsonb_strip_nulls(jsonb_build_object('requestedBy', ${actor}::text, 'requestedAt', ${now.toISOString()}::text, 'instructions', ${W}->>'instructions'))`,
       updatedBy: actor,
       updatedAt: now,
     })

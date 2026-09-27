@@ -34,6 +34,10 @@ def pick(cards: list[dict], running: int, starts: list[float], now: float) -> di
         return None
     if starts and now - max(starts) < CLAIM_GRACE:
         return None
+    # Lucas' besked til Hermes (rettelse fra gennemlæsning) går uden om døgnloftet —
+    # "med det samme" (27/9). HQ sorterer dem forrest i køen.
+    if ((cards[0].get("work") or {}).get("instructions")):
+        return cards[0]
     if sum(1 for s in starts if now - s < DAY) >= PER_DAY:
         return None
     return cards[0]
@@ -79,6 +83,9 @@ def _selftest() -> None:
     assert pick([a], 0, [now - 3 * 3600], now) == a
     assert pick([a], 0, [now - 3 * 3600, now - 5 * 3600], now) is None, "døgnloft nået"
     assert pick([a], 0, [now - 25 * 3600, now - 26 * 3600], now) == a, "loftet er rullende 24 t"
+    c = {"id": "c", "work": {"instructions": "nyt billede B"}}
+    assert pick([c], 0, [now - 3 * 3600, now - 5 * 3600], now) == c, "besked fra Lucas går uden om døgnloftet"
+    assert pick([c], 1, [], now) is None, "men stadig ét ad gangen"
     print("selftest ok")
 
 
