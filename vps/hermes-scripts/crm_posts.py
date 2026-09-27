@@ -127,7 +127,36 @@ def main() -> None:
     p = sub.add_parser("upload", help="upload PNG/WebP (fx kinly_graf-output) -> offentlig url")
     p.add_argument("--id", required=True); p.add_argument("--slot", required=True, choices=["a", "b", "c", "a-mobile", "b-mobile", "c-mobile"])
     p.add_argument("--file", required=True)
+    # Arbejds-flowet (27-09): Lucas trækker et kort til Arbejder = "skriv den nu".
+    sub.add_parser("queue", help="kort i Arbejder der venter på Hermes (ældste først)")
+    p = sub.add_parser("claim", help="tag kortet — før du skriver"); p.add_argument("--id", required=True)
+    p = sub.add_parser("progress", help="vis fremdrift på kortet i HQ")
+    p.add_argument("--id", required=True); p.add_argument("--step", type=int, required=True)
+    p.add_argument("--steps", type=int, required=True); p.add_argument("--label", required=True)
+    p = sub.add_parser("fail", help="marker kortet som fejlet (bliver i Arbejder)")
+    p.add_argument("--id", required=True); p.add_argument("--error", required=True)
     a = ap.parse_args()
+
+    if a.cmd == "queue":
+        data = call({"action": "queue"})
+        if data.get("ok"):
+            cards = data.get("cards") or []
+            if not cards:
+                print("(ingen kort venter)")
+            for c in cards:
+                print(f"{c.get('id')}  {c.get('title')}  (bestilt {(c.get('work') or {}).get('requestedAt', '?')})")
+            return
+        out(data)
+    elif a.cmd == "claim":
+        out(call({"action": "claim", "id": a.id}))
+    elif a.cmd == "progress":
+        # Best-effort: fremdrift må aldrig stoppe selve skrivningen.
+        data = call({"action": "progress", "id": a.id, "step": a.step, "steps": a.steps, "label": a.label[:120]})
+        print("ok" if data.get("ok") else f"(fremdrift ikke gemt: {data.get('error')})")
+        return
+    elif a.cmd == "fail":
+        out(call({"action": "fail", "id": a.id, "error": a.error[:300]}))
+        return
 
     if a.cmd == "list":
         data = call({"action": "list", **({"stage": a.stage} if a.stage else {})})
