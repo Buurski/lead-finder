@@ -413,18 +413,64 @@ export interface ReferenceFix {
 }
 
 /**
- * Er der et ÆGTE demo-link i linklinjerne? Rollen afgøres på URL'en: et
- * kinly.dk-link er forside, case eller branche-side — aldrig en demo, uanset
- * hvor mange der er. Case- og branche-sider må derfor ikke gøre en mail til
- * en demo-mail (27/9).
+ * Hosten for vores egen forside, udledt af KINLY_FRONT (én kilde — et domæne-
+ * skift kræver ikke en ny hardcoded streng her). Sammenlignes præcist, så et
+ * lookalike-domæne som kinly.dk.evil ikke tæller som vores egen side.
+ */
+const KINLY_FRONT_HOST = (() => {
+  try { return new URL(KINLY_FRONT).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; }
+})();
+
+/** Ligger linket på vores egen host (kinly.dk)? Alt andet — også lookalikes — gør ikke. */
+function isKinlyHostLink(link: string): boolean {
+  const raw = (link ?? "").replace(/^→\s*/, "").trim();
+  try {
+    return new URL(raw).hostname.replace(/^www\./, "").toLowerCase() === KINLY_FRONT_HOST;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Er der et ÆGTE demo-link i linklinjerne? Rollen afgøres på linkets HOST, ikke
+ * på antallet: forside, case og branche-side ligger alle på kinly.dk og er
+ * aldrig en demo, uanset hvor mange de er (27/9).
  */
 export function hasDemoLink(links: string[]): boolean {
-  return links.some((l) => !l.replace(/^→\s*/, "").trim().startsWith("https://kinly.dk/"));
+  return links.some((l) => !isKinlyHostLink(l));
 }
 
 /** Forsiden alene = egen intro. Alt andet i blokken giver REFERENCE_INTRO ("min side og nogle relevante links") — linjen lover ikke demoer. */
 export function referenceIntro(links: string[]): string {
   return links.some((l) => !hasKinlyFront(l)) ? REFERENCE_INTRO : "Her er min egen side.";
+}
+
+// ---- Demo-løftet: påstande om egne demoer og eksempler (27/9) --------------
+// En kladde (også en LLM-kladde) må ikke påstå demoer eller eksempler som
+// linkblokken ikke viser. Mønstrene rammer kun påstande om NOGET VI SELV HAR
+// LAVET; de ærlige linjer — REFERENCE_INTRO, "Her er min egen side.", udkast-
+// tilbuddet og "Skal jeg sende et udkast?" — rammer ingen af dem.
+const DEMO_PROMISE_PATTERNS: RegExp[] = [
+  /\bdemo(?:er|en|s|-hjemmesider?|hjemmesider?)?\b/i, // "et par demoer", "demo-hjemmesider"
+  /\bet par eksempler\b/i, // "et par eksempler"
+  // "eksempel" og "eksempler" har ikke samme stamme (eksemp-el / eksemp-ler),
+  // så begge endelser står eksplicit her.
+  /\beksemp(?:el|ler)\b[^.!?\n]{0,40}\b(?:jeg|vi)\s+har\s+(?:lavet|bygget)/i, // "et eksempel jeg har bygget"
+  /\bnogle af de sider (?:jeg|vi) har bygget\b/i,
+  /\bsådan (?:kan|kunne) det\b[^.!?\n]{0,20}\bse ud\b/i, // demoIntro: "Sådan kunne det fx se ud"
+  /\bdet er (?:bare|kun) (?:eksempler|demoer)\b/i,
+  /\bdet er kun for at vise idéen\b/i,
+  /\bkundernes egne farver\b/i,
+];
+// Nutids-præsentation af et RESULTAT ("sådan kan jeres side se ud") tæller kun
+// når der faktisk er et link i teksten at vise det med. Udkast-tilbuddet
+// ("...hvordan en side for X kunne se ud, ...") er fremtid og rammer ikke mønstret.
+const DEMO_LOOK_NOW = /\bsådan (?:kan|kunne) (?:jeres|din|en)\s+side\b[^.!?\n]{0,25}\bse ud\b/i;
+const LINK_LINE = /^\s*→\s*https?:\/\//m;
+
+export function hasDemoPromise(text: string): boolean {
+  if (DEMO_PROMISE_PATTERNS.some((re) => re.test(text))) return true;
+  return LINK_LINE.test(text) && DEMO_LOOK_NOW.test(text);
 }
 
 /**

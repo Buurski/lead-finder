@@ -90,3 +90,66 @@ test("sequence 'eksempel': ingen påstand om sider vi ikke viser", () => {
     assert.equal(linkPara, para(c.links), `${where}: ${s.body}`);
   }
 });
+
+// ---- Accept-stedet: LLM-kladden må ikke love demoer vi ikke linker (27/9) ---
+// Røret testes direkte i draft_personal_message: ANTHROPIC_API_KEY sættes lokalt
+// og globalThis.fetch giver et fast svar, så intet netværkskald sker — men
+// accept-branchen er den ægte (derfor tælles kaldet). Teksten KASSERES, den
+// omskrives ikke: kladden falder tilbage til den deterministiske, præcis som når
+// linkene mangler.
+const LLM_PROMISE_LINE = "jeg har lavet et par demoer, se dem herunder";
+
+function llmDemoBody(branch: string, name: string): string {
+  return [
+    "Hej,",
+    "",
+    `${LLM_PROMISE_LINE}. En side til ${name} kunne samle det hele ét sted.`,
+    "",
+    ...referenceLines(branch, name),
+  ].join("\n");
+}
+
+test("LLM-kladde med demo-løfte kasseres uden et demo-link — og bevares når linket er der", async () => {
+  const realFetch = globalThis.fetch;
+  const realKey = process.env.ANTHROPIC_API_KEY;
+  const realGateway = process.env.AI_GATEWAY_API_KEY;
+  let reply = "";
+  let calls = 0;
+  try {
+    delete process.env.AI_GATEWAY_API_KEY;
+    delete process.env.AI_DISABLED;
+    process.env.ANTHROPIC_API_KEY = "test-no-network";
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response(JSON.stringify({ content: [{ text: reply }], usage: { input_tokens: 1, output_tokens: 1 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const voice = "voice guide";
+
+    // VVS: forside + KT VVS-case + branche-side = ingen demo. Løftet må ikke igennem.
+    reply = llmDemoBody("vvs", "VVS Hansen");
+    const vvs = await draft_personal_message(leadFor("VVS Hansen", "vvs"), researchFor("vvs", "VVS Hansen"), voice, { useLLM: true });
+    assert.equal(calls, 1, "accept-stedet testes, ikke en isoleret helper");
+    const vvsDet = await draft_personal_message(leadFor("VVS Hansen", "vvs"), researchFor("vvs", "VVS Hansen"), voice);
+    assert.equal(vvs.body, vvsDet.body, vvs.body);
+    assert.equal(vvs.body.includes(LLM_PROMISE_LINE), false, vvs.body);
+
+    // Tømrer: kun forsiden tilbage. Samme svar.
+    reply = llmDemoBody("tømrer", "Tømrer Hansen");
+    const toemrer = await draft_personal_message(leadFor("Tømrer Hansen", "tømrer"), researchFor("tømrer", "Tømrer Hansen"), voice, { useLLM: true });
+    assert.equal(toemrer.body.includes(LLM_PROMISE_LINE), false, toemrer.body);
+
+    // Maler: linkblokken HAR et ægte demo-link (denlillemaler.vercel.app), så
+    // løftet er sandt og LLM-teksten står uændret.
+    reply = llmDemoBody("maler", "Maler Mikkelsen");
+    const maler = await draft_personal_message(leadFor("Maler Mikkelsen", "maler"), researchFor("maler", "Maler Mikkelsen"), voice, { useLLM: true });
+    assert.ok(maler.body.includes(LLM_PROMISE_LINE), maler.body);
+    assert.ok(maler.body.includes(DEMO_SITES.denlillemaler), maler.body);
+  } finally {
+    globalThis.fetch = realFetch;
+    if (realKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = realKey;
+    if (realGateway === undefined) delete process.env.AI_GATEWAY_API_KEY; else process.env.AI_GATEWAY_API_KEY = realGateway;
+  }
+});

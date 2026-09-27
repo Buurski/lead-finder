@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, MAIL_LINKS, pairLinkHref, CUSTOMER_SITES } from "./demos.ts";
+import { pickDemos, verticalPageFor, DEMO_SITES, DEMO_CATALOG, KINLY_FRONT, REFERENCE_INTRO, referenceLinks, referenceLines, missingReferenceLinks, withReferenceLinks, hasKinlyFront, hasDemoLink, hasDemoPromise, isCustomerSiteUrl, customerSiteLinks, branchKind, suggestMailLinks, linkGateReason, subjectGateReason, MAIL_LINKS, pairLinkHref, CUSTOMER_SITES } from "./demos.ts";
 import { previewBodyError } from "./hq/preview-send.ts";
 import { composeColdEmail } from "./compose.ts";
 
@@ -578,4 +578,62 @@ test("bilmekaniker er stadig auto, og \"mekanisk\" er ikke en mekaniker", () => 
     const l = suggestMailLinks(branch, name);
     assert.ok(!l.some((x) => x.url === DEMO_SITES.ikastCase), where);
   }
+});
+
+// ---- Demo-løftet følger linkets ROLLE, ikke antallet af links (27/9) -------
+// hasDemoLink afgør om linkblokken overhovedet VISER en demo (forsiden, casen og
+// branche-siden er kinly.dk-links og tæller ikke), og hasDemoPromise fanger
+// påstande om demoer/eksempler vi selv har lavet. Tilsammen er de accept-gaten
+// for en LLM-kladde i draft.ts.
+test("hasDemoLink: forside, case og branche-side er kinly.dk — en demo er en anden host", () => {
+  const vvs = referenceLines("vvs", "VVS Hansen");
+  assert.deepEqual(vvs, [`→ ${KINLY_FRONT}`, `→ ${DEMO_SITES.ktvvsCase}`, "→ https://kinly.dk/hjemmeside-til-vvs/"]);
+  assert.equal(hasDemoLink(vvs), false);
+  assert.equal(hasDemoLink([`→ ${KINLY_FRONT}`]), false);
+  assert.equal(hasDemoLink(referenceLines("maler", "Maler Mikkelsen").slice(0, 1)), false);
+  // Malerens demo-par: forsiden + denlillemaler.vercel.app — den er en demo.
+  assert.deepEqual(referenceLines("maler", "Maler Mikkelsen"), [`→ ${KINLY_FRONT}`, `→ ${DEMO_SITES.denlillemaler}`]);
+  assert.equal(hasDemoLink([`→ ${DEMO_SITES.denlillemaler}`]), true);
+  assert.equal(hasDemoLink(referenceLines("maler", "Maler Mikkelsen")), true);
+});
+
+test("hasDemoLink: hosten udledes af URL'en — kinly.dk.evil er ikke kinly.dk", () => {
+  // Lookalike-domænet er IKKE vores egen host (ingen endsWith/includes på "kinly.dk"),
+  // så det tæller ikke som et kinly.dk-link.
+  assert.equal(hasDemoLink(["→ https://kinly.dk.evil/demo"]), true);
+  assert.equal(hasDemoLink([`→ ${KINLY_FRONT}`, "→ https://kinly.dk.evil/"]), true);
+  assert.equal(hasDemoLink(["→ https://kinly.dk/hjemmeside-til-vvs/"]), false);
+});
+
+test("hasDemoPromise: ærlige linklinjer og udkast-tilbuddet lover ingenting", () => {
+  assert.equal(REFERENCE_INTRO, "Her er min side og nogle relevante links:");
+  assert.equal(hasDemoPromise([REFERENCE_INTRO, ...referenceLines("vvs", "VVS Hansen")].join("\n")), false);
+  assert.equal(hasDemoPromise(["Her er min egen side.", `→ ${KINLY_FRONT}`].join("\n")), false);
+  assert.equal(hasDemoPromise("Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for VVS Hansen kunne se ud, så kan I vurdere idéen helt konkret."), false);
+  assert.equal(hasDemoPromise("Skal jeg sende et udkast?"), false);
+  // Opfølgningens nye, ærlige linjer (501dd630's ordrette delta).
+  assert.equal(hasDemoPromise("Hvis I hellere vil se det end læse om det, har jeg lagt min side nedenfor."), false);
+  assert.equal(hasDemoPromise("En side til VVS Hansen skulle selvfølgelig passe til jeres eget udtryk."), false);
+});
+
+test("hasDemoPromise: påstande om egne demoer og eksempler fanges", () => {
+  for (const t of [
+    "jeg har lavet et par demoer, se dem herunder",
+    "Jeg lavede et par demoer I kan kigge på:",
+    "Her er et par eksempler:",
+    "Det er et eksempel jeg har bygget selv, hvis I vil se.",
+    "Jeg har lavet et par demo-hjemmesider til VVS som I kan kigge på:",
+    "kan I se nogle af de sider jeg har bygget her",
+    "Det er bare eksempler. En rigtig version til VVS Hansen ville matche jeres stil.",
+    "Det er kun for at vise idéen.",
+    "Sådan kunne det fx se ud, kig endelig:",
+    "De er lavet ud fra kundernes egne farver og billeder.",
+  ]) assert.equal(hasDemoPromise(t), true, t);
+});
+
+test("hasDemoPromise: \"sådan kan jeres side se ud\" tæller kun når demo-/forside-linket er med", () => {
+  const claim = "Sådan kan jeres side se ud:";
+  assert.equal(hasDemoPromise(claim), false, "uden link er der intet vi påstår at vise");
+  assert.equal(hasDemoPromise([claim, ...referenceLines("vvs", "VVS Hansen")].join("\n")), true);
+  assert.equal(hasDemoPromise([claim, `→ ${DEMO_SITES.denlillemaler}`].join("\n")), true);
 });

@@ -8,7 +8,7 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { customerSiteLinks, hasDemoLink, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
+import { customerSiteLinks, hasDemoLink, hasDemoPromise, missingReferenceLinks, referenceIntro, referenceLines } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
@@ -333,7 +333,11 @@ export async function draft_personal_message(
       if (!validateDraft(body).ok) body = sanitize(body);
       // Ensure the required links survived sanitisation; otherwise fall back.
           const linksOk = missingReferenceLinks(body, lead.branch, lead.name).length === 0;
-          if (validateDraft(body).ok && linksOk) {
+          // 27/9: kroppen må ikke påstå demoer/eksempler som linkblokken ikke
+          // viser. LLM-teksten omskrives IKKE — kladden kasseres og den
+          // deterministiske (ærlig pr. konstruktion) overtager, som ved linksOk.
+          const promiseOk = !hasDemoPromise(body) || hasDemoLink(referenceLines(lead.branch, lead.name));
+          if (validateDraft(body).ok && linksOk && promiseOk) {
             // Post-generation signatur-injection (Bundle G): prompten LOVER at
             // pipelinen tilføjer signaturen, så gør det faktisk. stripSignature
             // fjerner et eventuelt modellen-improviseret "Mvh …" først, så vi
