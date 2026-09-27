@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT, customerSiteLinks, hasKinlyFront, isAutoBranch } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, branchKind, customerSiteLinks, hasKinlyFront, isAutoBranch } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -49,7 +49,10 @@ export function branchGroupFor(branch: string, name: string): MsgGroup {
   if (/frisør|skønhed|hud|negle|nail|barber|kosmet|salon|hår|hair|wellness|spa|massage|solcenter/.test(b)) return "beauty";
   if (/restaurant|café|cafe|kaffe|pizza|pizzeria|bistro|brasseri|gastropub|\bbar\b|grill|sushi|kebab|burger|kro|spise|wok|thai|kinesisk|tyrk|indisk|mexicansk|shawarma|falafel|libanon|bager|pub|kiosk|takeaway|cafeteria|fastfood/.test(b)) return "food";
   if (/foto|photo|photograph/.test(b)) return "photo";
-  if (/vvs|elektri|blik|smed|mekan/.test(b)) return "craftUtility";
+  // VVS/el kommer fra demos.ts#branchKind — samme ord og samme præcedens som
+  // mail-vejen. Den gamle egen regex (…|mekan|…) fangede "mekanisk værksted",
+  // som branchKind kalder "other", og gav et maskinværksted KT VVS-casen (27/9).
+  if (branchKind(branch, name) === "craftUtility") return "craftUtility";
   if (/mal\b|maler|tøm|tømrer|mur|murer|tag|håndværk|carpenter|painter/.test(b)) return "craft";
   return "service";
 }
@@ -72,6 +75,9 @@ export function demoUrlFor(group: MsgGroup, branch: string, name: string): strin
   if (group === "photo") return DEMO_URLS.photo;
   if (group === "craftUtility") return DEMO_URLS.craftUtility;
   if (group === "craft") return DEMO_URLS.craft;
+  // Ukendt branche (branchKind "other"): hverken KT VVS eller Ikast-casen er en
+  // reference der ligner — projektoversigten er vores eget arbejde (27/9).
+  if (branchKind(branch, name) === "other") return PROJEKTER;
   return DEMO_URLS.service;
 }
 

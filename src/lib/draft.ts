@@ -8,10 +8,11 @@
 // Strip-safe (no enums/namespaces) so the node engine can import it directly.
 
 import type { ResearchResult, ResearchLead } from "./research.ts";
-import { customerSiteLinks, hasDemoLink, linkGateReason, missingReferenceLinks, referenceIntro, referenceLines, subjectGateReason } from "./demos.ts";
+import { customerSiteLinks, hasDemoLink, hasDemoPromise, linkGateReason, missingReferenceLinks, referenceIntro, referenceLines, subjectGateReason } from "./demos.ts";
 import type { Demo } from "./demos.ts";
 import { generate, isAiEnabled } from "./ai.ts";
 import { mixForLead, safeBranchNoun } from "./tone-mixer.ts";
+import { isFollowUpDraft } from "./followup-gate.ts";
 import { applySignature, formatSignature, stripSignature, type SenderId } from "./senders.ts";
 import { personalGreetingName } from "./qualify.ts";
 
@@ -89,14 +90,18 @@ export interface GateDraft {
   subject: string;
   branch: string;
   name?: string;
+  /** Kø-kladdens kilde + trin (kilden opfoelgning med step >= 2 er en opfølgning; se followup-gate.ts#isFollowUpDraft). */
+  source?: string;
+  step?: number;
 }
 
 /**
  * ÉN blokårsag for et udkast, med fast præcedens:
  *   1. link-politik (demos.ts#linkGateReason) — på kroppen
  *   2. voice-guide (validateDraft)            — på kroppen
- *   3. signatur-reglen (præcis én afsluttende hilsen) — på den signerede tekst
- *   4. emne-gaten (demos.ts#subjectGateReason) — på emnet
+ *   3. demo-løftet (kun prospekt-kladder)     — på kroppen
+ *   4. signatur-reglen (præcis én afsluttende hilsen) — på den signerede tekst
+ *   5. emne-gaten (demos.ts#subjectGateReason) — på emnet
  *
  * GET /api/approve/send (preflighten) og POST (sendeløkken) kalder BEGGE denne,
  * så den samme kladde altid får den samme grund. Uden den fælles rækkefølge
@@ -112,9 +117,37 @@ export function draftGateReason(d: GateDraft, senderId: SenderId): string | null
   return (
     linkGateReason(d.body, d.branch, d.name ?? "") ??
     voiceGateReason(d.body) ??
+    demoPromiseGateReason(d) ??
     signatureGateReason(d, senderId) ??
     subjectGateReason(d.subject)
   );
+}
+
+/**
+ * Er demo-løftet i kroppen dækket af et SYNLIGT demo-link? hasDemoPromise fanger
+ * påstande om demoer/eksempler vi selv har lavet (demos.ts). Påstanden er kun
+ * sand når det ÆGTE demo-link fra referenceLines står i selve kroppen — kladdens
+ * metadata (demoPair/links) tæller ikke, og linksOk er ikke nok: maler har
+ * hverken case eller branche-side, så forsiden alene opfyldte link-kravet og et
+ * løfte slap igennem uden en demo at vise (27/9).
+ */
+export function demoPromiseShown(body: string, branch: string, name = ""): boolean {
+  if (!hasDemoPromise(body)) return true;
+  const refLines = referenceLines(branch, name);
+  const shown = refLines.filter((l) => hasDemoLink([l])).map((l) => l.replace(/^→\s*/, ""));
+  return hasDemoLink(refLines) && shown.every((u) => body.includes(u));
+}
+
+/**
+ * Demo-løfte-værnet for prospekt-kladder. En ældre eller håndredigeret krop kan
+ * love et par demoer uden at linkblokken viser en enkelt; den må ikke ud.
+ * Opfølgninger og kundesvar er undtaget — de fortsætter en samtale og er ikke
+ * prospekt-teksten (isFollowUpDraft, samme regel som sendeløkken bruger).
+ */
+function demoPromiseGateReason(d: GateDraft): string | null {
+  if (isFollowUpDraft(d)) return null;
+  if (demoPromiseShown(d.body, d.branch, d.name ?? "")) return null;
+  return `demo-løfte uden demo-link: kroppen lover demoer/eksempler som linkblokken ikke viser (${referenceLines(d.branch, d.name ?? "").join(" ")})`;
 }
 
 /**
@@ -382,8 +415,13 @@ export async function draft_personal_message(
       let body = llm;
       if (!validateDraft(body).ok) body = sanitize(body);
       // Ensure the required links survived sanitisation; otherwise fall back.
-          const linksOk = missingReferenceLinks(body, lead.branch, lead.name).length === 0;
-          if (validateDraft(body).ok && linksOk) {
+      const linksOk = missingReferenceLinks(body, lead.branch, lead.name).length === 0;
+      // 27/9: kroppen må ikke påstå demoer/eksempler som linkblokken ikke viser.
+      // LLM-teksten omskrives IKKE — kladden kasseres og den deterministiske
+      // (ærlig pr. konstruktion) overtager, som ved linksOk. Løftet er kun sandt
+      // hvis det ÆGTE demo-link fra referenceLines også står i kroppen.
+      const promiseOk = demoPromiseShown(body, lead.branch, lead.name);
+      if (validateDraft(body).ok && linksOk && promiseOk) {
             // Post-generation signatur-injection (Bundle G): prompten LOVER at
             // pipelinen tilføjer signaturen, så gør det faktisk. stripSignature
             // fjerner et eventuelt modellen-improviseret "Mvh …" først, så vi

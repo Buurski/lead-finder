@@ -15,8 +15,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { draftGateReason, validateDraft, voiceGateReason } from "./draft.ts";
-import { CUSTOMER_SITES, REFERENCE_INTRO, referenceLines } from "./demos.ts";
+import { draftGateReason, validateDraft, voiceGateReason, type GateDraft } from "./draft.ts";
+import { CUSTOMER_SITES, DEMO_SITES, KINLY_FRONT, REFERENCE_INTRO, hasDemoLink, hasDemoPromise, referenceLines } from "./demos.ts";
 
 const ROUTE_SRC = readFileSync(new URL("../app/api/approve/send/route.ts", import.meta.url), "utf8");
 const BRANCH = "vvs";
@@ -70,6 +70,79 @@ test("signatur-reglen er med i den fælles gate — for begge afsendere", () => 
 test("emne-gaten er stadig sidste led i rækkefølgen", () => {
   const d = draft("", `Tilbud — ${CUSTOMER_SITES.ktvvs}`);
   assert.match(draftGateReason(d, SENDER) ?? "", /^kunde-link i emne: /);
+});
+
+// ---- Demo-løftet i den fælles gate (27/9) ---------------------------------
+// En ældre eller håndredigeret prospekt-krop kan love "et par demoer" som
+// linkblokken ikke viser. Værnet bor i draftGateReason, så preflight (GET) og
+// sendeløkke (POST) svarer præcis det samme om den samme krop. Syntetisk: hver
+// kontrol bygger sin egen krop, så det er værnet der måles, ikke kladden.
+const PROMISE = "Jeg har lavet et par demoer, se dem herunder.";
+// Udkast-tilbuddet fra den deterministiske komponist: fremtid, ikke en påstand.
+const OFFER = "Hvis I har lyst, laver jeg gerne et gratis udkast til hvordan en side for Test VVS ApS kunne se ud, så kan I vurdere idéen helt konkret.";
+const MALER = "maler";
+const MALER_NAME = "Maler Mikkelsen";
+// Maler har hverken case eller branche-side: kun forside + demo-link.
+const MALER_LINKS = referenceLines(MALER, MALER_NAME).map((l) => l.slice(2));
+
+/** Krop med netop de linklinjer testen vil have, så værnet måles på kroppen alene. */
+function bodyWith(branch: string, name: string, links: string[], extra = ""): string {
+  return `Hej,\n\n${REFERENCE_INTRO}\n${links.map((u) => `→ ${u}`).join("\n")}\n${extra ? `${extra}\n` : ""}\nMed venlig hilsen\nLucas`;
+}
+const gated = (branch: string, name: string, links: string[], extra = ""): GateDraft =>
+  ({ body: bodyWith(branch, name, links, extra), subject: `Tilbud til ${name}`, branch, name });
+
+test("positiv kontrol for testene nedenfor: løftet fanges, linkene har en demo", () => {
+  assert.equal(hasDemoPromise(PROMISE), true);
+  assert.equal(hasDemoPromise(OFFER), false, "udkast-tilbuddet er fremtid, ikke et løfte");
+  assert.equal(hasDemoLink(referenceLines(BRANCH, NAME)), false, "VVS viser ingen demo");
+  assert.equal(hasDemoLink(referenceLines(MALER, MALER_NAME)), true, "maler viser en demo");
+});
+
+test("VVS med forside + case + branche-side og et demo-løfte blokeres", () => {
+  const d = gated(BRANCH, NAME, referenceLines(BRANCH, NAME).map((l) => l.slice(2)), PROMISE);
+  const reason = draftGateReason(d, SENDER);
+  assert.match(reason ?? "", /^demo-løfte uden demo-link: /, String(reason));
+  // Samme krop uden løftet er sendbar — grunden kommer fra løftet, ikke linkene.
+  assert.equal(draftGateReason(gated(BRANCH, NAME, referenceLines(BRANCH, NAME).map((l) => l.slice(2))), SENDER), null);
+});
+
+test("maler med det faktiske demo-link tillades — og kun der", () => {
+  const med = gated(MALER, MALER_NAME, MALER_LINKS, PROMISE);
+  assert.ok(med.body.includes(DEMO_SITES.denlillemaler), med.body);
+  assert.equal(draftGateReason(med, SENDER), null);
+  // Kun forsiden i kroppen: link-kravet er opfyldt (maler har ingen case og
+  // ingen branche-side), så kun demo-løfte-værnet kan stoppe kladden.
+  const uden = gated(MALER, MALER_NAME, [KINLY_FRONT], PROMISE);
+  assert.match(draftGateReason(uden, SENDER) ?? "", /^demo-løfte uden demo-link: /);
+});
+
+test("metadata tæller ikke som synligt demo-link i kroppen", () => {
+  const medMeta: GateDraft & { demoPair: { url: string }[]; links: string[] } = {
+    ...gated(MALER, MALER_NAME, [KINLY_FRONT], PROMISE),
+    demoPair: [{ url: DEMO_SITES.denlillemaler }],
+    links: [DEMO_SITES.denlillemaler],
+  };
+  assert.match(draftGateReason(medMeta, SENDER) ?? "", /^demo-løfte uden demo-link: /);
+});
+
+test("ærlige linklinjer og gratis-udkast-tilbuddet blokeres ikke", () => {
+  for (const [branch, name, links] of [
+    [BRANCH, NAME, referenceLines(BRANCH, NAME).map((l) => l.slice(2))],
+    [MALER, MALER_NAME, MALER_LINKS],
+  ] as [string, string, string[]][]) {
+    const d = gated(branch, name, links, OFFER);
+    assert.equal(hasDemoPromise(d.body), false, d.body);
+    assert.equal(draftGateReason(d, SENDER), null, `${name}: ${draftGateReason(d, SENDER)}`);
+  }
+});
+
+test("opfølgninger er undtaget — første trin i sekvensen er ikke", () => {
+  const krop = (): string => bodyWith(BRANCH, NAME, referenceLines(BRANCH, NAME).map((l) => l.slice(2)), PROMISE);
+  const followup: GateDraft = { body: krop(), subject: `Tilbud til ${NAME}`, branch: BRANCH, name: NAME, source: "opfoelgning", step: 2 };
+  assert.equal(draftGateReason(followup, SENDER), null);
+  const foersteTrin: GateDraft = { ...followup, step: 1 };
+  assert.match(draftGateReason(foersteTrin, SENDER) ?? "", /^demo-løfte uden demo-link: /);
 });
 
 test("begge routes i send-ruten bruger den fælles gate — ingen egen rækkefølge", () => {

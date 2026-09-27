@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { branchGroupFor, demoUrlFor, branchDisplayFor, buildMessengerDraft, validateMessengerDraft } from "./compose.ts";
 import { DEMO_SITES } from "../demos.ts";
 
+const PROJEKTER = "https://kinly.dk/projekter/";
+
 test("massagelead får hverken frisørsalon-ordet eller Salon Artec", () => {
   for (const [branch, name] of [["Massage", "Herning Massage & Kropsterapi"], ["Massageklinik", "Klinik for Kropsterapi"], ["Massage & kropsterapi", "Test Kropsterapi"]]) {
     const where = `${branch} | ${name}`;
@@ -121,15 +123,24 @@ test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra 
     assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, where);
     assert.equal(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
   }
-  // "mekanisk" (et maskinværksted) er hverken auto eller VVS. Mail-vejen er
-  // fail-closed: branchKind giver "other", så udkastet kræver ingen case.
-  // DM'en har kun seks grupper og ingen "uden case"-tilstand, så den falder til
-  // håndværksgruppen — kendt og ikke-blokerende. Det der SKAL holde i begge veje
-  // er at et mekanik-ord AUTO ikke fanger aldrig giver auto-sporet.
-  for (const [branch, name] of [["mekanisk værksted", "Mekanisk Værksted ApS"], ["mekanisk", "KB Mekanisk"]] as [string, string][]) {
+  // Et mekanik-ord som AUTO ikke fanger ("mekanisk" er ikke "mekaniker") er
+  // hverken auto eller VVS: branchKind siger "other" i begge veje, og DM'en må
+  // derfor hverken vise KT VVS-casen (fremmed håndværk) eller Ikast-casen
+  // (auto-sporet) — kun projektoversigten, som er vores eget arbejde. Den gamle
+  // egen regex på "mekan" gav et maskinværksted KT VVS-casen (27/9).
+  for (const [branch, name] of [
+    ["mekanisk værksted", "Mekanisk Værksted ApS"],
+    ["mekanisk", "KB Mekanisk"],
+    ["ukendt branche", "Testforening"],
+  ] as [string, string][]) {
     const where = `${branch} | ${name}`;
-    assert.notEqual(branchGroupFor(branch, name), "service", `${where}: DM'en bruger auto-sporet`);
+    assert.notEqual(branchGroupFor(branch, name), "craftUtility", where);
+    assert.equal(demoUrlFor(branchGroupFor(branch, name), branch, name), PROJEKTER, where);
     assert.notEqual(branchDisplayFor(branchGroupFor(branch, name), branch, name), "mekaniker", where);
-    assert.notEqual(demoUrlFor(branchGroupFor(branch, name), branch, name), DEMO_SITES.ikastCase, `${where}: Ikast-casen bruges for et maskinværksted`);
+    const d = buildMessengerDraft({ name, branch, city: "Ikast", reviews: 20, pattern: "A" });
+    assert.equal(d.demoUrl, PROJEKTER, where);
+    assert.ok(!/kt-vvs|ikast-autoservice/.test(d.text), where);
+    assert.ok(d.text.includes(`her er noget af det jeg selv har bygget: ${PROJEKTER}`), d.text);
+    assert.deepEqual(validateMessengerDraft(d.text), [], where);
   }
 });
