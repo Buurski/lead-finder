@@ -5,7 +5,7 @@ Kører hvert 5. minut som no-agent-job (0 tokens): spørger HQ om kort der vente
 (`crm_posts queue`) og beder Hermes' scheduler køre blog-drafter-nat ved næste tick
 (`hermes cron run <id>`). Selve skrivningen (agent) tager kortet med `claim`.
 
-Tempo (Lucas 27/9): ÉT indlæg ad gangen, ét nyt pr. hverdag = 5 om ugen — få, gode
+Tempo (Lucas 27/9): ÉT indlæg ad gangen, ét nyt man/ons/fre = 3 om ugen — få, gode
 indlæg; hver kørsel er et agent-run (6-8 mio. tokens). Lucas' rettelser (work.instructions)
 går uden om loftet og tæller ikke med i det. HQ viser forventet dag ud fra samme regel
 (expectedDay i src/components/blog/blog-utils.ts).
@@ -28,6 +28,7 @@ STATE = Path("/root/.hermes/state/blog-trigger.json")
 CLAIM_GRACE = 10 * 60  # en netop startet kørsel når at claime sit kort (tager ~4 min), før næste startes
 DAY = 86400
 TZ = ZoneInfo("Europe/Copenhagen")
+WRITE_DAYS = {0, 2, 4}  # man/ons/fre = 3 nye indlæg om ugen (Lucas 27/9); spejles i HQ's expectedDay
 
 
 def pick(cards: list[dict], running: int, starts: list[float], now: float, last: float = 0) -> dict | None:
@@ -42,7 +43,7 @@ def pick(cards: list[dict], running: int, starts: list[float], now: float, last:
     if ((cards[0].get("work") or {}).get("instructions")):
         return cards[0]
     today = datetime.fromtimestamp(now, TZ).date()
-    if today.weekday() >= 5 or any(datetime.fromtimestamp(s, TZ).date() == today for s in starts):
+    if today.weekday() not in WRITE_DAYS or any(datetime.fromtimestamp(s, TZ).date() == today for s in starts):
         return None
     return cards[0]
 
@@ -136,6 +137,8 @@ def _selftest() -> None:
     assert pick([a], 0, [ts("2026-09-28T02:00")], mon) is None, "dagens ene indlæg er startet"
     assert pick([a], 0, [ts("2026-09-27T23:00")], mon) == a, "loftet følger dansk dato"
     assert pick([a], 0, [], sun) is None, "ingen nye indlæg i weekenden"
+    assert pick([a], 0, [], ts("2026-09-29T14:00")) is None, "tirsdag er ikke skrivedag"
+    assert pick([a], 0, [], ts("2026-09-30T14:00")) == a, "onsdag er"
     c = {"id": "c", "work": {"instructions": "nyt billede B"}}
     assert pick([c], 0, [ts("2026-09-28T02:00")], mon) == c, "besked fra Lucas går uden om loftet"
     assert pick([c], 0, [], sun) == c, "også i weekenden"
