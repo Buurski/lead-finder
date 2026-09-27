@@ -1,0 +1,33 @@
+/* /seo — bygger på konkurrenter.css (konk-summary, konk-flag, konk-finding-*); kun det der mangler står her. */
+.seo-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.seo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.seo-headlink { font-size: 12.5px; font-weight: 600; }
+.seo-empty { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; max-width: 72ch; }
+
+.seo-table-wrap { overflow-x: auto; max-width: 100%; }
+.seo-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.seo-table th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-dim); padding: 0 10px 8px 0; white-space: nowrap; }
+.seo-table td { border-top: 1px solid var(--border); padding: 8px 10px 8px 0; white-space: nowrap; }
+.seo-table td.seo-q { white-space: normal; font-weight: 500; }
+.seo-was { font-size: 11px; color: var(--text-dim); }
+.seo-flag { font-size: 11px; font-weight: 700; margin-left: 8px; white-space: nowrap; }
+.seo-flag[data-kind="red"] { background: var(--red-dim); color: var(--red); }
+.seo-flag[data-kind="amber"] { background: var(--amber-dim); color: #8a5a12; }
+
+.seo-rivals { flex: 1 1 280px; }
+.seo-rival-list { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 600; }
+
+.seo-list { list-style: none; margin: 0; padding: 0; }
+.seo-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 0.8fr); gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.seo-row-main { min-width: 0; }
+.seo-row-side { font-size: 12px; overflow-wrap: anywhere; }
+.seo-group { margin-left: 8px; font-size: 11px; color: var(--text-dim); background: var(--surface-2); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+
+.seo-issues { margin: 0; padding-left: 17px; font-size: 12.5px; color: var(--text-muted); display: grid; gap: 3px; }
+
+@media (max-width: 480px) {
+  .seo-row { grid-template-columns: 1fr; gap: 3px; }
+  .seo-table { font-size: 12.5px; }
+  .seo-was { display: none; }
+  .seo-flag { display: table; margin: 4px 0 0; }
+}

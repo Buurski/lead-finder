@@ -147,7 +147,7 @@ export default async function SeoPage({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <nav aria-label="SEO-faner" style={{ display: "flex", gap: 8 }}><Link className="cc-btn" href="/seo">Historik</Link><Link className="cc-btn cc-btn-accent" href="/seo?tab=vaerktoejer">Værktøjer</Link></nav>
+      <nav aria-label="SEO-faner" style={{ display: "flex", gap: 8 }}><Link className="cc-btn" href="/seo">Overblik</Link><Link className="cc-btn cc-btn-accent" href="/seo?tab=vaerktoejer">Værktøjer</Link></nav>
       <PageHeader
         icon="Search"
         title="SEO-overblik"

@@ -5,7 +5,11 @@
 til worktree'et for at foreslå load_extra_queries() nedenfor (blog_seo_geo_tjek.py
 skal kunne lægge blog-specifikke GEO-forespørgsler ind i den ugentlige måling).
 IKKE deployet af denne opgave — kun forslag. Deploy: scp denne fil til
-/root/.hermes/scripts/geo_citation_loop.py på VPS'en, ellers rørt intet andet."""
+/root/.hermes/scripts/geo_citation_loop.py på VPS'en, ellers rørt intet andet.
+
+27/9: efter vault-noten POSTes Kinly-rækkerne til Kinly HQ's SEO-fane
+(/api/agent/seo-signals, action "geo") via crm_posts.call. Ingen ekstra Codex/Jev-kald;
+fejl logges og vælter ikke jobbet."""
 
 from __future__ import annotations
 
@@ -228,6 +232,10 @@ def rank_of(answer: str, pattern: str = KINLY_RE) -> str:
 
 
 def source_domains(answer: str) -> str:
+    return ", ".join(_domains(answer)[:3]) or "—"
+
+
+def _domains(answer: str) -> list[str]:
     ignored = {
         "chatgpt.com", "openai.com", "images.openai.com", "google.com",
         "gstatic.com", "perplexity.ai", "gemini.google.com", "mapbox.com",
@@ -246,7 +254,43 @@ def source_domains(answer: str) -> str:
         blocked = any(domain == item or domain.endswith("." + item) for item in ignored)
         if domain and not blocked and domain not in found:
             found.append(domain)
-    return ", ".join(found[:3]) or "—"
+    return found
+
+
+# 27-09: Kinly HQ's SEO-fane viser målingen (POST /api/agent/seo-signals, action "geo").
+# Kun rækker hvor målet er Kinly og der kom et svar — kunde-rækker og nedbrud er ikke Kinlys GEO.
+HQ_PATH = "/api/agent/seo-signals"
+
+
+def hq_payload(rows: list[dict[str, object]], now: datetime) -> dict:
+    results = []
+    for r in rows:
+        if r["status"] != "svar" or r.get("maal", "Kinly") != "Kinly":
+            continue
+        results.append({
+            "query": r["query"],
+            "group": str(r.get("gruppe", "lokal")),
+            "engine": r["platform"],
+            "measuredAt": now.isoformat(timespec="seconds"),
+            "mentionedKinly": bool(r["mentioned"]),
+            "competitors": [d for d in _domains(str(r.get("answer", ""))) if d != "kinly.dk"][:10],
+        })
+    return {"action": "geo", "results": results}
+
+
+def post_to_hq(rows: list[dict[str, object]], now: datetime) -> None:
+    """Må aldrig vælte jobbet: fejl logges og sluges (vault-noten er allerede skrevet)."""
+    payload = hq_payload(rows, now)
+    if not payload["results"]:
+        return
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import crm_posts
+        resp = crm_posts.call(payload, HQ_PATH)
+        if not resp.get("ok"):
+            print(f"⚠ GEO → HQ afvist: {str(resp.get('error'))[:200]}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠ GEO → HQ fejlede: {type(exc).__name__}: {str(exc)[:150]}")
 
 
 def measure() -> list[dict[str, object]]:
@@ -489,6 +533,7 @@ def main() -> None:
     except Exception as exc:
         print(f"🚨 GEO-citation-loop fejlede: {exc}")
         raise SystemExit(1)
+    post_to_hq(rows, now)
     if changed:
         print("GEO-citation ændret: " + format_summary(summary))
 

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import { company } from "../db/schema.ts";
-import { fetchGsc, gscWindow, latestGscFor, syncGsc, type GscQuery } from "./gsc.ts";
+import { fetchGsc, fetchKinlyGsc, gscWindow, latestGscFor, syncGsc, type GscQuery } from "./gsc.ts";
 
 const denied = Object.assign(new Error("forbidden"), { code: 403 });
 
@@ -28,6 +28,27 @@ test("fetchGsc: prøver domæne- og URL-ejendomme, runder, fylder tomme dage med
   assert.equal(s.daily[0].clicks, 0);
   assert.equal(await fetchGsc(fake, "andet.dk", "2026-09-25"), null);
   await assert.rejects(fetchGsc(async () => { throw Object.assign(new Error("quota"), { code: 429 }); }, "ikast.dk", "2026-09-25"), /quota/);
+});
+
+test("fetchKinlyGsc: 28 dage mod de 28 før, pr. søgning med forrige position; ingen adgang ⇒ property null", async () => {
+  const seen: string[] = [];
+  const q: GscQuery = async (property, body) => {
+    if (property !== "sc-domain:kinly.dk") throw denied;
+    seen.push(`${body.startDate}..${body.endDate}${body.dimensions ? " q" : ""}`);
+    const prev = body.startDate === "2026-07-29";
+    if (!body.dimensions) return [{ clicks: prev ? 4 : 9, impressions: prev ? 200 : 410, position: 14.26 }];
+    return prev ? [{ keys: ["webdesign herning"], clicks: 1, impressions: 40, position: 15.04 }]
+      : [{ keys: ["webdesign herning"], clicks: 0, impressions: 80, position: 8.44 }, { keys: ["kinly"], clicks: 9, impressions: 20, position: 1 }];
+  };
+  const k = await fetchKinlyGsc(q, "2026-09-25");
+  assert.deepEqual(seen, ["2026-08-26..2026-09-22", "2026-07-29..2026-08-25", "2026-08-26..2026-09-22 q", "2026-07-29..2026-08-25 q"]);
+  assert.equal(k.property, "sc-domain:kinly.dk");
+  assert.deepEqual([k.totals.clicks, k.prevTotals.clicks, k.totals.position], [9, 4, 14.3]);
+  assert.deepEqual(k.queries[0], { query: "webdesign herning", clicks: 0, impressions: 80, position: 8.4, prevClicks: 1, prevPosition: 15 });
+  assert.equal(k.queries[1].prevPosition, null);
+  const none = await fetchKinlyGsc(fake, "2026-09-25");
+  assert.equal(none.property, null);
+  assert.deepEqual(none.queries, []);
 });
 
 test("syncGsc: gemmer for kunder med adgang, 'ingen adgang' er ikke en fejl, ikke-kunder springes over", async () => {

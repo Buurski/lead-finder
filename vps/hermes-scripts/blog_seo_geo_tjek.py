@@ -10,7 +10,8 @@ i geo-log.md.
 Output: overskriver /root/KnowledgeOS/wiki/kinly/blog-seo-geo-tjek.md (én
 sektion pr. kort) + pusher via safe-push.sh, og skriver
 /root/.hermes/state/geo-blog-queries.json (læses af den foreslåede udvidelse
-i geo_citation_loop.py) — begge kun uden --dry-run.
+i geo_citation_loop.py) — begge kun uden --dry-run. Samme resultat POSTes til
+Kinly HQ's SEO-fane (/api/agent/seo-signals, action "blogcheck"); fejl dér logges, vælter ikke jobbet.
 
 Brug:
   blog_seo_geo_tjek.py --dry-run   # udskriver rapport til stdout, skriver intet
@@ -295,6 +296,40 @@ def render_section(post: dict, result: dict) -> str:
     return "\n".join(lines)
 
 
+# 27-09: samme resultat til Kinly HQ's SEO-fane (POST /api/agent/seo-signals, action "blogcheck").
+HQ_PATH = "/api/agent/seo-signals"
+
+
+def hq_post(post: dict, result: dict) -> dict:
+    out = {
+        "id": str(post.get("id", "")),
+        "title": str(post.get("title") or "(uden titel)"),
+        "stage": str(post.get("stage", "")),
+        "keyword": result["keyword"],
+        "seoIssues": [SUGGESTIONS[k] for k, ok in result["checks"].items() if not ok],
+        "questions": [{"question": c["question"], "answer": c["answer"] if c["answer"] in {"ja", "delvist", "nej"} else "ukendt"}
+                      for c in result["coverage"]],
+    }
+    if post.get("slug"):
+        out["slug"] = str(post["slug"])
+    return out
+
+
+def post_to_hq(checked_at: datetime, posts: list[dict]) -> bool | None:
+    """Må aldrig vælte jobbet: fejl logges og sluges. Ingen poster = intet sendt (overskriv ikke sidste tjek med tomt)."""
+    if not posts:
+        return None
+    try:
+        resp = crm_posts.call({"action": "blogcheck", "checkedAt": checked_at.isoformat(timespec="seconds").replace("+00:00", "Z"),
+                               "posts": posts}, HQ_PATH)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠ blogtjek → HQ fejlede: {type(exc).__name__}: {str(exc)[:150]}")
+        return False
+    if not resp.get("ok"):
+        print(f"⚠ blogtjek → HQ afvist: {str(resp.get('error'))[:200]}")
+    return bool(resp.get("ok"))
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -324,6 +359,7 @@ def run(dry_run: bool, jev_budget_total: int = JEV_BUDGET_DEFAULT) -> dict:
     jev_budget = [jev_budget_total]
     sections: list[str] = []
     published_entries: list[dict] = []
+    hq_posts: list[dict] = []
 
     for stage in STAGES:
         try:
@@ -344,6 +380,7 @@ def run(dry_run: bool, jev_budget_total: int = JEV_BUDGET_DEFAULT) -> dict:
                 post.setdefault("stage", stage)
                 result = check_card(post, jev_budget)
                 sections.append(render_section(post, result))
+                hq_posts.append(hq_post(post, result))
                 if stage == "udgivet" and result.get("keyword"):
                     published_entries.append({"slug": post.get("slug", ""), "keyword": result["keyword"]})
             except Exception:
@@ -358,7 +395,7 @@ def run(dry_run: bool, jev_budget_total: int = JEV_BUDGET_DEFAULT) -> dict:
     )
     full_report = header + body + "\n"
 
-    push_ok = None
+    push_ok = hq_ok = None
     if dry_run:
         print(full_report)
     else:
@@ -366,6 +403,7 @@ def run(dry_run: bool, jev_budget_total: int = JEV_BUDGET_DEFAULT) -> dict:
         OUTPUT.write_text(full_report, encoding="utf-8")
         write_geo_blog_queries(published_entries)
         push_ok = _safe_push(f"hermes: blog SEO/GEO-tjek {started.date().isoformat()}")
+        hq_ok = post_to_hq(started, hq_posts)
 
     summary = {
         "cards_checked": total_cards,
@@ -373,6 +411,7 @@ def run(dry_run: bool, jev_budget_total: int = JEV_BUDGET_DEFAULT) -> dict:
         "jev_calls": jev_budget_total - jev_budget[0],
         "published_with_keyword": len(published_entries),
         "push_ok": push_ok,
+        "hq_ok": hq_ok,
         "dry_run": dry_run,
         "duration_ms": int((datetime.now(timezone.utc) - started).total_seconds() * 1000),
     }

@@ -233,5 +233,58 @@ class RunTests(unittest.TestCase):
         self.assertEqual(summary["errors"], 0)
 
 
+class HqPostTests(unittest.TestCase):
+    """27-09: resultatet POSTes til HQ (/api/agent/seo-signals, action blogcheck). Fejl må aldrig vælte jobbet."""
+
+    RESULT = {"keyword": "hjemmeside pris", "checks": {"titel_30_60": True, "mindst_2_h2": False},
+              "coverage": [{"question": "hvad koster en hjemmeside", "answer": "ja"},
+                           {"question": "hvor lang tid tager det", "answer": "sprunget over (Jev-loft nået)"}]}
+
+    def test_shape_matches_hq_contract(self):
+        out = bst.hq_post({"id": "p1", "title": "Pris", "stage": "udgivet", "slug": "pris"}, self.RESULT)
+        self.assertEqual(out, {"id": "p1", "title": "Pris", "stage": "udgivet", "keyword": "hjemmeside pris", "slug": "pris",
+                               "seoIssues": [bst.SUGGESTIONS["mindst_2_h2"]],
+                               "questions": [{"question": "hvad koster en hjemmeside", "answer": "ja"},
+                                             {"question": "hvor lang tid tager det", "answer": "ukendt"}]})
+        self.assertNotIn("slug", bst.hq_post({"id": "p2", "title": "x", "stage": "klar"}, self.RESULT))
+
+    def test_post_ok_error_and_empty(self):
+        from datetime import datetime, timezone
+        from unittest import mock
+        at = datetime(2026, 9, 28, 7, 0, 1, 999, tzinfo=timezone.utc)
+        with mock.patch.object(bst.crm_posts, "call", return_value={"ok": True, "posts": 1}) as call:
+            self.assertTrue(bst.post_to_hq(at, [{"id": "p1"}]))
+        payload, path = call.call_args.args
+        self.assertEqual((payload["action"], payload["checkedAt"], path), ("blogcheck", "2026-09-28T07:00:01Z", "/api/agent/seo-signals"))
+        with mock.patch.object(bst.crm_posts, "call", side_effect=OSError("nede")), mock.patch("builtins.print"):
+            self.assertFalse(bst.post_to_hq(at, [{"id": "p1"}]))
+        with mock.patch.object(bst.crm_posts, "call", return_value={"ok": False, "error": "x"}), mock.patch("builtins.print"):
+            self.assertFalse(bst.post_to_hq(at, [{"id": "p1"}]))
+        with mock.patch.object(bst.crm_posts, "call") as call:
+            self.assertIsNone(bst.post_to_hq(at, []))
+        call.assert_not_called()
+
+    def test_real_run_posts_after_vault_write_and_dry_run_never_posts(self):
+        from unittest import mock
+        post = {"id": "ok-1", "title": "x" * 40, "excerpt": "x" * 100, "body": GOOD_BODY, "stage": "udgivet", "slug": "x",
+                "proofs": {"faq": [{"q": "1"}, {"q": "2"}, {"q": "3"}]}}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(bst, "list_cards", lambda stage: [{"id": "ok-1"}] if stage == "udgivet" else []), \
+                mock.patch.object(bst, "get_card", lambda card_id: dict(post)), \
+                mock.patch.object(bst.kundespoergsmaal, "get_questions", lambda kw, max_n=5: {"questions": []}), \
+                mock.patch.object(bst, "OUTPUT", Path(d) / "out.md"), \
+                mock.patch.object(bst, "write_geo_blog_queries", lambda entries: None), \
+                mock.patch.object(bst, "_safe_push", lambda msg: True), \
+                mock.patch.object(bst.crm_posts, "call", return_value={"ok": True}) as call, \
+                mock.patch("builtins.print"):
+            dry = bst.run(dry_run=True)
+            call.assert_not_called()
+            real = bst.run(dry_run=False)
+            self.assertTrue((Path(d) / "out.md").exists())
+        self.assertIsNone(dry["hq_ok"])
+        self.assertTrue(real["hq_ok"])
+        self.assertEqual(call.call_args.args[0]["posts"][0]["id"], "ok-1")
+
+
 if __name__ == "__main__":
     unittest.main()

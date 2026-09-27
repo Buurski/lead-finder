@@ -5,6 +5,7 @@ import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, gscSnapshot } from "../db/schema.ts";
 import { jevJudge, recordGscUpdate, type Judge } from "./gsc-updates.ts";
+import type { KinlyGsc } from "./seo-signals.ts";
 
 export interface GscRow { keys?: string[]; clicks: number; impressions: number; position: number }
 /** Én searchanalytics.query. Kaster { code: 403|404 } når ejendommen ikke findes/ikke er delt. */
@@ -81,6 +82,40 @@ function fillDays(rows: GscRow[], start: string, end: string) {
     out.push({ date: d, clicks: Math.round(r?.clicks ?? 0), impressions: Math.round(r?.impressions ?? 0) });
   }
   return out;
+}
+
+/** kinly.dk selv (SEO-fanen): 28 dage mod de 28 før, alle søgninger (maks 250). Ingen adgang ⇒ property null. */
+export async function fetchKinlyGsc(q: GscQuery, today: string, host = "kinly.dk"): Promise<KinlyGsc> {
+  const w = gscWindow(today);
+  const prevEnd = iso(Date.parse(`${w.start}T12:00:00Z`) - DAY);
+  const prevStart = iso(Date.parse(`${prevEnd}T12:00:00Z`) - 27 * DAY);
+  const tot = (r: GscRow[]) => ({ clicks: Math.round(r[0]?.clicks ?? 0), impressions: Math.round(r[0]?.impressions ?? 0), position: r[0]?.impressions ? Math.round(r[0].position * 10) / 10 : null });
+  const base = { fetchedAt: new Date().toISOString(), periodStart: w.start, periodEnd: w.end };
+  for (const property of candidates(host)) {
+    let cur: GscRow[];
+    try {
+      cur = await q(property, { startDate: w.start, endDate: w.end });
+    } catch (err) {
+      if (noAccess(err)) continue;
+      throw err;
+    }
+    const prev = await q(property, { startDate: prevStart, endDate: prevEnd });
+    const rows = await q(property, { startDate: w.start, endDate: w.end, dimensions: ["query"], rowLimit: 250 });
+    const prevRows = new Map((await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["query"], rowLimit: 250 })).map((r) => [String(r.keys?.[0]), r]));
+    return {
+      ...base,
+      property,
+      totals: tot(cur),
+      prevTotals: tot(prev),
+      queries: rows.map((r) => {
+        const query = String(r.keys?.[0] ?? "").slice(0, 200);
+        const p = prevRows.get(query);
+        return { query, clicks: Math.round(r.clicks), impressions: Math.round(r.impressions), position: Math.round(r.position * 10) / 10, prevClicks: p ? Math.round(p.clicks) : null, prevPosition: p ? Math.round(p.position * 10) / 10 : null };
+      }),
+    };
+  }
+  const empty = { clicks: 0, impressions: 0, position: null };
+  return { ...base, property: null, totals: empty, prevTotals: empty, queries: [] };
 }
 
 export interface GscSyncResult { company: string; ok: boolean; property?: string; error?: string }

@@ -134,15 +134,16 @@ const PREFIX = "competitors/report/";
 const KEY_LATEST = `${PREFIX}latest`;
 
 // ---- små, strenge parse-helpers (klipper tekster/lister, afviser forkerte typer) ----
+// Eksporteret: seo-signals.ts genbruger dem (samme agent-kontrakt-stil, samme fejltype).
 
-function obj(v: unknown, label: string): Record<string, unknown> {
+export function obj(v: unknown, label: string): Record<string, unknown> {
   if (typeof v !== "object" || v === null || Array.isArray(v)) throw new CompetitorInputError(`${label} skal være et objekt`);
   return v as Record<string, unknown>;
 }
-function noUnknownKeys(o: Record<string, unknown>, known: readonly string[], label: string): void {
+export function noUnknownKeys(o: Record<string, unknown>, known: readonly string[], label: string): void {
   for (const k of Object.keys(o)) if (!known.includes(k)) throw new CompetitorInputError(`${label}.${k} kendes ikke`);
 }
-function str(v: unknown, label: string, max: number, required = false): string | undefined {
+export function str(v: unknown, label: string, max: number, required = false): string | undefined {
   if (v === undefined || v === null) {
     if (required) throw new CompetitorInputError(`${label} mangler`);
     return undefined;
@@ -152,7 +153,7 @@ function str(v: unknown, label: string, max: number, required = false): string |
   if (required && !t) throw new CompetitorInputError(`${label} mangler`);
   return t.length > max ? t.slice(0, max) : t; // klip i stedet for at afvise
 }
-function num(v: unknown, label: string, min: number, max: number, required = false): number | undefined {
+export function num(v: unknown, label: string, min: number, max: number, required = false): number | undefined {
   if (v === undefined || v === null) {
     if (required) throw new CompetitorInputError(`${label} mangler`);
     return undefined;
@@ -161,7 +162,7 @@ function num(v: unknown, label: string, min: number, max: number, required = fal
   if (v < min || v > max) throw new CompetitorInputError(`${label} skal være mellem ${min} og ${max}`);
   return v;
 }
-function int(v: unknown, label: string, min: number, required = false): number | undefined {
+export function int(v: unknown, label: string, min: number, required = false): number | undefined {
   return intRange(v, label, min, Number.MAX_SAFE_INTEGER, required);
 }
 function intRange(v: unknown, label: string, min: number, max: number, required = false): number | undefined {
@@ -170,7 +171,7 @@ function intRange(v: unknown, label: string, min: number, max: number, required 
   if (!Number.isInteger(n)) throw new CompetitorInputError(`${label} skal være et helt tal`);
   return n;
 }
-function bool(v: unknown, label: string, required = false): boolean | undefined {
+export function bool(v: unknown, label: string, required = false): boolean | undefined {
   if (v === undefined || v === null) {
     if (required) throw new CompetitorInputError(`${label} mangler`);
     return undefined;
@@ -178,7 +179,7 @@ function bool(v: unknown, label: string, required = false): boolean | undefined 
   if (typeof v !== "boolean") throw new CompetitorInputError(`${label} skal være sand/falsk`);
   return v;
 }
-function strArray(v: unknown, label: string, maxItems: number, itemMax: number): string[] | undefined {
+export function strArray(v: unknown, label: string, maxItems: number, itemMax: number): string[] | undefined {
   if (v === undefined || v === null) return undefined;
   if (!Array.isArray(v)) throw new CompetitorInputError(`${label} skal være en liste`);
   const out = v.map((item, i) => {
@@ -205,12 +206,12 @@ function httpsUrl(v: unknown, label: string, required = false): string | undefin
   if (!/^https:\/\/\S+$/i.test(t)) throw new CompetitorInputError(`${label} skal være en https-url`);
   return t;
 }
-function isoDate(v: unknown, label: string): string {
+export function isoDate(v: unknown, label: string): string {
   if (typeof v !== "string") throw new CompetitorInputError(`${label} skal være tekst`);
   if (Number.isNaN(new Date(v).getTime())) throw new CompetitorInputError(`${label} skal være en gyldig ISO-dato`);
   return v;
 }
-function enumOf<T extends string>(v: unknown, label: string, options: readonly T[], required = false): T | undefined {
+export function enumOf<T extends string>(v: unknown, label: string, options: readonly T[], required = false): T | undefined {
   if (v === undefined || v === null) {
     if (required) throw new CompetitorInputError(`${label} mangler`);
     return undefined;
