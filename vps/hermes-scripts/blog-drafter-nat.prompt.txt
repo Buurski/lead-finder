@@ -21,6 +21,7 @@ TRIN
    Upload en graf/figur så den får en offentlig url:
      python3 /root/.hermes/scripts/crm_posts.py upload --id <kort-id> --slot a --file /tmp/graf-<slug>.png   (→ {"url": ...})
      python3 /root/.hermes/scripts/crm_posts.py upload --id <kort-id> --slot a-mobile --file /tmp/graf-<slug>-mobile.png
+     Egne billeder hostes KUN via upload (HQ's Blob). Aldrig catbox, imgur eller andre fremmede værter. Fejler upload, så kald fail med fejlen.
    Brug kortets id fra trin 2 til upload. images.a.url = url'en, mobileUrl = mobil-url'en. alt = grafens pointe (20-125 tegn), credit = "Kinly", source = kilde-url'en.
 
    B (rigtigt foto, som i dag): ét frit licenseret foto fra Wikimedia Commons. Søg:
