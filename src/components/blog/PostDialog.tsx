@@ -558,6 +558,7 @@ export default function PostDialog({
                   <button type="button" className="cc-btn bl-btn-danger" onClick={() => void handleDelete()} disabled={busy}>Slet</button>
                 </div>
                 ) : (
+                <>
                 <div className="bl-dialog-actions">
                   <button type="button" className="cc-btn cc-focus" aria-label="Forrige fase" onClick={() => moveStage(-1)} disabled={busy || idx <= 0 || prevBlocked} title={prevBlocked ? "Et udgivet indlæg kan ikke flyttes tilbage" : undefined}>
                     <Icon name="ChevronRight" style={{ width: 15, height: 15, transform: "rotate(180deg)" }} />
@@ -574,6 +575,13 @@ export default function PostDialog({
                     <button type="button" className="cc-btn bl-btn-danger" onClick={() => void handleDelete()} disabled={busy}>Slet</button>
                   )}
                 </div>
+                {canPublish && !post.checklist.ok && (
+                  <div className="bl-publish-missing" role="status">
+                    <strong>Mangler før du kan sende til publicering:</strong>
+                    <ul>{post.checklist.missing.map((m, i) => <li key={i}>{m}</li>)}</ul>
+                  </div>
+                )}
+                </>
                 )}
               </section>
 

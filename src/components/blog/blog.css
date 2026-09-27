@@ -247,3 +247,9 @@
 @media (prefers-reduced-motion: reduce) {
   .bl-dialog, .bl-card, .bl-ab-cand, .bl-drop-toast, .bl-jev-bar-fill, .bl-work-bar > span { animation: none !important; transition: none !important; }
 }
+
+/* Tydelig mangelliste lige under 'Send til publicering' (Lucas 27/9: 'jeg kan ikke se hvad der mangler'). */
+.bl-publish-missing { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--warn, #c2410c) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn, #c2410c) 35%, transparent); font-size: 13px; }
+.bl-publish-missing ul { margin: 6px 0 0; padding-left: 18px; }
+.bl-publish-missing li + li { margin-top: 3px; }
+
