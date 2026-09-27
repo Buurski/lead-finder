@@ -7,9 +7,11 @@ import PageHeader from "@/components/shell/PageHeader";
 import { getDb } from "@/lib/db/client";
 import { seoSnapshot } from "@/lib/db/schema";
 import { loadLatestReport } from "@/lib/hq/competitors";
+import { listPosts } from "@/lib/hq/posts";
+import { copenhagenNow } from "@/lib/settings";
 import {
-  compareWithCompetitors, geoCompetitorCounts, gscFlag, GSC_URL, isMoneyQuery, KINLY_SITE_READ,
-  loadBlogCheck, loadGeo, loadKinlyGsc, seoActions, type GscTotals,
+  blogTraffic, compareWithCompetitors, geoCompetitorCounts, gscFlag, GSC_URL, isMoneyQuery, KINLY_SITE_READ,
+  loadBlogCheck, loadBlogReview, loadGeo, loadKinlyGsc, seoActions, type BlogTrafficRow, type GscTotals,
 } from "@/lib/hq/seo-signals";
 import BlogIdeaButton from "./BlogIdeaButton";
 import "@/components/konkurrenter/konkurrenter.css";
@@ -38,12 +40,45 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="seo-empty">{children}</p>;
 }
 
+function IndexFlag({ r }: { r: BlogTrafficRow }) {
+  if (!r.index) return <span className="konk-flag"><span className="konk-flag-dot" />Indeks: tjekkes mandag</span>;
+  if (r.index.error) return <span className="konk-flag"><span className="konk-flag-dot" />Indeks: kunne ikke tjekkes</span>;
+  if (r.index.indexed) return <span className="konk-flag" data-on="true"><span className="konk-flag-dot" />Indekseret ✓</span>;
+  const why = r.index.lastCrawl ? `sidst crawlet ${date(r.index.lastCrawl)}` : r.index.coverage;
+  return <span className="konk-flag" data-on="false"><span className="konk-flag-dot" />Ikke i Google endnu{why ? ` · ${why}` : ""}</span>;
+}
+
+function TrafficRow({ r, measured }: { r: BlogTrafficRow; measured: boolean }) {
+  const p = r.page;
+  return <li className="seo-traffic-row">
+    <div className="seo-traffic-head">
+      {r.url ? <a className="cc-link seo-traffic-title" href={r.url} target="_blank" rel="noreferrer">{r.title} ↗</a> : <strong className="seo-traffic-title">{r.title}</strong>}
+      <span className="konk-dim">{r.publishedAt ? `udgivet ${date(r.publishedAt)}` : "udgivet"}</span>
+    </div>
+    <div className="konk-comp-flags"><IndexFlag r={r} /></div>
+    {r.tooEarlyUntil ? <span className="konk-dim seo-traffic-note">For tidligt at måle. Tallene giver mening fra {date(r.tooEarlyUntil)}</span>
+      : !measured ? <span className="konk-dim seo-traffic-note">Trafik pr. indlæg hentes første gang mandag.</span>
+      : !p ? <span className="konk-dim seo-traffic-note">Ingen visninger i Google de sidste 28 dage.</span>
+      : <>
+        <div className="seo-traffic-stats">
+          <span><strong>{nf(p.clicks)}</strong> klik <Change now={p.clicks} before={p.prev?.clicks ?? null} /></span>
+          <span><strong>{nf(p.impressions)}</strong> visn. <Change now={p.impressions} before={p.prev?.impressions ?? null} /></span>
+          <span>CTR <strong>{ctr(p)}</strong></span>
+          <span>pos. <strong>{p.position == null ? "—" : nf(p.position)}</strong> <Change now={p.position} before={p.prev?.position ?? null} lowerIsBetter /></span>
+        </div>
+        {p.topQueries.length > 0 && <span className="konk-dim seo-traffic-note">Søgeord: {p.topQueries.map((q) => `${q.query} (${q.impressions} visn.)`).join(" · ")}</span>}
+      </>}
+  </li>;
+}
+
 export default async function SeoHistoryPage() {
   // Sekventielt: lokal pglite tåler kun 1 samtidig forbindelse (samme regel som /konkurrenter).
   const gsc = await loadKinlyGsc();
   const geo = await loadGeo();
   const blog = await loadBlogCheck();
   const report = await loadLatestReport();
+  const review = await loadBlogReview();
+  const published = await listPosts(getDb(), { stage: "udgivet" });
   const [tech] = await getDb().select().from(seoSnapshot).where(isNull(seoSnapshot.companyId)).orderBy(desc(seoSnapshot.takenAt)).limit(1);
 
   const compare = compareWithCompetitors(report);
@@ -53,6 +88,7 @@ export default async function SeoHistoryPage() {
   const geoHits = geoResults.filter((r) => r.mentionedKinly).length;
   const geoRivals = geoCompetitorCounts(geoResults).slice(0, 5);
   const t = (x: GscTotals | undefined) => x ?? { clicks: 0, impressions: 0, position: null };
+  const traffic = blogTraffic(published, gsc, copenhagenNow().date);
 
   return <div className="cc-fade kinly-page" style={{ display: "grid", gap: 18 }}>
     <PageHeader icon="Search" title="SEO" subtitle="Kinlys egen synlighed: Google, AI-søgning og bloggen — og hvad vi gør ved det." />
@@ -122,6 +158,12 @@ export default async function SeoHistoryPage() {
 
     <section className="cc-card cc-card-pad seo-section" aria-labelledby="seo-blog">
       <h2 id="seo-blog" className="konk-section-title">Blogindlæg</h2>
+      <h3 className="seo-sub">Trafik fra Google · udgivne indlæg</h3>
+      {traffic.length === 0 ? <Empty>Intet udgivet endnu. Når et indlæg er live, viser vi om Google har det i indekset, og efter 14 dage klik, visninger og position mod forrige periode.</Empty> : <>
+        {gsc?.pages && <div className="konk-dim" style={{ fontSize: 12 }}>28 dage til {date(gsc.periodEnd)} mod de 28 før · hentet {date(gsc.fetchedAt)}</div>}
+        <ul className="seo-list">{traffic.map((r) => <TrafficRow key={r.id} r={r} measured={!!gsc?.pages} />)}</ul>
+      </>}
+      <h3 className="seo-sub">Hermes&apos; tjek</h3>
       {!blog || blog.posts.length === 0 ? (
         <Empty>Intet tjek endnu. Hver mandag kl. 9 tjekker Hermes indlæg i klar, publicer og udgivet: SEO-punkter, om kundernes spørgsmål bliver besvaret, og om AI nævner os på emnet.</Empty>
       ) : <>
@@ -147,6 +189,28 @@ export default async function SeoHistoryPage() {
           })}
         </div>
       </>}
+    </section>
+
+    <section className="cc-card cc-card-pad seo-section" aria-labelledby="seo-virker">
+      <h2 id="seo-virker" className="konk-section-title">Hvad virker på bloggen</h2>
+      {!review ? <Empty>Første analyse kommer 1. mandag i måneden. Hermes sammenligner de udgivne indlæg (tal, grafer, FAQ, titler, længde) med deres trafik og foreslår hvad de svage kan låne fra de stærke.</Empty>
+        : review.status === "for-tidligt" ? <Empty>For tidligt: {review.measured} af mindst 3 indlæg har 14 dages data fra Google. Hermes prøver igen 1. mandag i næste måned (tjekket {date(review.reviewedAt)}).</Empty>
+        : <>
+          <div className="konk-dim" style={{ fontSize: 12 }}>{review.measured} indlæg sammenlignet · {date(review.reviewedAt)}</div>
+          <div className="konk-finding-grid">
+            {review.points.map((pt) => <div key={pt.title} className="konk-finding-card">
+              <h3 className="konk-finding-title">{pt.title}</h3>
+              <p className="konk-finding-detail konk-finding-detail-open">{pt.detail}</p>
+            </div>)}
+          </div>
+          {review.suggestions.length > 0 && <>
+            <h3 className="seo-sub">Opdatér</h3>
+            <ul className="seo-issues">
+              {review.suggestions.map((s) => <li key={s.post + s.change}><strong>{s.post}:</strong> {s.change}{s.from && <span className="konk-dim"> (fra {s.from})</span>}</li>)}
+            </ul>
+            <Link href="/blog" className="cc-btn" style={{ width: "fit-content" }}>Åbn Blog</Link>
+          </>}
+        </>}
     </section>
 
     <section className="cc-card cc-card-pad seo-section" aria-labelledby="seo-konk">

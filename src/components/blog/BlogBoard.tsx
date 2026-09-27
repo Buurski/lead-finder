@@ -11,6 +11,7 @@ import type { BlogStage, PostCard } from "@/lib/hq/posts";
 import Icon from "@/components/shell/Icon";
 import PostDialog from "./PostDialog";
 import WorkStatus from "./WorkStatus";
+import IdeaCleanup from "./IdeaCleanup";
 import { IMAGE_SLOTS, categoryLabel, chosenSlots, dayMonth, overallScore, personName, readWork, scoreLevel } from "./blog-utils";
 import "./blog.css";
 
@@ -204,6 +205,7 @@ export default function BlogBoard({ initialCards, stages }: { initialCards: Post
                 )}
               </div>
               <div className="bl-col-body">
+                {stage === "ide" && <IdeaCleanup onDeleted={removeCard} />}
                 {list.length === 0 && <div className="bl-col-empty">Ingen indlæg her</div>}
                 {list.map((card) => {
                   const chosen = chosenSlots(card.images.choice);

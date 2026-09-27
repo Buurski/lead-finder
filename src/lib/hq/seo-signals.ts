@@ -4,6 +4,7 @@
 //   seo/kinly-gsc/latest  — Search Console for kinly.dk (mandags-cron gsc-snapshot)
 //   seo/geo/latest        — Hermes' geo_citation_loop.py  (POST /api/agent/seo-signals, action "geo")
 //   seo/blogcheck/latest  — Hermes' blog_seo_geo_tjek.py  (samme rute, action "blogcheck")
+//   seo/blogreview/latest — Hermes' blog_moenster.py      (samme rute, action "blogreview"; månedlig)
 // Handlingerne nederst er rene regler over de tre + konkurrentrapporten — ingen LLM.
 import { store } from "../store.ts";
 import type { CompetitorReport } from "./competitors.ts";
@@ -12,6 +13,7 @@ import { CompetitorInputError, bool, enumOf, isoDate, noUnknownKeys, obj, str, s
 const KEY_GSC = "seo/kinly-gsc/latest";
 const KEY_GEO = "seo/geo/latest";
 const KEY_BLOG = "seo/blogcheck/latest";
+const KEY_REVIEW = "seo/blogreview/latest";
 
 // ---------------------------------------------------------------- Google (kinly.dk)
 
@@ -26,7 +28,17 @@ export interface KinlyGsc {
   totals: GscTotals;
   prevTotals: GscTotals;
   queries: KinlyGscQuery[];
+  /** /blog/-sider (samme 28 dage mod de 28 før). Mangler i dokumenter fra før 27/9. */
+  pages?: KinlyGscPage[];
+  /** URL Inspection pr. udgivet indlæg (samme mandags-kørsel). */
+  index?: BlogIndexStatus[];
 }
+export interface KinlyGscPage extends GscTotals {
+  path: string;
+  prev: GscTotals | null;
+  topQueries: { query: string; clicks: number; impressions: number; position: number }[];
+}
+export interface BlogIndexStatus { url: string; indexed: boolean; coverage: string; lastCrawl: string | null; error?: string }
 
 export const saveKinlyGsc = (doc: KinlyGsc) => store.put(KEY_GSC, doc);
 export const loadKinlyGsc = () => store.get<KinlyGsc>(KEY_GSC);
@@ -130,6 +142,84 @@ export async function saveBlogCheck(checkedAt: unknown, posts: unknown): Promise
   return doc;
 }
 export const loadBlogCheck = () => store.get<BlogCheck>(KEY_BLOG);
+
+// ---------------------------------------------------------------- trafik pr. udgivet indlæg
+
+/** Under 14 dage siden udgivelse: Google har ikke nået at give et retvisende tal. */
+export const MEASURE_AFTER_DAYS = 14;
+
+export interface PublishedPost { id: string; title: string; slug: string; publishedAt: string | null; publishedUrl: string | null }
+export interface BlogTrafficRow {
+  id: string;
+  title: string;
+  url: string | null;
+  publishedAt: string | null;
+  /** Dato hvor indlægget har 14 dage bag sig; null når det allerede har. */
+  tooEarlyUntil: string | null;
+  page: KinlyGscPage | null;
+  index: BlogIndexStatus | null;
+}
+
+const trim = (u: string) => u.replace(/\/+$/, "");
+
+export function blogTraffic(posts: PublishedPost[], gsc: KinlyGsc | null, today: string): BlogTrafficRow[] {
+  const todayMs = Date.parse(`${today}T12:00:00Z`);
+  return posts.map((p) => {
+    const ready = p.publishedAt ? Date.parse(p.publishedAt) + MEASURE_AFTER_DAYS * 86_400_000 : null;
+    return {
+      id: p.id,
+      title: p.title,
+      url: p.publishedUrl,
+      publishedAt: p.publishedAt,
+      tooEarlyUntil: ready !== null && ready > todayMs ? new Date(ready).toISOString().slice(0, 10) : null,
+      page: gsc?.pages?.find((g) => trim(g.path) === `/blog/${p.slug}`) ?? null,
+      index: (p.publishedUrl && gsc?.index?.find((i) => trim(i.url) === trim(p.publishedUrl!))) || null,
+    };
+  });
+}
+
+// ---------------------------------------------------------------- månedlig mønster-analyse (Hermes' blog_moenster.py)
+
+export interface BlogReviewPoint { title: string; detail: string }
+export interface BlogReviewSuggestion { post: string; change: string; from?: string }
+export interface BlogReview {
+  receivedAt: string;
+  reviewedAt: string;
+  /** "for-tidligt" = færre end 3 indlæg med 14 dages data; så er der ingen punkter og intet LLM-kald. */
+  status: "ok" | "for-tidligt";
+  measured: number;
+  points: BlogReviewPoint[];
+  suggestions: BlogReviewSuggestion[];
+}
+
+export function validateBlogReview(raw: Record<string, unknown>): Omit<BlogReview, "receivedAt"> {
+  const status = enumOf(raw.status, "status", ["ok", "for-tidligt"] as const, true)!;
+  const list = (v: unknown, label: string, max: number) => {
+    if (v === undefined) return [];
+    if (!Array.isArray(v)) throw new CompetitorInputError(`${label} skal være en liste`);
+    return v.slice(0, max).map((x, i) => obj(x, `${label}[${i}]`));
+  };
+  const points = list(raw.points, "points", 4).map((o, i) => {
+    noUnknownKeys(o, ["title", "detail"], `points[${i}]`);
+    return { title: str(o.title, `points[${i}].title`, 100, true)!, detail: str(o.detail, `points[${i}].detail`, 400, true)! };
+  });
+  const suggestions = list(raw.suggestions, "suggestions", 3).map((o, i) => {
+    noUnknownKeys(o, ["post", "change", "from"], `suggestions[${i}]`);
+    const from = str(o.from, `suggestions[${i}].from`, 200);
+    return { post: str(o.post, `suggestions[${i}].post`, 200, true)!, change: str(o.change, `suggestions[${i}].change`, 400, true)!, ...(from ? { from } : {}) };
+  });
+  if (status === "ok" && points.length === 0) throw new CompetitorInputError("points mangler");
+  const measured = raw.measured;
+  if (typeof measured !== "number" || !Number.isInteger(measured) || measured < 0) throw new CompetitorInputError("measured skal være et helt tal");
+  return { reviewedAt: isoDate(raw.reviewedAt, "reviewedAt"), status, measured, points, suggestions };
+}
+
+export async function saveBlogReview(raw: Record<string, unknown>): Promise<BlogReview> {
+  const doc = { receivedAt: new Date().toISOString(), ...validateBlogReview(raw) };
+  await store.put(KEY_REVIEW, doc);
+  return doc;
+}
+export const loadBlogReview = () => store.get<BlogReview>(KEY_REVIEW);
 
 // ---------------------------------------------------------------- os mod konkurrenterne
 

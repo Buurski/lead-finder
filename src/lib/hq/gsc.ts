@@ -5,11 +5,14 @@ import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, gscSnapshot } from "../db/schema.ts";
 import { jevJudge, recordGscUpdate, type Judge } from "./gsc-updates.ts";
-import type { KinlyGsc } from "./seo-signals.ts";
+import type { BlogIndexStatus, KinlyGsc, KinlyGscPage } from "./seo-signals.ts";
 
 export interface GscRow { keys?: string[]; clicks: number; impressions: number; position: number }
+type GscFilter = { filters: { dimension: string; operator: string; expression: string }[] };
 /** Én searchanalytics.query. Kaster { code: 403|404 } når ejendommen ikke findes/ikke er delt. */
-export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number }) => Promise<GscRow[]>;
+export type GscQuery = (property: string, body: { startDate: string; endDate: string; dimensions?: string[]; rowLimit?: number; dimensionFilterGroups?: GscFilter[] }) => Promise<GscRow[]>;
+/** Én urlInspection.index.inspect (virker med "Begrænset bruger" + read-only scope — testet 27/9). */
+export type GscInspect = (property: string, url: string) => Promise<{ verdict?: string | null; coverageState?: string | null; lastCrawlTime?: string | null }>;
 
 const DAY = 86_400_000;
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -102,7 +105,14 @@ export async function fetchKinlyGsc(q: GscQuery, today: string, host = "kinly.dk
     const prev = await q(property, { startDate: prevStart, endDate: prevEnd });
     const rows = await q(property, { startDate: w.start, endDate: w.end, dimensions: ["query"], rowLimit: 250 });
     const prevRows = new Map((await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["query"], rowLimit: 250 })).map((r) => [String(r.keys?.[0]), r]));
+    const blogOnly = [{ filters: [{ dimension: "page", operator: "contains", expression: "/blog/" }] }];
+    const pages = blogPages(
+      await q(property, { startDate: w.start, endDate: w.end, dimensions: ["page"], rowLimit: 200, dimensionFilterGroups: blogOnly }),
+      await q(property, { startDate: prevStart, endDate: prevEnd, dimensions: ["page"], rowLimit: 200, dimensionFilterGroups: blogOnly }),
+      await q(property, { startDate: w.start, endDate: w.end, dimensions: ["page", "query"], rowLimit: 1000, dimensionFilterGroups: blogOnly }),
+    );
     return {
+      pages,
       ...base,
       property,
       totals: tot(cur),
@@ -116,6 +126,44 @@ export async function fetchKinlyGsc(q: GscQuery, today: string, host = "kinly.dk
   }
   const empty = { clicks: 0, impressions: 0, position: null };
   return { ...base, property: null, totals: empty, prevTotals: empty, queries: [] };
+}
+
+const pathOf = (page: string) => {
+  try {
+    return new URL(page).pathname;
+  } catch {
+    return page;
+  }
+};
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Blog-sider: nu + forrige 28 dage (også sider der er faldet til 0) og top-3 søgeord pr. side. */
+export function blogPages(cur: GscRow[], prev: GscRow[], pageQueries: GscRow[]): KinlyGscPage[] {
+  const stats = (r: GscRow | undefined) => r ? { clicks: Math.round(r.clicks), impressions: Math.round(r.impressions), position: r.impressions ? r1(r.position) : null } : null;
+  const byPath = (rows: GscRow[]) => new Map(rows.map((r) => [pathOf(String(r.keys?.[0] ?? "")), r]));
+  const [now, before] = [byPath(cur), byPath(prev)];
+  return [...new Set([...now.keys(), ...before.keys()])].map((path) => {
+    const top = pageQueries
+      .filter((r) => pathOf(String(r.keys?.[0] ?? "")) === path)
+      .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
+      .slice(0, 3)
+      .map((r) => ({ query: String(r.keys?.[1] ?? "").slice(0, 200), clicks: Math.round(r.clicks), impressions: Math.round(r.impressions), position: r1(r.position) }));
+    return { path, ...(stats(now.get(path)) ?? { clicks: 0, impressions: 0, position: null }), prev: stats(before.get(path)), topQueries: top };
+  }).sort((a, b) => b.impressions - a.impressions);
+}
+
+/** Er de udgivne indlæg i Googles indeks? Én fejl stopper ikke de andre — den vises som fejl, ikke som "ikke indekseret". */
+export async function inspectBlogUrls(inspect: GscInspect, property: string, urls: string[]): Promise<BlogIndexStatus[]> {
+  const out: BlogIndexStatus[] = [];
+  for (const url of urls.slice(0, 50)) {
+    try {
+      const r = await inspect(property, url);
+      out.push({ url, indexed: r.verdict === "PASS", coverage: String(r.coverageState ?? "").slice(0, 160), lastCrawl: r.lastCrawlTime ?? null });
+    } catch (err) {
+      out.push({ url, indexed: false, coverage: "", lastCrawl: null, error: String((err as { code?: number }).code ?? (err instanceof Error ? err.message : err)).slice(0, 120) });
+    }
+  }
+  return out;
 }
 
 export interface GscSyncResult { company: string; ok: boolean; property?: string; error?: string }
@@ -164,17 +212,29 @@ export async function latestGscFor(db: Db, companyId: string) {
 }
 
 /** Rigtig klient via googleapis (read-only scope). */
-export async function googleGscQuery(): Promise<GscQuery> {
+async function searchConsole() {
   const { google } = await import("googleapis");
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const auth = new google.auth.GoogleAuth({
     ...(raw ? { credentials: JSON.parse(raw) } : { keyFile: process.env.GOOGLE_KEY_FILE }),
     scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
   });
-  const sc = google.searchconsole({ version: "v1", auth });
+  return google.searchconsole({ version: "v1", auth });
+}
+
+export async function googleGscQuery(): Promise<GscQuery> {
+  const sc = await searchConsole();
   return async (siteUrl, requestBody) => {
     const r = await sc.searchanalytics.query({ siteUrl, requestBody: { ...requestBody, dataState: "final" } });
     return (r.data.rows ?? []).map((x) => ({ keys: x.keys ?? undefined, clicks: x.clicks ?? 0, impressions: x.impressions ?? 0, position: x.position ?? 0 }));
+  };
+}
+
+export async function googleGscInspect(): Promise<GscInspect> {
+  const sc = await searchConsole();
+  return async (siteUrl, inspectionUrl) => {
+    const r = await sc.urlInspection.index.inspect({ requestBody: { siteUrl, inspectionUrl, languageCode: "da" } });
+    return r.data.inspectionResult?.indexStatusResult ?? {};
   };
 }
 

@@ -2,12 +2,16 @@
 // samme HMAC-skema som /api/agent/competitors. Validering i seo-signals.ts.
 //   POST { action: "geo", results: [{ query, group?, engine, measuredAt, mentionedKinly, competitors }] } → { ok, results }
 //   POST { action: "blogcheck", checkedAt, posts: [{ id, title, slug?, stage, keyword, seoIssues, questions: [{ question, answer: ja|delvist|nej|ukendt }] }] } → { ok, posts }
+//   POST { action: "blogtraffic" } → { ok, gsc: { fetchedAt, periodStart, periodEnd, pages, index } | null }   (kun læsning; blog_moenster.py)
+//   POST { action: "blogreview", reviewedAt, status: ok|for-tidligt, measured, points: [{ title, detail }], suggestions: [{ post, change, from? }] } → { ok }
+//   POST { action: "ideacleanup", checkedAt, ideas, suggestions: [{ id, title, kind: overlap|svag|for-mange, reason, overlapWith? }] } → { ok, suggestions }
 //
 // Ingen "next/server"-import: route.test.ts kalder handleren direkte under
 // node:test. Undtaget fra proxyens login (api/agent/-præfikset); ruten
 // beskytter sig selv.
 import { CompetitorInputError, noUnknownKeys, obj } from "../../../../lib/hq/competitors.ts";
-import { saveBlogCheck, saveGeo } from "../../../../lib/hq/seo-signals.ts";
+import { loadKinlyGsc, saveBlogCheck, saveBlogReview, saveGeo } from "../../../../lib/hq/seo-signals.ts";
+import { saveIdeaCleanup } from "../../../../lib/hq/idea-cleanup.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
 import { cleanEnv } from "../../../../lib/hermes.ts";
 
@@ -40,7 +44,19 @@ export async function POST(req: Request) {
       noUnknownKeys(input, ["action", "checkedAt", "posts"], "body");
       return json({ ok: true, posts: (await saveBlogCheck(input.checkedAt, input.posts)).posts.length });
     }
-    return json({ ok: false, error: "ukendt action — brug geo eller blogcheck" }, 400);
+    if (input.action === "blogtraffic") {
+      noUnknownKeys(input, ["action"], "body");
+      const g = await loadKinlyGsc();
+      return json({ ok: true, gsc: g?.property ? { fetchedAt: g.fetchedAt, periodStart: g.periodStart, periodEnd: g.periodEnd, pages: g.pages ?? [], index: g.index ?? [] } : null });
+    }
+    if (input.action === "blogreview") {
+      noUnknownKeys(input, ["action", "reviewedAt", "status", "measured", "points", "suggestions"], "body");
+      return json({ ok: true, status: (await saveBlogReview(input)).status });
+    }
+    if (input.action === "ideacleanup") {
+      return json({ ok: true, suggestions: (await saveIdeaCleanup(input)).suggestions.length });
+    }
+    return json({ ok: false, error: "ukendt action — brug geo, blogcheck, blogtraffic, blogreview eller ideacleanup" }, 400);
   } catch (err) {
     if (err instanceof CompetitorInputError) return json({ ok: false, error: err.message }, 400);
     console.error(JSON.stringify({ evt: "agent.seo-signals.failed", error: String(err).slice(0, 300) }));
