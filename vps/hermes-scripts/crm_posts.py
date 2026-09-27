@@ -211,7 +211,11 @@ def main() -> None:
                 print(f"- {m}")
             sys.exit(3)
         stage = (data.get("post") or {}).get("stage")
-        for target in (["arbejder", "klar"] if stage == "ide" else ["klar"] if stage == "arbejder" else []):
+        if stage == "ide":
+            # Kortet ligger i Idéer = Lucas tog det tilbage midt i kørslen (alle kørsler claimer i Arbejder).
+            print("STOP — kortet er taget tilbage til Idéer. Gemt, men ikke flyttet. Stop kørslen.")
+            sys.exit(4)
+        for target in (["klar"] if stage == "arbejder" else []):
             moved = call({"action": "move", "id": a.id, "stage": target})
             if not moved.get("ok"):
                 out(moved)

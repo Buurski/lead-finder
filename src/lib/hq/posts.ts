@@ -964,8 +964,7 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       // et menneske sætte kortet der selv. Undtaget: aftalen aflyses ud af Publicer.
       if (moving && target === "klar" && from !== "publicer" && actor !== "hermes") {
         throw new BlogInputError(from === "arbejder" ? HERMES_WORKING_MSG : "Til gennemlæsning nås kun gennem Hermes — læg kortet i Arbejder, så skriver han det.");
-      }
-      if (!moving && from === "publicer" && patch.images !== undefined) {
+      }      if (!moving && from === "publicer" && patch.images !== undefined) {
         throw new BlogInputError("indlægget står i Publicer — flyt det tilbage til Klar før du skifter billede");
       }
       // Ud af Publicer er en aftale om udgivelse — den må kun aflyses af et menneske.
@@ -1216,6 +1215,11 @@ const staleSince = (cutoff: string) =>
 const claimable = (cutoff: string) =>
   sql`${IN_ARBEJDER} and ${W}->>'requestedAt' is not null and ${W}->>'error' is null
       and (${W}->>'startedAt' is null or ${staleSince(cutoff)})`;
+// Claim kræver ikke en bestilling: nat-kørslen flytter selv sin idé til Arbejder
+// (work = {}) og tager den. Køen (workQueue) viser stadig kun bestilte kort.
+const startable = (cutoff: string) =>
+  sql`${IN_ARBEJDER} and ${W}->>'error' is null
+      and (${W}->>'startedAt' is null or ${staleSince(cutoff)})`;
 const staleCutoff = () => new Date(Date.now() - WORK_STALE_MS).toISOString();
 
 /** Hermes' kø: bestilte kort der ikke er startet (eller er hængt), ældste bestilling først. */
@@ -1246,7 +1250,7 @@ export async function claimWork(db: Db, id: string) {
   const [row] = await db
     .update(blogPost)
     .set({ work: sql`(${W} - 'label' - 'steps' - 'finishedAt') || jsonb_build_object('startedAt', ${now}::text, 'updatedAt', ${now}::text, 'step', 0)` })
-    .where(and(eq(blogPost.id, id), claimable(staleCutoff())))
+    .where(and(eq(blogPost.id, id), startable(staleCutoff())))
     .returning({ id: blogPost.id, title: blogPost.title, work: blogPost.work });
   if (!row) throw await workRefusal(db, id, "kan ikke claimes");
   return { id: row.id, title: row.title, work: readWork(row.work) };

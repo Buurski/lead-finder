@@ -426,12 +426,15 @@ test("claim er atomisk: to samtidige kald — præcis én vinder; startet kort a
   assert.equal((await workQueue(db)).length, 0);
 });
 
-test("claim afviser kort uden for Arbejder, ubestilte og fejlede — men tager et hængt kort igen", async () => {
+test("claim afviser kort uden for Arbejder og fejlede — men tager nat-kørslens egne og hængte kort", async () => {
   const ide = await seed("Står i Idéer");
   await assert.rejects(claimWork(db, ide.id), /står ikke i Arbejder/);
-  const egen = await seed("Ubestilt");
+  // Nat-kørslen flytter selv sin idé til Arbejder (ingen bestilling) og skal kunne tage den.
+  const egen = await seed("Nat-kørslens egen");
   await updatePost(db, egen.id, { stage: "arbejder" }, "hermes");
-  await assert.rejects(claimWork(db, egen.id), /ikke bestilt/);
+  const taget = await claimWork(db, egen.id);
+  assert.ok(taget.work.startedAt);
+  assert.equal((await workQueue(db)).some((c) => c.id === egen.id), false);
   const fejlet = await seed("Fejlet kort");
   await updatePost(db, fejlet.id, { stage: "arbejder" }, "lucas");
   await claimWork(db, fejlet.id);
