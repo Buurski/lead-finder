@@ -188,9 +188,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--force", action="store_true", help="kør selvom det er en ulige uge")
     a = ap.parse_args()
     if a.selftest:
         _selftest()
+        return 0
+    # Cron kører hver mandag; "hver 2. uge" = lige ISO-uger.
+    if not a.force and not a.dry_run and datetime.now().isocalendar()[1] % 2:
+        print("ulige uge — springer over (0 kald)")
         return 0
     print(json.dumps(run(a.dry_run), ensure_ascii=False))
     return 0

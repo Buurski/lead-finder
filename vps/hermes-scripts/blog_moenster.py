@@ -310,9 +310,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--force", action="store_true", help="kør selvom det ikke er 1. mandag i måneden")
     a = ap.parse_args()
     if a.selftest:
         _selftest()
+        return 0
+    today = datetime.now().date()
+    # Cron kører hver mandag (cron kan ikke sige "1. mandag"); her springes de andre over.
+    if not a.force and not a.dry_run and not (today.weekday() == 0 and today.day <= 7):
+        print("ikke 1. mandag i måneden — springer over (0 kald)")
         return 0
     print(json.dumps(run(a.dry_run), ensure_ascii=False))
     return 0
