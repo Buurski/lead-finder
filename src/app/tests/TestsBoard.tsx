@@ -89,7 +89,7 @@ function Card({ e, now, onChange }: { e: Experiment; now: number; onChange: (id:
       {e.detail && <p className="konk-finding-detail">{e.detail}</p>}
 
       {e.status === "vurderes" && !e.review && <p className="tests-note">Hermes vurderer den i nat.</p>}
-      {e.review && e.status === "vurderes" && <p className="tests-note">Jev: {e.review.reason} Nu tjekker Hermes' council (dyr model + Google) den og skriver planen, eller dropper den.</p>}
+      {e.review && e.status === "vurderes" && <p className="tests-note">Jev: {e.review.reason} Nu tjekker Hermes&apos; council (dyr model + Google) den og skriver planen, eller dropper den.</p>}
       {e.review && e.status !== "vurderes" && <p className="tests-reason"><strong>Jev:</strong> {e.review.reason}</p>}
 
       {e.plan && (
