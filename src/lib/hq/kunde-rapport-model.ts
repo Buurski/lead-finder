@@ -42,6 +42,15 @@ export interface Maaling {
   status_flag: string;
   kan_sendes: boolean;
   vigtigste?: { rang: number; punkt: string }[];
+  /** Spurgt AI de spørgsmål en kunde ville stille; hvor mange gange blev kunden nævnt. Mangler = ikke målt. */
+  ai_naevninger?: AiNaevninger | null;
+}
+
+export interface AiNaevninger {
+  spurgt: number;
+  naevnt: number;
+  tjekket: string;
+  spoergsmaal: { q: string; naevnt: boolean }[];
 }
 
 /** Search Console fra HQ (gsc_snapshot). Kun aggregater. */
@@ -846,6 +855,21 @@ export function byggRapport(input: RapportInput): RapportModel {
     };
   }
 
+  if (m.ai_naevninger && m.ai_naevninger.spurgt > 0) {
+    const a = m.ai_naevninger;
+    const f = forrige?.ai_naevninger;
+    const n: Nogletal = {
+      label: "Nævnt når man spørger AI",
+      vaerdi: `${a.naevnt} af ${a.spurgt}`,
+      forklaring: "Vi stiller AI som ChatGPT de spørgsmål, en kunde ville stille. Så mange gange nævnte den jer.",
+    };
+    if (!nulpunkt && f && f.spurgt === a.spurgt) {
+      n.pil = pil(a.naevnt, f.naevnt);
+      n.vurdering = vurder(n.pil, true);
+      n.foer = `${f.naevnt} af ${f.spurgt}`;
+    }
+    nogletal.push(n);
+  }
   add(
     "svartid",
     "Så hurtigt åbner siden",
@@ -907,6 +931,14 @@ export function byggRapport(input: RapportInput): RapportModel {
       titel: ok === ialt ? `Alle ${ialt} ting er på plads` : input.vedligeholder ? `${ok} ting er på plads` : `${ok} af ${ialt} ting er på plads`,
       tekst: "Det er alt det, der afgør om folk kan finde jer og kontakte jer.",
     });
+  const ai = m.ai_naevninger;
+  if (ai && ai.spurgt > 0 && ai.naevnt / ai.spurgt >= 0.6 && godt.length < 4) {
+    const eks = ai.spoergsmaal.find((x) => x.naevnt)?.q;
+    godt.push({
+      titel: ai.naevnt === ai.spurgt ? "AI anbefaler jer" : "AI kender jer",
+      tekst: `Vi spurgte AI som ChatGPT ${ai.spurgt} ting, en kunde kunne spørge om${eks ? `, fx "${eks}"` : ""}. I blev nævnt ${ai.naevnt} af ${ai.spurgt} gange.`,
+    });
+  }
   const anm = input.anmeldelser;
   if (anm?.rating && anm.rating >= 4.5 && anm.antal >= 20 && godt.length < 4)
     godt.push({
@@ -933,6 +965,9 @@ export function byggRapport(input: RapportInput): RapportModel {
     ...rettet,
     ...input.arbejde.filter((s) => s.trim()).slice(0, 8),
     ...gjortOversigt(m),
+    ...(m.ai_naevninger?.spurgt
+      ? [`Spurgt AI ${m.ai_naevninger.spurgt} spørgsmål, som jeres kunder kunne stille, og set om I blev nævnt.`]
+      : []),
     ...(variant === "med-adgang"
       ? [
           "Fulgt jeres tal fra Google: hvor mange der ser jer, klikker ind, og hvad de søger på.",
@@ -959,6 +994,10 @@ export function byggRapport(input: RapportInput): RapportModel {
 
   const ide = anmeldelsesIde(anm);
   if (ide) naesteGang.unshift(ide);
+  if (ai && ai.spurgt > 0 && ai.naevnt / ai.spurgt < 0.6)
+    naesteGang.unshift(
+      `Bliv nævnt oftere, når folk spørger AI: I blev nævnt ${ai.naevnt} af ${ai.spurgt} gange. Flere folk spørger ChatGPT i stedet for at google. Vi kan arbejde med, hvad AI læser om jer.`,
+    );
 
   const googleKort = (() => {
     const tt = efter.get("title");

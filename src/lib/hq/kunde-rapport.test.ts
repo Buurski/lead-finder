@@ -6,7 +6,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact } from "../db/schema.ts";
 import { __setStore, InMemoryStore, store } from "../store.ts";
-import { forrigeSendte, gemMaaling, KundeRapportError, oversigt, rapportFor, saetLevering } from "./kunde-rapport.ts";
+import { forrigeSendte, gemMaaling, KundeRapportError, oversigt, rapportFor, saetLevering, validerMaaling } from "./kunde-rapport.ts";
 
 const fx = (n: string) => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures", `kunde-maaling-${n}.json`), "utf-8"));
 const ikast = fx("ikast");
@@ -126,4 +126,11 @@ test("rapporten henter kundens navn, fornavn og månedens kundesynlige arbejde f
   assert.deepEqual(r?.arbejde, ["Ny side om lånebil"]);
   assert.match(r?.mail.tekst ?? "", /^Hej Allan\./);
   assert.equal(await rapportFor(db, "ikastautoservice.dk", "2026-11"), null);
+});
+
+test("AI-nævninger valideres: gyldigt felt kommer med, ugyldigt droppes uden at vælte målingen", () => {
+  const ok = validerMaaling({ ...fx("vida"), ai_naevninger: { spurgt: 5, naevnt: 4, tjekket: "2026-09-28T10:00:00+02:00", spoergsmaal: [{ q: "  skønhedsklinik   i Aalborg ", naevnt: true }] } });
+  assert.deepEqual(ok.ai_naevninger, { spurgt: 5, naevnt: 4, tjekket: "2026-09-28T10:00:00+02:00", spoergsmaal: [{ q: "skønhedsklinik i Aalborg", naevnt: true }] });
+  for (const bad of [{ spurgt: 5, naevnt: 6 }, { spurgt: 0, naevnt: 0 }, { spurgt: "5", naevnt: 2.5 }, "x"])
+    assert.equal(validerMaaling({ ...fx("vida"), ai_naevninger: bad }).ai_naevninger, undefined);
 });

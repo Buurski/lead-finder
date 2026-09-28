@@ -185,3 +185,20 @@ test("'det har vi gjort' er en kort oversigt i hverdagssprog, inkl. AI-søgning"
   assert.ok(r.gjort.some((g) => /AI som ChatGPT/.test(g)));
   assert.deepEqual(sprogFejl(r), []);
 });
+
+test("AI-nævninger: godt-kort og nøgletal når AI nævner kunden, idé når den sjældent gør", () => {
+  const med = (naevnt: number): Maaling => ({ ...structuredClone(vida), ai_naevninger: { spurgt: 5, naevnt, tjekket: "2026-09-28T10:00:00+02:00", spoergsmaal: [{ q: "skønhedsklinik i Aalborg", naevnt: naevnt > 0 }] } });
+  const god = byggRapport({ kunde: "VIDA", maaling: med(5), forrige: null, gsc: null, arbejde: [] });
+  assert.ok(god.godt.some((g) => g.titel === "AI anbefaler jer" && /nævnt 5 af 5/.test(g.tekst)));
+  assert.equal(god.nogletal.find((n) => n.label === "Nævnt når man spørger AI")?.vaerdi, "5 af 5");
+  assert.ok(god.gjort.some((g) => /Spurgt AI 5 spørgsmål/.test(g)));
+  assert.deepEqual(sprogFejl(god), []);
+  const lav = byggRapport({ kunde: "VIDA", maaling: med(1), forrige: med(0), gsc: null, arbejde: [] });
+  assert.match(lav.naesteGang[0], /^Bliv nævnt oftere/);
+  const n = lav.nogletal.find((x) => x.label === "Nævnt når man spørger AI");
+  assert.equal(n?.pil, "op");
+  assert.equal(n?.foer, "0 af 5");
+  // Ikke målt = intet om AI (aldrig et gættet 0).
+  const uden = byggRapport({ kunde: "VIDA", maaling: vida, forrige: null, gsc: null, arbejde: [] });
+  assert.ok(!uden.nogletal.some((x) => x.label.includes("AI")));
+});

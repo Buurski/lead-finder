@@ -23,7 +23,7 @@ import { kundeKontakt } from "./invoice-contacts.ts";
 import { store } from "../store.ts";
 import type { GscChange } from "./gsc-updates.ts";
 import { anmeldelserFor, logoFor } from "./kunde-rapport-kilder.ts";
-import { byggRapport, hostAf, maanedFor, type GscInput, type Maaling, type RapportModel } from "./kunde-rapport-model.ts";
+import { byggRapport, hostAf, maanedFor, type AiNaevninger, type GscInput, type Maaling, type RapportModel } from "./kunde-rapport-model.ts";
 
 export class KundeRapportError extends Error {}
 
@@ -106,6 +106,20 @@ const s = (v: unknown, label: string, max = 2000): string => {
  * i motoren, men et tal fra en blokeret kørsel må ikke kunne havne i en mail
  * bare fordi nogen en dag glemmer den ene af dem.
  */
+/** AI-nævninger er valgfrie: et ugyldigt felt droppes (rapporten viser så intet), det vælter ikke målingen. */
+function validerAi(raw: unknown): AiNaevninger | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  const spurgt = Number(a.spurgt);
+  const naevnt = Number(a.naevnt);
+  if (!Number.isInteger(spurgt) || !Number.isInteger(naevnt) || spurgt < 1 || spurgt > 10 || naevnt < 0 || naevnt > spurgt) return null;
+  const spoergsmaal = (Array.isArray(a.spoergsmaal) ? a.spoergsmaal : [])
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && typeof x.q === "string")
+    .slice(0, 10)
+    .map((x) => ({ q: String(x.q).replace(/\s+/g, " ").trim().slice(0, 200), naevnt: x.naevnt === true }));
+  return { spurgt, naevnt, tjekket: typeof a.tjekket === "string" ? a.tjekket.slice(0, 40) : "", spoergsmaal };
+}
+
 export function validerMaaling(raw: unknown): Maaling {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new KundeRapportError("måling skal være et objekt");
   const r = raw as Record<string, unknown>;
@@ -148,6 +162,7 @@ export function validerMaaling(raw: unknown): Maaling {
   }
   const url = s(r.url, "url", 300);
   tjekHost(url);
+  const ai_naevninger = validerAi(r.ai_naevninger);
   return {
     navn: typeof r.navn === "string" ? r.navn.slice(0, 120) : hostAf(url),
     url,
@@ -158,6 +173,7 @@ export function validerMaaling(raw: unknown): Maaling {
     status_flag: "ok",
     kan_sendes: true,
     vigtigste,
+    ...(ai_naevninger ? { ai_naevninger } : {}),
   };
 }
 
