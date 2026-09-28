@@ -268,6 +268,25 @@ export function getTransporter(senderId: SenderId): Transporter {
   return t;
 }
 
+/**
+ * Kundemails (månedsrapporten) går fra lucas@kinly.dk via Google Workspace, ikke fra
+ * Gmail-kontoen bag kold outreach. Login = afsender, så DMARC på kinly.dk (p=quarantine)
+ * går igennem. Adskilt fra GMAIL_USER med vilje: kolde mails må aldrig belaste kinly.dk.
+ * Env: KINLY_SMTP_USER (lucas@kinly.dk) + KINLY_SMTP_APP_PASSWORD (app-adgangskode fra Workspace).
+ */
+let _kunde: { transporter: Transporter; from: string } | null = null;
+export function kundeAfsender(): { transporter: Transporter; from: string } {
+  if (_kunde) return _kunde;
+  const user = process.env.KINLY_SMTP_USER?.trim() ?? "";
+  const pw = process.env.KINLY_SMTP_APP_PASSWORD?.trim() ?? "";
+  if (!/@kinly\.dk$/i.test(user) || !pw) {
+    throw new Error("Kundemails sendes fra lucas@kinly.dk, men KINLY_SMTP_USER/KINLY_SMTP_APP_PASSWORD er ikke sat.");
+  }
+  const creds: SenderCreds = { id: "lucas", email: user, appPassword: pw, fromEmail: user, displayName: LUCAS_DEFAULT_NAME, phone: "", title: "", tagline: "" };
+  _kunde = { transporter: buildTransporter(creds), from: `${LUCAS_DEFAULT_NAME} <${user}>` };
+  return _kunde;
+}
+
 /** The display address shown in From: — "Lucas Buur <lucas@…>" etc. */
 export function formatFrom(senderId: SenderId): string {
   const creds = getSenderCreds(senderId);

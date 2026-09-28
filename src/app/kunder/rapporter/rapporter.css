@@ -38,3 +38,14 @@
   .rap-tal { grid-template-columns: repeat(2, 1fr); }
   .rap-knapper .cc-btn { flex: 1 1 45%; justify-content: center; }
 }
+
+/* Automatisk afsendelse: hvornår og til hvem, eller hvorfor ikke. */
+.rap-auto { background: var(--accent-dim, var(--amber-dim)); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--text); }
+.rap-auto strong { font-weight: 600; word-break: break-all; }
+.rap-auto-stop { background: transparent; border: 1px dashed var(--border); color: var(--text-muted); }
+.rap-bekraeft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rap-bekraeft label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); flex: 1 1 220px; }
+.rap-bekraeft input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface, #fff); color: var(--text); }
+.rap-personlig { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-muted); }
+.rap-personlig textarea { font: inherit; font-size: 14px; line-height: 1.45; color: var(--text); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface, #fff); resize: vertical; min-height: 56px; }
+.rap-personlig small { font-size: 12px; }

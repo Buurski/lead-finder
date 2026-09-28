@@ -5,7 +5,7 @@ import { KundeRapportError, kortLevering, rapportFor, saetLevering, tjekHost, tj
 export const runtime = "nodejs";
 
 // PATCH { domaene, maaned: "ÅÅÅÅ-MM", status: "sendt" | "sprunget" | "aaben", grund? }
-// Lucas sender selv fra Gmail; her markeres kun at det er sket.
+// "Markér sendt" = Lucas har sendt selv (fx fra Gmail). HQ-afsendelse: ../send.
 export async function PATCH(req: Request) {
   return hqWrite(req, async (actor) => {
     const b = await jsonBody(req);

@@ -4,8 +4,9 @@
 // visninger (HTML + PDF) aldrig siger noget forskelligt. Grafer = inline SVG.
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { Nogletal, RapportModel } from "./kunde-rapport-model.ts";
+import { PERSONLIG_AFSLUTNING, type Nogletal, type RapportModel } from "./kunde-rapport-model.ts";
 import { KINLY_MAERKE } from "../kinly-maerke.ts";
+import { LUCAS_FOTO } from "../lucas-foto.ts";
 
 // Kinlys egen skrift (Archivo, som kinly.dk) indlejret, så rapporten ligner os,
 // også når den gemmes eller vedhæftes. Mangler filerne, falder den tilbage til systemskrift.
@@ -39,6 +40,7 @@ const C = {
   faded: "#8a847b",
   rule: "#e4dccd",
   ember: "#d4500f",
+  emberSoft: "#e8b597",
   emberDeep: "#a63b05",
   good: "#3f7a5a",
   goodBg: "#e8f1ea",
@@ -201,6 +203,9 @@ export function renderKundeRapportHtml(r: RapportModel): string {
     )
     .join("");
 
+  // Ældre frosne rapporter har ikke `personlig`: så vises kontakt + afslutning uden note.
+  const kontakt = `<section class="kontakt"><div class="kontakt-top"><img class="kontakt-foto" src="${LUCAS_FOTO}" alt="Lucas Buur" width="60" height="60"><div><div class="kontakt-navn">Lucas Buur</div><div class="kontakt-firma">Kigger jeres side igennem hver måned</div><div class="kontakt-linjer"><a href="tel:+4523242482">+45 23 24 24 82</a><a href="mailto:lucas@kinly.dk">lucas@kinly.dk</a></div></div></div>${r.personlig?.note ? `<blockquote class="kontakt-note"><p>${esc(r.personlig.note)}</p></blockquote>` : ""}<p class="kontakt-afsl">${esc(r.personlig?.afslutning ?? PERSONLIG_AFSLUTNING)}</p></section>`;
+
   return `<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="robots" content="noindex">
 <title>Månedsrapport ${esc(r.maanedNavn)} · ${esc(r.kunde)}</title>
 <style>
@@ -218,11 +223,10 @@ h1{font-size:34px;line-height:1.15;margin:0 0 4px}
 .dom{color:${C.mid};margin:0 0 28px}
 .hero{background:${C.card};border:1px solid ${C.rule};border-top:4px solid ${C.ember};border-radius:14px;padding:28px}
 .hero-tal{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.hero-n{font-weight:800;font-size:64px;line-height:1;letter-spacing:-.03em}
+.hero-n{font-weight:800;font-size:80px;line-height:1;letter-spacing:-.03em}
 .hero-e{font-size:18px;color:${C.mid}}
 .hero p{margin:12px 0 0;font-size:17px}
-.nul{margin-top:16px;padding:12px 14px;border-radius:10px;background:${C.surface};font-size:14.5px;color:${C.mid}}
-.nul strong{color:${C.ink}}
+.hero p.nul{margin-top:12px;font-size:13px;line-height:1.5;color:${C.mid}}
 section{margin-top:40px}
 h2{font-size:25px;margin:0 0 14px}
 h3{margin:0}
@@ -250,7 +254,8 @@ h3{margin:0}
 .bar-navn{font-weight:600}.bar-tal{white-space:nowrap}.bar-under{color:${C.faded}}
 .bar-spor{height:10px;border-radius:99px;background:${C.surface};margin-top:5px}
 .bar-fyld{height:100%;border-radius:99px;background:${C.ember}}
-.tal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.tal-grid,.godt{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tal-grid>:last-child:nth-child(odd),.godt>:last-child:nth-child(odd){grid-column:1/-1}
 .tal{background:${C.card};border:1px solid ${C.rule};border-radius:12px;padding:16px}
 .tal-label{font-size:13.5px;color:${C.mid}}
 .tal-v{font-weight:800;font-size:28px;line-height:1.2;margin-top:2px}
@@ -260,7 +265,6 @@ h3{margin:0}
 .hero .ret{font-size:14px;margin:0}
 .gkort{background:${C.card};border:1px solid ${C.rule};border-radius:12px;padding:16px 18px;font-family:Arial,sans-serif}
 .gkort-adr{font-size:13px;color:#4d5156}.gkort-titel{font-size:19px;color:#1a0dab;margin:3px 0}.gkort-besk{font-size:14px;color:#4d5156;line-height:1.5}
-.godt{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .nyt{background:${C.card};border:1px solid ${C.rule};border-left:4px solid ${C.ember};border-radius:12px;padding:16px 18px;margin-top:24px}.nyt-maerke{margin:0 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:${C.emberDeep};font-weight:700}.nyt-linje{margin:6px 0}.nyt-linje strong{display:block}
 .godt div{background:${C.goodBg};border-radius:12px;padding:14px 16px;border-left:4px solid ${C.good}}
 .gjort{list-style:none;margin:0;padding:0;display:grid;gap:8px}.gjort li{display:grid;grid-template-columns:24px 1fr;gap:10px}.gjort .tjek-m{background:${C.goodBg};color:${C.good}}
@@ -275,8 +279,16 @@ h3{margin:0}
 .tjek-info .tjek-m,.tjek-ikke_maalt .tjek-m{background:${C.surface};color:${C.mid}}
 .maalt{margin-top:44px;border-top:1px solid ${C.rule};padding-top:18px;font-size:13.5px;color:${C.mid}}
 .maalt p{margin:4px 0}
-.sign{margin-top:18px;font-size:15px;color:${C.ink}}
-@media (max-width:520px){.wrap{padding:24px 16px 40px}h1{font-size:28px}.hero{padding:20px}.hero-n{font-size:52px}.fund-kort{grid-template-columns:1fr}.fund-nr{width:28px;height:28px}}
+.kontakt{background:${C.card};border:1px solid ${C.rule};border-radius:14px;padding:22px 24px}
+.kontakt-top{display:flex;gap:16px;align-items:center}
+.kontakt-foto{width:60px;height:60px;border-radius:50%;object-fit:cover;flex:none;display:block}
+.kontakt-navn{font-weight:700;font-size:17px;line-height:1.3}.kontakt-firma{font-size:14px;color:${C.mid}}
+.kontakt-linjer{display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:4px;font-size:15px}
+.kontakt-linjer a{color:${C.ink};text-decoration:none;border-bottom:1px solid ${C.rule}}
+.kontakt-note{margin:18px 0 0;padding:2px 0 2px 16px;border-left:3px solid ${C.emberSoft}}
+.kontakt-note p{margin:0;font-size:16.5px;line-height:1.55;overflow-wrap:anywhere}
+.kontakt-afsl{margin:16px 0 0;font-size:15px;color:${C.mid}}
+@media (max-width:520px){.wrap{padding:24px 16px 40px}h1{font-size:28px}.hero{padding:20px}.hero-n{font-size:64px}.tal-grid,.godt{grid-template-columns:1fr}.fund-kort{grid-template-columns:28px 1fr;gap:10px;padding:16px}.fund-nr{width:28px;height:28px}.fund-top{flex-direction:column;align-items:flex-start;gap:6px}}
 @media print{body{background:#fff}.wrap{padding:0;max-width:none}section,.fund-kort,.tal,.hero{break-inside:avoid}.bilag{break-before:page}}
 </style></head><body><div class="wrap">
 <header><span class="brand">${logo(30)}</span><span class="meta">Månedsrapport · målt ${esc(r.maaltDato)}</span></header>
@@ -285,7 +297,7 @@ h3{margin:0}
 <p class="dom">${esc(r.domaene)}</p>
 
 <div class="hero"><div class="hero-tal"><span class="hero-n">${esc(r.hero.tal)}</span><span class="hero-e">${esc(r.hero.enhed)}</span>${heroRet}</div><p>${esc(r.hero.saetning)}</p>
-${r.nulpunktTekst ? `<div class="nul"><strong>Det her er vores nulpunkt.</strong> ${esc(r.nulpunktTekst)}</div>` : ""}</div>
+${r.nulpunktTekst ? `<p class="nul">Det her er vores nulpunkt. ${esc(r.nulpunktTekst)}</p>` : ""}</div>
 
 ${r.nyt.length ? `<section class="nyt"><p class="nyt-maerke">Nyt siden sidst</p>${r.nyt.map((n) => `<div class="nyt-linje"><strong>${esc(n.titel)}</strong> ${esc(n.tekst)}</div>`).join("")}</section>` : ""}
 ${r.haster ? vigtigSektion : ""}
@@ -297,8 +309,9 @@ ${r.nogletal.length ? `<section><h2>Tallene</h2><div class="tal-grid">${r.noglet
 ${googleKort}
 ${r.udenAdgang ? `<section class="adgang"><h2>Vil I se mere?</h2><p>${esc(r.udenAdgang)}</p></section>` : ""}
 ${r.naesteGang.length ? `<section><h2>Det kan vi tage næste gang</h2><ul class="liste">${r.naesteGang.map((s) => `<li>${esc(s)}</li>`).join("")}</ul><p class="note">Ingen af delene haster. Sig til, hvis I vil have noget af det med.</p></section>` : ""}
+${kontakt}
 <section class="bilag"><p class="eyebrow">Bilag</p><h2>Hele tjekket</h2><p class="forkl" style="margin:0 0 4px">${r.iOrden.ok} af ${r.iOrden.ialt} ting er i orden.</p>${tjek}</section>
 
-<div class="maalt"><p><strong>Sådan har vi målt</strong></p>${r.maalt.map((s) => `<p>${esc(s)}</p>`).join("")}<p class="sign">Har I spørgsmål, så skriv eller ring. Lucas, Kinly</p></div>
+<div class="maalt"><p><strong>Sådan har vi målt</strong></p>${r.maalt.map((s) => `<p>${esc(s)}</p>`).join("")}</div>
 </div></body></html>`;
 }

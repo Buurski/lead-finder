@@ -3,7 +3,7 @@
 // modtager-mail brugt på en tidligere faktura til samme kunde.
 import "server-only";
 import { and, asc, desc, eq, isNotNull, like } from "drizzle-orm";
-import { getDb } from "../db/client.ts";
+import { getDb, type Db } from "../db/client.ts";
 import { company, contact, invoice } from "../db/schema.ts";
 import type { Invoice } from "../invoices.ts";
 
@@ -24,6 +24,25 @@ export interface RecipientGuess {
 }
 
 /**
+ * Kundens mail: første oprettede kontakt med mail, ellers virksomhedens mail.
+ * Deles af fakturaen og månedsrapporten, så de altid rammer samme person.
+ * `navn` er kontaktens navn (tom for virksomhedsmailen) til hilsenen.
+ */
+export async function kundeKontakt(db: Db, companyId: string): Promise<{ to: string; navn: string; source: "kontakt" | "virksomhed" } | null> {
+  const [primaryContact] = await db
+    .select({ email: contact.email, name: contact.name })
+    .from(contact)
+    .where(and(eq(contact.companyId, companyId), like(contact.email, "%@%")))
+    .orderBy(asc(contact.createdAt))
+    .limit(1);
+  if (primaryContact?.email) return { to: primaryContact.email.trim(), navn: primaryContact.name.trim(), source: "kontakt" };
+  const [co] = await db.select({ email: company.email }).from(company).where(eq(company.id, companyId));
+  // "none" er mail-finderens markør for "søgt, intet fundet" — aldrig en modtager.
+  if (co?.email?.includes("@")) return { to: co.email.trim(), navn: "", source: "virksomhed" };
+  return null;
+}
+
+/**
  * Bedste gæt på modtager-mail til send-dialogen. Fejler aldrig hørbart — kaldes
  * kun for at forudfylde et felt, brugeren kan altid rette det.
  * ponytail: "primær kontakt" = første oprettede kontakt med en mail — der er
@@ -35,17 +54,8 @@ export async function resolveInvoiceRecipient(invoiceNumber: string): Promise<Re
   if (!inv?.companyId) return { to: "", source: "ingen" };
   const companyId = inv.companyId;
 
-  const [primaryContact] = await db
-    .select({ email: contact.email })
-    .from(contact)
-    .where(and(eq(contact.companyId, companyId), like(contact.email, "%@%")))
-    .orderBy(asc(contact.createdAt))
-    .limit(1);
-  if (primaryContact?.email) return { to: primaryContact.email, source: "kontakt" };
-
-  const [co] = await db.select({ email: company.email }).from(company).where(eq(company.id, companyId));
-  // "none" er mail-finderens markør for "søgt, intet fundet" — aldrig en modtager.
-  if (co?.email?.includes("@")) return { to: co.email, source: "virksomhed" };
+  const k = await kundeKontakt(db, companyId);
+  if (k) return { to: k.to, source: k.source };
 
   const prior = await db
     .select({ data: invoice.data })

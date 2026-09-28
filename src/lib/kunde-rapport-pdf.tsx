@@ -15,9 +15,12 @@ import {
   StyleSheet,
   renderToBuffer,
   Circle,
+  Image,
+  Link,
 } from "@react-pdf/renderer";
-import type { Nogletal, RapportModel } from "./hq/kunde-rapport-model.ts";
+import { PERSONLIG_AFSLUTNING, type Nogletal, type RapportModel } from "./hq/kunde-rapport-model.ts";
 import { KINLY_MAERKE } from "./kinly-maerke.ts";
+import { LUCAS_FOTO } from "./lucas-foto.ts";
 
 const fontSti = (fil: string) => path.join(process.cwd(), "src/lib/fonts", fil);
 Font.register({
@@ -84,18 +87,19 @@ const s = StyleSheet.create({
   },
   hero: { borderTopWidth: 4, borderTopColor: C.ember },
   godtKort: {
+    flexGrow: 1,
     backgroundColor: C.goodBg,
     borderLeftWidth: 3,
     borderLeftColor: C.good,
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 10,
-    marginBottom: 6,
   },
   heroRow: { flexDirection: "row", alignItems: "flex-end", flexWrap: "wrap" },
-  heroN: { fontWeight: 800, fontSize: 44, lineHeight: 1, marginRight: 8 },
+  heroN: { fontWeight: 800, fontSize: 56, lineHeight: 1, marginRight: 8 },
   heroE: { fontSize: 13, color: C.mid, marginBottom: 4, marginRight: 8 },
   heroP: { fontSize: 12, marginTop: 8 },
+  nulLinje: { marginTop: 8, fontSize: 9, color: C.mid },
   nul: {
     marginTop: 10,
     padding: 9,
@@ -136,7 +140,8 @@ const s = StyleSheet.create({
   fundTitel: { fontWeight: 700, fontSize: 12 },
   tag: {
     fontSize: 8,
-    paddingVertical: 2,
+    lineHeight: 1,
+    paddingVertical: 3,
     paddingHorizontal: 6,
     borderRadius: 8,
     backgroundColor: C.surface,
@@ -153,8 +158,14 @@ const s = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "stretch",
+    marginHorizontal: -4,
+  },
   cell: { width: "50%", padding: 4 },
+  cellHel: { width: "100%" }, // sidste kort ved ulige antal spænder begge kolonner
   talLabel: { fontSize: 9, color: C.mid },
   talV: { fontWeight: 800, fontSize: 21, lineHeight: 1.25, marginTop: 1 },
   ret: {
@@ -227,6 +238,19 @@ function Retning({ n }: { n: Pick<Nogletal, "pil" | "vurdering" | "foer"> }) {
     <View style={[s.ret, { backgroundColor: bg }]}>
       <PilIkon pil={n.pil} farve={fg} />
       <Text style={{ fontSize: 8.5, color: fg, fontWeight: 700 }}>{tekst}</Text>
+    </View>
+  );
+}
+
+function Tal({ n, hel }: { n: Nogletal; hel: boolean }) {
+  return (
+    <View style={hel ? [s.cell, s.cellHel] : s.cell} wrap={false}>
+      <View style={[s.card, { padding: 10, flexGrow: 1 }]}>
+        <Text style={s.talLabel}>{n.label}</Text>
+        <Text style={s.talV}>{n.vaerdi}</Text>
+        <Retning n={n} />
+        <Text style={s.small}>{n.forklaring}</Text>
+      </View>
     </View>
   );
 }
@@ -402,7 +426,57 @@ function Vigtigste({ r }: { r: RapportModel }) {
   );
 }
 
+/** Din kontakt: foto, navn, telefon/mail, Lucas' valgfri linje og den faste afslutning. */
+function Kontakt({ r }: { r: RapportModel }) {
+  const note = r.personlig?.note; // ældre frosne rapporter har ikke `personlig`
+  const link = { color: C.ink, textDecoration: "none" as const };
+  return (
+    <View style={[s.card, { marginTop: 24, padding: 16 }]} wrap={false}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Image
+          src={LUCAS_FOTO}
+          style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
+        />
+        <View>
+          <Text style={{ fontWeight: 700, fontSize: 12.5 }}>Lucas Buur</Text>
+          <Text style={{ fontSize: 9.5, color: C.mid }}>
+            Kigger jeres side igennem hver måned
+          </Text>
+          <View style={{ flexDirection: "row", marginTop: 2, fontSize: 10 }}>
+            <Link src="tel:+4523242482" style={[link, { marginRight: 12 }]}>
+              +45 23 24 24 82
+            </Link>
+            <Link src="mailto:lucas@kinly.dk" style={link}>
+              lucas@kinly.dk
+            </Link>
+          </View>
+        </View>
+      </View>
+      {note ? (
+        <View
+          style={{
+            marginTop: 12,
+            paddingLeft: 11,
+            borderLeftWidth: 2.5,
+            borderLeftColor: C.emberSoft,
+          }}
+        >
+          <Text style={{ fontSize: 11.5, lineHeight: 1.5 }}>{note}</Text>
+        </View>
+      ) : null}
+      <Text style={{ marginTop: 10, color: C.mid }}>
+        {r.personlig?.afslutning ?? PERSONLIG_AFSLUTNING}
+      </Text>
+    </View>
+  );
+}
+
+/** 2-kolonne-grid: sidste kort ved ulige antal får hele bredden. */
+const halv = (i: number, n: number) => !(n % 2 === 1 && i === n - 1);
+
 function RapportDokument({ r }: { r: RapportModel }) {
+  // Overskriften ligger inde i første blok (wrap={false}), så den aldrig står alene nederst.
+  const folkH2 = <Text style={s.h2}>Sådan finder folk jer</Text>;
   const heroVurdering =
     r.hero.pil === "op"
       ? "bedre"
@@ -437,19 +511,20 @@ function RapportDokument({ r }: { r: RapportModel }) {
           <View style={s.heroRow}>
             <Text style={s.heroN}>{r.hero.tal}</Text>
             <Text style={s.heroE}>{r.hero.enhed}</Text>
-            <Retning
-              n={{
-                pil: r.hero.pil,
-                foer: r.hero.foer,
-                vurdering: heroVurdering,
-              }}
-            />
+            <View style={{ alignSelf: "flex-end", marginBottom: 5 }}>
+              <Retning
+                n={{
+                  pil: r.hero.pil,
+                  foer: r.hero.foer,
+                  vurdering: heroVurdering,
+                }}
+              />
+            </View>
           </View>
           <Text style={s.heroP}>{r.hero.saetning}</Text>
           {r.nulpunktTekst ? (
-            <Text style={s.nul}>
-              <Text style={s.bold}>Det her er vores nulpunkt. </Text>
-              {r.nulpunktTekst}
+            <Text style={s.nulLinje}>
+              Det her er vores nulpunkt. {r.nulpunktTekst}
             </Text>
           ) : null}
         </View>
@@ -471,12 +546,20 @@ function RapportDokument({ r }: { r: RapportModel }) {
         {r.godt.length ? (
           <View wrap={false}>
             <Text style={s.h2} minPresenceAhead={140}>Det går godt</Text>
-            {r.godt.map((g) => (
-              <View key={g.titel} style={s.godtKort} wrap={false}>
-                <Text style={s.bold}>{g.titel}</Text>
-                <Text style={{ fontSize: 10, marginTop: 2 }}>{g.tekst}</Text>
-              </View>
-            ))}
+            <View style={s.grid}>
+              {r.godt.map((g, i) => (
+                <View
+                  key={g.titel}
+                  style={halv(i, r.godt.length) ? s.cell : [s.cell, s.cellHel]}
+                  wrap={false}
+                >
+                  <View style={s.godtKort}>
+                    <Text style={s.bold}>{g.titel}</Text>
+                    <Text style={{ fontSize: 10, marginTop: 2 }}>{g.tekst}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         ) : null}
 
@@ -494,17 +577,16 @@ function RapportDokument({ r }: { r: RapportModel }) {
 
         {r.variant === "med-adgang" ? (
           <View>
-            {r.ugeKlik.length < 4 && !r.soegeord.length ? <Text style={s.h2} minPresenceAhead={140}>Sådan finder folk jer</Text> : null}
             {r.ugeKlik.length >= 4 ? (
               <View wrap={false}>
-                <Text style={s.h2} minPresenceAhead={140}>Sådan finder folk jer</Text>
+                {folkH2}
                 <Text style={s.sub}>Besøg fra Google, uge for uge</Text>
                 <Soejler uger={r.ugeKlik} />
               </View>
             ) : null}
             {r.soegeord.length ? (
               <View wrap={false}>
-                {r.ugeKlik.length < 4 ? <Text style={s.h2} minPresenceAhead={140}>Sådan finder folk jer</Text> : null}
+                {r.ugeKlik.length < 4 ? folkH2 : null}
                 <Text style={s.sub}>Det søger folk på, når de finder jer</Text>
                 <Bjaelker
                   rows={r.soegeord.map((q) => ({
@@ -522,6 +604,7 @@ function RapportDokument({ r }: { r: RapportModel }) {
             ) : null}
             {r.sider.length ? (
               <View wrap={false}>
+                {r.ugeKlik.length < 4 && !r.soegeord.length ? folkH2 : null}
                 <Text style={s.sub}>Her lander folk på jeres side</Text>
                 <Bjaelker
                   rows={r.sider.map((x) => ({ tekst: x.side, tal: x.klik }))}
@@ -535,20 +618,24 @@ function RapportDokument({ r }: { r: RapportModel }) {
         {r.haster ? null : <Vigtigste r={r} />}
 
         {r.nogletal.length ? (
-          <View wrap={false}>
-            <Text style={s.h2}>Tallene</Text>
-            <View style={s.grid}>
-              {r.nogletal.map((n) => (
-                <View key={n.label} style={s.cell} wrap={false}>
-                  <View style={[s.card, { padding: 10 }]}>
-                    <Text style={s.talLabel}>{n.label}</Text>
-                    <Text style={s.talV}>{n.vaerdi}</Text>
-                    <Retning n={n} />
-                    <Text style={s.small}>{n.forklaring}</Text>
-                  </View>
-                </View>
-              ))}
+          <View>
+            {/* Overskrift + første række låst sammen: minPresenceAhead virker ikke
+                foran en flex-wrap-grid, så "Tallene" endte alene nederst på en side. */}
+            <View wrap={false}>
+              <Text style={s.h2}>Tallene</Text>
+              <View style={s.grid}>
+                {r.nogletal.slice(0, 2).map((n, i) => (
+                  <Tal key={n.label} n={n} hel={!halv(i, r.nogletal.length)} />
+                ))}
+              </View>
             </View>
+            {r.nogletal.length > 2 ? (
+              <View style={s.grid}>
+                {r.nogletal.slice(2).map((n, i) => (
+                  <Tal key={n.label} n={n} hel={!halv(i + 2, r.nogletal.length)} />
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -607,27 +694,28 @@ function RapportDokument({ r }: { r: RapportModel }) {
           </View>
         ) : null}
 
+        <Kontakt r={r} />
+
         <View
           style={{
-            marginTop: 22,
+            marginTop: 12,
             borderTopWidth: 1,
             borderTopColor: C.rule,
             paddingTop: 10,
           }}
-          wrap={false}
         >
-          <Text style={[s.bold, { fontSize: 9.5 }]}>Sådan har vi målt</Text>
+          <Text style={[s.bold, { fontSize: 9.5 }]} minPresenceAhead={40}>
+            Sådan har vi målt
+          </Text>
           {r.maalt.map((t) => (
             <Text key={t} style={[s.small, { fontSize: 9 }]}>
               {t}
             </Text>
           ))}
-          <Text style={{ marginTop: 10 }}>
-            Har I spørgsmål, så skriv eller ring. Lucas, Kinly
-          </Text>
         </View>
 
-        <View break>
+        {/* Intet tvunget sideskift: bilaget flyder videre, men titlen står aldrig alene. */}
+        <View style={{ marginTop: 22 }} minPresenceAhead={200}>
           <Text style={s.eyebrow}>Bilag</Text>
           <Text style={[s.h2, { marginTop: 4 }]}>Hele tjekket</Text>
         </View>
@@ -636,11 +724,13 @@ function RapportDokument({ r }: { r: RapportModel }) {
         </Text>
         {r.tjek.map((g) => (
           <View key={g.gruppe}>
-            <Text style={s.sub}>{g.gruppe}</Text>
+            <Text style={[s.sub, { color: C.ink }]} minPresenceAhead={30}>
+              {g.gruppe}
+            </Text>
             {g.linjer.map((l) => (
               <View key={l.navn} style={s.tjek} wrap={false}>
                 <Mark status={l.status} />
-                <Text style={{ flex: 1 }}>
+                <Text style={{ flex: 1, fontSize: 10.5, lineHeight: 1.5 }}>
                   <Text style={s.bold}>{l.navn}. </Text>
                   {l.tekst}
                 </Text>

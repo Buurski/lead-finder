@@ -60,6 +60,10 @@
     {
       "path": "/api/cron/gsc-snapshot",
       "schedule": "30 6 * * 1"
+    },
+    {
+      "path": "/api/cron/kunde-rapport",
+      "schedule": "5 * * * *"
     }
   ]
 }

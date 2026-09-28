@@ -1,8 +1,10 @@
 // Månedsrapporten til kunder med SEO i abonnementet: målinger ind, status ud.
 //
 // Flow: kunde_seo_tjek.py (VPS) → POST /api/agent/kunde-rapport → gemMaaling()
-// → HQ viser /kunder/rapporter → Lucas åbner rapporten, henter PDF'en, sender
-// selv fra Gmail og trykker "Sendt". Intet sendes herfra.
+// → HQ viser /kunder/rapporter. Afsendelse (kunde-rapport-send.ts): en sendbar
+// måling planlægges til AUTO_FRIST efter den landede; cron'en sender den på et
+// hverdags-tidspunkt, medmindre Lucas stopper den, sender selv eller noget
+// kræver et menneske (haster, ingen mail, ikke tilmeldt, arkiveret).
 //
 // Hvem SKAL have rapporten kommer fra DB (kunder med ydelsen "seo" på
 // profilen), ikke fra tidligere rapporter: ellers kan en kunde der aldrig har
@@ -16,7 +18,8 @@
 // måneden låst, så PDF'en kunden fik, altid kan genskabes.
 import { and, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, contact, gscSnapshot } from "../db/schema.ts";
+import { activity, company, gscSnapshot } from "../db/schema.ts";
+import { kundeKontakt } from "./invoice-contacts.ts";
 import { store } from "../store.ts";
 import type { GscChange } from "./gsc-updates.ts";
 import { byggRapport, hostAf, maanedFor, type GscInput, type Maaling, type RapportModel } from "./kunde-rapport-model.ts";
@@ -38,18 +41,44 @@ export interface Levering {
   rapport?: RapportModel;
   /** Målingen rapporten blev bygget af; næste måneds pile peger mod den, ikke mod en senere overskrivning. */
   maaling?: Maaling;
+  /** Sat når HQ selv sendte mailen. Så kan den aldrig fortrydes (ellers sendes den igen). */
+  mail?: { til: string; at: string };
 }
 
 /** Levering uden den fastfrosne rapport: det der sendes til browseren. */
-export const kortLevering = (l: Levering | null): Levering | null => (l ? { status: l.status, at: l.at, af: l.af, ...(l.grund ? { grund: l.grund } : {}) } : null);
+export const kortLevering = (l: Levering | null): Levering | null => (l ? { status: l.status, at: l.at, af: l.af, ...(l.grund ? { grund: l.grund } : {}), ...(l.mail ? { mail: l.mail } : {}) } : null);
 
 interface GemtMaaling {
   modtaget: string;
   maaling: Maaling;
+  /** Tidligst automatisk afsendelse. Nulstilles ved ny måling og ved Fortryd. */
+  sendesEfter?: string;
 }
+
+/** Frist fra en måling lander, til rapporten sendes af sig selv: tid til at se den og stoppe den. */
+export const AUTO_FRIST_MS = 24 * 3_600_000;
 
 const keyM = (host: string, ym: string) => `${PREFIX_MAALING}${host}/${ym}`;
 const keyL = (host: string, ym: string) => `${PREFIX_LEVERING}${host}/${ym}`;
+/** Afsendelseslås: sat lige før mailen går, fjernet når leveringen er gemt. Står den, er mailen måske sendt. */
+export const keyS = (host: string, ym: string) => `kunderapport/sender/${host}/${ym}`;
+const keyN = (host: string, ym: string) => `kunderapport/note/${host}/${ym}`;
+
+/** Lucas' personlige linje til kunden i måneden (mail + PDF). Tom tekst sletter den. */
+export async function gemPersonligNote(host: string, ym: string, tekst: unknown): Promise<string> {
+  tjekHost(host);
+  tjekMaaned(ym);
+  if (typeof tekst !== "string") throw new KundeRapportError("noten skal være tekst");
+  if ((await hentLevering(host, ym))?.status === "sendt") throw new KundeRapportError("rapporten er sendt; noten kan ikke ændres");
+  const t = tekst.replace(/\r/g, "").trim().slice(0, 400);
+  if (t) await store.put(keyN(host, ym), { tekst: t });
+  else await store.delete(keyN(host, ym));
+  return t;
+}
+
+export async function hentPersonligNote(host: string, ym: string): Promise<string> {
+  return (await store.get<{ tekst: string }>(keyN(host, ym)))?.tekst ?? "";
+}
 
 export function tjekMaaned(ym: unknown): string {
   if (typeof ym !== "string" || !MAANED_RE.test(ym)) throw new KundeRapportError("ugyldig måned (brug ÅÅÅÅ-MM)");
@@ -142,12 +171,18 @@ export async function gemMaaling(raw: unknown, nu = new Date()): Promise<{ domae
   if (foer && Date.parse(foer.maaling.maalt) > Date.parse(maaling.maalt)) {
     throw new KundeRapportError("der ligger allerede en nyere måling for måneden");
   }
-  await store.put(key, { modtaget: nu.toISOString(), maaling } satisfies GemtMaaling);
+  await store.put(key, { modtaget: nu.toISOString(), maaling, sendesEfter: new Date(nu.getTime() + AUTO_FRIST_MS).toISOString() } satisfies GemtMaaling);
   return { domaene, maaned, overskrev: Boolean(foer) };
 }
 
 export async function hentMaaling(host: string, ym: string): Promise<Maaling | null> {
   return (await store.get<GemtMaaling>(keyM(host, ym)))?.maaling ?? null;
+}
+
+/** Hvornår rapporten tidligst sendes af sig selv (null = ingen måling). */
+export async function hentFrist(host: string, ym: string): Promise<string | null> {
+  const g = await store.get<GemtMaaling>(keyM(host, ym));
+  return g ? (g.sendesEfter ?? new Date(Date.parse(g.modtaget) + AUTO_FRIST_MS).toISOString()) : null;
 }
 
 export async function hentLevering(host: string, ym: string): Promise<Levering | null> {
@@ -170,7 +205,7 @@ export async function forrigeSendte(host: string, ym: string): Promise<Maaling |
 
 const FORTRYD_MS = 15 * 60_000;
 
-export async function saetLevering(host: string, ym: string, status: LeveringStatus | "aaben", af: string, grund?: string, nu = new Date(), rapport?: RapportModel | null): Promise<Levering | null> {
+export async function saetLevering(host: string, ym: string, status: LeveringStatus | "aaben", af: string, grund?: string, nu = new Date(), rapport?: RapportModel | null, mail?: Levering["mail"]): Promise<Levering | null> {
   tjekHost(host);
   tjekMaaned(ym);
   if (status !== "sendt" && status !== "sprunget" && status !== "aaben") throw new KundeRapportError("status skal være sendt, sprunget eller aaben");
@@ -180,10 +215,14 @@ export async function saetLevering(host: string, ym: string, status: LeveringSta
   if (foer?.status === "sendt") {
     if (status === "sendt") return foer; // gentaget klik: behold den frosne rapport og tidspunktet
     if (status === "sprunget") throw new KundeRapportError("rapporten er allerede sendt; fortryd den først");
+    if (foer.mail) throw new KundeRapportError(`mailen er sendt til ${foer.mail.til} og kan ikke kaldes tilbage`);
     if (nu.getTime() - Date.parse(foer.at) > FORTRYD_MS) throw new KundeRapportError("rapporten er sendt og kan ikke længere fortrydes");
   }
   if (status === "aaben") {
     await store.delete(keyL(host, ym));
+    // Åbnes den igen, får Lucas en ny frist, så den ikke ryger ud med det samme.
+    const g = await store.get<GemtMaaling>(keyM(host, ym));
+    if (g) await store.put(keyM(host, ym), { ...g, sendesEfter: new Date(nu.getTime() + AUTO_FRIST_MS).toISOString() } satisfies GemtMaaling);
     return null;
   }
   // ponytail: rapporten bygges i ruten lige før; lander en ny VPS-måling i de millisekunder
@@ -192,7 +231,7 @@ export async function saetLevering(host: string, ym: string, status: LeveringSta
   if (status === "sendt" && !maaling) throw new KundeRapportError("der er ingen måling for måneden, så der er ingen rapport at sende");
   const g = (grund ?? "").trim().slice(0, 200);
   if (status === "sprunget" && !g) throw new KundeRapportError("skriv kort hvorfor den springes over");
-  const lev: Levering = { status, at: nu.toISOString(), af, ...(g ? { grund: g } : {}), ...(status === "sendt" && rapport ? { rapport } : {}), ...(maaling ? { maaling } : {}) };
+  const lev: Levering = { status, at: nu.toISOString(), af, ...(g ? { grund: g } : {}), ...(status === "sendt" && rapport ? { rapport } : {}), ...(maaling ? { maaling } : {}), ...(mail ? { mail } : {}) };
   await store.put(keyL(host, ym), lev);
   return lev;
 }
@@ -288,11 +327,6 @@ async function nyhederI(db: Db, companyId: string, ym: string): Promise<{ titel:
   return [...set.values()].slice(0, 6) // modellen prioriterer og skærer til 3;
 }
 
-async function fornavn(db: Db, companyId: string): Promise<string> {
-  const [c] = await db.select({ name: contact.name }).from(contact).where(eq(contact.companyId, companyId)).limit(1);
-  return c?.name.trim().split(/\s+/)[0] ?? "";
-}
-
 /** Alt der skal til for at bygge én kundes rapport. null = ingen måling i måneden. */
 export async function rapportFor(db: Db, host: string, ym: string): Promise<RapportModel | null> {
   // Sendt = fastfrosset: kunden skal kunne få præcis samme PDF igen.
@@ -310,7 +344,9 @@ export async function rapportFor(db: Db, host: string, ym: string): Promise<Rapp
     gsc: k ? await gscFor(db, k.id, efterMaaling) : null,
     arbejde: k ? await arbejdeI(db, k.id, ym) : [],
     nyt: k ? await nyhederI(db, k.id, ym) : [],
-    hilsen: k ? await fornavn(db, k.id) : "",
+    // Hilsenen går til den samme person, mailen sendes til.
+    hilsen: k ? ((await kundeKontakt(db, k.id))?.navn.split(/\s+/)[0] ?? "") : "",
+    note: await hentPersonligNote(host, ym),
   });
 }
 
@@ -331,6 +367,10 @@ export interface OversigtRaekke {
   levering: Levering | null;
   /** Sendt for mere end 15 min siden: kan ikke fortrydes. */
   laast: boolean;
+  /** Automatisk afsendelse: modtager, tidligste tidspunkt, og hvorfor den IKKE sendes af sig selv (null = den sendes). */
+  auto: { til: string; sendesEfter: string | null; stop: string | null };
+  /** Lucas' personlige linje til kunden denne måned (tom = ingen). */
+  personlig: string;
   note: string;
 }
 
@@ -341,6 +381,20 @@ export interface Oversigt {
 }
 
 const ORDEN: Record<RaekkeStatus, number> = { mangler: 0, klar: 1, sprunget: 2, sendt: 3 };
+
+// Alvorligt fund (fx siden er skjult for Google): skal ses i HQ nu, ikke først i næste mail.
+const hasterNu = (m: Maaling | null) => Boolean(m?.vigtigste?.some((v) => m.punkter.find((p) => p.punkt === v.punkt)?.alvor === "hoej"));
+
+/** Hvorfor en klar rapport IKKE må sendes af sig selv. null = cron'en må sende den. */
+export function autoStop(r: { status: RaekkeStatus; tilmeldt: boolean; arkiveret: boolean; haster: boolean; til: string; afbrudt: boolean }): string | null {
+  if (r.status !== "klar") return r.status === "mangler" ? "Ingen måling endnu" : null;
+  if (r.afbrudt) return "En afsendelse blev afbrudt. Tjek Sendt-mappen i Gmail, før du sender igen.";
+  if (!r.tilmeldt) return "Kunden har ikke SEO på profilen";
+  if (r.arkiveret) return "Kunden er arkiveret";
+  if (!r.til) return "Kunden har ingen mail i HQ";
+  if (r.haster) return "Noget haster på siden. Læs rapporten og send den selv.";
+  return null;
+}
 
 export async function oversigt(db: Db, ym: string): Promise<Oversigt> {
   tjekMaaned(ym);
@@ -357,7 +411,9 @@ export async function oversigt(db: Db, ym: string): Promise<Oversigt> {
   const set = new Set<string>();
   const byg = async (host: string, kunde: string, companyId: string | null, tilmeldt: boolean, arkiveret = false) => {
     set.add(host);
-    const [maaling, levering] = await Promise.all([hentMaaling(host, ym), hentLevering(host, ym)]);
+    const [maaling, levering, frist, afbrudt] = await Promise.all([hentMaaling(host, ym), hentLevering(host, ym), hentFrist(host, ym), store.get(keyS(host, ym))]);
+    const til = companyId ? ((await kundeKontakt(db, companyId))?.to ?? "") : "";
+    const personlig = await hentPersonligNote(host, ym);
     const harGsc = companyId ? Boolean(await gscFor(db, companyId, maaling ? new Date(Date.parse(maaling.maalt) + 86_400_000) : new Date())) : false;
     const status: RaekkeStatus = levering?.status ?? (maaling ? "klar" : "mangler");
     raekker.push({
@@ -369,10 +425,11 @@ export async function oversigt(db: Db, ym: string): Promise<Oversigt> {
       variant: maaling ? (harGsc || maaling.gsc?.sider?.length ? "med-adgang" : "uden-adgang") : null,
       maalt: maaling?.maalt ?? null,
       fund: maaling?.vigtigste?.length ?? 0,
-      // Alvorligt fund (fx siden er skjult for Google): skal ses i HQ nu, ikke først i næste mail.
-      haster: Boolean(maaling?.vigtigste?.some((v) => maaling.punkter.find((p) => p.punkt === v.punkt)?.alvor === "hoej")),
+      haster: hasterNu(maaling),
       levering: kortLevering(levering),
-      laast: levering?.status === "sendt" && Date.now() - Date.parse(levering.at) > FORTRYD_MS,
+      laast: levering?.status === "sendt" && (Boolean(levering.mail) || Date.now() - Date.parse(levering.at) > FORTRYD_MS),
+      personlig,
+      auto: { til, sendesEfter: frist, stop: autoStop({ status, tilmeldt, arkiveret, haster: hasterNu(maaling), til, afbrudt: Boolean(afbrudt) }) },
       note:
         status === "mangler"
           ? "Ingen sendbar måling i måneden endnu. Kør tjekket på VPS'en."
@@ -387,7 +444,7 @@ export async function oversigt(db: Db, ym: string): Promise<Oversigt> {
   for (const k of tilmeldte) {
     if (k.host && set.has(k.host)) continue; // to firmaer med samme side = én rapport
     if (!k.host) {
-      raekker.push({ companyId: k.id, kunde: k.name, domaene: "", tilmeldt: true, status: "mangler", variant: null, maalt: null, fund: 0, haster: false, levering: null, laast: false, note: "Kunden har ingen hjemmeside-adresse i HQ." });
+      raekker.push({ companyId: k.id, kunde: k.name, domaene: "", tilmeldt: true, status: "mangler", variant: null, maalt: null, fund: 0, haster: false, levering: null, laast: false, personlig: "", auto: { til: "", sendesEfter: null, stop: "Ingen hjemmeside-adresse" }, note: "Kunden har ingen hjemmeside-adresse i HQ." });
       continue;
     }
     await byg(k.host, k.name, k.id, true, k.archived);

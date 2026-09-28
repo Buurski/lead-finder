@@ -15,6 +15,7 @@ export const ATTENTION_KIND_ICON: Record<AttentionItem["kind"], string> = {
   preview: "LayoutGrid",
   faktura: "Receipt",
   kunde: "Building2",
+  rapport: "FileText",
 };
 
 export default function AttentionPanel({

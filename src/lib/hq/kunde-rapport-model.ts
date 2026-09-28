@@ -73,6 +73,8 @@ export interface RapportInput {
   nyt?: { titel: string; tekst: string }[];
   /** Fornavn til mailens "Hej ...". Tom = kundens navn. */
   hilsen?: string;
+  /** Lucas' personlige linje til kunden denne måned (fra HQ). Tom = ingen. */
+  note?: string;
 }
 
 export type Pil = "op" | "ned" | "lige";
@@ -93,7 +95,12 @@ export interface Fund {
   betyder: string;
   goer: string;
   alvor: "Tager vi først" | "Kommer snart" | "Lille ting";
+  /** Kan kunden se ændringen på selve siden? Kun så giver vi lyd først. */
+  synlig?: boolean;
 }
+
+/** Punkter hvor rettelsen ændrer det, gæsten ser på siden. Resten (billedbeskrivelser, data til Google) ordner vi bare. */
+const SYNLIGE = new Set(["h1", "ordtal", "kontaktlinks", "brudte_links", "viewport", "links"]);
 
 export interface TjekLinje {
   navn: string;
@@ -140,7 +147,13 @@ export interface RapportModel {
   udenAdgang: string | null;
   maalt: string[];
   mail: { emne: string; tekst: string };
+  /** Det personlige: Lucas' egen linje til netop denne kunde denne måned (valgfri) + fast afslutning. */
+  personlig: { note: string | null; afslutning: string };
 }
+
+/** Lucas' faste afslutning i rapportens kontaktboks. Skrevet én gang, ret den her. */
+export const PERSONLIG_AFSLUTNING =
+  "Det er mig, der kigger jeres side igennem hver måned. Er der noget, I undrer jer over, så ring eller skriv. Også de små ting.";
 
 // ---------------------------------------------------------------- tekster pr. punkt
 
@@ -215,7 +228,7 @@ const PUNKT: Record<string, PunktTekst> = {
     gruppe: "gaester",
     betyder:
       "Under et sekund føles hurtigt. En langsom side mister besøgende, før de har set noget.",
-    ok: (v) => `Siden begyndte at vise sig efter ${sek(tal(v, /(\d+)\s*ms/))}.`,
+    ok: (v) => `Den begyndte at vise sig efter ${sek(tal(v, /(\d+)\s*ms/))}.`,
     problem: (v) =>
       `Siden var ${sek(tal(v, /(\d+)\s*ms/))} om at begynde at vise sig. Det er for langsomt.`,
     goer: "Vi gør siden lettere, så den åbner hurtigere.",
@@ -683,6 +696,7 @@ export function byggRapport(input: RapportInput): RapportModel {
       betyder: t.betyder,
       goer: t.goer,
       alvor: ALVOR[p.alvor ?? ""] ?? "Lille ting",
+      synlig: SYNLIGE.has(v.punkt),
     });
   }
   const vigtigsteNote =
@@ -794,7 +808,8 @@ export function byggRapport(input: RapportInput): RapportModel {
     });
     sider = [...engineGsc.sider!]
       .sort((a, b) => b.klik - a.klik)
-      .filter((s) => s.klik > 0)
+      // Kunderådet: "Fortrolighedspolitik 2 besøg" er støj. Under 3 besøg vises ikke (den største altid).
+      .filter((s, i) => s.klik > 0 && (s.klik >= 3 || i === 0))
       .slice(0, 5)
       .map((s) => ({ side: stiAf(s.side), klik: s.klik }));
   } else {
@@ -864,9 +879,10 @@ export function byggRapport(input: RapportInput): RapportModel {
       titel: "I ligger helt i toppen",
       tekst: `Søger man "${navnSoeg.query}", står I typisk som nr. ${Math.max(1, Math.round(navnSoeg.position))}. Det gav ${nf(navnSoeg.clicks)} besøg.`,
     });
-  if (ialt > 0 && ok / ialt >= 0.8)
+  // Uden Google-tal siger hero'en allerede det samme; så gentager kortet det ikke.
+  if (ialt > 0 && ok / ialt >= 0.8 && variant === "med-adgang")
     godt.push({
-      titel: `${ok} ting er på plads`,
+      titel: ok === ialt ? `Alle ${ialt} ting er på plads` : `${ok} af ${ialt} ting er på plads`,
       tekst: "Det er alt det, der afgør om folk kan finde jer og kontakte jer.",
     });
   for (const k of [
@@ -973,6 +989,7 @@ export function byggRapport(input: RapportInput): RapportModel {
     naesteGang,
     udenAdgang,
     maalt,
+    personlig: { note: input.note?.trim() || null, afslutning: PERSONLIG_AFSLUTNING },
     mail: mailTekst(
       input.hilsen?.trim() || kunde,
       domaene,
@@ -982,6 +999,8 @@ export function byggRapport(input: RapportInput): RapportModel {
       godt,
       [...rettet, ...input.arbejde.filter((s) => s.trim()).slice(0, 8)],
       nyt,
+      input.note?.trim() || "",
+      hero.enhed === "besøg fra Google" ? hero.tal : null,
     ),
   };
 }
@@ -995,11 +1014,14 @@ function mailTekst(
   godt: RapportModel["godt"],
   lavet: string[],
   nyt: RapportModel["nyt"],
+  note = "",
+  besoeg: string | null = null,
 ): RapportModel["mail"] {
   const mdr = maaned.split(" ")[0];
   const haster = vigtigste.some((f) => f.alvor === "Tager vi først");
   // Emnet er grunden til at åbne mailen: det nye først, så det gode. Aldrig samme emne hver måned.
-  const krog = nyt[0]?.titel ?? godt[0]?.titel;
+  // Kunderådet: besøgstallet er det, en ejer går op i. Det slår en tjekliste i emnet.
+  const krog = nyt[0]?.titel ?? (besoeg && besoeg !== "0" ? `${besoeg} fandt jer via Google` : godt[0]?.titel);
   const emne = haster
     ? `Jeres side i ${mdr}: det har vi allerede gang i`
     : `Jeres side i ${mdr}: ${krog ? krog[0].toLowerCase() + krog.slice(1) : "alt i orden"}`;
@@ -1010,6 +1032,7 @@ function mailTekst(
   const start = nulpunkt
     ? `Hej ${hilsen}. Her er den første månedsrapport for ${domaene}. Den er vores nulpunkt, så næste måned kan I se, hvordan tallene flytter sig.`
     : `Hej ${hilsen}. Jeg har kigget ${domaene} igennem, som jeg plejer.`;
+  const besoegLinje = besoeg && besoeg !== "0" ? `${besoeg} fandt jer via Google de seneste fire uger.\n\n` : "";
   // Det gode først, så det der kan blive bedre (Lucas 28/9). Haster noget, siges det lige ud.
   const gode = godt
     .slice(0, 2)
@@ -1024,8 +1047,8 @@ function mailTekst(
   // Det vi faktisk har lavet (rettet siden sidst + Lucas' egne linjer): det er dét, der gør 999 kr synlige.
   const gjort = lavet.length ? `\n\nDet har vi lavet siden sidst:\n${lavet.map((l) => `- ${l}`).join("\n")}` : "";
   // Kunderådet: "I skal ikke gøre noget" må ikke læses som "vi ændrer uden at spørge".
-  const lyd = vigtigste.length ? "\n\nVi giver lige lyd, før vi ændrer noget, I kan se på siden." : "";
-  const tekst = `${start}\n\n${nyhed}${midt.trim()}${lyd}${gjort}\n\nResten står i den vedhæftede rapport. Sig endelig til, hvis der er noget, I vil have mig til at kigge på. Ingen pres.\n\nLucas`;
+  const lyd = vigtigste.some((f) => f.synlig) ? "\n\nVi giver lige lyd, før vi ændrer noget, I kan se på siden." : "";
+  const tekst = `${start}\n\n${besoegLinje}${nyhed}${midt.trim()}${lyd}${gjort}${note ? `\n\n${note}` : ""}\n\nResten står i den vedhæftede rapport. Sig endelig til, hvis der er noget, I vil have mig til at kigge på. Ingen pres.\n\nLucas`;
   return { emne, tekst };
 }
 

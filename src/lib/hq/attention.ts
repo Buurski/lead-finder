@@ -13,12 +13,13 @@ import { getDossier } from "./dossier.ts";
 import { unhandledReplyWhere } from "./summary.ts";
 import { loadOverview } from "./overview-load.ts";
 import { markPaidAction, taskDoneAction, type AttentionAction } from "./overview.ts";
+import { AUTO_FRIST_MS, denneMaaned, oversigt } from "./kunde-rapport.ts";
 
 export type AttentionLevel = "haster" | "obs";
 
 export interface AttentionItem {
   level: AttentionLevel;
-  kind: "opgave" | "svar" | "kladde" | "preview" | "faktura" | "kunde";
+  kind: "opgave" | "svar" | "kladde" | "preview" | "faktura" | "kunde" | "rapport";
   text: string;
   href: string;
   companyId?: string;
@@ -135,10 +136,28 @@ export async function getAttention(
     items.push({ level: "obs", kind: "preview", text: `${previewsReady.length} ${previewsReady.length === 1 ? "gratis udkast er" : "gratis udkast er"} klar — ikke sendt`, href: "/previews" });
   }
 
+  // 7) Månedsrapporter: dem der sendes af sig selv inden for et døgn (så Lucas kan nå at
+  // se dem), og klare rapporter automatikken ikke må sende. To samlede linjer.
+  const rap = await oversigt(db, denneMaaned(new Date(now))).catch((err) => {
+    console.error(JSON.stringify({ evt: "attention.rapporter_failed", error: String(err).slice(0, 200) }));
+    return null;
+  });
+  if (rap) {
+    const klar = rap.raekker.filter((r) => r.tilmeldt && r.status === "klar");
+    const snart = klar.filter((r) => !r.auto.stop && r.auto.sendesEfter && Date.parse(r.auto.sendesEfter) - now < AUTO_FRIST_MS);
+    const venter = klar.filter((r) => r.auto.stop);
+    if (snart.length) {
+      items.push({ level: "obs", kind: "rapport", text: `${snart.length === 1 ? `Månedsrapporten til ${snart[0].kunde} sendes` : `${snart.length} månedsrapporter sendes`} automatisk inden for et døgn. Se ${snart.length === 1 ? "den" : "dem"} igennem`, href: "/kunder/rapporter" });
+    }
+    if (venter.length) {
+      items.push({ level: "haster", kind: "rapport", text: `${venter.length === 1 ? `Månedsrapporten til ${venter[0].kunde} venter` : `${venter.length} månedsrapporter venter`} på dig og sendes ikke af sig selv`, href: "/kunder/rapporter" });
+    }
+  }
+
   // Haster først, ellers indsættelsesrækkefølgen ovenfor (stabil sort).
   items.sort((a, b) => (a.level === b.level ? 0 : a.level === "haster" ? -1 : 1));
   // Samle-linjerne (svar/kladder/udkast) er én linje hver og må aldrig skæres væk af loftet (Sol 23/9).
-  const isAgg = (i: AttentionItem) => i.kind === "svar" || i.kind === "kladde" || i.kind === "preview";
+  const isAgg = (i: AttentionItem) => i.kind === "svar" || i.kind === "kladde" || i.kind === "preview" || i.kind === "rapport";
   const keep = new Set([...items.filter(isAgg), ...items.filter((i) => !isAgg(i)).slice(0, MAX_ITEMS - items.filter(isAgg).length)]);
   return items.filter((i) => keep.has(i));
 }

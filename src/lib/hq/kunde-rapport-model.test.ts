@@ -70,7 +70,8 @@ test("anden måned: pile mod sidste sendte rapport, og det der blev rettet, stå
   const s = r.nogletal.find((n) => n.label === "Så hurtigt åbner siden")!;
   assert.deepEqual([s.pil, s.vurdering], ["op", "daarligere"]);
   assert.deepEqual(r.arbejde, ["Ny side om lånebil"]);
-  assert.match(r.mail.emne, /på plads/);
+  assert.match(r.mail.emne, /fandt jer via Google/, "besøgstallet står i emnet, når vi har det");
+  assert.match(r.mail.tekst, /fandt jer via Google de seneste fire uger/);
   // Det har vi lavet: rettet + Lucas' linje står i både rapport og mail (det er dét, 999 kr betaler for).
   assert.deepEqual(r.gjort.slice(0, 2), ["Billedbeskrivelser: Alle 30 billeder har en beskrivelse.", "Ny side om lånebil"]);
   assert.match(r.mail.tekst, /Det har vi lavet siden sidst:\n- Billedbeskrivelser/);
@@ -124,4 +125,19 @@ test("uger: kun hele uger; forrige periode kræver næsten fulde 28 dage", () =>
 test("måned følger dansk tid, ikke UTC", () => {
   assert.equal(maanedFor("2026-09-30T22:30:00Z"), "2026-10");
   assert.equal(maanedFor("2026-09-30T21:30:00Z"), "2026-09");
+});
+
+test("kontaktboks: Lucas' note escapes, uden note og uden `personlig` (ældre rapporter) virker også", () => {
+  const r = byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [], note: "Vi har tjekket <script>alert(1)</script> for jer." });
+  const med = renderKundeRapportHtml(r);
+  assert.match(med, /Lucas Buur/);
+  assert.match(med, /Vi har tjekket &lt;script&gt;alert\(1\)&lt;\/script&gt; for jer\./);
+  assert.doesNotMatch(med, /<script>alert/);
+  assert.ok(med.includes(r.personlig.afslutning));
+  const uden = renderKundeRapportHtml(byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [] }));
+  assert.match(uden, /Lucas Buur/);
+  assert.doesNotMatch(uden, /<blockquote/);
+  const gammel = { ...r, personlig: undefined } as unknown as typeof r;
+  assert.match(renderKundeRapportHtml(gammel), /Lucas Buur/);
+  // PDF'en (.tsx) kan node --test ikke indlæse; den tjekkes med tsx i et script.
 });
