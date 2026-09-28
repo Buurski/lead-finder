@@ -865,7 +865,9 @@ export function byggRapport(input: RapportInput): RapportModel {
       vaerdi: `${a.naevnt} af ${a.spurgt}`,
       forklaring: "Vi stiller AI som ChatGPT de spørgsmål, en kunde ville stille. Så mange gange nævnte den jer.",
     };
-    if (!nulpunkt && f && f.spurgt === a.spurgt) {
+    // ponytail: pil først ved ≥10 spørgsmål. 3 spørgsmål svingede 2/3 → 1/3 på samme dag (28/9),
+    // så en pil ville vise støj som fremgang/tilbagegang. Flere spørgsmål pr. kunde = pilen kommer af sig selv.
+    if (!nulpunkt && f && f.spurgt === a.spurgt && a.spurgt >= 10) {
       n.pil = pil(a.naevnt, f.naevnt);
       n.vurdering = vurder(n.pil, true);
       n.foer = `${f.naevnt} af ${f.spurgt}`;
@@ -996,12 +998,19 @@ export function byggRapport(input: RapportInput): RapportModel {
       naesteGang.push(`${t.navn}: ${t.goer}`);
   }
 
+  // Salg uden pres: hvad de selv kan gøre, og hvad vi kan tage. Står vi for siden,
+  // er SEO/AI allerede vores job, så dér er det en besked, ikke et tilbud.
+  const sideIde = input.vedligeholder ? null : sideIdeFor(m.sider_liste);
+  if (sideIde) naesteGang.unshift(sideIde);
   const ide = anmeldelsesIde(anm);
   if (ide) naesteGang.unshift(ide);
   if (ai && ai.spurgt > 0 && ai.naevnt / ai.spurgt < 0.6)
     naesteGang.unshift(
-      `Bliv nævnt oftere, når folk spørger AI: I blev nævnt ${ai.naevnt} af ${ai.spurgt} gange. Flere folk spørger ChatGPT i stedet for at google. Vi kan arbejde med, hvad AI læser om jer.`,
+      input.vedligeholder
+        ? `Bliv nævnt oftere, når folk spørger AI: I blev nævnt ${ai.naevnt} af ${ai.spurgt} gange. Det arbejder vi videre med i næste måned.`
+        : `Bliv nævnt oftere, når folk spørger AI: I blev nævnt ${ai.naevnt} af ${ai.spurgt} gange. Flere folk spørger ChatGPT i stedet for at google. Vi kan arbejde med, hvad AI læser om jer.`,
     );
+  naesteGang.splice(4); // Flere end fire idéer føles som et salgsbrev.
 
   const googleKort = (() => {
     const tt = efter.get("title");
@@ -1108,14 +1117,20 @@ function gjortOversigt(m: Maaling): string[] {
   ].filter((s): s is string => !!s);
 }
 
+/** Indirekte SEO-salg: få sider = få døre ind fra Google. Ukendt sideliste = intet. */
+export function sideIdeFor(sider: Maaling["sider_liste"]): string | null {
+  if (!sider?.length || sider.length >= 8) return null;
+  return `En side til hver ydelse: I har ${nf(sider.length)} sider på jeres hjemmeside. Folk søger på det, de skal have lavet, og en side pr. ydelse gør det lettere for Google og AI at sende dem til jer. I kan selv starte med den ydelse, I tjener mest på. Vi skriver dem også gerne for jer.`;
+}
+
 /** Idé kunden selv kan mærke og vi kan hjælpe med: flere/bedre Google-anmeldelser. */
 export function anmeldelsesIde(a: RapportInput["anmeldelser"]): string | null {
   if (!a) return null;
   const snit = a.rating ? ` med ${komma(a.rating)} stjerner i snit` : "";
   if (a.antal < 50)
-    return `Flere anmeldelser på Google: I har ${nf(a.antal)} anmeldelser${snit}. Anmeldelser er noget af det, der får flest til at vælge jer frem for andre. Vi kan sætte en nem måde op, så kunderne bliver spurgt, når de er glade.`;
+    return `Flere anmeldelser på Google: I har ${nf(a.antal)} anmeldelser${snit}. Anmeldelser er noget af det, der får flest til at vælge jer frem for andre. I kan selv spørge glade kunder, når de betaler. Vil I have det nemmere, sætter vi et link og en QR-kode op, som kunderne kan scanne.`;
   if (a.rating && a.rating < 4.3)
-    return `Svar på anmeldelserne på Google: I har ${nf(a.antal)} anmeldelser${snit}. Nye kunder læser svarene, også på de sure. Vi kan hjælpe med at skrive dem.`;
+    return `Svar på anmeldelserne på Google: I har ${nf(a.antal)} anmeldelser${snit}. Nye kunder læser svarene, også på de sure. Et kort, venligt svar gør meget, og vi hjælper gerne med at skrive dem.`;
   return null;
 }
 

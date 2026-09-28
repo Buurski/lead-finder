@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { anmeldelsesIde, byggRapport, forrigeVindue, nyeSider, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
+import { anmeldelsesIde, byggRapport, forrigeVindue, nyeSider, sideIdeFor, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
 import { renderKundeRapportHtml } from "./kunde-rapport-html.ts";
 
 // Rigtige målinger fra kunde_seo_tjek.py, 28-09-2026 (fixtures/).
@@ -195,12 +195,26 @@ test("AI-nævninger: godt-kort og nøgletal når AI nævner kunden, idé når de
   assert.deepEqual(sprogFejl(god), []);
   const lav = byggRapport({ kunde: "VIDA", maaling: med(1), forrige: med(0), gsc: null, arbejde: [] });
   assert.match(lav.naesteGang[0], /^Bliv nævnt oftere/);
-  const n = lav.nogletal.find((x) => x.label === "Nævnt når man spørger AI");
+  assert.equal(lav.nogletal.find((x) => x.label === "Nævnt når man spørger AI")?.pil, undefined, "få spørgsmål = støj, ingen pil");
+  const mange = (naevnt: number): Maaling => ({ ...med(naevnt), ai_naevninger: { ...med(naevnt).ai_naevninger!, spurgt: 10 } });
+  const n = byggRapport({ kunde: "VIDA", maaling: mange(4), forrige: mange(1), gsc: null, arbejde: [] }).nogletal.find((x) => x.label === "Nævnt når man spørger AI");
   assert.equal(n?.pil, "op");
-  assert.equal(n?.foer, "0 af 5");
+  assert.equal(n?.foer, "1 af 10");
   // Ikke målt = intet om AI (aldrig et gættet 0).
   const uden = byggRapport({ kunde: "VIDA", maaling: vida, forrige: null, gsc: null, arbejde: [] });
   assert.ok(!uden.nogletal.some((x) => x.label.includes("AI")));
+});
+
+test("salg uden pres: side-idé kun når vi ikke står for siden; maks fire idéer", () => {
+  const faa: Maaling = { ...structuredClone(vida), sider_liste: [{ url: "https://x.dk/", titel: "" }, { url: "https://x.dk/kontakt", titel: "" }] };
+  const fremmed = byggRapport({ kunde: "X", maaling: faa, forrige: null, gsc: null, arbejde: [], anmeldelser: { rating: 4.8, antal: 12 } });
+  assert.ok(fremmed.naesteGang.some((t) => /^En side til hver ydelse: I har 2 sider/.test(t)));
+  assert.ok(fremmed.naesteGang.some((t) => /I kan selv spørge glade kunder/.test(t)));
+  assert.ok(fremmed.naesteGang.length <= 4);
+  assert.deepEqual(sprogFejl(fremmed), []);
+  const vores = byggRapport({ kunde: "X", maaling: faa, forrige: null, gsc: null, arbejde: [], vedligeholder: true });
+  assert.ok(!vores.naesteGang.some((t) => /En side til hver ydelse/.test(t)));
+  assert.equal(sideIdeFor(undefined), null);
 });
 
 test("nye sider siden sidste rapport står automatisk under 'Det har vi gjort'", () => {
