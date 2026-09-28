@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { anmeldelsesIde, byggRapport, forrigeVindue, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
+import { anmeldelsesIde, byggRapport, forrigeVindue, nyeSider, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
 import { renderKundeRapportHtml } from "./kunde-rapport-html.ts";
 
 // Rigtige målinger fra kunde_seo_tjek.py, 28-09-2026 (fixtures/).
@@ -201,4 +201,17 @@ test("AI-nævninger: godt-kort og nøgletal når AI nævner kunden, idé når de
   // Ikke målt = intet om AI (aldrig et gættet 0).
   const uden = byggRapport({ kunde: "VIDA", maaling: vida, forrige: null, gsc: null, arbejde: [] });
   assert.ok(!uden.nogletal.some((x) => x.label.includes("AI")));
+});
+
+test("nye sider siden sidste rapport står automatisk under 'Det har vi gjort'", () => {
+  const side = (s: string, t = "") => ({ url: `https://vida-klinik.dk/${s}`, titel: t });
+  const foer: Maaling = { ...structuredClone(vida), sider_liste: [side(""), side("priser")] };
+  const nu: Maaling = { ...structuredClone(vida), maalt: "2026-10-28T06:00:00+01:00", sider_liste: [side(""), side("priser/"), side("hydrafacial", "Hydrafacial | VIDA"), side("fedtfrysning"), side("a"), side("b"), side("c")] };
+  assert.deepEqual(nyeSider(nu, foer), ["Lavet 5 nye sider på jeres hjemmeside: Hydrafacial, Fedtfrysning, A, B og én mere."]);
+  assert.deepEqual(nyeSider(nu, null), [], "første rapport ved ikke hvad der er nyt");
+  assert.deepEqual(nyeSider(nu, vida), [], "forrige uden sideliste = intet");
+  const r = byggRapport({ kunde: "VIDA", maaling: nu, forrige: foer, gsc: null, arbejde: [] });
+  assert.match(r.gjort[0], /^Lavet 5 nye sider/);
+  assert.match(r.mail.tekst, /- Lavet 5 nye sider/);
+  assert.deepEqual(sprogFejl(r), []);
 });

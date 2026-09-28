@@ -163,6 +163,12 @@ export function validerMaaling(raw: unknown): Maaling {
   const url = s(r.url, "url", 300);
   tjekHost(url);
   const ai_naevninger = validerAi(r.ai_naevninger);
+  const sider_liste = Array.isArray(r.sider_liste)
+    ? r.sider_liste
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && typeof x.url === "string" && /^https?:\/\//i.test(x.url))
+        .slice(0, 200)
+        .map((x) => ({ url: String(x.url).slice(0, 300), titel: typeof x.titel === "string" ? x.titel.replace(/\s+/g, " ").trim().slice(0, 120) : "" }))
+    : null;
   return {
     navn: typeof r.navn === "string" ? r.navn.slice(0, 120) : hostAf(url),
     url,
@@ -174,6 +180,7 @@ export function validerMaaling(raw: unknown): Maaling {
     kan_sendes: true,
     vigtigste,
     ...(ai_naevninger ? { ai_naevninger } : {}),
+    ...(sider_liste?.length ? { sider_liste } : {}),
   };
 }
 

@@ -44,6 +44,8 @@ export interface Maaling {
   vigtigste?: { rang: number; punkt: string }[];
   /** Spurgt AI de spørgsmål en kunde ville stille; hvor mange gange blev kunden nævnt. Mangler = ikke målt. */
   ai_naevninger?: AiNaevninger | null;
+  /** Sidens sider fra sitemap (url + titel). Mangler = ikke målt; så findes "nye sider" ikke. */
+  sider_liste?: { url: string; titel: string }[] | null;
 }
 
 export interface AiNaevninger {
@@ -961,8 +963,10 @@ export function byggRapport(input: RapportInput): RapportModel {
   }
 
   // Det har vi gjort: aldrig tomt, aldrig "vi har ikke ændret noget". Kun ting der er sket.
+  const nye = nyeSider(m, forrige);
   const gjort = [
     ...rettet,
+    ...nye,
     ...input.arbejde.filter((s) => s.trim()).slice(0, 8),
     ...gjortOversigt(m),
     ...(m.ai_naevninger?.spurgt
@@ -1068,7 +1072,7 @@ export function byggRapport(input: RapportInput): RapportModel {
       vigtigste,
       nulpunkt,
       godt,
-      [...rettet, ...input.arbejde.filter((s) => s.trim()).slice(0, 8)],
+      [...rettet, ...nye, ...input.arbejde.filter((s) => s.trim()).slice(0, 8)],
       nyt,
       input.note?.trim() || "",
       hero.enhed === "besøg fra Google" ? hero.tal : null,
@@ -1079,6 +1083,19 @@ export function byggRapport(input: RapportInput): RapportModel {
 }
 
 const komma = (n: number) => n.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** Sider der er kommet til siden sidste sendte rapport. Kun når begge målinger har en sideliste;
+ *  første rapport kan ikke vide, hvad der er nyt. Nye sider laves af os (CMS'ets "ny side" er vores knap). */
+export function nyeSider(m: Maaling, forrige: Maaling | null): string[] {
+  if (!m.sider_liste?.length || !forrige?.sider_liste?.length) return [];
+  const norm = (u: string) => u.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "").toLowerCase();
+  const foer = new Set(forrige.sider_liste.map((s) => norm(s.url)));
+  const nye = m.sider_liste.filter((s) => !foer.has(norm(s.url)));
+  if (!nye.length) return [];
+  const navne = nye.map((s) => (s.titel.split(/\s*[|·]\s*/)[0] || stiAf(s.url)).trim()).filter(Boolean);
+  const vis = navne.slice(0, 4).join(", ") + (navne.length === 5 ? " og én mere" : navne.length > 5 ? ` og ${navne.length - 4} flere` : "");
+  return [`Lavet ${nye.length === 1 ? "en ny side" : `${nye.length} nye sider`} på jeres hjemmeside: ${vis}.`];
+}
 
 /** "Det har vi gjort": hvad månedens tjek dækkede, i hverdagssprog. Kun grupper med målte punkter. */
 function gjortOversigt(m: Maaling): string[] {
