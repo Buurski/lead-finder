@@ -40,7 +40,9 @@ export default function SectionTabs() {
     <div className="cc-section-tabs-wrap" data-more={more}>
       <nav className="cc-section-tabs" aria-label="Undersider" ref={scrollRef}>
         {section.tabs.map((t) => {
-          const active = pathname === t.href || pathname.startsWith(t.href + "/");
+          // Længste match vinder: /kunder/rapporter må ikke også tænde "Kunder" (/kunder).
+          const hit = (h: string) => pathname === h || pathname.startsWith(h + "/");
+          const active = hit(t.href) && !section.tabs.some((o) => o.href.length > t.href.length && hit(o.href));
           return (
             <Link
               key={t.href}

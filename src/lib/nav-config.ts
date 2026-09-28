@@ -78,7 +78,7 @@ export interface Section {
 }
 
 export const SECTIONS: Section[] = [
-  { root: "/kunder", tabs: [{ href: "/kunder", label: "Kunder" }, { href: "/virksomheder", label: "Alle virksomheder" }] },
+  { root: "/kunder", tabs: [{ href: "/kunder", label: "Kunder" }, { href: "/kunder/rapporter", label: "Månedsrapporter" }, { href: "/virksomheder", label: "Alle virksomheder" }] },
   {
     root: "/approve",
     tabs: [

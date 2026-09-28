@@ -1,0 +1,397 @@
+{
+ "navn": "Ikast AutoService",
+ "url": "https://ikastautoservice.dk/",
+ "kilde": "direkte",
+ "maalt": "2026-09-28T21:27:23+02:00",
+ "tid_sekunder": 9.7,
+ "punkter": [
+  {
+   "punkt": "status",
+   "navn": "Siden svarer",
+   "vaerdi": 200,
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Siden svarer normalt. Kan Google og gæster komme ind.",
+   "note": null
+  },
+  {
+   "punkt": "omdirigering",
+   "navn": "Adressen",
+   "vaerdi": "ingen omdirigering",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Besøgende lander det rigtige sted, også hvis de skriver adressen uden www eller med http.",
+   "note": null
+  },
+  {
+   "punkt": "svartid",
+   "navn": "Svartid",
+   "vaerdi": "123 ms",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Hvor hurtigt siden begynder at vise noget. Under 1 sekund føles hurtigt.",
+   "note": null
+  },
+  {
+   "punkt": "sidestoerrelse",
+   "navn": "Sidens størrelse",
+   "vaerdi": "50 KB (HTML)",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Hvor meget der skal hentes. Jo mindre, jo hurtigere på en mobil i dårligt signal.",
+   "note": null
+  },
+  {
+   "punkt": "title",
+   "navn": "Overskrift i Google (title)",
+   "vaerdi": "\"Autoværksted i Ikast med gratis lånebil | Ikast AutoService\" (59 tegn)",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Den blå overskrift i Google. Det er den, folk klikker på.",
+   "note": null
+  },
+  {
+   "punkt": "meta_description",
+   "navn": "Tekst under overskriften i Google (meta)",
+   "vaerdi": "\"Service og reparation til alle bilmærker. Fast pris på forhånd, gratis lånebil og hente-bringe-service i Ikast, Herning og Silkeborg.\" (133 tegn)",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Den lille tekst under overskriften i Google. Den skal få folk til at klikke.",
+   "note": null
+  },
+  {
+   "punkt": "h1",
+   "navn": "Stor overskrift på siden (H1)",
+   "vaerdi": "\"Din bil. Gode hænder. Fair pris.\"",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Den store overskrift på selve siden. Den fortæller Google hvad siden handler om.",
+   "note": null
+  },
+  {
+   "punkt": "h2",
+   "navn": "Underskrifter (H2)",
+   "vaerdi": "9 underskrifter",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Underskrifterne på siden. De gør indholdet let at læse og let for Google at forstå.",
+   "note": null
+  },
+  {
+   "punkt": "canonical",
+   "navn": "Rigtig adresse (canonical)",
+   "vaerdi": "https://ikastautoservice.dk/",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Teknisk markering af hvilken adresse der er den rigtige. Forhindrer at to adresser konkurrerer om samme søgning.",
+   "note": null
+  },
+  {
+   "punkt": "robots",
+   "navn": "Må Google vise siden",
+   "vaerdi": "index,follow",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Hvis denne siger \"noindex\", forsvinder siden fra Google.",
+   "note": null
+  },
+  {
+   "punkt": "sprog",
+   "navn": "Sprog",
+   "vaerdi": "da",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Sproget er markeret korrekt, så Google viser siden til danske søgninger.",
+   "note": null
+  },
+  {
+   "punkt": "viewport",
+   "navn": "Mobilvisning",
+   "vaerdi": "width=device-width, initial-scale=1",
+   "status": "ok",
+   "alvor": "hoej",
+   "betyder": "Uden dette ser siden forkert ud på mobilen. De fleste søger fra mobil.",
+   "note": null
+  },
+  {
+   "punkt": "schema",
+   "navn": "Information til Google og AI (schema)",
+   "vaerdi": "AdministrativeArea, Answer, AutoRepair, City, FAQPage, GeoCoordinates, LocalBusiness, Offer, OfferCatalog, OpeningHoursSpecification, Organization, PostalAddress, Question, Service",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Maskinlæsbar information om virksomheden (navn, adresse, åbningstider, ydelser). Det bruger Google og AI til at forstå hvem du er.",
+   "note": null
+  },
+  {
+   "punkt": "open_graph",
+   "navn": "Deling på Facebook",
+   "vaerdi": "9 felter",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Det billede og den tekst der vises, når nogen deler siden på Facebook.",
+   "note": null
+  },
+  {
+   "punkt": "billeder_alt",
+   "navn": "Billedbeskrivelser",
+   "vaerdi": "18 af 30 billeder mangler beskrivelse",
+   "status": "obs",
+   "alvor": "lav",
+   "betyder": "Beskrivende tekst på billeder. Både Google og skærmlæsere bruger den.",
+   "note": null
+  },
+  {
+   "punkt": "kontaktlinks",
+   "navn": "Telefon og mail virker",
+   "vaerdi": "telefon- og maillinks virker",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Om telefonnummer og mail faktisk virker, når man trykker på dem fra mobilen.",
+   "note": null
+  },
+  {
+   "punkt": "links",
+   "navn": "Links videre på siden",
+   "vaerdi": "16 interne links på siden",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Hvor mange steder på siden man kan klikke videre ind i sitet.",
+   "note": null
+  },
+  {
+   "punkt": "robots_txt",
+   "navn": "Google-adgang (robots.txt)",
+   "vaerdi": "ok, 1 sitemap-linje(r)",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Fil der fortæller Google hvor den må kravle. En fejl her kan skjule hele siden.",
+   "note": null
+  },
+  {
+   "punkt": "sitemap",
+   "navn": "Adresseliste til Google (sitemap)",
+   "vaerdi": "https://ikastautoservice.dk/sitemap.xml — ca. 16 adresser, nyeste ændring 2026-09-26",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Liste over alle sidens adresser, som vi giver Google. Mangler den, bliver nye sider sværere at finde.",
+   "note": null
+  },
+  {
+   "punkt": "brudte_links",
+   "navn": "Links der ikke virker",
+   "vaerdi": "0 af 10 testede links fejler",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Links der fører til en side der ikke findes. Det irriterer gæster og koster tillid hos Google.",
+   "note": null
+  },
+  {
+   "punkt": "llms_txt",
+   "navn": "AI-læsefil (llms.txt)",
+   "vaerdi": "findes",
+   "status": "info",
+   "alvor": "lav",
+   "betyder": "Ny fil der hjælper AI-tjenester med at læse sitet. Ikke et krav, men et lille forspring.",
+   "note": null
+  },
+  {
+   "punkt": "ordtal",
+   "navn": "Tekstmængde",
+   "vaerdi": "1356 ord synlig tekst",
+   "status": "ok",
+   "alvor": "mellem",
+   "betyder": "Hvor meget tekst der faktisk står på siden. Tynd tekst rangerer dårligt og bliver sjældent citeret af AI.",
+   "note": null
+  },
+  {
+   "punkt": "qa_schema",
+   "navn": "Spørgsmål og svar",
+   "vaerdi": "Answer, FAQPage, Question",
+   "status": "info",
+   "alvor": "lav",
+   "betyder": "Spørgsmål-og-svar-mærkning. Det er den slags indhold, AI-svar oftest gengiver.",
+   "note": null
+  },
+  {
+   "punkt": "citerbar_data",
+   "navn": "Det AI kan citere",
+   "vaerdi": "i teksten: telefon, mail, adresse",
+   "status": "ok",
+   "alvor": "lav",
+   "betyder": "Om telefon, adresse og åbningstider står som ren tekst. AI kan kun citere det, den kan læse præcist.",
+   "note": null
+  },
+  {
+   "punkt": "gsc",
+   "navn": "Søgninger i Google",
+   "vaerdi": "127 klik / 2008 visninger på 7 sider (2026-08-28 → 2026-09-25)",
+   "status": "info",
+   "alvor": "lav",
+   "betyder": "Google Search Console: hvilke søgninger folk brugte, hvor mange der så os, og hvor mange der klikkede.",
+   "note": null
+  }
+ ],
+ "gsc": {
+  "site": "sc-domain:ikastautoservice.dk",
+  "periode": [
+   "2026-08-28",
+   "2026-09-25"
+  ],
+  "sider": [
+   {
+    "side": "https://ikastautoservice.dk/",
+    "klik": 119,
+    "visninger": 1255,
+    "position": 10.1
+   },
+   {
+    "side": "https://ikastautoservice.dk/kontakt/",
+    "klik": 5,
+    "visninger": 263,
+    "position": 14.3
+   },
+   {
+    "side": "https://ikastautoservice.dk/fortrolighedspolitik/",
+    "klik": 2,
+    "visninger": 97,
+    "position": 7.6
+   },
+   {
+    "side": "https://ikastautoservice.dk/nyheder/",
+    "klik": 1,
+    "visninger": 96,
+    "position": 14.7
+   },
+   {
+    "side": "https://ikastautoservice.dk/laanebil/",
+    "klik": 0,
+    "visninger": 81,
+    "position": 67.0
+   },
+   {
+    "side": "https://ikastautoservice.dk/om-os/",
+    "klik": 0,
+    "visninger": 150,
+    "position": 15.9
+   },
+   {
+    "side": "https://ikastautoservice.dk/service/serviceeftersyn/",
+    "klik": 0,
+    "visninger": 66,
+    "position": 27.7
+   }
+  ]
+ },
+ "gsc_note": null,
+ "status_flag": "ok",
+ "kan_sendes": true,
+ "kan_sendes_grund": "",
+ "baseline_duelig": true,
+ "vigtigste": [
+  {
+   "rang": 1,
+   "punkt": "billeder_alt",
+   "navn": "Billedbeskrivelser",
+   "vaerdi": "18 af 30 billeder mangler beskrivelse",
+   "status": "obs",
+   "alvor": "lav",
+   "betyder": "Beskrivende tekst på billeder. Både Google og skærmlæsere bruger den.",
+   "hvorfor": "Kan forbedres, men det flytter ikke meget."
+  }
+ ],
+ "vigtigste_note": "Kun 1 punkt kræver handling denne gang — der er ikke tre at vælge.",
+ "sammenligning": {
+  "baseline_fil": "ikastautoservice-dk-2026-09-28-kl2126.json",
+  "baseline_maalt": "2026-09-28T21:26:46+02:00",
+  "minutter_imellem": 0,
+  "foerste_maaling": false,
+  "deltas": [
+   {
+    "punkt": "svartid",
+    "navn": "Svartid",
+    "enhed": "ms",
+    "nu": 123,
+    "foer": 118,
+    "forskel": 5,
+    "retning": "op",
+    "pil": "↑",
+    "vurdering": "daarligere",
+    "tekst": "123 ms, op fra 118"
+   },
+   {
+    "punkt": "sidestoerrelse",
+    "navn": "Sidens størrelse",
+    "enhed": "KB",
+    "nu": 50,
+    "foer": 50,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "50 KB, uændret"
+   },
+   {
+    "punkt": "ordtal",
+    "navn": "Tekstmængde",
+    "enhed": "ord",
+    "nu": 1356,
+    "foer": 1356,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "1356 ord, uændret"
+   },
+   {
+    "punkt": "links",
+    "navn": "Links videre på siden",
+    "enhed": "interne links",
+    "nu": 16,
+    "foer": 16,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "16 interne links, uændret"
+   },
+   {
+    "punkt": "billeder_alt",
+    "navn": "Billedbeskrivelser",
+    "enhed": "billeder uden beskrivelse",
+    "nu": 18,
+    "foer": 18,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "18 billeder uden beskrivelse, uændret"
+   },
+   {
+    "punkt": "gsc_klik",
+    "navn": "Klik fra Google",
+    "enhed": "klik",
+    "nu": 127,
+    "foer": 127,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "127 klik, uændret"
+   },
+   {
+    "punkt": "gsc_visninger",
+    "navn": "Visninger i Google",
+    "enhed": "visninger",
+    "nu": 2008,
+    "foer": 2008,
+    "forskel": 0,
+    "retning": "uaendret",
+    "pil": "→",
+    "vurdering": "uaendret",
+    "tekst": "2008 visninger, uændret"
+   }
+  ],
+  "status_aendringer": [],
+  "note": null
+ }
+}

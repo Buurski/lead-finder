@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   // them at runtime on Vercel (dist/ is gitignored; demo-sites/ is committed).
   outputFileTracingIncludes: {
     "/studio/demo-site/[slug]": ["./demo-sites/**/*.html"],
+    // Månedsrapporten læser Kinlys skrift (Archivo) fra disk i både HTML og PDF.
+    "/kunder/rapporter/[domaene]/[maaned]": ["./src/lib/fonts/*.ttf"],
   },
   turbopack: {
     root: __dirname,

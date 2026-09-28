@@ -12,7 +12,9 @@ type Snap = {
   position: number | null;
   topQueries: { query: string; clicks: number; impressions: number; position: number }[];
 };
-export interface GscChange { kind: "klik" | "visninger" | "placering" | "ny-søgning" | "tabt-søgning"; text: string; good: boolean }
+/** `kunde` = samme ændring i kundens sprog (kun gode ændringer). Månedsrapportens "Det er nyt"
+ *  bruger den, når Jev har sagt at nyheden er værd at fortælle. Koden skriver tallene, Jev vælger. */
+export interface GscChange { kind: "klik" | "visninger" | "placering" | "ny-søgning" | "tabt-søgning"; text: string; good: boolean; kunde?: { titel: string; tekst: string } }
 
 const pct = (now: number, before: number) => Math.round(((now - before) / before) * 100);
 const komma = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -22,18 +24,27 @@ export function diffGsc(prev: Snap, now: Snap): GscChange[] {
   const out: GscChange[] = [];
   for (const [kind, a, b, min] of [["klik", prev.clicks, now.clicks, 10], ["visninger", prev.impressions, now.impressions, 100]] as const) {
     if (a > 0 && Math.abs(b - a) >= min && Math.abs(pct(b, a)) >= 20) {
-      out.push({ kind, text: `${kind === "klik" ? "Klik" : "Visninger"} ${b > a ? "steg" : "faldt"} ${Math.abs(pct(b, a))} % (${a.toLocaleString("da-DK")} → ${b.toLocaleString("da-DK")})`, good: b > a });
+      const [fa, fb] = [a.toLocaleString("da-DK"), b.toLocaleString("da-DK")];
+      const kunde =
+        b <= a ? undefined
+        : kind === "klik" ? { titel: "Flere besøg fra Google", tekst: `${fb} besøg fra Google de seneste fire uger mod ${fa} sidst. Det er ${pct(b, a)} % flere.` }
+        : { titel: "I bliver set oftere", tekst: `Jeres side blev vist ${fb} gange i Google mod ${fa} sidst.` };
+      out.push({ kind, text: `${kind === "klik" ? "Klik" : "Visninger"} ${b > a ? "steg" : "faldt"} ${Math.abs(pct(b, a))} % (${fa} → ${fb})`, good: b > a, ...(kunde ? { kunde } : {}) });
     }
   }
   if (prev.position != null && now.position != null && Math.abs(now.position - prev.position) >= 0.5) {
     const better = now.position < prev.position;
-    out.push({ kind: "placering", text: `Gns. placering ${better ? "forbedret" : "forværret"} fra ${komma(prev.position)} til ${komma(now.position)}`, good: better });
+    const kunde = better ? { titel: "I står højere i Google", tekst: `I snit står I nu som nr. ${komma(now.position)}. Da vi målte sidst, var det nr. ${komma(prev.position)}. Nr. 1 er øverst.` } : undefined;
+    out.push({ kind: "placering", text: `Gns. placering ${better ? "forbedret" : "forværret"} fra ${komma(prev.position)} til ${komma(now.position)}`, good: better, ...(kunde ? { kunde } : {}) });
   }
   const before = new Set(prev.topQueries.map((q) => q.query));
   const after = new Set(now.topQueries.map((q) => q.query));
   const added = now.topQueries.filter((q) => !before.has(q.query) && q.clicks > 0).slice(0, 3);
   const lost = prev.topQueries.filter((q) => !after.has(q.query) && q.clicks >= 3).slice(0, 3);
-  if (added.length) out.push({ kind: "ny-søgning", text: `Ny i top-søgninger: ${added.map((q) => `"${q.query}"`).join(", ")}`, good: true });
+  if (added.length) {
+    const liste = added.map((q) => `"${q.query}"`).join(", ");
+    out.push({ kind: "ny-søgning", text: `Ny i top-søgninger: ${liste}`, good: true, kunde: { titel: "Nye søgninger finder jer", tekst: `Folk finder jer nu også, når de søger på ${liste}.` } });
+  }
   if (lost.length) out.push({ kind: "tabt-søgning", text: `Røget ud af top-søgninger: ${lost.map((q) => `"${q.query}"`).join(", ")}`, good: false });
   return out;
 }
