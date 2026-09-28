@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { listUpdates, type UpdateStatus } from "@/lib/hq/customer-updates";
 import PageHeader from "@/components/shell/PageHeader";
 import KundeopdateringerView from "@/components/kundeopdateringer/KundeopdateringerView";
+import KundeRapportOversigt from "@/components/kundeopdateringer/KundeRapportOversigt";
 import "@/components/virksomheder/virksomheder.css";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,8 @@ export default async function KundeopdateringerPage({ searchParams }: { searchPa
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <PageHeader icon="Mail" title="Kundeopdateringer" subtitle="Kladder til kunder om arbejde de må se — du sender selv fra Gmail." />
+
+      <KundeRapportOversigt />
 
       <nav className="virk-chips" aria-label="Filtrér på status">
         {STATUSES.map((s) => (
