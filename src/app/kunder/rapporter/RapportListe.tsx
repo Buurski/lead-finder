@@ -164,7 +164,7 @@ function Raekke({ r, maaned }: { r: RapportRaekkeDTO; maaned: string }) {
           <p className="rap-note rap-auto rap-auto-stop">Sendes ikke automatisk: {r.auto.stop}</p>
         ) : r.auto.sendesEfter ? (
           <p className="rap-note rap-auto">
-            Sendes automatisk til <strong>{r.auto.til}</strong> tidligst {tidspunkt(r.auto.sendesEfter)} (hverdage kl. 8-17). Vil du ikke det, så spring den over.
+            Sendes automatisk til <strong>{r.auto.til}</strong> {tidspunkt(r.auto.sendesEfter)}. Vil du ikke det, så spring den over.
           </p>
         ) : null
       ) : null}

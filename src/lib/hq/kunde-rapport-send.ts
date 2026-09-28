@@ -10,8 +10,10 @@ import { appendSystemActivity } from "../crm.ts";
 import { applySignature, applySignatureHtml, kundeAfsender } from "../senders.ts";
 import { store } from "../store.ts";
 import { kundeKontakt } from "./invoice-contacts.ts";
-import { hentLevering, keyS, KundeRapportError, oversigt, rapportFor, saetLevering, type OversigtRaekke } from "./kunde-rapport.ts";
+import { hentLevering, iArbejdstid, keyS, KundeRapportError, oversigt, rapportFor, saetLevering, type OversigtRaekke } from "./kunde-rapport.ts";
 import type { RapportModel } from "./kunde-rapport-model.ts";
+
+export { iArbejdstid };
 
 type Afsender = Pick<Transporter, "sendMail">;
 
@@ -88,14 +90,6 @@ export async function sendKundeRapport(
     await appendSystemActivity(rapport.kunde, `kunderapport_${host}_${ym}`, `Månedsrapport for ${ym} sendt til ${til}${af === "auto" ? " (automatisk)" : ""}`).catch(() => {});
   }
   return { til, emne, test };
-}
-
-/** Hverdag kl. 8-17 i dansk tid: ingen rapport lander søndag aften eller kl. 3 om natten. */
-export function iArbejdstid(nu: Date): boolean {
-  const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Copenhagen", weekday: "short", hour: "2-digit", hourCycle: "h23" }).formatToParts(nu);
-  const dag = f.find((p) => p.type === "weekday")?.value ?? "";
-  const time = Number(f.find((p) => p.type === "hour")?.value);
-  return !["Sat", "Sun"].includes(dag) && time >= 8 && time < 17;
 }
 
 /** Rækker cron'en må sende nu: klar, ingen stop-grund, frist gået. */

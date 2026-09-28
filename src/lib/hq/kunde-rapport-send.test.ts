@@ -8,6 +8,7 @@ import { company, contact } from "../db/schema.ts";
 import { __setStore, InMemoryStore, store } from "../store.ts";
 import { gemMaaling, gemPersonligNote, hentLevering, keyS, oversigt, saetLevering } from "./kunde-rapport.ts";
 import { iArbejdstid, klarTilAuto, sendKundeRapport } from "./kunde-rapport-send.ts";
+import { foersteAfsendelse } from "./kunde-rapport.ts";
 
 const fx = (n: string) => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures", `kunde-maaling-${n}.json`), "utf-8"));
 const ikast = fx("ikast");
@@ -104,4 +105,7 @@ test("arbejdstid er hverdage kl. 8-17 i dansk tid", () => {
   assert.equal(iArbejdstid(new Date("2026-09-30T17:00:00+02:00")), false);
   assert.equal(iArbejdstid(new Date("2026-10-03T11:00:00+02:00")), false, "lørdag");
   assert.equal(iArbejdstid(new Date("2026-11-02T08:30:00+01:00")), true, "vintertid");
+  assert.equal(foersteAfsendelse("2026-09-29T22:18:56Z"), new Date("2026-09-30T08:00:00+02:00").toISOString(), "nat -> kl. 8");
+  assert.equal(foersteAfsendelse("2026-10-02T15:30:00Z"), new Date("2026-10-05T08:00:00+02:00").toISOString(), "fredag aften -> mandag");
+  assert.equal(foersteAfsendelse("2026-09-30T08:30:00Z"), "2026-09-30T08:30:00.000Z", "i arbejdstid = uændret");
 });

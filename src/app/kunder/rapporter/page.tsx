@@ -41,7 +41,7 @@ export default async function RapporterPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <PageHeader icon="FileText" title="Månedsrapporter" subtitle="Hvem har fået månedens rapport. Du sender selv fra Gmail og markerer den her bagefter." />
+      <PageHeader icon="FileText" title="Månedsrapporter" subtitle="Hvem har fået månedens rapport. Den sendes selv fra lucas@kinly.dk på hverdage; du kan stoppe, rette eller sende den her." />
 
       <nav className="rap-maaned" aria-label="Vælg måned">
         <Link className="virk-chip" href={`/kunder/rapporter?maaned=${skift(ym, -1)}`}>

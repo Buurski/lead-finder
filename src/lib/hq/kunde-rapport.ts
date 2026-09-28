@@ -398,6 +398,21 @@ export async function rapportFor(db: Db, host: string, ym: string): Promise<Rapp
 
 export type RaekkeStatus = "mangler" | "klar" | "sendt" | "sprunget";
 
+/** Hverdag kl. 8-17 i dansk tid: ingen rapport lander søndag aften eller kl. 3 om natten. */
+export function iArbejdstid(nu: Date): boolean {
+  const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Copenhagen", weekday: "short", hour: "2-digit", hourCycle: "h23" }).formatToParts(nu);
+  const dag = f.find((p) => p.type === "weekday")?.value ?? "";
+  const time = Number(f.find((p) => p.type === "hour")?.value);
+  return !["Sat", "Sun"].includes(dag) && time >= 8 && time < 17;
+}
+
+/** Første hele time i arbejdstid fra fristen: det HQ viser, så "tidligst" er sandt (ikke kl. 00.18). */
+export function foersteAfsendelse(frist: string): string {
+  const t = new Date(frist);
+  for (let i = 0; i < 24 * 7 && !iArbejdstid(t); i++) t.setTime((Math.floor(t.getTime() / 3_600_000) + 1) * 3_600_000);
+  return t.toISOString();
+}
+
 export interface OversigtRaekke {
   companyId: string | null;
   kunde: string;
@@ -473,7 +488,7 @@ export async function oversigt(db: Db, ym: string): Promise<Oversigt> {
       levering: kortLevering(levering),
       laast: levering?.status === "sendt" && (Boolean(levering.mail) || Date.now() - Date.parse(levering.at) > FORTRYD_MS),
       personlig,
-      auto: { til, sendesEfter: frist, stop: autoStop({ status, tilmeldt, arkiveret, haster: hasterNu(maaling), til, afbrudt: Boolean(afbrudt) }) },
+      auto: { til, sendesEfter: frist && foersteAfsendelse(frist), stop: autoStop({ status, tilmeldt, arkiveret, haster: hasterNu(maaling), til, afbrudt: Boolean(afbrudt) }) },
       note:
         status === "mangler"
           ? "Ingen sendbar måling i måneden endnu. Kør tjekket på VPS'en."
