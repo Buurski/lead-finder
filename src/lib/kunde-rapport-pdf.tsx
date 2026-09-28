@@ -433,6 +433,7 @@ function Kontakt({ r }: { r: RapportModel }) {
   return (
     <View style={[s.card, { marginTop: 24, padding: 16 }]} wrap={false}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's Image har ingen alt */}
         <Image
           src={LUCAS_FOTO}
           style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
@@ -503,9 +504,19 @@ function RapportDokument({ r }: { r: RapportModel }) {
           <Text style={s.meta}>Månedsrapport · målt {r.maaltDato}</Text>
         </View>
 
-        <Text style={s.eyebrow}>{r.maanedNavn}</Text>
-        <Text style={s.h1}>{r.kunde}</Text>
-        <Text style={s.dom}>{r.domaene}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {r.logo ? (
+            // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's Image har ingen alt
+            <View style={{ width: 60, height: 60, marginRight: 14, padding: 6, backgroundColor: "#ffffff", borderWidth: 1, borderColor: C.rule, borderRadius: 10 }}>
+              <Image src={r.logo} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </View>
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={s.eyebrow}>{r.maanedNavn}</Text>
+            <Text style={s.h1}>{r.kunde}</Text>
+            <Text style={s.dom}>{r.domaene}</Text>
+          </View>
+        </View>
 
         <View style={[s.card, s.hero]} wrap={false}>
           <View style={s.heroRow}>

@@ -22,6 +22,7 @@ import { activity, company, gscSnapshot } from "../db/schema.ts";
 import { kundeKontakt } from "./invoice-contacts.ts";
 import { store } from "../store.ts";
 import type { GscChange } from "./gsc-updates.ts";
+import { anmeldelserFor, logoFor } from "./kunde-rapport-kilder.ts";
 import { byggRapport, hostAf, maanedFor, type GscInput, type Maaling, type RapportModel } from "./kunde-rapport-model.ts";
 
 export class KundeRapportError extends Error {}
@@ -53,6 +54,8 @@ interface GemtMaaling {
   maaling: Maaling;
   /** Tidligst automatisk afsendelse. Nulstilles ved ny måling og ved Fortryd. */
   sendesEfter?: string;
+  /** Månedens første måling. Det vi retter før rapporten går ud, står så som "rettet". */
+  foerste?: Maaling;
 }
 
 /** Frist fra en måling lander, til rapporten sendes af sig selv: tid til at se den og stoppe den. */
@@ -171,7 +174,8 @@ export async function gemMaaling(raw: unknown, nu = new Date()): Promise<{ domae
   if (foer && Date.parse(foer.maaling.maalt) > Date.parse(maaling.maalt)) {
     throw new KundeRapportError("der ligger allerede en nyere måling for måneden");
   }
-  await store.put(key, { modtaget: nu.toISOString(), maaling, sendesEfter: new Date(nu.getTime() + AUTO_FRIST_MS).toISOString() } satisfies GemtMaaling);
+  const foerste = foer ? (foer.foerste ?? foer.maaling) : undefined;
+  await store.put(key, { modtaget: nu.toISOString(), maaling, sendesEfter: new Date(nu.getTime() + AUTO_FRIST_MS).toISOString(), ...(foerste ? { foerste } : {}) } satisfies GemtMaaling);
   return { domaene, maaned, overskrev: Boolean(foer) };
 }
 
@@ -244,11 +248,12 @@ interface KundeRaekke {
   website: string;
   services: string[];
   archived: boolean;
+  placeId: string | null;
 }
 
 async function kunder(db: Db): Promise<(KundeRaekke & { host: string | null })[]> {
   const rows = await db
-    .select({ id: company.id, name: company.name, website: company.website, services: company.services, archived: company.archived })
+    .select({ id: company.id, name: company.name, website: company.website, services: company.services, archived: company.archived, placeId: company.placeId })
     .from(company)
     // Arkiverede tages med (som /kunder gør), så en SEO-kunde aldrig forsvinder uden spor.
     .where(and(isNotNull(company.clientNo), eq(company.clientRemoved, false)))
@@ -327,12 +332,24 @@ async function nyhederI(db: Db, companyId: string, ym: string): Promise<{ titel:
   return [...set.values()].slice(0, 6) // modellen prioriterer og skærer til 3;
 }
 
+/** Til VPS'ens månedlige måling: hvem skal måles. Samme udvalg som oversigten (ydelsen "seo",
+ *  ikke arkiveret, har en side), så en ny kunde i CRM kommer med uden at røre Hermes. */
+export async function kunderTilMaaling(db: Db): Promise<{ navn: string; domaene: string; url: string }[]> {
+  const set = new Map<string, { navn: string; domaene: string; url: string }>();
+  for (const k of await kunder(db)) {
+    if (!k.host || k.archived || !k.services.includes("seo") || set.has(k.host)) continue;
+    set.set(k.host, { navn: k.name, domaene: k.host, url: /^https?:\/\//i.test(k.website) ? k.website : `https://${k.website}` });
+  }
+  return [...set.values()];
+}
+
 /** Alt der skal til for at bygge én kundes rapport. null = ingen måling i måneden. */
 export async function rapportFor(db: Db, host: string, ym: string): Promise<RapportModel | null> {
   // Sendt = fastfrosset: kunden skal kunne få præcis samme PDF igen.
   const lev = await hentLevering(host, ym);
   if (lev?.status === "sendt" && lev.rapport) return lev.rapport;
-  const maaling = await hentMaaling(host, ym);
+  const gemt = await store.get<GemtMaaling>(keyM(host, ym));
+  const maaling = gemt?.maaling ?? null;
   if (!maaling) return null;
   const alle = (await kunder(db)).filter((x) => x.host === host);
   const k = alle.find((x) => x.services.includes("seo")) ?? alle[0] ?? null; // samme valg som oversigten
@@ -341,12 +358,16 @@ export async function rapportFor(db: Db, host: string, ym: string): Promise<Rapp
     kunde: k?.name || maaling.navn,
     maaling,
     forrige: await forrigeSendte(host, ym),
+    foerstIMaaned: gemt?.foerste ?? null,
     gsc: k ? await gscFor(db, k.id, efterMaaling) : null,
     arbejde: k ? await arbejdeI(db, k.id, ym) : [],
     nyt: k ? await nyhederI(db, k.id, ym) : [],
     // Hilsenen går til den samme person, mailen sendes til.
     hilsen: k ? ((await kundeKontakt(db, k.id))?.navn.split(/\s+/)[0] ?? "") : "",
     note: await hentPersonligNote(host, ym),
+    vedligeholder: !!k?.services.includes("hjemmeside"),
+    anmeldelser: k ? await anmeldelserFor(k, host, ym) : null,
+    logo: await logoFor(host, ym),
   });
 }
 

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { byggRapport, forrigeVindue, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
+import { anmeldelsesIde, byggRapport, forrigeVindue, maanedFor, sprogFejl, tallene, ugeKlik, type GscInput, type Maaling } from "./kunde-rapport-model.ts";
 import { renderKundeRapportHtml } from "./kunde-rapport-html.ts";
 
 // Rigtige målinger fra kunde_seo_tjek.py, 28-09-2026 (fixtures/).
@@ -140,4 +140,48 @@ test("kontaktboks: Lucas' note escapes, uden note og uden `personlig` (ældre ra
   const gammel = { ...r, personlig: undefined } as unknown as typeof r;
   assert.match(renderKundeRapportHtml(gammel), /Lucas Buur/);
   // PDF'en (.tsx) kan node --test ikke indlæse; den tjekkes med tsx i et script.
+});
+
+test("vi står for siden: småfejl nævnes ikke for kunden, heller ikke som 'X af Y'", () => {
+  const r = byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [], vedligeholder: true });
+  assert.ok(r.iOrden.ok < 24, "fixturen har et åbent fund");
+  assert.deepEqual(r.vigtigste, [], "ingen småfejl i kundens rapport");
+  assert.equal(r.vigtigsteNote, "");
+  assert.equal(r.iOrden.ialt, r.iOrden.ok, "bilaget tæller kun det viste");
+  assert.ok(r.tjek.every((g) => g.linjer.every((l) => l.status === "ok")));
+  assert.doesNotMatch(JSON.stringify(r), /billeder mangler|af 24/i);
+  assert.match(r.mail.tekst, /retter småting/);
+  assert.doesNotMatch(r.mail.tekst, /Alt, vi tjekker, var i orden/, "må ikke påstå alt var i orden");
+  // Uden flaget: kunden ser fundet som før.
+  const u = byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [] });
+  assert.ok(u.vigtigste.length > 0);
+});
+
+test("rettet mellem månedens første måling og afsendelse står som 'rettet'", () => {
+  const nu: Maaling = structuredClone(ikast);
+  for (const p of nu.punkter) if (p.punkt === "billeder_alt") { p.status = "ok"; p.vaerdi = "30 af 30 billeder har en beskrivelse"; }
+  nu.vigtigste = [];
+  const r = byggRapport({ kunde: "Ikast", maaling: nu, forrige: null, foerstIMaaned: ikast, gsc: null, arbejde: [], vedligeholder: true });
+  assert.ok(r.rettet.some((x) => x.startsWith("Billedbeskrivelser")), r.rettet.join(" | "));
+  assert.ok(r.gjort[0].startsWith("Billedbeskrivelser"));
+  assert.match(r.mail.tekst, /Det har vi lavet siden sidst:\n- Billedbeskrivelser/);
+});
+
+test("anmeldelser: glade kunder er et godt-kort; få anmeldelser bliver en idé vi kan hjælpe med", () => {
+  const glad = byggRapport({ kunde: "VIDA", maaling: vida, forrige: null, gsc: null, arbejde: [], anmeldelser: { rating: 4.6, antal: 104 } });
+  assert.ok(glad.godt.some((g) => g.titel === "Kunderne er glade" && /4,6 stjerner i snit fra 104/.test(g.tekst)));
+  assert.equal(anmeldelsesIde({ rating: 4.6, antal: 104 }), null, "mange og gode: ingen idé");
+  assert.match(anmeldelsesIde({ rating: 4.9, antal: 12 }) ?? "", /I har 12 anmeldelser med 4,9 stjerner i snit/);
+  assert.match(anmeldelsesIde({ rating: 3.9, antal: 80 }) ?? "", /Svar på anmeldelserne/);
+  assert.equal(anmeldelsesIde(null), null);
+  const faa = byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [], vedligeholder: true, anmeldelser: { rating: 4.9, antal: 12 } });
+  assert.match(faa.naesteGang[0], /^Flere anmeldelser på Google/);
+  assert.deepEqual(sprogFejl(faa), []);
+});
+
+test("'det har vi gjort' er en kort oversigt i hverdagssprog, inkl. AI-søgning", () => {
+  const r = byggRapport({ kunde: "Ikast", maaling: ikast, forrige: null, gsc: null, arbejde: [] });
+  assert.ok(r.gjort.some((g) => /Google kan finde, læse og vise/.test(g)));
+  assert.ok(r.gjort.some((g) => /AI som ChatGPT/.test(g)));
+  assert.deepEqual(sprogFejl(r), []);
 });

@@ -1,13 +1,15 @@
 // Agent-vejen for månedsrapporten: VPS'ens kunde_seo_tjek.py lægger sin måling
 // her efter hver SENDBAR kørsel. Samme HMAC-skema som de andre /api/agent-ruter.
 //   POST { action: "maaling", maaling: <motorens JSON> } → { ok, domaene, maaned, overskrev }
+//   POST { action: "kunder" } → { ok, kunder: [{ navn, domaene, url }] }  (hvem der skal måles)
 // Gaten (status_flag ok + kan_sendes) håndhæves igen i kunde-rapport.ts, så en
 // blokeret kørsel aldrig kan blive til tal i en kunderapport.
 //
 // Ingen "next/server"-import: route.test.ts kalder handleren direkte under
 // node:test. Undtaget fra proxyens login (api/agent/-præfikset); ruten
 // beskytter sig selv.
-import { gemMaaling, KundeRapportError } from "../../../../lib/hq/kunde-rapport.ts";
+import { gemMaaling, KundeRapportError, kunderTilMaaling } from "../../../../lib/hq/kunde-rapport.ts";
+import { getDb } from "../../../../lib/db/client.ts";
 import { verifyHermesRequest } from "../../../../lib/hermes-hmac.ts";
 import { cleanEnv } from "../../../../lib/hermes.ts";
 
@@ -30,7 +32,9 @@ export async function POST(req: Request) {
   } catch {
     return json({ ok: false, error: "ugyldig JSON" }, 400);
   }
-  if (input.action !== "maaling") return json({ ok: false, error: "ukendt action — brug maaling" }, 400);
+  // Hvem skal måles denne måned: fra CRM (ydelsen "seo"), så nye kunder kommer med af sig selv.
+  if (input.action === "kunder") return json({ ok: true, kunder: await kunderTilMaaling(getDb()) });
+  if (input.action !== "maaling") return json({ ok: false, error: "ukendt action — brug maaling eller kunder" }, 400);
   try {
     return json({ ok: true, ...(await gemMaaling(input.maaling)) });
   } catch (err) {

@@ -75,6 +75,15 @@ export interface RapportInput {
   hilsen?: string;
   /** Lucas' personlige linje til kunden denne måned (fra HQ). Tom = ingen. */
   note?: string;
+  /** Vi står for hele siden (services: "hjemmeside"). Småfejl er så vores opgave, ikke kundens
+   *  læsning: de nævnes ikke, de rettes og står under "Det har vi rettet" næste gang (Lucas 28/9). */
+  vedligeholder?: boolean;
+  /** Månedens første måling, hvis der er målt igen siden. Rettelser imellem tæller som "rettet". */
+  foerstIMaaned?: Maaling | null;
+  /** Kundens eget mærke som data-URI (PNG/JPEG). null = kun navnet. */
+  logo?: string | null;
+  /** Friske Google-anmeldelser (Places). null = ukendt, så nævnes de ikke. */
+  anmeldelser?: { rating: number | null; antal: number } | null;
 }
 
 export type Pil = "op" | "ned" | "lige";
@@ -110,6 +119,8 @@ export interface TjekLinje {
 
 export interface RapportModel {
   kunde: string;
+  /** Kundens eget mærke (data-URI). Mangler i rapporter frosset før 29/9. */
+  logo?: string | null;
   domaene: string;
   maaned: string; // YYYY-MM (Europe/Copenhagen) for målingen
   maanedNavn: string; // "oktober 2026"
@@ -651,7 +662,6 @@ export function byggRapport(input: RapportInput): RapportModel {
   const maaned = maanedFor(m.maalt);
   const nulpunkt = forrige === null;
   const efter = new Map(m.punkter.map((p) => [p.punkt, p]));
-  const foer = new Map((forrige?.punkter ?? []).map((p) => [p.punkt, p]));
 
   // Alle kendte tjek i kundens sprog, grupperet.
   const tjek: RapportModel["tjek"] = (["google", "gaester", "ai"] as const).map(
@@ -677,6 +687,7 @@ export function byggRapport(input: RapportInput): RapportModel {
         : { navn: t.navn, status: "info", tekst: t.problem(v) };
     else if (s === "ok") linje = { navn: t.navn, status: "ok", tekst: t.ok(v) };
     else linje = { navn: t.navn, status: "obs", tekst: t.problem(v) };
+    if (input.vedligeholder && linje.status !== "ok") continue;
     tjek[["google", "gaester", "ai"].indexOf(t.gruppe)].linjer.push(linje);
     if (linje.status === "ok" || linje.status === "obs") {
       ialt += 1;
@@ -690,6 +701,7 @@ export function byggRapport(input: RapportInput): RapportModel {
     const p = efter.get(v.punkt);
     const t = PUNKT[v.punkt];
     if (!p || !t || vigtigste.length >= 3) continue;
+    if (input.vedligeholder && ALVOR[p.alvor ?? ""] !== "Tager vi først") continue;
     vigtigste.push({
       titel: t.navn,
       tekst: t.problem(vaerdiTekst(p)),
@@ -699,8 +711,9 @@ export function byggRapport(input: RapportInput): RapportModel {
       synlig: SYNLIGE.has(v.punkt),
     });
   }
-  const vigtigsteNote =
-    vigtigste.length === 0
+  const vigtigsteNote = input.vedligeholder && vigtigste.length === 0
+    ? "" // sektionen udelades; småting retter vi uden at gøre dem til kundens problem
+    : vigtigste.length === 0
       ? "Vi fandt ikke noget, der skal rettes denne gang. Det er sådan, det skal være."
       : vigtigste.length < 3
         ? `Kun ${vigtigste.length === 1 ? "én ting" : "to ting"} kræver noget denne gang. Vi finder ikke på flere for at fylde op.`
@@ -708,13 +721,16 @@ export function byggRapport(input: RapportInput): RapportModel {
 
   // Rettet siden sidst: problem sidste gang, i orden nu. Det er synligt arbejde.
   const rettet: string[] = [];
-  if (forrige) {
+  for (const kilde of [forrige, input.foerstIMaaned ?? null]) {
+    if (!kilde) continue;
+    const fm = new Map(kilde.punkter.map((p) => [p.punkt, p]));
     for (const [k, p] of efter) {
-      const f = foer.get(k);
+      const f = fm.get(k);
       const t = PUNKT[k];
       if (!t || !f || IKKE_TJEK.has(k) || BONUS.has(k)) continue;
-      if ((status(f) === "obs" || status(f) === "fejl") && status(p) === "ok")
-        rettet.push(`${t.navn}: ${t.ok(vaerdiTekst(p))}`);
+      const linje = `${t.navn}: ${t.ok(vaerdiTekst(p))}`;
+      if ((status(f) === "obs" || status(f) === "fejl") && status(p) === "ok" && !rettet.includes(linje))
+        rettet.push(linje);
     }
   }
 
@@ -730,6 +746,8 @@ export function byggRapport(input: RapportInput): RapportModel {
     hoejtErGodt: boolean,
   ) => {
     if (nu[key] === undefined) return;
+    // Vi står for siden: et dårligt tal her er vores opgave, ikke noget kunden skal læse.
+    if (input.vedligeholder && key === "billeder_uden" && nu[key] > 0) return;
     const n: Nogletal = { label, vaerdi: fmt(nu[key]), forklaring };
     if (!nulpunkt && da[key] !== undefined) {
       n.pil = pil(nu[key], da[key]);
@@ -814,7 +832,11 @@ export function byggRapport(input: RapportInput): RapportModel {
       .map((s) => ({ side: stiAf(s.side), klik: s.klik }));
   } else {
     // Kunderådet 28/9: "14 af 22" lød som en karakterbog. Vi tæller det, der er på plads.
-    hero = {
+    hero = input.vedligeholder && (m.vigtigste?.length ?? 0) > vigtigste.length ? {
+      tal: `${ok}`,
+      enhed: "ting er på plads",
+      saetning: "Vi har gennemgået jeres side på alt det, der afgør om folk kan finde jer og kontakte jer. Småting retter vi løbende, så snart vi ser dem.",
+    } : {
       tal: ok === ialt ? "Alle" : `${ok}`,
       enhed: ok === ialt ? `${ialt} ting er på plads` : "ting er allerede på plads",
       saetning:
@@ -882,8 +904,14 @@ export function byggRapport(input: RapportInput): RapportModel {
   // Uden Google-tal siger hero'en allerede det samme; så gentager kortet det ikke.
   if (ialt > 0 && ok / ialt >= 0.8 && variant === "med-adgang")
     godt.push({
-      titel: ok === ialt ? `Alle ${ialt} ting er på plads` : `${ok} af ${ialt} ting er på plads`,
+      titel: ok === ialt ? `Alle ${ialt} ting er på plads` : input.vedligeholder ? `${ok} ting er på plads` : `${ok} af ${ialt} ting er på plads`,
       tekst: "Det er alt det, der afgør om folk kan finde jer og kontakte jer.",
+    });
+  const anm = input.anmeldelser;
+  if (anm?.rating && anm.rating >= 4.5 && anm.antal >= 20 && godt.length < 4)
+    godt.push({
+      titel: "Kunderne er glade",
+      tekst: `${komma(anm.rating)} stjerner i snit fra ${nf(anm.antal)} anmeldelser på Google.`,
     });
   for (const k of [
     "svartid",
@@ -904,7 +932,7 @@ export function byggRapport(input: RapportInput): RapportModel {
   const gjort = [
     ...rettet,
     ...input.arbejde.filter((s) => s.trim()).slice(0, 8),
-    `Gennemgået jeres side på ${ialt} punkter ${datoLang(m.maalt)}.`,
+    ...gjortOversigt(m),
     ...(variant === "med-adgang"
       ? [
           "Fulgt jeres tal fra Google: hvor mange der ser jer, klikker ind, og hvad de søger på.",
@@ -919,7 +947,7 @@ export function byggRapport(input: RapportInput): RapportModel {
   const naesteGang: string[] = [];
   for (const p of m.punkter) {
     const t = PUNKT[p.punkt];
-    if (!t || iVigtigste.has(p.punkt) || naesteGang.length >= 3) continue;
+    if (!t || input.vedligeholder || iVigtigste.has(p.punkt) || naesteGang.length >= 3) continue;
     const s = status(p);
     if (
       BONUS.has(p.punkt)
@@ -928,6 +956,9 @@ export function byggRapport(input: RapportInput): RapportModel {
     )
       naesteGang.push(`${t.navn}: ${t.goer}`);
   }
+
+  const ide = anmeldelsesIde(anm);
+  if (ide) naesteGang.unshift(ide);
 
   const googleKort = (() => {
     const tt = efter.get("title");
@@ -959,6 +990,7 @@ export function byggRapport(input: RapportInput): RapportModel {
 
   return {
     kunde,
+    logo: input.logo ?? null,
     domaene,
     maaned,
     maanedNavn: maanedNavn(maaned),
@@ -984,7 +1016,7 @@ export function byggRapport(input: RapportInput): RapportModel {
     sider,
     godt,
     tjek: tjek.filter((g) => g.linjer.length),
-    iOrden: { ok, ialt },
+    iOrden: { ok, ialt: input.vedligeholder ? ok : ialt },
     googleKort,
     naesteGang,
     udenAdgang,
@@ -1001,8 +1033,34 @@ export function byggRapport(input: RapportInput): RapportModel {
       nyt,
       input.note?.trim() || "",
       hero.enhed === "besøg fra Google" ? hero.tal : null,
+      // Skjulte småfejl: mailen må så ikke sige "alt var i orden".
+      !!input.vedligeholder && (m.vigtigste?.length ?? 0) > vigtigste.length,
     ),
   };
+}
+
+const komma = (n: number) => n.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** "Det har vi gjort": hvad månedens tjek dækkede, i hverdagssprog. Kun grupper med målte punkter. */
+function gjortOversigt(m: Maaling): string[] {
+  const maalt = new Set(m.punkter.filter((p) => PUNKT[p.punkt] && status(p) !== "ikke_maalt").map((p) => PUNKT[p.punkt].gruppe));
+  const dato = datoLang(m.maalt);
+  return [
+    maalt.has("google") && `Tjekket at Google kan finde, læse og vise jeres sider (${dato}).`,
+    maalt.has("ai") && "Tjekket at AI som ChatGPT og Googles AI-svar kan finde og forstå jer.",
+    maalt.has("gaester") && "Målt hvor hurtigt siden åbner, og prøvet links og kontaktknapper af på mobil.",
+  ].filter((s): s is string => !!s);
+}
+
+/** Idé kunden selv kan mærke og vi kan hjælpe med: flere/bedre Google-anmeldelser. */
+export function anmeldelsesIde(a: RapportInput["anmeldelser"]): string | null {
+  if (!a) return null;
+  const snit = a.rating ? ` med ${komma(a.rating)} stjerner i snit` : "";
+  if (a.antal < 50)
+    return `Flere anmeldelser på Google: I har ${nf(a.antal)} anmeldelser${snit}. Anmeldelser er noget af det, der får flest til at vælge jer frem for andre. Vi kan sætte en nem måde op, så kunderne bliver spurgt, når de er glade.`;
+  if (a.rating && a.rating < 4.3)
+    return `Svar på anmeldelserne på Google: I har ${nf(a.antal)} anmeldelser${snit}. Nye kunder læser svarene, også på de sure. Vi kan hjælpe med at skrive dem.`;
+  return null;
 }
 
 function mailTekst(
@@ -1016,6 +1074,7 @@ function mailTekst(
   nyt: RapportModel["nyt"],
   note = "",
   besoeg: string | null = null,
+  smaating = false,
 ): RapportModel["mail"] {
   const mdr = maaned.split(" ")[0];
   const haster = vigtigste.some((f) => f.alvor === "Tager vi først");
@@ -1040,7 +1099,9 @@ function mailTekst(
     .join("\n");
   const bedre = vigtigste.length
     ? `${haster ? "Det tager vi os af først" : vigtigste.length === 1 ? "Én ting kan blive endnu bedre" : "Et par ting kan blive endnu bedre"}:\n${punkter}${haster ? "\nDen første er den vigtigste, så den går vi i gang med nu." : ""}`
-    : "Alt, vi tjekker, var i orden denne gang.";
+    : smaating
+      ? "Vi holder løbende øje med siden og retter småting, så snart vi ser dem."
+      : "Alt, vi tjekker, var i orden denne gang.";
   const midt = haster
     ? `${bedre}\n\n${gode ? `Det gode:\n${gode}` : ""}`
     : `${gode ? `Det går godt:\n${gode}\n\n` : ""}${bedre}`;

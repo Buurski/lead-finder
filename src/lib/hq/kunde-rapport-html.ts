@@ -220,6 +220,9 @@ header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
 .meta{font-size:13px;color:${C.mid}}
 .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:${C.mid};margin:0 0 6px}
 h1{font-size:34px;line-height:1.15;margin:0 0 4px}
+.kunde-top{display:flex;align-items:center;gap:18px}
+.kunde-logo{width:72px;height:72px;object-fit:contain;flex:none;background:#fff;border:1px solid ${C.rule};border-radius:12px;padding:8px;box-sizing:border-box}
+@media (max-width:520px){.kunde-logo{width:52px;height:52px}}
 .dom{color:${C.mid};margin:0 0 28px}
 .hero{background:${C.card};border:1px solid ${C.rule};border-top:4px solid ${C.ember};border-radius:14px;padding:28px}
 .hero-tal{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
@@ -292,9 +295,10 @@ h3{margin:0}
 @media print{body{background:#fff}.wrap{padding:0;max-width:none}section,.fund-kort,.tal,.hero{break-inside:avoid}.bilag{break-before:page}}
 </style></head><body><div class="wrap">
 <header><span class="brand">${logo(30)}</span><span class="meta">Månedsrapport · målt ${esc(r.maaltDato)}</span></header>
+<div class="kunde-top">${r.logo && /^data:image\/(png|jpeg);base64,/.test(r.logo) ? `<img class="kunde-logo" src="${r.logo}" alt="${esc(r.kunde)} logo">` : ""}<div>
 <p class="eyebrow">${esc(r.maanedNavn)}</p>
 <h1>${esc(r.kunde)}</h1>
-<p class="dom">${esc(r.domaene)}</p>
+<p class="dom">${esc(r.domaene)}</p></div></div>
 
 <div class="hero"><div class="hero-tal"><span class="hero-n">${esc(r.hero.tal)}</span><span class="hero-e">${esc(r.hero.enhed)}</span>${heroRet}</div><p>${esc(r.hero.saetning)}</p>
 ${r.nulpunktTekst ? `<p class="nul">Det her er vores nulpunkt. ${esc(r.nulpunktTekst)}</p>` : ""}</div>
