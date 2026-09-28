@@ -7,7 +7,7 @@ export type MsgGroup = "beauty" | "food" | "photo" | "craftUtility" | "craft" | 
 
 // Demo-site URLs from the single source of truth in demos.ts (DEMO_SITES), mapped
 // to the messenger branch buckets.
-import { DEMO_SITES, KINLY_FRONT, branchKind, customerSiteLinks, hasKinlyFront, isAutoBranch } from "../demos.ts";
+import { DEMO_SITES, KINLY_FRONT, branchKind, customerSiteLinks, hasKinlyFront, isAutoBranch, referenceLinks } from "../demos.ts";
 
 const DEMO_URLS = {
   beautyBarber: DEMO_SITES.streetcut,
@@ -78,7 +78,13 @@ export function demoUrlFor(group: MsgGroup, branch: string, name: string): strin
   // Ukendt branche (branchKind "other"): hverken KT VVS eller Ikast-casen er en
   // reference der ligner — projektoversigten er vores eget arbejde (27/9).
   if (branchKind(branch, name) === "other") return PROJEKTER;
-  return DEMO_URLS.service;
+  // Auto-branchen beholder Ikast-casen: den ER branchens case.
+  if (isAutoBranch(b)) return DEMO_URLS.service;
+  // Alt andet i service-gruppen (advokat, rengøring, klinik …) følger
+  // mail-vejens case-valg fra demos.ts og fejler ellers lukket til
+  // projektoversigten. Uden dette fik en advokat autoværkstedets case som
+  // "et eksempel jeg selv har bygget" (28/9).
+  return referenceLinks(branch, name).caseUrl ?? PROJEKTER;
 }
 
 export function branchDisplayFor(group: MsgGroup, branch: string, name: string): string {

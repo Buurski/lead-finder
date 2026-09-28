@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { branchGroupFor, demoUrlFor, branchDisplayFor, buildMessengerDraft, validateMessengerDraft } from "./compose.ts";
-import { DEMO_SITES } from "../demos.ts";
+import { DEMO_SITES, referenceLinks } from "../demos.ts";
 
 const PROJEKTER = "https://kinly.dk/projekter/";
 
@@ -143,4 +143,29 @@ test("VVS & Mekanik er også VVS i DM'en — begge veje bruger isAutoBranch fra 
     assert.ok(d.text.includes(`her er noget af det jeg selv har bygget: ${PROJEKTER}`), d.text);
     assert.deepEqual(validateMessengerDraft(d.text), [], where);
   }
+});
+
+test("uklassificeret og klinik-branche får aldrig autoværkstedets case i DM'en", () => {
+  // DM-vejen skal vælge samme case som mail-vejen (referenceLinks.caseUrl) og
+  // ellers fejle lukket til projektoversigten. Et autoværksted er ikke en
+  // reference for en advokat, en rengøringsvirksomhed eller en tandlæge (28/9).
+  for (const [branch, name] of [
+    ["advokat", "Advokathuset Midt"],
+    ["rengøring", "Rent Hjem ApS"],
+    ["tandlæge", "Tandlægeklinikken Ikast"],
+  ] as [string, string][]) {
+    const where = `${branch} | ${name}`;
+    const forventet = referenceLinks(branch, name).caseUrl ?? PROJEKTER;
+    const url = demoUrlFor(branchGroupFor(branch, name), branch, name);
+    assert.equal(url, forventet, where);
+    assert.notEqual(url, DEMO_SITES.ikastCase, `${where}: Ikast AutoService-casen i DM'en`);
+    const d = buildMessengerDraft({ name, branch, city: "Ikast", reviews: 30, pattern: "A" });
+    assert.equal(d.demoUrl, forventet, where);
+    assert.ok(!/ikast-autoservice/.test(d.text), `${where}: autoværksted-casen står i DM-teksten`);
+    assert.deepEqual(validateMessengerDraft(d.text), [], where);
+  }
+  // Auto-branchen beholder Ikast-casen: det er branchens egen case, ikke en
+  // fremmed reference.
+  assert.equal(demoUrlFor("service", "autoværksted", "Ikast Autoværksted"), DEMO_SITES.ikastCase);
+  assert.equal(demoUrlFor("service", "mekaniker", "Mekanikeren ApS"), DEMO_SITES.ikastCase);
 });
