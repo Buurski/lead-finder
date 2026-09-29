@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeExpenses, charlieBalance, knownRefs, looksLikeManualDuplicate, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
+import { activeExpenses, charlieBalance, knownRefs, looksLikeManualDuplicate, lucasOsProjection, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
 
 const e = (date: string, amount: number, share: Expense["share"] = "selskab", payer: Expense["payer"] = "lucas"): Expense =>
   ({ id: `${date}-${amount}`, date, vendor: "x", amount, share, payer, source: "manual" });
@@ -58,4 +58,23 @@ test("manuel post ±3 dage og <1 kr fanges som mulig dublet", () => {
   assert.ok(looksLikeManualDuplicate({ ...e("2026-09-05", 221.5), ref: "m" }, [manual]));
   assert.ok(!looksLikeManualDuplicate({ ...e("2026-09-10", 222), ref: "m" }, [manual]));
   assert.ok(!looksLikeManualDuplicate({ ...e("2026-09-03", 222), ref: "m" }, [{ ...manual, ref: "x" }]));
+});
+
+test("Lucas OS-projektion: kun aktive, øre uden float-fejl, ingen note/ref, tombstone beholder ref i knownRefs", () => {
+  const all: unknown[] = [
+    { ...e("2026-09-02", 50.1), id: "a", ref: "<msg-1@vercel.com>", note: "Kunde: Ikast Autoservice", vendor: "Vercel" },
+    { ...e("2026-09-03", 0.3, "charlie", "lucas"), id: "b" },
+    { ...e("2026-09-04", 99), id: "c", ref: "<msg-2@x>" },
+    { id: "c", deleted: true },
+  ];
+  const p = lucasOsProjection(all);
+  assert.equal(p.count, 2);
+  assert.deepEqual(p.expenses.map((x) => [x.id, x.amountOre, x.share, x.payer]), [["a", 5010, "selskab", "lucas"], ["b", 30, "charlie", "lucas"]]);
+  const json = JSON.stringify(p);
+  assert.ok(!json.includes("Ikast") && !json.includes("msg-1") && !json.includes("note"), json);
+  assert.match(p.expenses[0].refHash!, /^[0-9a-f]{32}$/);
+  assert.equal(p.expenses[1].refHash, null);
+  assert.match(p.checksum, /^[0-9a-f]{64}$/);
+  assert.equal(lucasOsProjection([...all].reverse()).checksum, p.checksum, "checksum uafhængig af rækkefølge");
+  assert.ok(knownRefs(all).has("<msg-2@x>"), "slettet post (tombstone uden ref) beholder sin ref → genimporteres ikke");
 });

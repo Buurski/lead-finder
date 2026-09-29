@@ -3,6 +3,8 @@
 // fælles poster Charlie har lagt ud, minus hans overførsler. Alt før LEDGER_START
 // er afregnet (overførslen 26/7, 726 kr). Append-only KV-log; sletning = tombstone.
 
+import { createHash } from "node:crypto";
+
 export const EXPENSES_KEY = "okonomi_expenses";
 export const LEDGER_START = "2026-07-26"; // poster/overførsler SKAL være efter denne dato
 
@@ -115,4 +117,21 @@ export function activePayments(all: unknown[]): LedgerPayment[] {
   const list = all as LedgerPayment[];
   const deleted = new Set(list.filter((p) => p.note === "__deleted__").map((p) => p.id));
   return list.filter((p) => p.amount > 0 && !deleted.has(p.id));
+}
+
+// Lucas OS (privat økonomi) læser udgifterne via /api/agent/read?what=udgifter med sin egen læse-nøgle.
+// Kun det Lucas OS skal bruge: ingen note, ingen ref i klartekst (refHash = stabil id over rettelser), vendor ≤ 60.
+// count + checksum lader modtageren opdage et afkortet svar før den fjerner noget (fuld sync).
+export const LUCAS_OS_MAX = 1500;
+export interface LucasOsExpense { id: string; refHash: string | null; date: string; vendor: string; amountOre: number; original: string | null; payer: Person; share: ExpenseShare }
+
+export function lucasOsProjection(all: unknown[]): { count: number; checksum: string; expenses: LucasOsExpense[] } {
+  const sha = (s: string) => createHash("sha256").update(s, "utf-8").digest("hex");
+  const expenses = activeExpenses(all).map((e) => ({
+    id: e.id, refHash: e.ref ? sha(e.ref).slice(0, 32) : null, date: e.date, vendor: e.vendor.slice(0, 60),
+    amountOre: Math.round(e.amount * 100), original: e.original ?? null, payer: e.payer, share: e.share,
+  }));
+  if (expenses.length > LUCAS_OS_MAX) throw new ExpenseError(`over ${LUCAS_OS_MAX} udgifter — Lucas OS-synk kræver paginering`);
+  const checksum = sha(expenses.map((e) => `${e.id}|${e.amountOre}`).sort().join("\n"));
+  return { count: expenses.length, checksum, expenses };
 }

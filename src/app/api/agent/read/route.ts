@@ -4,6 +4,7 @@
 //   X-Timestamp: <unix-sek>   Authorization: Bearer hex(hmac(secret, `${ts}.GET.${path}.`))
 // hvor path = pathname + query (fx "/api/agent/read?what=sog&q=ktvvs").
 // Kun læsning — ingen skrivninger her.
+// Lucas OS (privat økonomi) har sin egen læse-nøgle — se lib/lucas-os-read.ts (kun what=udgifter).
 import { NextResponse } from "next/server";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getAgentFeed } from "@/lib/hq/agent-feed";
@@ -16,24 +17,19 @@ import { listCustomerContacts } from "@/lib/hq/customer-contacts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
-import { cleanEnv } from "@/lib/hermes";
-import { verifyHermesRequest } from "@/lib/hermes-hmac";
+import { authorizedRead, udgifterResponse } from "@/lib/lucas-os-read";
 import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts"] as const;
-
-function authorized(req: Request): boolean {
-  return verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET));
-}
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts", "udgifter"] as const;
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  if (!pgEnabled()) return NextResponse.json({ ok: false, error: "CRM kører ikke på Postgres" }, { status: 503 });
-
   const url = new URL(req.url);
   const what = url.searchParams.get("what") || "";
+  if (!authorizedRead(req, what)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (what === "udgifter") return udgifterResponse(); // KV, ikke Postgres → før pg-tjekket
+  if (!pgEnabled()) return NextResponse.json({ ok: false, error: "CRM kører ikke på Postgres" }, { status: 503 });
   const db = getDb();
   const today = copenhagenNow().date;
 
