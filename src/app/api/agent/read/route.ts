@@ -17,7 +17,7 @@ import { listCustomerContacts } from "@/lib/hq/customer-contacts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
-import { authorizedRead, udgifterResponse } from "@/lib/lucas-os-read";
+import { projectForLucasOs, readerOf, udgifterResponse } from "@/lib/lucas-os-read";
 import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -27,7 +27,10 @@ const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const what = url.searchParams.get("what") || "";
-  if (!authorizedRead(req, what)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const reader = readerOf(req, what);
+  if (!reader) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  // Lucas OS-nøglen får kun de tilladte felter (V3-1); Hermes-nøglen uændret.
+  const out = (body: Record<string, unknown>) => NextResponse.json(reader === "lucas-os" && what !== "udgifter" ? projectForLucasOs(what, body) : body);
   if (what === "udgifter") return udgifterResponse(); // KV, ikke Postgres → før pg-tjekket
   if (!pgEnabled()) return NextResponse.json({ ok: false, error: "CRM kører ikke på Postgres" }, { status: 503 });
   const db = getDb();
@@ -36,17 +39,17 @@ export async function GET(req: Request) {
   switch (what) {
     case "opmaerksomhed": {
       const items = await getAttention(db, { today });
-      return NextResponse.json({ ok: true, today, items });
+      return out({ ok: true, today, items });
     }
     case "min-dag": {
       const ownerRaw = url.searchParams.get("owner") || "";
       const owner = (["lucas", "charlie"] as readonly string[]).includes(ownerRaw) ? (ownerRaw as Owner) : undefined;
       const items = await listMyDay(db, { owner, today });
-      return NextResponse.json({ ok: true, today, items });
+      return out({ ok: true, today, items });
     }
     case "pipeline": {
       const cards = await listPipeline(db);
-      return NextResponse.json({ ok: true, cards });
+      return out({ ok: true, cards });
     }
     case "sog": {
       const q = (url.searchParams.get("q") || "").trim();
@@ -85,7 +88,7 @@ export async function GET(req: Request) {
       const stage = (url.searchParams.get("stage") || "").trim();
       try {
         const cards = await listPosts(db, stage ? { stage } : {});
-        return NextResponse.json({ ok: true, stage: stage || null, cards });
+        return out({ ok: true, stage: stage || null, cards });
       } catch (err) {
         if (err instanceof BlogInputError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
         throw err;

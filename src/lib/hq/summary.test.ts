@@ -43,7 +43,7 @@ test("HQ-tal læses korrekt fra Postgres", async () => {
   });
   await db.insert(invoice).values([inv("009", "sendt", "2026-09-15"), inv("010", "betalt", "2026-09-15")]);
   await db.insert(subscriptionPlan).values({ clientName: "VIDA Skønhedsklinik", data: { clientName: "VIDA Skønhedsklinik", lines: [{ description: "Hosting", amount: 250 }, { description: "CMS", amount: 500 }], dayOfMonth: 15, active: true } });
-  await db.insert(activity).values({ actor: "lucas", type: "note", summary: "Nyhedsbrev-skabelon færdig", at: new Date("2026-09-22T10:00:00Z") });
+  await db.insert(activity).values({ actor: "lucas", type: "note", summary: "Nyhedsbrev-skabelon færdig", at: new Date(Date.now() - 86_400_000) }); // relativ: teamNow ser kun 7 dage tilbage fra nu
 
   const s = await getHqSummary(db, TODAY);
   assert.deepEqual(s.kpi, { draftsPending: 1, newReplies: 1, overdueNextSteps: 1 });

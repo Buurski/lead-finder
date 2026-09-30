@@ -5,11 +5,31 @@ import { cleanEnv } from "./hermes.ts";
 import { verifyHermesRequest } from "./hermes-hmac.ts";
 import { store } from "./store.ts";
 
-export const LUCAS_OS_WHATS = new Set(["udgifter"]); // F3 udvider listen
+// V3-1 (KRAV #34): Vilfred læser HQ — kun disse visninger, og kun felterne i LUCAS_OS_FIELDS (ingen kontaktdata,
+// mailtekst, noter, links eller id'er). Kundeopdateringer, svar, søgning, feed, CMS og kontakter er aldrig med.
+export const LUCAS_OS_WHATS = new Set(["udgifter", "opmaerksomhed", "min-dag", "pipeline", "blog"]);
+const LUCAS_OS_FIELDS: Record<string, { list: string; keep: string[] }> = {
+  opmaerksomhed: { list: "items", keep: ["level", "kind", "text", "at"] },
+  "min-dag": { list: "items", keep: ["kind", "title", "context", "company", "owner", "due", "dueTime", "important", "bucket"] },
+  pipeline: { list: "cards", keep: ["company", "title", "stage", "owner", "valueDkk", "mrrDkk", "nextStep", "nextStepDue", "updatedAt"] },
+  blog: { list: "cards", keep: ["title", "slug", "category", "stage", "excerpt", "publishRequestedAt", "publishedAt"] },
+};
+
+export function readerOf(req: Request, what: string): "hermes" | "lucas-os" | null {
+  if (verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET))) return "hermes";
+  return LUCAS_OS_WHATS.has(what) && verifyHermesRequest(req, cleanEnv(process.env.LUCAS_OS_READ_SECRET)) ? "lucas-os" : null;
+}
 
 export function authorizedRead(req: Request, what: string): boolean {
-  if (verifyHermesRequest(req, cleanEnv(process.env.HERMES_API_SECRET))) return true;
-  return LUCAS_OS_WHATS.has(what) && verifyHermesRequest(req, cleanEnv(process.env.LUCAS_OS_READ_SECRET));
+  return readerOf(req, what) !== null;
+}
+
+/** Svar til Lucas OS-nøglen: kun de tilladte felter (fail closed: ukendt visning → tom liste). */
+export function projectForLucasOs(what: string, body: Record<string, unknown>): Record<string, unknown> {
+  const f = LUCAS_OS_FIELDS[what];
+  const rows = f && Array.isArray(body[f.list]) ? (body[f.list] as Record<string, unknown>[]) : [];
+  const pick = (r: Record<string, unknown>) => Object.fromEntries((f?.keep ?? []).filter((k) => k in r).map((k) => [k, r[k]]));
+  return { ok: body.ok === true, ...(typeof body.today === "string" ? { today: body.today } : {}), [f?.list ?? "items"]: rows.map(pick) };
 }
 
 /** Udgifter ligger i KV (ikke Postgres). 413 hvis listen er for lang til én fuld sync. */
