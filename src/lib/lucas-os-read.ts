@@ -7,11 +7,13 @@ import { store } from "./store.ts";
 
 // V3-1 (KRAV #34): Vilfred læser HQ — kun disse visninger, og kun felterne i LUCAS_OS_FIELDS (ingen kontaktdata,
 // mailtekst, noter, links eller id'er). Kundeopdateringer, svar, søgning, feed, CMS og kontakter er aldrig med.
-export const LUCAS_OS_WHATS = new Set(["udgifter", "opmaerksomhed", "min-dag", "pipeline", "blog"]);
+// F3 (Lucas OS' Arbejde-side, spec §4 "klik åbner i HQ"): opake id'er + HQ-relative stier er med, så rækker kan linke ud og
+// afstemmes 1:1 — stadig ingen kontaktdata, noter eller mailtekst. noegletal = HQ's egne aggregater (kun tal).
+export const LUCAS_OS_WHATS = new Set(["udgifter", "opmaerksomhed", "min-dag", "pipeline", "blog", "noegletal"]);
 const LUCAS_OS_FIELDS: Record<string, { list: string; keep: string[] }> = {
-  opmaerksomhed: { list: "items", keep: ["level", "kind", "text", "at"] },
-  "min-dag": { list: "items", keep: ["kind", "title", "context", "company", "owner", "due", "dueTime", "important", "bucket"] },
-  pipeline: { list: "cards", keep: ["company", "title", "stage", "owner", "valueDkk", "mrrDkk", "nextStep", "nextStepDue", "updatedAt"] },
+  opmaerksomhed: { list: "items", keep: ["level", "kind", "text", "at", "href"] },
+  "min-dag": { list: "items", keep: ["id", "kind", "title", "context", "companyId", "company", "owner", "due", "dueTime", "important", "bucket"] },
+  pipeline: { list: "cards", keep: ["companyId", "company", "title", "stage", "owner", "valueDkk", "mrrDkk", "nextStep", "nextStepDue", "updatedAt"] },
   blog: { list: "cards", keep: ["title", "slug", "category", "stage", "excerpt", "publishRequestedAt", "publishedAt"] },
 };
 
@@ -22,6 +24,12 @@ export function readerOf(req: Request, what: string): "hermes" | "lucas-os" | nu
 
 export function authorizedRead(req: Request, what: string): boolean {
   return readerOf(req, what) !== null;
+}
+
+/** HQ-forsidens tal (getHqSummary) → kun aggregater. Samme svar til begge nøgler. */
+export function noegletal(s: { money: { mrr: number; outstanding: number; overdueCount: number }; funnel: { stage: string; n: number }[]; kpi: { overdueNextSteps: number } }) {
+  return { mrrKr: s.money.mrr, udestaaendeKr: s.money.outstanding, forfaldneFakturaer: s.money.overdueCount,
+    kunder: s.funnel.find((f) => f.stage === "kunde")?.n ?? 0, forfaldneSkridt: s.kpi.overdueNextSteps };
 }
 
 /** Svar til Lucas OS-nøglen: kun de tilladte felter (fail closed: ukendt visning → tom liste). */

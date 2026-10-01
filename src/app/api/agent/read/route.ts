@@ -4,7 +4,7 @@
 //   X-Timestamp: <unix-sek>   Authorization: Bearer hex(hmac(secret, `${ts}.GET.${path}.`))
 // hvor path = pathname + query (fx "/api/agent/read?what=sog&q=ktvvs").
 // Kun læsning — ingen skrivninger her.
-// Lucas OS (privat økonomi) har sin egen læse-nøgle — se lib/lucas-os-read.ts (kun what=udgifter).
+// Lucas OS har sin egen læse-nøgle — se lib/lucas-os-read.ts (kun LUCAS_OS_WHATS, projicerede felter).
 import { NextResponse } from "next/server";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getAgentFeed } from "@/lib/hq/agent-feed";
@@ -17,12 +17,13 @@ import { listCustomerContacts } from "@/lib/hq/customer-contacts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
-import { projectForLucasOs, readerOf, udgifterResponse } from "@/lib/lucas-os-read";
+import { noegletal, projectForLucasOs, readerOf, udgifterResponse } from "@/lib/lucas-os-read";
+import { getHqSummary } from "@/lib/hq/summary";
 import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts", "udgifter"] as const;
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts", "udgifter", "noegletal"] as const;
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
   const reader = readerOf(req, what);
   if (!reader) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   // Lucas OS-nøglen får kun de tilladte felter (V3-1); Hermes-nøglen uændret.
-  const out = (body: Record<string, unknown>) => NextResponse.json(reader === "lucas-os" && what !== "udgifter" ? projectForLucasOs(what, body) : body);
+  const out = (body: Record<string, unknown>) => NextResponse.json(reader === "lucas-os" && what !== "udgifter" && what !== "noegletal" ? projectForLucasOs(what, body) : body);
   if (what === "udgifter") return udgifterResponse(); // KV, ikke Postgres → før pg-tjekket
   if (!pgEnabled()) return NextResponse.json({ ok: false, error: "CRM kører ikke på Postgres" }, { status: 503 });
   const db = getDb();
@@ -46,6 +47,10 @@ export async function GET(req: Request) {
       const owner = (["lucas", "charlie"] as readonly string[]).includes(ownerRaw) ? (ownerRaw as Owner) : undefined;
       const items = await listMyDay(db, { owner, today });
       return out({ ok: true, today, items });
+    }
+    case "noegletal": {
+      // F3: HQ-forsidens egne tal (MRR = aktive abonnementer, kunder = kundenummer) — kun aggregater, ingen rækker.
+      return out({ ok: true, today, ...noegletal(await getHqSummary(db, today)) });
     }
     case "pipeline": {
       const cards = await listPipeline(db);

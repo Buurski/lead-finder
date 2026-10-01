@@ -59,12 +59,21 @@ test("LUCAS_OS_READ_SECRET læses KUN i lucas-os-read.ts (ingen anden rute kan a
   assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
 });
 
-test("V3-1: Lucas OS-nøglen får kun tilladte felter — ingen noter, links, id'er eller kontaktdata", () => {
+test("V3-1/F3: Lucas OS-nøglen får kun tilladte felter — ingen noter, mailtekst eller kontaktdata (opake id'er + HQ-stier er med)", () => {
   const p = projectForLucasOs("min-dag", { ok: true, today: "2026-09-30", items: [{ id: "t1", kind: "task", title: "Ring", company: "Salon X", companyId: "c1", note: "tlf 12345678 mail a@b.dk", due: "2026-10-01" }] });
-  assert.deepEqual(p, { ok: true, today: "2026-09-30", items: [{ kind: "task", title: "Ring", company: "Salon X", due: "2026-10-01" }] });
+  assert.deepEqual(p, { ok: true, today: "2026-09-30", items: [{ id: "t1", kind: "task", title: "Ring", companyId: "c1", company: "Salon X", due: "2026-10-01" }] });
   const b = projectForLucasOs("blog", { ok: true, cards: [{ id: "x", title: "T", stage: "idé", note: "intern", work: { a: 1 }, source: { url: "u" } }] });
   assert.deepEqual(b, { ok: true, cards: [{ title: "T", stage: "idé" }] });
   const a = projectForLucasOs("opmaerksomhed", { ok: true, items: [{ level: "høj", kind: "svar", text: "Svar Salon X", href: "/k/1", action: { x: 1 } }] });
-  assert.deepEqual(a, { ok: true, items: [{ level: "høj", kind: "svar", text: "Svar Salon X" }] });
+  assert.deepEqual(a, { ok: true, items: [{ level: "høj", kind: "svar", text: "Svar Salon X", href: "/k/1" }] });
+  const pl = projectForLucasOs("pipeline", { ok: true, cards: [{ companyId: "c1", company: "Salon X", stage: "i_gang", contactEmail: "a@b.dk", notes: "x", mrrDkk: 499 }] });
+  assert.deepEqual(pl, { ok: true, cards: [{ companyId: "c1", company: "Salon X", stage: "i_gang", mrrDkk: 499 }] });
   assert.deepEqual(projectForLucasOs("customer-contacts", { ok: true, customers: [{ email: "a@b.dk" }] }), { ok: true, items: [] });
+});
+
+test("F3: noegletal = kun aggregater fra HQ-forsidens summary", async () => {
+  const { noegletal } = await import("./lucas-os-read.ts");
+  const out = noegletal({ money: { mrr: 1497, outstanding: 3997, overdueCount: 1 }, funnel: [{ stage: "lead", n: 40 }, { stage: "kunde", n: 3 }], kpi: { overdueNextSteps: 2 } });
+  assert.deepEqual(out, { mrrKr: 1497, udestaaendeKr: 3997, forfaldneFakturaer: 1, kunder: 3, forfaldneSkridt: 2 });
+  assert.equal(readerOf(signed("/api/agent/read?what=noegletal", LOS), "noegletal"), "lucas-os");
 });
