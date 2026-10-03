@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
   const { date: today } = copenhagenNow();
   const all = await listMyDay(db, { owner, today });
-  const items = scope === "alle" ? all : all.filter((i) => i.bucket === "forfalden" || i.bucket === "i_dag");
+  const items = scope === "alle" ? all : all.filter((i) => i.bucket === "forfalden" || i.bucket === "i_dag" || i.approval?.status === "afventer");
   return NextResponse.json({ items });
 }
 

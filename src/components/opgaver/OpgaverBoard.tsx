@@ -27,11 +27,12 @@ async function patchItem(id: string, body: Record<string, unknown>) {
 }
 
 export default function OpgaverBoard({
-  initialItems, today, defaultOwner,
+  initialItems, today, defaultOwner, currentUser = "",
 }: {
   initialItems: Item[];
   today: string;
   defaultOwner: "lucas" | "charlie" | "";
+  currentUser?: "lucas" | "charlie" | "";
 }) {
   const [tab, setTab] = useState<"dag" | "alle" | "klaret">("dag");
   const [owner, setOwner] = useState<"lucas" | "charlie" | "">(defaultOwner);
@@ -39,6 +40,7 @@ export default function OpgaverBoard({
   const [done, setDone] = useState<DoneRow[] | null>(null);
   const [loadingDone, setLoadingDone] = useState(false);
   const [toast, setToast] = useState("");
+  const [highlight, setHighlight] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function notify(msg: string) {
@@ -47,6 +49,26 @@ export default function OpgaverBoard({
     toastTimer.current = setTimeout(() => setToast(""), 3800);
   }
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+  // Deep-link fra klokken/forsiden (/opgaver?task=<id>#task-<id>): vis opgaven,
+  // skift til "Alle"/"Begge" hvis den ikke er i den aktuelle visning, og markér
+  // rækken et par sekunder. Kører kun ved mount.
+  useEffect(() => {
+    const taskId = new URLSearchParams(window.location.search).get("task");
+    if (!taskId) return;
+    const it = items.find((i) => i.id === taskId);
+    const visibleNow = it && (!owner || it.owner === owner) && (tab === "alle" || it.bucket === "forfalden" || it.bucket === "i_dag" || it.approval?.status === "afventer");
+    // Bevidst asynkront: et synkront setState i en effect giver kaskade-renders
+    // (react-hooks/set-state-in-effect). Her skal vi blot nå at vise rækken.
+    const showTimer = setTimeout(() => {
+      if (!visibleNow) { setTab("alle"); setOwner(""); }
+      setHighlight(taskId);
+    }, 0);
+    const scrollTimer = setTimeout(() => document.getElementById(`task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+    const clearTimer = setTimeout(() => setHighlight(null), 4500);
+    return () => { clearTimeout(showTimer); clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Altid hele (kryds-ejer) listen — ejer-filteret regnes lokalt i `visible`,
   // så et skift af ejer-fane ikke kræver et nyt kald.
@@ -102,7 +124,8 @@ export default function OpgaverBoard({
 
   const visible = items
     .filter((i) => !owner || i.owner === owner)
-    .filter((i) => tab === "alle" || i.bucket === "forfalden" || i.bucket === "i_dag");
+    // Afventende godkendelser skal også ses i "Min dag" — de har ingen dato.
+    .filter((i) => tab === "alle" || i.bucket === "forfalden" || i.bucket === "i_dag" || i.approval?.status === "afventer");
 
   return (
     <div className="op-board">
@@ -172,7 +195,17 @@ export default function OpgaverBoard({
           <div key={b} className="op-group">
             <div className="op-group-label">{b === "vigtig" ? "Vigtig" : BUCKET_LABEL[b]}</div>
             {visible.filter((i) => b === "vigtig" ? i.important : !i.important && i.bucket === b).map((i) => (
-              <TaskRow key={i.id} item={i} today={today} onComplete={complete} onReschedule={reschedule} onChanged={changed} />
+              <TaskRow
+                key={i.id}
+                item={i}
+                today={today}
+                onComplete={complete}
+                onReschedule={reschedule}
+                onChanged={changed}
+                canDecide={currentUser === "" || currentUser === i.owner}
+                onDecide={() => void reload()}
+                highlight={highlight === i.id}
+              />
             ))}
           </div>
         ))

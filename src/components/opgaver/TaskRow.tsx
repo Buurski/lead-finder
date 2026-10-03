@@ -5,6 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
+import { APPROVAL_LABEL } from "@/lib/hq/approval";
 import { addDays, nextMonday } from "./date-shortcuts";
 import TaskEditDialog, { type EditableTask } from "./TaskEditDialog";
 
@@ -32,7 +33,7 @@ function OwnerPill({ owner }: { owner: string }) {
 }
 
 export default function TaskRow({
-  item, today, showCompany = true, onComplete, onReschedule, onChanged,
+  item, today, showCompany = true, onComplete, onReschedule, onChanged, canDecide = false, onDecide, highlight = false,
 }: {
   item: TaskRowItem;
   today: string;
@@ -40,11 +41,22 @@ export default function TaskRow({
   onComplete: (id: string) => void;
   onReschedule: (id: string, due: string) => void;
   onChanged: (id: string, change: Omit<EditableTask, "id" | "companyId"> | null) => void;
+  canDecide?: boolean; // kun den indloggede ejer; serveren er den egentlige vagt
+  onDecide?: (id: string) => void; // forælderens reload efter en beslutning
+  highlight?: boolean;
 }) {
   const [completing, setCompleting] = useState(false);
   const [pickingDate, setPickingDate] = useState(false);
   const [editing, setEditing] = useState(false);
-  const completable = item.title.trim() !== "";
+  const [deciding, setDeciding] = useState<"godkendt" | "afvist" | null>(null);
+  const [decideError, setDecideError] = useState("");
+
+  const approval = item.approval ?? null;
+  const pending = approval?.status === "afventer";
+  const canAct = !!pending && canDecide && !!onDecide;
+  const hasTitle = item.title.trim() !== "";
+  // En afventende godkendelse må ikke kunne "klares" — den skal afgøres først.
+  const completable = hasTitle && !pending;
   const overdue = !!item.due && item.due < today;
 
   function complete() {
@@ -59,20 +71,39 @@ export default function TaskRow({
     onReschedule(item.id, due);
   }
 
+  async function decide(decision: "godkendt" | "afvist") {
+    if (deciding) return;
+    setDeciding(decision);
+    setDecideError("");
+    try {
+      const res = await fetch(`/api/opgaver/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme beslutningen");
+      onDecide?.(item.id);
+    } catch (e) {
+      setDecideError(e instanceof Error ? e.message : "kunne ikke gemme beslutningen");
+      setDeciding(null);
+    }
+  }
+
   return (
-    <div className={`op-row${completing ? " completing" : ""}`}>
+    <div id={`task-${item.id}`} className={`op-row${completing ? " completing" : ""}${highlight ? " op-row-highlight" : ""}`}>
       <button
         type="button"
         className="op-check cc-focus"
         role="checkbox"
         aria-checked={completing}
-        aria-label={completable ? `Marker "${item.title}" som klaret` : "Intet næste skridt at klare"}
+        aria-label={completable ? `Marker "${item.title}" som klaret` : pending ? "Godkendelsen skal afgøres, før opgaven kan klares" : "Intet næste skridt at klare"}
+        title={pending ? "Godkendelsen skal afgøres, før opgaven kan klares" : undefined}
         disabled={!completable}
         onClick={complete}
       />
       <div className="op-row-body">
-        <button type="button" className="op-row-title op-edit-trigger" data-missing={!completable || undefined} onClick={() => setEditing(true)}>
-          {completable ? item.title : "Intet næste skridt"}{item.important && <span className="op-important">Vigtig</span>}
+        <button type="button" className="op-row-title op-edit-trigger" data-missing={!hasTitle || undefined} onClick={() => setEditing(true)}>
+          {hasTitle ? item.title : "Intet næste skridt"}{item.important && <span className="op-important">Vigtig</span>}
         </button>
         <div className="op-row-meta">
           {showCompany && item.companyId ? (
@@ -82,6 +113,30 @@ export default function TaskRow({
           ) : null}
           {item.context && <span className="op-row-context">{item.context}</span>}
         </div>
+        {approval && (
+          <div className="op-approval">
+            <span className="op-approval-badge" data-status={approval.status}>
+              {approval.status === "afventer" ? APPROVAL_LABEL.afventer : `${APPROVAL_LABEL[approval.status]} af ${approval.actor}`}
+            </span>
+            {canAct && (
+              <span className="op-approval-actions">
+                <button type="button" className="cc-btn cc-btn-accent op-approval-btn" onClick={() => decide("godkendt")} disabled={deciding !== null}>
+                  {deciding === "godkendt" ? "Gemmer…" : "Godkend"}
+                </button>
+                <button type="button" className="cc-btn op-approval-btn" onClick={() => decide("afvist")} disabled={deciding !== null}>
+                  {deciding === "afvist" ? "Gemmer…" : "Afvis"}
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+        {decideError && <p role="alert" className="op-approval-err">{decideError}</p>}
+        {approval && item.note.trim() && (
+          <details className="op-plan">
+            <summary className="cc-focus">Vis plan</summary>
+            <pre className="op-plan-text">{item.note}</pre>
+          </details>
+        )}
       </div>
       <OwnerPill owner={item.owner} />
       <details className="op-menu">

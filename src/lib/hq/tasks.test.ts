@@ -5,7 +5,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 import { DealInputError } from "./deals.ts";
-import { completeTask, createTask, deleteHqTask, dueBucket, listDone, listMyDay, patchDealNextStep, patchTask, validateTaskPatch } from "./tasks.ts";
+import { completeTask, createTask, decideApproval, deleteHqTask, dueBucket, listDone, listMyDay, patchDealNextStep, patchTask, validateTaskPatch } from "./tasks.ts";
 
 let db: Db;
 let companyId: string;
@@ -132,4 +132,139 @@ test("klaret opgave kan genåbnes og logges (E2E 26/9)", async () => {
   assert.equal(open.doneAt, null);
   const acts = await db.select().from(activity);
   assert.ok(acts.some((a) => a.summary === "Opgave genåbnet: Genåbn mig"));
+});
+
+// ---------- Godkendelser (Beslutning-markøren i notens første linje) ----------
+
+const PENDING = ["Beslutning fra Lucas AFVENTER", "Godkend eller afvis ved at redigere denne linje.", "", "Plan: rul godkendelsen ud."].join("\n");
+const firstLine = (s: string) => s.split("\n")[0];
+const afterFirst = (s: string) => s.slice(s.indexOf("\n") + 1);
+
+test("listMyDay eksponerer approval udledt af noten", async () => {
+  const [t] = await db.insert(task).values({ companyId, clientName: "Ikast AutoService", owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  const [d] = await db.insert(deal).values({ companyId, title: "Nyhedsbrev", stage: "i_gang", owner: "lucas", nextStep: "Send udkast", nextStepDue: TODAY }).returning();
+  const items = await listMyDay(db, { today: TODAY });
+  assert.deepEqual(items.find((i) => i.id === t.id)?.approval, { status: "afventer", actor: "Lucas" });
+  assert.equal(items.find((i) => i.id === `deal:${d.id}`)?.approval, null, "aftalers næste skridt har altid approval: null");
+});
+
+test("decideApproval godkender: kun markørlinjen skifter, aktivitet logges, doneAt røres ikke", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  const ok = await decideApproval(db, t.id, "godkendt", "lucas");
+  assert.equal(firstLine(ok.note), "Beslutning fra Lucas GODKENDT");
+  assert.equal(afterFirst(ok.note), afterFirst(PENDING));
+  assert.equal(Buffer.from(afterFirst(ok.note)).equals(Buffer.from(afterFirst(PENDING))), true, "resten af noten må ikke ændres");
+  assert.equal(ok.doneAt, null, "en godkendelse klarer ikke opgaven");
+  const logs = await db.select().from(activity);
+  assert.equal(logs.length, 1);
+  assert.deepEqual([logs[0].actor, logs[0].type, logs[0].summary], ["lucas", "opgave", "Godkendelse: Godkend plan - GODKENDT"]);
+  assert.ok(logs[0].at instanceof Date, "tiden kommer fra activity.at");
+});
+
+test("decideApproval afviser: ny status og log bliver AFVIST", async () => {
+  const [t] = await db.insert(task).values({ owner: "charlie", title: "Godkend plan", note: "Beslutning fra Charlie AFVENTER\nplan" }).returning();
+  const out = await decideApproval(db, t.id, "afvist", "charlie");
+  assert.equal(firstLine(out.note), "Beslutning fra Charlie AFVIST");
+  const [log] = await db.select().from(activity);
+  assert.deepEqual([log.actor, log.summary], ["charlie", "Godkendelse: Godkend plan - AFVIST"]);
+});
+
+test("decideApproval afviser ukendt enum, ukendt id, ikke-markøropgave, dobbeltklik, klaret og fremmed aktør", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  await assert.rejects(decideApproval(db, t.id, "måske", "lucas"), /ukendt beslutning/);
+  await assert.rejects(decideApproval(db, t.id, undefined, "lucas"), DealInputError);
+  await assert.rejects(decideApproval(db, "00000000-0000-0000-0000-000000000000", "godkendt", "lucas"), /findes ikke/);
+
+  const [plain] = await db.insert(task).values({ owner: "lucas", title: "Ring", note: "ingen markør" }).returning();
+  await assert.rejects(decideApproval(db, plain.id, "godkendt", "lucas"), /ikke en godkendelsesopgave/);
+
+  await decideApproval(db, t.id, "godkendt", "lucas");
+  await assert.rejects(decideApproval(db, t.id, "afvist", "lucas"), /allerede afgjort/, "dobbeltklik må ikke ændre en afgjort beslutning");
+
+  const [klar] = await db.insert(task).values({ owner: "lucas", title: "Klar", note: PENDING, doneAt: new Date() }).returning();
+  await assert.rejects(decideApproval(db, klar.id, "godkendt", "lucas"), /opgaven er klaret/);
+
+  const [fremmed] = await db.insert(task).values({ owner: "lucas", title: "Fremmed", note: PENDING }).returning();
+  await assert.rejects(decideApproval(db, fremmed.id, "godkendt", "charlie"), /kun opgavens ejer/);
+});
+
+test("decideApproval: 'delt' tillades kun når auth ikke er konfigureret", async () => {
+  const saved = { user: process.env.VERCEL_BASIC_AUTH_USER, pass: process.env.VERCEL_BASIC_AUTH_PASS, secret: process.env.AUTH_SESSION_SECRET };
+  delete process.env.VERCEL_BASIC_AUTH_USER;
+  delete process.env.VERCEL_BASIC_AUTH_PASS;
+  delete process.env.AUTH_SESSION_SECRET;
+  try {
+    const [t] = await db.insert(task).values({ owner: "lucas", title: "Lokal", note: PENDING }).returning();
+    const out = await decideApproval(db, t.id, "afvist", "delt");
+    assert.equal(firstLine(out.note), "Beslutning fra Lucas AFVIST");
+
+    process.env.VERCEL_BASIC_AUTH_USER = "test";
+    process.env.VERCEL_BASIC_AUTH_PASS = "test";
+    process.env.AUTH_SESSION_SECRET = "test";
+    const [t2] = await db.insert(task).values({ owner: "lucas", title: "Fjern", note: PENDING }).returning();
+    await assert.rejects(decideApproval(db, t2.id, "godkendt", "delt"), /kun opgavens ejer/, "med auth kræves den rigtige ejer");
+  } finally {
+    if (saved.user === undefined) delete process.env.VERCEL_BASIC_AUTH_USER; else process.env.VERCEL_BASIC_AUTH_USER = saved.user;
+    if (saved.pass === undefined) delete process.env.VERCEL_BASIC_AUTH_PASS; else process.env.VERCEL_BASIC_AUTH_PASS = saved.pass;
+    if (saved.secret === undefined) delete process.env.AUTH_SESSION_SECRET; else process.env.AUTH_SESSION_SECRET = saved.secret;
+  }
+});
+
+test("completeTask afviser en uafgjort godkendelse men klarer en afgjort", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  await assert.rejects(completeTask(db, t.id, "lucas"), /godkendelsen er ikke afgjort/);
+  await decideApproval(db, t.id, "godkendt", "lucas");
+  const done = await completeTask(db, t.id, "lucas");
+  assert.ok(done.doneAt, "en afgjort opgave kan klares normalt");
+});
+
+test("validateTaskPatch afviser beslutning blandet med andre felter", () => {
+  assert.throws(() => validateTaskPatch({ decision: "godkendt", title: "x" }), /kan ikke kombineres/);
+  assert.throws(() => validateTaskPatch({ decision: "godkendt" }), /intet at opdatere/);
+});
+
+// Simulerer en samtidig skrivning: noten læses, hvorefter en anden aktør ændrer
+// den, før compare-and-set'ens UPDATE rammer. Uden CAS ville beslutningen
+// overskrive den anden skrivning i stedet for at give konflikt.
+interface RacingTx {
+  select(): { from(t: unknown): { where(c: unknown): Promise<Record<string, unknown>[]> } };
+  update(t: unknown): { set(v: unknown): { where(c: unknown): Promise<unknown> } };
+}
+
+function racingNoteDb(id: string, staleNote: string): Db {
+  const real = db as unknown as { transaction(fn: (tx: unknown) => Promise<unknown>): Promise<unknown> };
+  return new Proxy(db as object, {
+    get(target, prop, receiver) {
+      if (prop !== "transaction") return Reflect.get(target, prop, receiver);
+      const withRacingNote = (fn: (tx: unknown) => Promise<unknown>) =>
+        real.transaction(async (tx) => {
+          const raw = tx as RacingTx;
+          const [row] = await raw.select().from(task).where(eq(task.id, id));
+          const chain = {
+            from: () => chain,
+            where: async () => {
+              await raw.update(task).set({ note: "ændret undervejs" }).where(eq(task.id, id));
+              return [{ ...row, note: staleNote }];
+            },
+          };
+          const patched = new Proxy(tx as object, {
+            get(tt, p, r) {
+              if (p === "select") return () => chain;
+              return Reflect.get(tt, p, r);
+            },
+          });
+          return fn(patched);
+        });
+      return withRacingNote;
+    },
+  }) as Db;
+}
+
+test("decideApproval: samtidig noteændring giver konflikt i stedet for overskrivning", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  await assert.rejects(decideApproval(racingNoteDb(t.id, PENDING), t.id, "godkendt", "lucas"), /ændret samtidig/);
+  // Compare-and-set'ens WHERE matchede ikke → ingen beslutning blev skrevet.
+  const [after] = await db.select({ note: task.note }).from(task).where(eq(task.id, t.id));
+  assert.equal(after.note, PENDING, "en forældet læsning må ikke overskrive noten");
+  assert.equal((await db.select().from(activity)).length, 0, "en konflikt må ikke logge en beslutning");
 });

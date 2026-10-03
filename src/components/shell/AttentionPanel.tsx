@@ -16,6 +16,7 @@ export const ATTENTION_KIND_ICON: Record<AttentionItem["kind"], string> = {
   faktura: "Receipt",
   kunde: "Building2",
   rapport: "FileText",
+  godkendelse: "ShieldCheck",
 };
 
 export default function AttentionPanel({

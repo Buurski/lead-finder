@@ -19,7 +19,7 @@ export type AttentionLevel = "haster" | "obs";
 
 export interface AttentionItem {
   level: AttentionLevel;
-  kind: "opgave" | "svar" | "kladde" | "preview" | "faktura" | "kunde" | "rapport";
+  kind: "opgave" | "svar" | "kladde" | "preview" | "faktura" | "kunde" | "rapport" | "godkendelse";
   text: string;
   href: string;
   companyId?: string;
@@ -48,6 +48,9 @@ export async function getAttention(
   // 1) Forfaldne + dagens opgaver/næste skridt for ejeren (samme kilde som /opgaver).
   const myDay = await listMyDay(db, { owner: opts.owner ?? undefined, today: opts.today });
   for (const it of myDay) {
+    // En afventende godkendelse har sin egen linje nedenfor — og må ikke også
+    // tilbyde "Klaret", som completeTask nu afviser.
+    if (it.approval?.status === "afventer") continue;
     if (it.bucket !== "forfalden" && it.bucket !== "i_dag") continue;
     const text = it.kind === "deal" ? `${it.context}: ${it.title}${it.company ? ` · ${it.company}` : ""}` : `${it.title}${it.company ? ` · ${it.company}` : ""}`;
     items.push({
@@ -58,6 +61,19 @@ export async function getAttention(
       companyId: it.companyId ?? undefined,
       at: it.due || undefined,
       action: taskDoneAction(it.id),
+    });
+  }
+
+  // 1b) Beslutninger der venter på ejeren. Ingen dato at vise (markøren har intet
+  // tidsstempel), så ingen at/action — kun et "haster"-punkt der fører til opgaven.
+  for (const it of myDay) {
+    if (it.approval?.status !== "afventer") continue;
+    items.push({
+      level: "haster",
+      kind: "godkendelse",
+      text: `Godkendelse venter: ${it.title}${it.company ? ` · ${it.company}` : ""}`,
+      href: `/opgaver?task=${it.id}#task-${it.id}`,
+      companyId: it.companyId ?? undefined,
     });
   }
 

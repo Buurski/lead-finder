@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { deal, task } from "@/lib/db/schema";
-import { deleteHqTask, patchDealNextStep, patchTask } from "@/lib/hq/tasks";
-import { hqWrite, jsonBody, uuid } from "@/lib/hq/api";
+import { decideApproval, deleteHqTask, patchDealNextStep, patchTask } from "@/lib/hq/tasks";
+import { hqWrite, jsonBody, uuid, HqInputError } from "@/lib/hq/api";
+import { DealInputError } from "@/lib/hq/deals";
 import { scheduleCalendarSync, type CalOwner } from "@/lib/hq/gcal-sync";
 
 export const runtime = "nodejs";
@@ -20,6 +21,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   return hqWrite(req, async (actor) => {
     const { id } = await ctx.params;
     const body = await jsonBody(req);
+    // Godkend/afvis er sit eget flow: aktøren kommer fra hqWrite (serverens
+    // currentUser), aldrig fra body, og må ikke blandes med redigeringer.
+    if (body.decision !== undefined) {
+      if (id.startsWith("deal:")) throw new HqInputError("aftalers næste skridt kan ikke godkendes");
+      if (Object.keys(body).some((k) => k !== "decision")) throw new DealInputError("beslutning kan ikke kombineres med andre ændringer");
+      const taskId = uuid(id, "opgave-id");
+      const item = await decideApproval(getDb(), taskId, body.decision, actor);
+      return { item };
+    }
     if (id.startsWith("deal:")) {
       const dealId = uuid(id.slice(5), "aftale-id");
       const [before] = await getDb().select({ owner: deal.owner }).from(deal).where(eq(deal.id, dealId));

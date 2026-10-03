@@ -67,3 +67,31 @@ test("tom liste er tom, ikke en fejl", async () => {
   const items = await getAttention(db, { owner: "lucas", today: TODAY });
   assert.deepEqual(items, []);
 });
+
+test("afventende godkendelse uden dato giver én haster-linje uden at/action", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: "Beslutning fra Lucas AFVENTER\nPlan:\nlinje 2", due: "2026-09-01" }).returning();
+  const items = await getAttention(db, { owner: "lucas", today: TODAY });
+
+  const g = items.find((i) => i.kind === "godkendelse");
+  assert.ok(g, "forventede en godkendelse-linje");
+  assert.equal(g.level, "haster");
+  assert.equal(g.text, "Godkendelse venter: Godkend plan");
+  assert.equal(g.href, `/opgaver?task=${t.id}#task-${t.id}`);
+  assert.equal(g.at, undefined, "ingen opfundet dato");
+  assert.equal(g.action, undefined, "ingen handling på linjen");
+  // Må ikke også stå som almindelig opgave-linje med en "Klaret"-handling.
+  assert.equal(items.some((i) => i.kind === "opgave" && i.text.includes("Godkend plan")), false);
+});
+
+test("afgjort godkendelse giver ingen afventer-linje", async () => {
+  await db.insert(task).values({ owner: "lucas", title: "Afgjort plan", note: "Beslutning fra Lucas GODKENDT\nplan", due: "2026-09-01" });
+  const items = await getAttention(db, { owner: "lucas", today: TODAY });
+  assert.equal(items.some((i) => i.kind === "godkendelse"), false);
+});
+
+test("almindelig opgave uden dato er stadig ikke med", async () => {
+  await db.insert(task).values({ owner: "lucas", title: "Ryd op", note: "ingen markør", due: "" });
+  const items = await getAttention(db, { owner: "lucas", today: TODAY });
+  assert.equal(items.some((i) => i.kind === "godkendelse"), false);
+  assert.equal(items.some((i) => i.text.includes("Ryd op")), false);
+});

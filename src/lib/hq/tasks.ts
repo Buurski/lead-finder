@@ -10,6 +10,7 @@ import { activity, company, deal, task } from "../db/schema.ts";
 // hqWrite() kender allerede den type og svarer 400 med beskeden. api.ts selv importerer
 // "next/server" og må ikke importeres herfra (knækker node:test-kørslen uden Next's bundler).
 import { DealInputError, normalizeStage, updateDeal, type DealPatch } from "./deals.ts";
+import { parseApproval, withApproval, type Approval } from "./approval.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function uuidOrThrow(v: unknown, label: string): string {
@@ -33,6 +34,7 @@ export interface MyDayItem {
   note: string;
   important: boolean;
   bucket: DueBucket;
+  approval: Approval | null; // udledt af notens første linje; altid null for aftalers næste skridt
 }
 
 // Åbne faser for den daglige opgaveløkke. "leveret" tæller med (der er ofte
@@ -80,6 +82,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
       note: t.note,
       important: t.important,
       bucket: dueBucket(t.due, opts.today),
+      approval: parseApproval(t.note),
     })),
     ...dealRows
       // Kun aftaler med et næste skridt er en opgave (et klaret skridt må ikke blive en tom linje).
@@ -97,6 +100,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
         note: "",
         important: false,
         bucket: dueBucket(d.due ?? "", opts.today),
+        approval: null,
       })),
   ];
   return sortItems(items);
@@ -160,7 +164,7 @@ export async function createTask(db: Db, p: CreateTaskInput) {
   return t;
 }
 
-export interface TaskPatch { done?: unknown; due?: unknown; dueTime?: unknown; title?: unknown; owner?: unknown; note?: unknown; important?: unknown }
+export interface TaskPatch { done?: unknown; due?: unknown; dueTime?: unknown; title?: unknown; owner?: unknown; note?: unknown; important?: unknown; decision?: unknown }
 
 function validNote(v: unknown): string {
   if (typeof v !== "string" || v.length > 4000) throw new DealInputError("note skal være højst 4000 tegn");
@@ -169,6 +173,8 @@ function validNote(v: unknown): string {
 
 export function validateTaskPatch(p: TaskPatch): Partial<typeof task.$inferInsert> {
   if (p.done !== undefined && typeof p.done !== "boolean") throw new DealInputError("done skal være true eller false");
+  // En beslutning er sit eget flow (decideApproval) og må ikke blandes med redigeringer.
+  if (p.decision !== undefined && Object.keys(p).some((k) => k !== "decision")) throw new DealInputError("beslutning kan ikke kombineres med andre ændringer");
   const fields: Partial<typeof task.$inferInsert> = {};
   if (p.due !== undefined) fields.due = validDue(p.due);
   if (p.dueTime !== undefined) fields.dueTime = validDueTime(p.dueTime);
@@ -188,6 +194,8 @@ export async function completeTask(db: Db, id: string, actor: string) {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(task).where(eq(task.id, id));
     if (!before) throw new DealInputError("opgaven findes ikke");
+    // En uafgjort godkendelse må hverken kunne "klares" sig til et ja eller skjules.
+    if (parseApproval(before.note)?.status === "afventer") throw new DealInputError("godkendelsen er ikke afgjort endnu");
     const doneAt = new Date();
     const legacy = before.data && typeof before.data === "object" && !Array.isArray(before.data) ? before.data as Record<string, unknown> : null;
     const [after] = await tx.update(task).set({ doneAt, ...(legacy ? { data: { ...legacy, done: true, doneAt: doneAt.toISOString() } } : {}) }).where(eq(task.id, id)).returning();
@@ -205,6 +213,37 @@ export async function reopenTask(db: Db, id: string, actor: string) {
     const legacy = before.data && typeof before.data === "object" && !Array.isArray(before.data) ? before.data as Record<string, unknown> : null;
     const [after] = await tx.update(task).set({ doneAt: null, ...(legacy ? { data: { ...legacy, done: false, doneAt: null } } : {}) }).where(eq(task.id, id)).returning();
     await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Opgave genåbnet: ${before.title}` });
+    return after;
+  });
+}
+
+/**
+ * Afgør en godkendelsesopgave: skift markørens status og log det. Noten bevares
+ * bortset fra markørlinjen (compare-and-set, så en samtidig noteredigering ikke
+ * overskrives). Sætter ALDRIG doneAt — en afgjort opgave klares bagefter normalt.
+ */
+export async function decideApproval(db: Db, id: string, decision: unknown, actor: string) {
+  if (decision !== "godkendt" && decision !== "afvist") throw new DealInputError("ukendt beslutning");
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(task).where(eq(task.id, id));
+    if (!before) throw new DealInputError("opgaven findes ikke");
+    const approval = parseApproval(before.note);
+    if (!approval) throw new DealInputError("opgaven er ikke en godkendelsesopgave");
+    if (approval.status !== "afventer") throw new DealInputError("beslutningen er allerede afgjort");
+    if (before.doneAt) throw new DealInputError("opgaven er klaret");
+    // Kun opgavens ejer må beslutte. Lokalt (uden auth-env) lukkes "delt" igennem,
+    // samme greb som authorizedRead i hq/api.ts.
+    const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+    const isOwner = (actor === "lucas" || actor === "charlie") && actor === before.owner;
+    const localBypass = !authConfigured && actor === "delt";
+    if (!isOwner && !localBypass) throw new DealInputError("kun opgavens ejer kan beslutte");
+    // Markørens navn er ejerens; falder kun tilbage til den oprindelige aktør
+    // hvis ejeren mod forventning ikke er lucas/charlie (kan ikke give gyldig markør).
+    const actorName: Approval["actor"] = before.owner === "lucas" ? "Lucas" : before.owner === "charlie" ? "Charlie" : approval.actor;
+    const note = withApproval(before.note, actorName, decision);
+    const [after] = await tx.update(task).set({ note }).where(and(eq(task.id, id), eq(task.note, before.note))).returning();
+    if (!after) throw new DealInputError("noten blev ændret samtidig, prøv igen");
+    await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Godkendelse: ${before.title} - ${decision.toUpperCase()}` });
     return after;
   });
 }

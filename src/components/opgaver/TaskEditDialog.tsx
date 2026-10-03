@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { prependApproval, withApproval, type Approval } from "@/lib/hq/approval";
 
 export interface EditableTask {
   id: string;
@@ -11,6 +12,20 @@ export interface EditableTask {
   note: string;
   important: boolean;
   companyId: string | null;
+  approval?: Approval | null;
+}
+
+// Kun markørens første linje skrives/fjernes af checkboxen. En afgjort markør
+// (godkendt/afvist) røres aldrig, og resten af noten bevares ordret.
+function applyApprovalChoice(note: string, needs: boolean, wasPending: boolean, decided: boolean, actor: Approval["actor"]): string {
+  if (decided) return note;
+  // Allerede afventende: skift kun markørlinjen (fx hvis ejeren er ændret).
+  if (needs) return wasPending ? withApproval(note, actor, "afventer") : prependApproval(note, actor);
+  if (wasPending) {
+    const nl = note.indexOf("\n");
+    return nl === -1 ? "" : note.slice(nl + 1);
+  }
+  return note;
 }
 
 export default function TaskEditDialog({ item, onClose, onChanged }: {
@@ -19,12 +34,15 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
   onChanged: (change: Omit<EditableTask, "id" | "companyId"> | null) => void;
 }) {
   const deal = item.id.startsWith("deal:");
+  const decided = item.approval?.status === "godkendt" || item.approval?.status === "afvist";
+  const wasPending = item.approval?.status === "afventer";
   const [title, setTitle] = useState(item.title);
   const [due, setDue] = useState(item.due);
   const [dueTime, setDueTime] = useState(item.dueTime);
   const [owner, setOwner] = useState(item.owner);
   const [note, setNote] = useState(item.note);
   const [important, setImportant] = useState(item.important);
+  const [needsApproval, setNeedsApproval] = useState(wasPending);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,10 +51,12 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
     setBusy(true);
     setError("");
     try {
-      const body = deal ? { title, due } : { title, due, dueTime, owner, note, important };
+      const actorName: Approval["actor"] = owner === "charlie" ? "Charlie" : "Lucas";
+      const finalNote = deal ? note : applyApprovalChoice(note, needsApproval, wasPending, decided, actorName);
+      const body = deal ? { title, due } : { title, due, dueTime, owner, note: finalNote, important };
       const res = await fetch(`/api/opgaver/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Kunne ikke gemme opgaven");
-      onChanged({ title: title.trim(), due, dueTime: deal ? item.dueTime : dueTime, owner, note: note.trim(), important });
+      onChanged({ title: title.trim(), due, dueTime: deal ? item.dueTime : dueTime, owner, note: finalNote.trim(), important });
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke gemme opgaven"); }
     finally { setBusy(false); }
@@ -68,6 +88,10 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
           <label>Ejer<select className="op-input" value={owner} onChange={(e) => setOwner(e.target.value)}><option value="lucas">Lucas</option><option value="charlie">Charlie</option></select></label>
           <label>Note<textarea className="op-input op-dialog-note" maxLength={4000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Fx afventer verificering fra Allan" /></label>
           <label className="op-dialog-check"><input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} />Vigtig</label>
+          <label className="op-dialog-check" title={decided ? "Beslutningen er allerede afgjort og kan ikke ændres her" : undefined}>
+            <input type="checkbox" checked={needsApproval} disabled={decided} onChange={(e) => setNeedsApproval(e.target.checked)} />
+            Kræver godkendelse af {owner === "charlie" ? "Charlie" : "Lucas"}
+          </label>
         </>}
         {deal && item.companyId && <Link className="cc-link" href={`/virksomheder/${item.companyId}`}>Åbn aftalen på virksomheden</Link>}
         {error && <p role="alert" className="op-quickadd-err">{error}</p>}

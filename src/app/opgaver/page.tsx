@@ -19,7 +19,7 @@ export default async function OpgaverPage() {
   return (
     <div className="cc-fade kinly-page">
       <PageHeader icon="ListChecks" title="Opgaver" subtitle="Min dag: opgaver og aftalers næste skridt, ét sted." />
-      <OpgaverBoard initialItems={items} today={today} defaultOwner={defaultOwner} />
+      <OpgaverBoard initialItems={items} today={today} defaultOwner={defaultOwner} currentUser={user === "lucas" || user === "charlie" ? user : ""} />
     </div>
   );
 }
