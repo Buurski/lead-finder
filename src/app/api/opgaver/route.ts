@@ -33,7 +33,9 @@ export async function GET(req: Request) {
 
   const { date: today } = copenhagenNow();
   const all = await listMyDay(db, { owner, today });
-  const items = scope === "alle" ? all : all.filter((i) => i.bucket === "forfalden" || i.bucket === "i_dag" || i.approval?.status === "afventer");
+  // Godkendelsesopgaver har som regel ingen dato og skal med i "Min dag", så de
+  // kan ses og afgøres — også efter beslutningen (samme regel som OpgaverBoard).
+  const items = scope === "alle" ? all : all.filter((i) => i.bucket === "forfalden" || i.bucket === "i_dag" || i.approval !== null);
   return NextResponse.json({ items });
 }
 

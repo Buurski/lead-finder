@@ -26,6 +26,12 @@ async function patchItem(id: string, body: Record<string, unknown>) {
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
 }
 
+// En opgave med beslutningsmarkør i notens første linje (se src/lib/hq/approval.ts).
+// Gælder både afventende og afgjorte — begge skal kunne findes uden en dato.
+function isApproval(i: TaskRowItem): boolean {
+  return i.approval != null;
+}
+
 export default function OpgaverBoard({
   initialItems, today, defaultOwner, currentUser = "",
 }: {
@@ -57,7 +63,7 @@ export default function OpgaverBoard({
     const taskId = new URLSearchParams(window.location.search).get("task");
     if (!taskId) return;
     const it = items.find((i) => i.id === taskId);
-    const visibleNow = it && (!owner || it.owner === owner) && (tab === "alle" || it.bucket === "forfalden" || it.bucket === "i_dag" || it.approval?.status === "afventer");
+    const visibleNow = it && (!owner || it.owner === owner) && (tab === "alle" || it.bucket === "forfalden" || it.bucket === "i_dag" || isApproval(it));
     // Bevidst asynkront: et synkront setState i en effect giver kaskade-renders
     // (react-hooks/set-state-in-effect). Her skal vi blot nå at vise rækken.
     const showTimer = setTimeout(() => {
@@ -124,8 +130,10 @@ export default function OpgaverBoard({
 
   const visible = items
     .filter((i) => !owner || i.owner === owner)
-    // Afventende godkendelser skal også ses i "Min dag" — de har ingen dato.
-    .filter((i) => tab === "alle" || i.bucket === "forfalden" || i.bucket === "i_dag" || i.approval?.status === "afventer");
+    // Godkendelsesopgaver har som regel ingen dato, så de ville falde uden for
+    // "Min dag". De skal kunne ses og afgøres med det samme — også den
+    // allerede godkendte plan, som Lucas ellers ikke kan finde status på.
+    .filter((i) => tab === "alle" || i.bucket === "forfalden" || i.bucket === "i_dag" || isApproval(i));
 
   return (
     <div className="op-board">
@@ -203,7 +211,7 @@ export default function OpgaverBoard({
                 onReschedule={reschedule}
                 onChanged={changed}
                 canDecide={currentUser === "" || currentUser === i.owner}
-                onDecide={() => void reload()}
+                onDecide={async () => { await reload(); }}
                 highlight={highlight === i.id}
               />
             ))}
