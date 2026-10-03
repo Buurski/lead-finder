@@ -6,6 +6,7 @@ import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 import { DealInputError } from "./deals.ts";
 import { completeTask, createTask, decideApproval, deleteHqTask, dueBucket, listDone, listMyDay, patchDealNextStep, patchTask, validateTaskPatch } from "./tasks.ts";
+import { parseApproval } from "./approval.ts";
 
 let db: Db;
 let companyId: string;
@@ -267,4 +268,35 @@ test("decideApproval: samtidig noteændring giver konflikt i stedet for overskri
   const [after] = await db.select({ note: task.note }).from(task).where(eq(task.id, t.id));
   assert.equal(after.note, PENDING, "en forældet læsning må ikke overskrive noten");
   assert.equal((await db.select().from(activity)).length, 0, "en konflikt må ikke logge en beslutning");
+});
+
+// Review-fund 03-10: patchTask må ikke kunne bruges som en bagdør til at træffe
+// eller ændre en beslutning uden om decideApprovals ejer-guard og aktivitetslog.
+test("patchTask: en noteredigering kan ikke indføre eller ændre en beslutning", async () => {
+  const [a] = await db.insert(task).values({ owner: "lucas", title: "Almindelig", note: "plan" }).returning();
+  await assert.rejects(patchTask(db, a.id, { note: `Beslutning fra Lucas GODKENDT\nplan` }, "lucas"), /træffes med Godkend eller Afvis/);
+
+  const [b] = await db.insert(task).values({ owner: "lucas", title: "Afventer", note: PENDING }).returning();
+  await assert.rejects(patchTask(db, b.id, { note: `Beslutning fra Lucas AFVIST\nplan` }, "lucas"), /træffes med Godkend eller Afvis/);
+
+  const godkendt = `Beslutning fra Lucas GODKENDT\nplan`;
+  const [c] = await db.insert(task).values({ owner: "lucas", title: "Afgjort", note: godkendt }).returning();
+  await assert.rejects(patchTask(db, c.id, { note: "plan" }, "lucas"), /afgjort beslutning kan ikke ændres/);
+  await assert.rejects(patchTask(db, c.id, { note: `Beslutning fra Lucas AFVIST\nplan` }, "lucas"), /træffes med Godkend eller Afvis/);
+  await assert.rejects(patchTask(db, c.id, { note: `Beslutning fra Charlie GODKENDT\nplan` }, "lucas"), /træffes med Godkend eller Afvis|afgjort beslutning/);
+
+  for (const [id, note] of [[a.id, "plan"], [b.id, PENDING], [c.id, godkendt]] as const) {
+    const [row] = await db.select({ note: task.note }).from(task).where(eq(task.id, id));
+    assert.equal(row.note, note, "et afvist forsøg må ikke have skrevet noten");
+  }
+  assert.equal((await db.select().from(activity)).length, 0, "en noteredigering er ingen beslutning");
+});
+
+test("patchTask tillader AFVENTER → AFVENTER og at fjerne en afventende markør", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: PENDING }).returning();
+  const out = await patchTask(db, t.id, { note: "Beslutning fra Charlie AFVENTER\nPlan: rul godkendelsen ud." }, "lucas");
+  assert.equal(firstLine(out.note), "Beslutning fra Charlie AFVENTER");
+  const uden = await patchTask(db, t.id, { note: "noten uden markør" }, "lucas");
+  assert.equal(uden.note, "noten uden markør");
+  assert.equal(parseApproval(uden.note), null);
 });

@@ -248,17 +248,38 @@ export async function decideApproval(db: Db, id: string, decision: unknown, acto
   });
 }
 
+/**
+ * En almindelig noteredigering må ikke selv træffe eller ændre en beslutning —
+ * det gør kun Godkend/Afvis (decideApproval), som har ejer-guard og aktivitetslog.
+ * Tilladt: ingen markør → markør, AFVENTER → AFVENTER (fx nyt ejernavn), og at
+ * fjerne en AFVENTER. Afvist: alt der indfører eller rører GODKENDT/AFVIST.
+ */
+export function assertNoteEditKeepsDecision(beforeNote: string, nextNote: string): void {
+  const before = parseApproval(beforeNote);
+  const next = parseApproval(nextNote);
+  if (next && next.status !== "afventer") throw new DealInputError("en beslutning træffes med Godkend eller Afvis, ikke ved at rette noten");
+  if (before && before.status !== "afventer" && (next?.status !== before.status || next.actor !== before.actor)) {
+    throw new DealInputError("en afgjort beslutning kan ikke ændres ved at rette noten");
+  }
+}
+
 export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string) {
   const fields = validateTaskPatch(p);
   if (p.done === true) return completeTask(db, id, actor);
   if (p.done === false) return reopenTask(db, id, actor);
-  const [before] = await db.select({ data: task.data }).from(task).where(eq(task.id, id));
+  const [before] = await db.select({ data: task.data, note: task.note }).from(task).where(eq(task.id, id));
   if (!before) throw new DealInputError("opgaven findes ikke");
+  if (fields.note !== undefined) assertNoteEditKeepsDecision(before.note, fields.note);
   if (before.data && typeof before.data === "object" && !Array.isArray(before.data)) {
     fields.data = { ...(before.data as Record<string, unknown>), ...(fields.title !== undefined ? { title: fields.title } : {}), ...(fields.due !== undefined ? { due: fields.due } : {}) };
   }
-  const [after] = await db.update(task).set(fields).where(eq(task.id, id)).returning();
-  if (!after) throw new DealInputError("opgaven findes ikke");
+  // Compare-and-set: en dialog åbnet før en beslutning må ikke kunne overskrive
+  // den bagefter med sin gamle note — så hellere en klar konflikt.
+  const where = fields.note !== undefined ? and(eq(task.id, id), eq(task.note, before.note)) : eq(task.id, id);
+  const [after] = await db.update(task).set(fields).where(where).returning();
+  if (!after) throw fields.note !== undefined
+    ? new DealInputError("noten blev ændret samtidig, prøv igen")
+    : new DealInputError("opgaven findes ikke");
   return after;
 }
 

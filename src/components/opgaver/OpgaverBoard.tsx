@@ -78,9 +78,13 @@ export default function OpgaverBoard({
 
   // Altid hele (kryds-ejer) listen — ejer-filteret regnes lokalt i `visible`,
   // så et skift af ejer-fane ikke kræver et nyt kald.
-  async function reload() {
+  // Returnerer false hvis kaldet fejlede, så kalderen kan sige det højt i stedet
+  // for at vise en forældet række som om intet var sket.
+  async function reload(): Promise<boolean> {
     const res = await fetch("/api/opgaver?scope=alle");
-    if (res.ok) setItems((await res.json()).items);
+    if (!res.ok) return false;
+    setItems((await res.json()).items);
+    return true;
   }
 
   async function loadDone(forOwner: typeof owner) {
@@ -211,7 +215,7 @@ export default function OpgaverBoard({
                 onReschedule={reschedule}
                 onChanged={changed}
                 canDecide={currentUser === "" || currentUser === i.owner}
-                onDecide={async () => { await reload(); }}
+                onDecide={() => reload()}
                 highlight={highlight === i.id}
               />
             ))}

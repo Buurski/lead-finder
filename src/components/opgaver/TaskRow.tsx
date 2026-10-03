@@ -42,7 +42,7 @@ export default function TaskRow({
   onReschedule: (id: string, due: string) => void;
   onChanged: (id: string, change: Omit<EditableTask, "id" | "companyId"> | null) => void;
   canDecide?: boolean; // kun den indloggede ejer; serveren er den egentlige vagt
-  onDecide?: (id: string) => void | Promise<void>; // forælderens reload efter en beslutning
+  onDecide?: (id: string) => void | boolean | Promise<void | boolean>; // forælderens reload efter en beslutning
   highlight?: boolean;
 }) {
   const [completing, setCompleting] = useState(false);
@@ -83,9 +83,10 @@ export default function TaskRow({
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme beslutningen");
       // Vent på forælderens reload, så knappen først låses op når rækken har
-      // fået sin nye status. Fejler reloadet, frigives knappen igen i stedet for
-      // at hænge fast på "Gemmer…" for evigt — serveren afviser et gentaget klik.
-      await onDecide?.(item.id);
+      // fået sin nye status. Fejler reloadet, så sig det højt i stedet for at
+      // vise en forældet række som om beslutningen ikke var gemt.
+      const refreshed = await onDecide?.(item.id);
+      if (refreshed === false) setDecideError("Beslutningen er gemt, men listen kunne ikke hentes igen. Genindlæs siden.");
       setDeciding(null);
     } catch (e) {
       setDecideError(e instanceof Error ? e.message : "kunne ikke gemme beslutningen");
