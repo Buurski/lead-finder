@@ -3,8 +3,10 @@ import { getDb } from "@/lib/db/client";
 import { denneMaaned, oversigt } from "@/lib/hq/kunde-rapport";
 import { iArbejdstid, klarTilAuto, sendKundeRapport } from "@/lib/hq/kunde-rapport-send";
 
-// GET /api/cron/kunde-rapport — hver time (vercel.json). Sender månedsrapporter hvis
-// frist er gået og som ikke har en stop-grund (autoStop), kun på hverdage kl. 8-17.
+// GET /api/cron/kunde-rapport — hver time (vercel.json). Sender INTET: auto-afsendelsen
+// er slået fra 6/10 i autoStop() (klarTilAuto() giver altid []) og i sendKundeRapport(),
+// der afviser actor "auto". Rapporten godkendes og sendes af et menneske i HQ.
+// Ruten bliver liggende som sikkerhedsnet, hvis flaget engang vendes tilbage.
 // Kigger også på forrige måned: en måling fra d. 30. kl. 23 har sin frist d. 1.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

@@ -452,7 +452,9 @@ export function autoStop(r: { status: RaekkeStatus; tilmeldt: boolean; arkiveret
   if (r.arkiveret) return "Kunden er arkiveret";
   if (!r.til) return "Kunden har ingen mail i HQ";
   if (r.haster) return "Noget haster på siden. Læs rapporten og send den selv.";
-  return null;
+  // Lucas 6/10: auto-afsendelse slået fra. En klar rapport er aldrig auto-sendbar;
+  // et menneske godkender og sender den selv i HQ.
+  return "Auto-afsendelse er slået fra. Godkend og send selv i HQ.";
 }
 
 export async function oversigt(db: Db, ym: string): Promise<Oversigt> {

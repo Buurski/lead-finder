@@ -62,7 +62,7 @@ test("test-send går kun til den valgte adresse og markerer intet", async () => 
 test("rigtig send: kundens kontakt, fryses, kan hverken sendes igen eller fortrydes", async () => {
   await gemPersonligNote("ikastautoservice.dk", "2026-09", "Tak for kaffen i tirsdags.");
   const a = falskAfsender();
-  const r = await sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { nu: EFTER_FRIST, afsender: a, pdf: a.pdf });
+  const r = await sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "lucas", { nu: EFTER_FRIST, afsender: a, pdf: a.pdf });
   assert.equal(r.til, "allan@ikast.dk");
   const m = a.sendt[0];
   assert.match(m.text, /^Hej Allan\./, "hilsenen går til den person, mailen sendes til");
@@ -80,23 +80,41 @@ test("rigtig send: kundens kontakt, fryses, kan hverken sendes igen eller fortry
 });
 
 test("fejl før serveren fik mailen frigiver låsen; ellers står den og stopper automatikken", async () => {
-  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { afsender: falskAfsender({ code: "ECONNECTION" }), pdf: falskAfsender().pdf }));
+  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "lucas", { afsender: falskAfsender({ code: "ECONNECTION" }), pdf: falskAfsender().pdf }));
   assert.equal(await store.get(keyS("ikastautoservice.dk", "2026-09")), null);
-  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { afsender: falskAfsender({ code: "EMESSAGE" }), pdf: falskAfsender().pdf }));
+  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "lucas", { afsender: falskAfsender({ code: "EMESSAGE" }), pdf: falskAfsender().pdf }));
   assert.ok(await store.get(keyS("ikastautoservice.dk", "2026-09")), "måske sendt: låsen står");
-  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { afsender: falskAfsender(), pdf: falskAfsender().pdf }), /Tjek Sendt-mappen/);
+  await assert.rejects(sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "lucas", { afsender: falskAfsender(), pdf: falskAfsender().pdf }), /Tjek Sendt-mappen/);
   const r = (await oversigt(db, "2026-09")).raekker.find((x) => x.domaene === "ikastautoservice.dk");
   assert.match(r?.auto.stop ?? "", /afbrudt/);
 });
 
-test("automatikken: kun efter fristen, aldrig når noget haster, og Fortryd giver en ny frist", async () => {
+test("auto-vejen sender intet: hverken efter fristen eller efter genåbning; mennesket i HQ virker fortsat", async () => {
+  const a = falskAfsender();
   const o = await oversigt(db, "2026-09");
   assert.deepEqual(klarTilAuto(o.raekker, MAALT).map((r) => r.domaene), [], "ikke før fristen");
-  assert.deepEqual(klarTilAuto(o.raekker, EFTER_FRIST).map((r) => r.domaene), ["ikastautoservice.dk"]);
-  assert.match(o.raekker.find((r) => r.domaene === "jbcafeen.dk")?.auto.stop ?? "", /haster/);
+  assert.deepEqual(klarTilAuto(o.raekker, EFTER_FRIST).map((r) => r.domaene), [], "efter fristen: auto er slået fra");
+  assert.match(o.raekker.find((r) => r.domaene === "jbcafeen.dk")?.auto.stop ?? "", /haster/, "de specifikke stop-grunde vises stadig");
+
+  await assert.rejects(
+    sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { nu: EFTER_FRIST, afsender: a, pdf: a.pdf }),
+    /slået fra/,
+  );
+  assert.equal(a.sendt.length, 0, "auto-vejen nåede ikke transporten");
+  assert.equal(await store.get(keyS("ikastautoservice.dk", "2026-09")), null, "ingen mail = ingen lås");
+
   await saetLevering("ikastautoservice.dk", "2026-09", "sprunget", "lucas", "ferie", EFTER_FRIST);
   await saetLevering("ikastautoservice.dk", "2026-09", "aaben", "lucas", undefined, EFTER_FRIST);
-  assert.deepEqual(klarTilAuto((await oversigt(db, "2026-09")).raekker, EFTER_FRIST), [], "genåbnet = ny frist");
+  assert.deepEqual(klarTilAuto((await oversigt(db, "2026-09")).raekker, EFTER_FRIST).map((r) => r.domaene), [], "genåbnet = stadig ingen auto");
+  await assert.rejects(
+    sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "auto", { nu: EFTER_FRIST, afsender: a, pdf: a.pdf }),
+    /slået fra/,
+  );
+  assert.equal(a.sendt.length, 0, "stadig intet sendt");
+
+  const r = await sendKundeRapport(db, "ikastautoservice.dk", "2026-09", "lucas", { nu: EFTER_FRIST, afsender: a, pdf: a.pdf });
+  assert.equal(r.til, "allan@ikast.dk");
+  assert.equal(a.sendt.length, 1, "den manuelle vej sender præcis én mail");
 });
 
 test("arbejdstid er hverdage kl. 8-17 i dansk tid", () => {

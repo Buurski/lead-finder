@@ -38,6 +38,8 @@ export async function sendKundeRapport(
 ): Promise<SendResultat> {
   const nu = opts.nu ?? new Date();
   const test = opts.test === true;
+  // Lucas 6/10: auto-vejen må slet ikke nå transporten (gælder også test-sends).
+  if (af === "auto") throw new KundeRapportError("automatisk afsendelse er slået fra: rapporten godkendes og sendes af et menneske i HQ");
   const rapport = await rapportFor(db, host, ym);
   if (!rapport) throw new KundeRapportError("der er ingen måling for måneden, så der er ingen rapport at sende");
 
