@@ -96,11 +96,16 @@ function componentProbe(name: string, taskQuery: string | null = null) {
       if (path === "react") return {
         useState: (value: unknown) => [value, (next: unknown) => updates.push([value, next])],
         useRef: (value: unknown) => ({ current: value }),
+        useCallback: (fn: unknown) => fn,
         useEffect: (effect: () => unknown, deps: unknown[]) => effects.push({ effect, deps }),
       };
       if (path === "react/jsx-runtime") return { jsx, jsxs: jsx };
       if (path === "next/navigation") return { useSearchParams: () => ({ get: () => taskQuery }) };
       if (path === "@/lib/hq/approval") return approvalHelpers;
+      if (path === "@/lib/hq/focus-task") return {
+        focusTaskFromHref: () => {},
+        subscribeTaskFocus: () => () => {},
+      };
       if (path === "./date-shortcuts") return { addDays: (date: string) => date, nextMonday: (date: string) => date };
       if (path.endsWith(".css")) return {};
       return { default: path };
@@ -122,7 +127,7 @@ test("F6 board abonnerer på ændret task-query og åbner Alle/Begge fra forkert
   for (const taskQuery of ["fixture_first", "fixture_second"]) {
     const probe = componentProbe("OpgaverBoard", taskQuery);
     probe.render({ initialItems: [], today: "2026-10-07", defaultOwner: "charlie" });
-    const navigation = probe.effects.find(({ deps }) => deps.length === 1 && deps[0] === taskQuery);
+    const navigation = probe.effects.find(({ deps }) => deps.includes(taskQuery));
     assert.ok(navigation, "effect skal afhænge af task-query, ikke mount-only");
     navigation.effect();
     probe.timers[0]();
