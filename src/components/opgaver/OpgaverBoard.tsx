@@ -3,6 +3,7 @@
 // Fanerne og ejer-filteret er rent klient-side (ingen URL-state nødvendig,
 // siden er intern); Klaret hentes først når fanen åbnes.
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import TaskRow, { type TaskRowItem } from "./TaskRow";
 import QuickAdd from "./QuickAdd";
 import type { EditableTask } from "./TaskEditDialog";
@@ -40,6 +41,7 @@ export default function OpgaverBoard({
   defaultOwner: "lucas" | "charlie" | "";
   currentUser?: "lucas" | "charlie" | "";
 }) {
+  const taskId = useSearchParams().get("task");
   const [tab, setTab] = useState<"dag" | "alle" | "klaret">("dag");
   const [owner, setOwner] = useState<"lucas" | "charlie" | "">(defaultOwner);
   const [items, setItems] = useState<Item[]>(initialItems);
@@ -57,24 +59,21 @@ export default function OpgaverBoard({
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Deep-link fra klokken/forsiden (/opgaver?task=<id>#task-<id>): vis opgaven,
-  // skift til "Alle"/"Begge" hvis den ikke er i den aktuelle visning, og markér
-  // rækken et par sekunder. Kører kun ved mount.
+  // vis hele listen på hver ny task-query, også når boardet allerede er åbent.
+  // Kun task-query er navigationstilstand; efterfølgende filterklik er lokale.
   useEffect(() => {
-    const taskId = new URLSearchParams(window.location.search).get("task");
     if (!taskId) return;
-    const it = items.find((i) => i.id === taskId);
-    const visibleNow = it && (!owner || it.owner === owner) && (tab === "alle" || it.bucket === "forfalden" || it.bucket === "i_dag" || isApproval(it));
     // Bevidst asynkront: et synkront setState i en effect giver kaskade-renders
     // (react-hooks/set-state-in-effect). Her skal vi blot nå at vise rækken.
     const showTimer = setTimeout(() => {
-      if (!visibleNow) { setTab("alle"); setOwner(""); }
+      setTab("alle");
+      setOwner("");
       setHighlight(taskId);
     }, 0);
     const scrollTimer = setTimeout(() => document.getElementById(`task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
     const clearTimer = setTimeout(() => setHighlight(null), 4500);
     return () => { clearTimeout(showTimer); clearTimeout(scrollTimer); clearTimeout(clearTimer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [taskId]);
 
   // Altid hele (kryds-ejer) listen — ejer-filteret regnes lokalt i `visible`,
   // så et skift af ejer-fane ikke kræver et nyt kald.

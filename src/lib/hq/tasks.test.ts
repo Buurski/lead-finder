@@ -232,7 +232,7 @@ interface RacingTx {
   update(t: unknown): { set(v: unknown): { where(c: unknown): Promise<unknown> } };
 }
 
-function racingNoteDb(id: string, staleNote: string): Db {
+function racingNoteDb(id: string, staleNote: string, change: Partial<typeof task.$inferInsert> = { note: "ændret undervejs" }): Db {
   const real = db as unknown as { transaction(fn: (tx: unknown) => Promise<unknown>): Promise<unknown> };
   return new Proxy(db as object, {
     get(target, prop, receiver) {
@@ -244,7 +244,7 @@ function racingNoteDb(id: string, staleNote: string): Db {
           const chain = {
             from: () => chain,
             where: async () => {
-              await raw.update(task).set({ note: "ændret undervejs" }).where(eq(task.id, id));
+              await raw.update(task).set(change).where(eq(task.id, id));
               return [{ ...row, note: staleNote }];
             },
           };
@@ -365,4 +365,53 @@ test("opgave uden kunde/klokkeslæt gemmes som tom streng og kan ryddes igen", a
   // Ejervagten omkring godkendelsesmarkøren er urørt af rydningen: en fremmed aktør afvises.
   const [beskyttet] = await db.insert(task).values({ owner: "lucas", title: "Beskyttet", note: PENDING }).returning();
   await assert.rejects(patchTask(db, beskyttet.id, { note: "noten uden markør" }, "charlie"), /kun opgavens ejer/);
+});
+
+// Deterministisk interleaving i den eksisterende PGlite-fixture: ændringen
+// committes efter SELECT, før patchTasks rigtige SQL-UPDATE udføres.
+function interleavedPatchDb(id: string, change: Partial<typeof task.$inferInsert>): Db {
+  return new Proxy(db, {
+    get(target, prop, receiver) {
+      if (prop !== "select") return Reflect.get(target, prop, receiver);
+      return () => ({ from: () => ({ where: async () => {
+        const rows = await db.select().from(task).where(eq(task.id, id));
+        await db.update(task).set(change).where(eq(task.id, id));
+        return rows;
+      } }) });
+    },
+  });
+}
+
+test("F2 markørfjernelse og navneskift taber owner-CAS uden noteoverwrite", async () => {
+  for (const nextNote of ["Plan uden markør", PENDING.replace("Lucas", "Charlie")]) {
+    const [t] = await db.insert(task).values({ owner: "lucas", title: "Ejer-CAS", note: PENDING }).returning();
+    await assert.rejects(patchTask(interleavedPatchDb(t.id, { owner: "charlie" }), t.id, { note: nextNote }, "lucas"), /ændret samtidig/);
+    const [after] = await db.select().from(task).where(eq(task.id, t.id));
+    assert.equal(after.owner, "charlie");
+    assert.equal(after.note, PENDING);
+  }
+  assert.equal((await db.select().from(activity)).length, 0);
+});
+
+test("F3 completeTask taber note/data-CAS før doneAt, legacydata og log", async () => {
+  const legacy = { id: "cas_completion", title: "Oprindelig", done: false, extra: "bevar" };
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Completion-CAS", note: "plan", data: legacy }).returning();
+  for (const change of [{ note: PENDING }, { data: { ...legacy, extra: "ny" } }]) {
+    await assert.rejects(completeTask(racingNoteDb(t.id, "plan", change), t.id, "lucas"), /ændret samtidig/);
+    const [after] = await db.select().from(task).where(eq(task.id, t.id));
+    assert.equal(after.doneAt, null);
+    assert.deepEqual(after.data, legacy);
+    assert.equal((await db.select().from(activity)).length, 0);
+  }
+});
+
+test("F3 omvendt rækkefølge: AFVENTER må ikke indsættes efter completion", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Omvendt race", note: "plan" }).returning();
+  await assert.rejects(patchTask(interleavedPatchDb(t.id, { doneAt: new Date() }), t.id, { note: PENDING }, "lucas"), /ændret samtidig/);
+  const [after] = await db.select().from(task).where(eq(task.id, t.id));
+  assert.equal(after.note, "plan");
+  assert.ok(after.doneAt);
+  await assert.rejects(patchTask(db, t.id, { note: PENDING }, "lucas"), /genåbnes/);
+  await patchTask(db, t.id, { done: false }, "lucas");
+  assert.equal((await patchTask(db, t.id, { note: PENDING }, "lucas")).note, PENDING);
 });

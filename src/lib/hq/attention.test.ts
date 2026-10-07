@@ -95,3 +95,24 @@ test("almindelig opgave uden dato er stadig ikke med", async () => {
   assert.equal(items.some((i) => i.kind === "godkendelse"), false);
   assert.equal(items.some((i) => i.text.includes("Ryd op")), false);
 });
+
+test("F4 datoløs godkendelse og aggregater bevares ved mange hasteopgaver", async () => {
+  await db.insert(task).values(Array.from({ length: 35 }, (_, i) => ({ owner: "lucas", title: `Haster ${i}`, due: "2026-09-01" })));
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Beslutning", note: "Beslutning fra Lucas AFVENTER\nplan" }).returning();
+  await db.insert(outreach).values({ id: "fixture_cap", status: "pending", draft: {} });
+  const items = await getAttention(db, { owner: "lucas", today: TODAY });
+  assert.equal(items.length, 30);
+  assert.equal(items.filter((i) => i.kind === "opgave").length, 28);
+  assert.ok(items.some((i) => i.kind === "kladde"));
+  const approval = items.find((i) => i.kind === "godkendelse");
+  assert.ok(approval);
+  assert.equal(approval.href, `/opgaver?task=${t.id}#task-${t.id}`);
+  assert.equal(approval.level, "obs");
+  assert.equal(approval.at, undefined);
+  assert.equal(approval.action, undefined);
+  await db.insert(task).values(Array.from({ length: 31 }, (_, i) => ({ owner: "lucas", title: `Beslutning ${i}`, note: "Beslutning fra Lucas AFVENTER\nplan" })));
+  const overflow = await getAttention(db, { owner: "lucas", today: TODAY });
+  assert.equal(overflow.filter((i) => i.kind === "godkendelse").length, 32);
+  assert.equal(overflow.filter((i) => i.kind === "opgave").length, 0);
+  assert.equal(overflow.length, 33, "beskyttede linjer over cap beholdes, ikke negativ slice");
+});

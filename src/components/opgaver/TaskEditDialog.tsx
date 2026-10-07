@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { prependApproval, withApproval, type Approval } from "@/lib/hq/approval";
+import { applyApprovalChoice, parseApproval, type Approval } from "@/lib/hq/approval";
 
 export interface EditableTask {
   id: string;
@@ -15,18 +15,6 @@ export interface EditableTask {
   approval?: Approval | null;
 }
 
-// Kun markørens første linje skrives/fjernes af checkboxen. En afgjort markør
-// (godkendt/afvist) røres aldrig, og resten af noten bevares ordret.
-function applyApprovalChoice(note: string, needs: boolean, wasPending: boolean, decided: boolean, actor: Approval["actor"]): string {
-  if (decided) return note;
-  // Allerede afventende: skift kun markørlinjen (fx hvis ejeren er ændret).
-  if (needs) return wasPending ? withApproval(note, actor, "afventer") : prependApproval(note, actor);
-  if (wasPending) {
-    const nl = note.indexOf("\n");
-    return nl === -1 ? "" : note.slice(nl + 1);
-  }
-  return note;
-}
 
 export default function TaskEditDialog({ item, onClose, onChanged }: {
   item: EditableTask;
@@ -34,8 +22,9 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
   onChanged: (change: Omit<EditableTask, "id" | "companyId"> | null) => void;
 }) {
   const deal = item.id.startsWith("deal:");
-  const decided = item.approval?.status === "godkendt" || item.approval?.status === "afvist";
-  const wasPending = item.approval?.status === "afventer";
+  const approval = deal ? null : item.approval ?? parseApproval(item.note);
+  const decided = approval?.status === "godkendt" || approval?.status === "afvist";
+  const wasPending = approval?.status === "afventer";
   const [title, setTitle] = useState(item.title);
   const [due, setDue] = useState(item.due);
   const [dueTime, setDueTime] = useState(item.dueTime);
@@ -52,11 +41,11 @@ export default function TaskEditDialog({ item, onClose, onChanged }: {
     setError("");
     try {
       const actorName: Approval["actor"] = owner === "charlie" ? "Charlie" : "Lucas";
-      const finalNote = deal ? note : applyApprovalChoice(note, needsApproval, wasPending, decided, actorName);
+      const finalNote = deal ? note : applyApprovalChoice(note, needsApproval, decided, actorName);
       const body = deal ? { title, due } : { title, due, dueTime, owner, note: finalNote, important };
       const res = await fetch(`/api/opgaver/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Kunne ikke gemme opgaven");
-      onChanged({ title: title.trim(), due, dueTime: deal ? item.dueTime : dueTime, owner, note: finalNote.trim(), important });
+      onChanged({ title: title.trim(), due, dueTime: deal ? item.dueTime : dueTime, owner, note: finalNote.trim(), important, approval: deal ? null : parseApproval(finalNote) });
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "Kunne ikke gemme opgaven"); }
     finally { setBusy(false); }

@@ -5,6 +5,7 @@
 import { and, eq, like, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, task } from "../db/schema.ts";
+import { parseApproval } from "./approval.ts";
 import { failedBeforeAccept, withLock } from "../send-safety.ts";
 
 export class PreviewSendError extends Error {}
@@ -122,11 +123,14 @@ export async function sendPreview(
 
 /** Svaret er sendt ⇒ "Svar på henvendelse"-opgaven fra inbound.ts lukkes. Fejler det, står opgaven bare åben. */
 export async function closeInboundTask(db: Db, previewId: string): Promise<void> {
-  await db
-    .update(task)
-    .set({ doneAt: new Date() })
-    .where(and(eq(task.legacyId, `inbound:${previewId}`), sql`${task.doneAt} is null`))
-    .catch((err) => console.error(JSON.stringify({ evt: "preview.close_task_failed", id: previewId, error: String(err).slice(0, 200) })));
+  try {
+    const [row] = await db.select({ id: task.id, note: task.note }).from(task).where(eq(task.legacyId, `inbound:${previewId}`));
+    if (!row || parseApproval(row.note)?.status === "afventer") return;
+    // Denne completionvej skal også tabe hvis en approval indsættes efter SELECT.
+    await db.update(task).set({ doneAt: new Date() }).where(and(eq(task.id, row.id), eq(task.note, row.note), sql`${task.doneAt} is null`));
+  } catch (err) {
+    console.error(JSON.stringify({ evt: "preview.close_task_failed", id: previewId, error: String(err).slice(0, 200) }));
+  }
 }
 
 const STATE = sql<string | null>`${activity.payload}->>'state'`;

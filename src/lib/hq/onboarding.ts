@@ -150,5 +150,9 @@ export async function setOnboardingTaskDone(db: Db, companyId: string, taskId: s
   if (!(row.data as { onboarding?: boolean } | null)?.onboarding) throw new OnboardingError("ikke en opstartsopgave");
   // Samme regel som completeTask: en uafgjort godkendelse må ikke kunne lukkes ad bagvejen.
   if (done && parseApproval(row.note)?.status === "afventer") throw new OnboardingError("godkendelsen er ikke afgjort endnu");
-  await db.update(task).set({ doneAt: done ? new Date() : null }).where(eq(task.id, taskId));
+  const [after] = await db.update(task).set({ doneAt: done ? new Date() : null }).where(and(
+    eq(task.id, taskId), eq(task.companyId, companyId), eq(task.note, row.note),
+    sql`${task.data} is not distinct from ${row.data === null ? null : JSON.stringify(row.data)}::jsonb`,
+  )).returning({ id: task.id });
+  if (!after) throw new OnboardingError("opgaven blev ændret samtidig, prøv igen");
 }

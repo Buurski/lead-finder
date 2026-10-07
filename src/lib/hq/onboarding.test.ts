@@ -116,3 +116,30 @@ test("første kunde nogensinde får nummer 2 (opslag afviser < 2); samtidige kli
   const steps = await db.select().from(task).where(eq(task.companyId, companyId));
   assert.equal(steps.length, 7);
 });
+
+test("F3 onboarding afviser pending både ved læsning og ved atomisk note-CAS", async () => {
+  const pending = "Beslutning fra Lucas AFVENTER\nSyntetisk plan";
+  const data = { onboarding: true, step: 0, extra: "bevar" };
+  const [t] = await db.insert(task).values({ companyId, title: "Fixture", note: "plan", data }).returning();
+  const interleaved = new Proxy(db, {
+    get(target, prop, receiver) {
+      if (prop !== "select") return Reflect.get(target, prop, receiver);
+      return () => ({ from: () => ({ where: async () => {
+        const rows = await db.select().from(task).where(eq(task.id, t.id));
+        await db.update(task).set({ note: pending }).where(eq(task.id, t.id));
+        return rows;
+      } }) });
+    },
+  });
+  await assert.rejects(setOnboardingTaskDone(interleaved, companyId, t.id, true), /ændret samtidig/);
+  const [after] = await db.select().from(task).where(eq(task.id, t.id));
+  assert.equal(after.doneAt, null);
+  assert.equal(after.note, pending);
+  assert.deepEqual(after.data, data);
+  assert.equal((await db.select().from(activity)).length, 0);
+  await assert.rejects(setOnboardingTaskDone(db, companyId, t.id, true), /godkendelsen er ikke afgjort/);
+  await setOnboardingTaskDone(db, companyId, t.id, false);
+  await db.update(task).set({ note: pending.replace("AFVENTER", "AFVIST") }).where(eq(task.id, t.id));
+  await setOnboardingTaskDone(db, companyId, t.id, true);
+  assert.equal((await getOnboardingChecklist(db, companyId))[0].done, true);
+});

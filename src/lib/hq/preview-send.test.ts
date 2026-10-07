@@ -1,9 +1,10 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
-import { activity } from "../db/schema.ts";
-import { claimBlocksStatus, hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
+import { activity, task } from "../db/schema.ts";
+import { closeInboundTask, claimBlocksStatus, hasOpenClaim, PreviewSendError, previewClaims, previewLockName, reconcilePreview, sendPreview, type PreviewLike } from "./preview-send.ts";
 import { acquireLock, releaseLock } from "../send-safety.ts";
 
 let db: Db;
@@ -174,4 +175,29 @@ test("SEO-tjek-henvendelse: sendes uden demo-link fra 'ny', lukker svar-opgaven;
   const [t] = await db.select().from(task);
   assert.ok(t.doneAt, "svar-opgaven lukkes når svaret er sendt");
   await assert.rejects(sendPreview(db, "preview_seo2", msg, "lucas", deps({ ...seo, id: "preview_seo2", status: "afvist" }).d), /status "afvist"/);
+});
+
+test("F3 inbound-completion bevarer pending ved læsning og note-race uden transport", async () => {
+  const pending = "Beslutning fra Lucas AFVENTER\nFixtureplan";
+  const [t] = await db.insert(task).values({ legacyId: "inbound:cas_preview", title: "Fixture", note: "plan" }).returning();
+  const interleaved = new Proxy(db, {
+    get(target, prop, receiver) {
+      if (prop !== "select") return Reflect.get(target, prop, receiver);
+      return () => ({ from: () => ({ where: async () => {
+        const rows = await db.select().from(task).where(eq(task.id, t.id));
+        await db.update(task).set({ note: pending }).where(eq(task.id, t.id));
+        return rows;
+      } }) });
+    },
+  });
+  await closeInboundTask(interleaved, "cas_preview");
+  await closeInboundTask(db, "cas_preview");
+  let [after] = await db.select().from(task).where(eq(task.id, t.id));
+  assert.equal(after.note, pending);
+  assert.equal(after.doneAt, null);
+  assert.equal((await db.select().from(activity)).length, 0);
+  await db.update(task).set({ note: "plan" }).where(eq(task.id, t.id));
+  await closeInboundTask(db, "cas_preview");
+  [after] = await db.select().from(task).where(eq(task.id, t.id));
+  assert.ok(after.doneAt);
 });

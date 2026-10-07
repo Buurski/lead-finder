@@ -6,7 +6,7 @@
 // hele det oprindelige CrmContact/CrmActivity/CrmTask-objekt loss-frit;
 // typede kolonner findes kun til filtrering/joins (spec §3).
 import "server-only";
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { activity, company, contact, task } from "../db/schema.ts";
 import { parseApproval } from "../hq/approval.ts";
@@ -108,14 +108,16 @@ export async function saveTask(input: Partial<CrmTask>, clientName: string, task
   const existing = existingRow?.data as CrmTask | undefined;
   if (existing && existing.clientName !== clientName) throw new CrmInputError("opgaven tilhører en anden kunde");
   const taskDoc: CrmTask = {
+    ...existing,
     id: taskId,
     clientName,
     title: validText(input.title, "opgavetitel", 180),
     due: validDate(input.due),
     done: typeof input.done === "boolean" ? input.done : (existing?.done ?? false),
     at: existing?.at ?? new Date().toISOString(),
-    doneAt: typeof input.done === "boolean" && input.done ? new Date().toISOString() : existing?.doneAt,
+    doneAt: typeof input.done === "boolean" ? (input.done ? new Date().toISOString() : undefined) : existing?.doneAt,
   };
+  if ((taskDoc.done || taskDoc.doneAt) && existingRow && parseApproval(existingRow.note)?.status === "afventer") throw new CrmInputError("godkendelsen er ikke afgjort endnu");
   const companyId = await resolveCompanyId(clientName);
   const row = {
     companyId,
@@ -125,10 +127,16 @@ export async function saveTask(input: Partial<CrmTask>, clientName: string, task
     doneAt: taskDoc.doneAt ? new Date(taskDoc.doneAt) : null,
     data: taskDoc,
   };
-  await db
-    .insert(task)
-    .values({ legacyId: taskId, ...row })
-    .onConflictDoUpdate({ target: task.legacyId, set: row });
+  const insert = db.insert(task).values({ legacyId: taskId, ...row });
+  // Også POST er en completionvej. Et eksisterende id må kun opdateres mod
+  // den læste note/data; et samtidigt nyt id må aldrig upsertes over en plan.
+  const [saved] = existingRow
+    ? await insert.onConflictDoUpdate({ target: task.legacyId, set: row, setWhere: and(
+      eq(task.id, existingRow.id), eq(task.note, existingRow.note),
+      sql`${task.data} is not distinct from ${existingRow.data === null ? null : JSON.stringify(existingRow.data)}::jsonb`,
+    ) }).returning({ id: task.id })
+    : await insert.onConflictDoNothing({ target: task.legacyId }).returning({ id: task.id });
+  if (!saved) throw new CrmInputError("opgaven blev ændret samtidig, prøv igen");
   if (!existing) {
     await addActivity({
       id: id("activity"),
@@ -151,10 +159,13 @@ export async function updateTask(taskId: string, clientName: string, done: boole
   // Samme regel som completeTask: en uafgjort godkendelse må ikke lukkes ad bagvejen.
   if (done && parseApproval(existingRow.note)?.status === "afventer") throw new CrmInputError("godkendelsen er ikke afgjort endnu");
   const taskDoc: CrmTask = { ...existing, done, doneAt: done ? new Date().toISOString() : undefined };
-  await db
+  const [after] = await db
     .update(task)
     .set({ data: taskDoc, doneAt: taskDoc.doneAt ? new Date(taskDoc.doneAt) : null })
-    .where(eq(task.legacyId, taskId));
+    .where(and(eq(task.id, existingRow.id), eq(task.note, existingRow.note),
+      sql`${task.data} is not distinct from ${existingRow.data === null ? null : JSON.stringify(existingRow.data)}::jsonb`))
+    .returning({ id: task.id });
+  if (!after) throw new CrmInputError("opgaven blev ændret samtidig, prøv igen");
   await addActivity({
     id: id("activity"),
     clientName,

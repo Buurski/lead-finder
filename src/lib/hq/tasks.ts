@@ -3,7 +3,7 @@
 // `task`-tabellen og aftalers næste skridt (åbne faser). Alle skrivninger
 // logger hvem der gjorde hvad i `activity`, samme mønster som deals.ts.
 import "server-only";
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 // DealInputError genbruges som opgavers input-fejl (ikke en ny klasse) — hq/api.ts's
@@ -208,7 +208,11 @@ export async function completeTask(db: Db, id: string, actor: string) {
     if (parseApproval(before.note)?.status === "afventer") throw new DealInputError("godkendelsen er ikke afgjort endnu");
     const doneAt = new Date();
     const legacy = before.data && typeof before.data === "object" && !Array.isArray(before.data) ? before.data as Record<string, unknown> : null;
-    const [after] = await tx.update(task).set({ doneAt, ...(legacy ? { data: { ...legacy, done: true, doneAt: doneAt.toISOString() } } : {}) }).where(eq(task.id, id)).returning();
+    const [after] = await tx.update(task).set({ doneAt, ...(legacy ? { data: { ...legacy, done: true, doneAt: doneAt.toISOString() } } : {}) }).where(and(
+      eq(task.id, id), eq(task.note, before.note),
+      sql`${task.data} is not distinct from ${before.data === null ? null : JSON.stringify(before.data)}::jsonb`,
+    )).returning();
+    if (!after) throw new DealInputError("opgaven blev ændret samtidig, prøv igen");
     await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Opgave klaret: ${before.title}` });
     return after;
   });
@@ -289,29 +293,39 @@ export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string)
   const fields = validateTaskPatch(p);
   if (p.done === true) return completeTask(db, id, actor);
   if (p.done === false) return reopenTask(db, id, actor);
-  const [before] = await db.select({ data: task.data, note: task.note, owner: task.owner }).from(task).where(eq(task.id, id));
+  const [before] = await db.select({ data: task.data, note: task.note, owner: task.owner, doneAt: task.doneAt }).from(task).where(eq(task.id, id));
   if (!before) throw new DealInputError("opgaven findes ikke");
   // Samme regel som createTask: de valgfri TEXT-felter ryddes til "" — aldrig null.
   if (fields.due !== undefined) fields.due = emptyText(fields.due);
   if (fields.dueTime !== undefined) fields.dueTime = emptyText(fields.dueTime);
   if (fields.note !== undefined) fields.note = emptyText(fields.note);
+  let markerChanged = false;
+  let pendingNote = false;
   if (fields.note !== undefined) {
     assertNoteEditKeepsDecision(before.note, fields.note);
     // En ændret markør (sat, skiftet eller fjernet) er en beslutning: kun ejeren må
     // gøre det — samme vagt som decideApproval.
-    const foer = parseApproval(before.note)?.status ?? null;
-    const efter = parseApproval(fields.note)?.status ?? null;
-    if (foer !== efter && !mayActOnOwnerTask(actor, before.owner)) throw new DealInputError("kun opgavens ejer kan ændre en godkendelse");
+    const foer = parseApproval(before.note);
+    const efter = parseApproval(fields.note);
+    markerChanged = (foer?.status ?? null) !== (efter?.status ?? null) || (foer?.actor ?? null) !== (efter?.actor ?? null);
+    pendingNote = efter?.status === "afventer";
+    if (markerChanged && !mayActOnOwnerTask(actor, before.owner)) throw new DealInputError("kun opgavens ejer kan ændre en godkendelse");
+    if (pendingNote && before.doneAt) throw new DealInputError("en klaret opgave skal genåbnes før godkendelse");
   }
   if (before.data && typeof before.data === "object" && !Array.isArray(before.data)) {
     fields.data = { ...(before.data as Record<string, unknown>), ...(fields.title !== undefined ? { title: fields.title } : {}), ...(fields.due !== undefined ? { due: fields.due } : {}) };
   }
   // Compare-and-set: en dialog åbnet før en beslutning må ikke kunne overskrive
   // den bagefter med sin gamle note — så hellere en klar konflikt.
-  const where = fields.note !== undefined ? and(eq(task.id, id), eq(task.note, before.note)) : eq(task.id, id);
+  const where = and(eq(task.id, id),
+    fields.note !== undefined ? eq(task.note, before.note) : undefined,
+    markerChanged ? eq(task.owner, before.owner) : undefined,
+    pendingNote ? isNull(task.doneAt) : undefined,
+    fields.data !== undefined ? sql`${task.data} is not distinct from ${before.data === null ? null : JSON.stringify(before.data)}::jsonb` : undefined,
+  );
   const [after] = await db.update(task).set(fields).where(where).returning();
   if (!after) throw fields.note !== undefined
-    ? new DealInputError("noten blev ændret samtidig, prøv igen")
+    ? new DealInputError("noten eller opgaven blev ændret samtidig, prøv igen")
     : new DealInputError("opgaven findes ikke");
   return after;
 }

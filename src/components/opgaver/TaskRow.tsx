@@ -5,7 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
-import { APPROVAL_LABEL } from "@/lib/hq/approval";
+import { APPROVAL_LABEL, parseApproval } from "@/lib/hq/approval";
 import { addDays, nextMonday } from "./date-shortcuts";
 import TaskEditDialog, { type EditableTask } from "./TaskEditDialog";
 
@@ -51,7 +51,7 @@ export default function TaskRow({
   const [deciding, setDeciding] = useState<"godkendt" | "afvist" | null>(null);
   const [decideError, setDecideError] = useState("");
 
-  const approval = item.approval ?? null;
+  const approval = item.id.startsWith("deal:") ? null : item.approval ?? parseApproval(item.note);
   const pending = approval?.status === "afventer";
   const canAct = !!pending && canDecide && !!onDecide;
   const hasTitle = item.title.trim() !== "";
@@ -133,6 +133,7 @@ export default function TaskRow({
                 </button>
               </span>
             )}
+            {pending && !onDecide && <Link className="cc-link" href={`/opgaver?task=${item.id}#task-${item.id}`}>Åbn godkendelsen</Link>}
           </div>
         )}
         {decideError && <p role="alert" className="op-approval-err">{decideError}</p>}

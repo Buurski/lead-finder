@@ -56,3 +56,15 @@ export function withApproval(note: string, actor: Approval["actor"], status: App
   const rest = nl === -1 ? "" : note.slice(nl + 1);
   return rest ? `${approvalLine(actor, status)}\n${rest}` : approvalLine(actor, status);
 }
+
+/** Checkboxen arbejder på den aktuelle textarea, aldrig den oprindelige note. */
+export function applyApprovalChoice(note: string, needs: boolean, decided: boolean, actor: Approval["actor"]): string {
+  const current = parseApproval(note);
+  if (decided || (current && current.status !== "afventer")) return note;
+  if (needs) return current ? withApproval(note, actor, "afventer") : prependApproval(note, actor);
+  if (current?.status === "afventer") {
+    const nl = note.indexOf("\n");
+    return nl === -1 ? "" : note.slice(nl + 1);
+  }
+  return note;
+}
