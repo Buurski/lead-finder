@@ -68,13 +68,13 @@ test("tom liste er tom, ikke en fejl", async () => {
   assert.deepEqual(items, []);
 });
 
-test("afventende godkendelse uden dato giver én haster-linje uden at/action", async () => {
-  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: "Beslutning fra Lucas AFVENTER\nPlan:\nlinje 2", due: "2026-09-01" }).returning();
+test("afventende godkendelse uden dato giver én obs-linje uden at/action", async () => {
+  const [t] = await db.insert(task).values({ owner: "lucas", title: "Godkend plan", note: "Beslutning fra Lucas AFVENTER\nPlan:\nlinje 2", due: "" }).returning();
   const items = await getAttention(db, { owner: "lucas", today: TODAY });
 
   const g = items.find((i) => i.kind === "godkendelse");
   assert.ok(g, "forventede en godkendelse-linje");
-  assert.equal(g.level, "haster");
+  assert.equal(g.level, "obs");
   assert.equal(g.text, "Godkendelse venter: Godkend plan");
   assert.equal(g.href, `/opgaver?task=${t.id}#task-${t.id}`);
   assert.equal(g.at, undefined, "ingen opfundet dato");

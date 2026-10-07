@@ -65,14 +65,12 @@ export async function getAttention(
   }
 
   // 1b) Beslutninger der venter på ejeren. Ingen dato at vise (markøren har intet
-  // tidsstempel), så ingen at/action — kun et "haster"-punkt der fører til opgaven.
-  // Niveauet er bevidst "haster": AttentionSummary på forsiden viser KUN haster-linjer,
-  // og en afventende beslutning skal kunne ses der. Den er ikke en forfalden opgave —
-  // den har ingen dato, intet forfalden-bucket og ingen "Klaret"-handling.
+  // tidsstempel), så ingen at/action — kun et "obs"-punkt der fører til opgaven.
+  // AttentionSummary viser også godkendelser, uden at kalde dem forfaldne.
   for (const it of myDay) {
     if (it.approval?.status !== "afventer") continue;
     items.push({
-      level: "haster",
+      level: "obs",
       kind: "godkendelse",
       text: `Godkendelse venter: ${it.title}${it.company ? ` · ${it.company}` : ""}`,
       href: `/opgaver?task=${it.id}#task-${it.id}`,

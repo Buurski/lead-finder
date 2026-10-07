@@ -7,12 +7,12 @@ import AttentionActionButton from "@/components/shell/AttentionActionButton";
 import type { AttentionItem } from "@/lib/hq/attention";
 import "@/components/shell/attention.css";
 
-// HQ-forsidens "Kræver dig": de 3 øverste haster-punkter, øverst på siden.
+// HQ-forsidens "Kræver dig": de 3 øverste haster-punkter/godkendelser, øverst på siden.
 // Genbruger AttentionPanel (samme komponent som klokken) til "Se alle".
-// Ingen haster-punkter → intet at vise, sektionen udelades helt.
+// Ingen haster-punkter/godkendelser → intet at vise, sektionen udelades helt.
 export default function AttentionSummary({ items }: { items: AttentionItem[] }) {
   const [open, setOpen] = useState(false);
-  const haster = items.filter((i) => i.level === "haster");
+  const haster = items.filter((i) => i.level === "haster" || i.kind === "godkendelse");
   if (haster.length === 0) return null;
   const top = haster.slice(0, 3);
 
