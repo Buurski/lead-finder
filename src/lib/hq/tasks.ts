@@ -144,6 +144,16 @@ function validOwner(v: unknown): Owner {
   return v;
 }
 
+/**
+ * De valgfri TEXT-felter på en opgave (client_name/due/due_time/note) er
+ * NOT NULL DEFAULT '' i schemaet (drizzle/0000 + 0015). De ryddes derfor altid
+ * til tom streng og aldrig til null: et null giver Postgres 23502 i stedet for
+ * at bruge defaulten. company_id/deal_id er uuid og forbliver reelt nullable.
+ */
+function emptyText(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
 export interface CreateTaskInput { companyId?: unknown; dealId?: unknown; owner?: unknown; title?: unknown; due?: unknown; dueTime?: unknown }
 
 export async function createTask(db: Db, p: CreateTaskInput) {
@@ -160,7 +170,7 @@ export async function createTask(db: Db, p: CreateTaskInput) {
     clientName = c.name;
   }
   const dealId = p.dealId ? uuidOrThrow(p.dealId, "aftale-id") : null;
-  const [t] = await db.insert(task).values({ companyId, dealId, clientName, owner, title, due, dueTime }).returning();
+  const [t] = await db.insert(task).values({ companyId, dealId, clientName: emptyText(clientName), owner, title, due: emptyText(due), dueTime: emptyText(dueTime) }).returning();
   return t;
 }
 
@@ -218,6 +228,18 @@ export async function reopenTask(db: Db, id: string, actor: string) {
 }
 
 /**
+ * Må aktøren handle på opgavens vegne? Kun den rigtige ejer — eller den lokale
+ * "delt"-gennemgang, og kun når auth slet ikke er sat op OG vi ikke er i
+ * produktion. Ellers ville et deploy med personlig session-auth (uden Basic-env)
+ * give "delt" fri adgang til alle opgaver.
+ */
+function mayActOnOwnerTask(actor: string, owner: string): boolean {
+  if ((actor === "lucas" || actor === "charlie") && actor === owner) return true;
+  const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
+  return process.env.NODE_ENV !== "production" && !authConfigured && actor === "delt";
+}
+
+/**
  * Afgør en godkendelsesopgave: skift markørens status og log det. Noten bevares
  * bortset fra markørlinjen (compare-and-set, så en samtidig noteredigering ikke
  * overskrives). Sætter ALDRIG doneAt — en afgjort opgave klares bagefter normalt.
@@ -232,16 +254,15 @@ export async function decideApproval(db: Db, id: string, decision: unknown, acto
     if (approval.status !== "afventer") throw new DealInputError("beslutningen er allerede afgjort");
     if (before.doneAt) throw new DealInputError("opgaven er klaret");
     // Kun opgavens ejer må beslutte. Lokalt (uden auth-env) lukkes "delt" igennem,
-    // samme greb som authorizedRead i hq/api.ts.
-    const authConfigured = Boolean(process.env.VERCEL_BASIC_AUTH_USER && process.env.VERCEL_BASIC_AUTH_PASS && process.env.AUTH_SESSION_SECRET);
-    const isOwner = (actor === "lucas" || actor === "charlie") && actor === before.owner;
-    const localBypass = !authConfigured && actor === "delt";
-    if (!isOwner && !localBypass) throw new DealInputError("kun opgavens ejer kan beslutte");
+    // samme greb som authorizedRead i hq/api.ts — se mayActOnOwnerTask.
+    if (!mayActOnOwnerTask(actor, before.owner)) throw new DealInputError("kun opgavens ejer kan beslutte");
     // Markørens navn er ejerens; falder kun tilbage til den oprindelige aktør
     // hvis ejeren mod forventning ikke er lucas/charlie (kan ikke give gyldig markør).
     const actorName: Approval["actor"] = before.owner === "lucas" ? "Lucas" : before.owner === "charlie" ? "Charlie" : approval.actor;
     const note = withApproval(before.note, actorName, decision);
-    const [after] = await tx.update(task).set({ note }).where(and(eq(task.id, id), eq(task.note, before.note))).returning();
+    // Compare-and-set på BÅDE note og ejer: et samtidigt ejerskifte må ikke lade den
+    // tidligere ejer træffe beslutningen på den nye ejers vegne.
+    const [after] = await tx.update(task).set({ note }).where(and(eq(task.id, id), eq(task.note, before.note), eq(task.owner, before.owner))).returning();
     if (!after) throw new DealInputError("noten blev ændret samtidig, prøv igen");
     await tx.insert(activity).values({ companyId: before.companyId, dealId: before.dealId, actor, type: "opgave", summary: `Godkendelse: ${before.title} - ${decision.toUpperCase()}` });
     return after;
@@ -257,19 +278,31 @@ export async function decideApproval(db: Db, id: string, decision: unknown, acto
 export function assertNoteEditKeepsDecision(beforeNote: string, nextNote: string): void {
   const before = parseApproval(beforeNote);
   const next = parseApproval(nextNote);
+  // Uændret markør (også en afgjort): en almindelig redigering af titel/dato skal
+  // kunne gemmes — ellers kan man ikke rette noget som helst i en afgjort opgave.
+  if (before && next && before.status === next.status && before.actor === next.actor) return;
   if (next && next.status !== "afventer") throw new DealInputError("en beslutning træffes med Godkend eller Afvis, ikke ved at rette noten");
-  if (before && before.status !== "afventer" && (next?.status !== before.status || next.actor !== before.actor)) {
-    throw new DealInputError("en afgjort beslutning kan ikke ændres ved at rette noten");
-  }
+  if (before && before.status !== "afventer") throw new DealInputError("en afgjort beslutning kan ikke ændres ved at rette noten");
 }
 
 export async function patchTask(db: Db, id: string, p: TaskPatch, actor: string) {
   const fields = validateTaskPatch(p);
   if (p.done === true) return completeTask(db, id, actor);
   if (p.done === false) return reopenTask(db, id, actor);
-  const [before] = await db.select({ data: task.data, note: task.note }).from(task).where(eq(task.id, id));
+  const [before] = await db.select({ data: task.data, note: task.note, owner: task.owner }).from(task).where(eq(task.id, id));
   if (!before) throw new DealInputError("opgaven findes ikke");
-  if (fields.note !== undefined) assertNoteEditKeepsDecision(before.note, fields.note);
+  // Samme regel som createTask: de valgfri TEXT-felter ryddes til "" — aldrig null.
+  if (fields.due !== undefined) fields.due = emptyText(fields.due);
+  if (fields.dueTime !== undefined) fields.dueTime = emptyText(fields.dueTime);
+  if (fields.note !== undefined) fields.note = emptyText(fields.note);
+  if (fields.note !== undefined) {
+    assertNoteEditKeepsDecision(before.note, fields.note);
+    // En ændret markør (sat, skiftet eller fjernet) er en beslutning: kun ejeren må
+    // gøre det — samme vagt som decideApproval.
+    const foer = parseApproval(before.note)?.status ?? null;
+    const efter = parseApproval(fields.note)?.status ?? null;
+    if (foer !== efter && !mayActOnOwnerTask(actor, before.owner)) throw new DealInputError("kun opgavens ejer kan ændre en godkendelse");
+  }
   if (before.data && typeof before.data === "object" && !Array.isArray(before.data)) {
     fields.data = { ...(before.data as Record<string, unknown>), ...(fields.title !== undefined ? { title: fields.title } : {}), ...(fields.due !== undefined ? { due: fields.due } : {}) };
   }

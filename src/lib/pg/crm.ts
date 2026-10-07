@@ -9,6 +9,7 @@ import "server-only";
 import { desc, eq, isNotNull } from "drizzle-orm";
 import { getDb } from "../db/client.ts";
 import { activity, company, contact, task } from "../db/schema.ts";
+import { parseApproval } from "../hq/approval.ts";
 import { canonicalClientName } from "../client-alias.ts";
 import { CrmInputError, id, taskSort, validDate, validText, type CrmActivity, type CrmContact, type CrmTask } from "../crm.ts";
 
@@ -147,6 +148,8 @@ export async function updateTask(taskId: string, clientName: string, done: boole
   const existing = existingRow?.data as CrmTask | undefined;
   if (!existing || existing.deletedAt) throw new CrmInputError("opgave findes ikke");
   if (existing.clientName !== clientName) throw new CrmInputError("opgaven tilhører en anden kunde");
+  // Samme regel som completeTask: en uafgjort godkendelse må ikke lukkes ad bagvejen.
+  if (done && parseApproval(existingRow.note)?.status === "afventer") throw new CrmInputError("godkendelsen er ikke afgjort endnu");
   const taskDoc: CrmTask = { ...existing, done, doneAt: done ? new Date().toISOString() : undefined };
   await db
     .update(task)

@@ -9,6 +9,7 @@ import "server-only";
 import { and, eq, max, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact, deal, invoice, site, task } from "../db/schema.ts";
+import { parseApproval } from "./approval.ts";
 import { stopOpenForRows } from "../pg/queue.ts";
 
 // Egen fejlklasse (ikke HqInputError fra ./api.ts): den fil trækker next/server
@@ -144,8 +145,10 @@ export async function getOnboardingChecklist(db: Db, companyId: string): Promise
 
 /** Afkryds/genåbn ét opstartspunkt (PATCH-rute). */
 export async function setOnboardingTaskDone(db: Db, companyId: string, taskId: string, done: boolean): Promise<void> {
-  const [row] = await db.select({ id: task.id, companyId: task.companyId, data: task.data }).from(task).where(eq(task.id, taskId));
+  const [row] = await db.select({ id: task.id, companyId: task.companyId, data: task.data, note: task.note }).from(task).where(eq(task.id, taskId));
   if (!row || row.companyId !== companyId) throw new OnboardingError("opgaven findes ikke");
   if (!(row.data as { onboarding?: boolean } | null)?.onboarding) throw new OnboardingError("ikke en opstartsopgave");
+  // Samme regel som completeTask: en uafgjort godkendelse må ikke kunne lukkes ad bagvejen.
+  if (done && parseApproval(row.note)?.status === "afventer") throw new OnboardingError("godkendelsen er ikke afgjort endnu");
   await db.update(task).set({ doneAt: done ? new Date() : null }).where(eq(task.id, taskId));
 }
