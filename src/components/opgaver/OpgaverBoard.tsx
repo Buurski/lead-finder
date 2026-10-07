@@ -2,8 +2,9 @@
 // /opgaver — Min dag/Alle/Klaret over opgaver + aftalers næste skridt.
 // Fanerne og ejer-filteret er rent klient-side (ingen URL-state nødvendig,
 // siden er intern); Klaret hentes først når fanen åbnes.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { subscribeTaskFocus } from "@/lib/hq/focus-task";
 import TaskRow, { type TaskRowItem } from "./TaskRow";
 import QuickAdd from "./QuickAdd";
 import type { EditableTask } from "./TaskEditDialog";
@@ -50,6 +51,7 @@ export default function OpgaverBoard({
   const [toast, setToast] = useState("");
   const [highlight, setHighlight] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function notify(msg: string) {
     setToast(msg);
@@ -58,22 +60,29 @@ export default function OpgaverBoard({
   }
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
-  // Deep-link fra klokken/forsiden (/opgaver?task=<id>#task-<id>): vis opgaven,
-  // vis hele listen på hver ny task-query, også når boardet allerede er åbent.
-  // Kun task-query er navigationstilstand; efterfølgende filterklik er lokale.
-  useEffect(() => {
-    if (!taskId) return;
+  // Ny query og klik på samme deep-link viser begge den præcise opgave.
+  const showTask = useCallback((id: string) => {
+    focusTimers.current.forEach(clearTimeout);
     // Bevidst asynkront: et synkront setState i en effect giver kaskade-renders
     // (react-hooks/set-state-in-effect). Her skal vi blot nå at vise rækken.
     const showTimer = setTimeout(() => {
       setTab("alle");
       setOwner("");
-      setHighlight(taskId);
+      setHighlight(id);
     }, 0);
-    const scrollTimer = setTimeout(() => document.getElementById(`task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+    const scrollTimer = setTimeout(() => document.getElementById(`task-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
     const clearTimer = setTimeout(() => setHighlight(null), 4500);
-    return () => { clearTimeout(showTimer); clearTimeout(scrollTimer); clearTimeout(clearTimer); };
-  }, [taskId]);
+    focusTimers.current = [showTimer, scrollTimer, clearTimer];
+  }, []);
+
+  useEffect(() => {
+    if (taskId) showTask(taskId);
+    const unsubscribe = subscribeTaskFocus(showTask);
+    return () => {
+      unsubscribe();
+      focusTimers.current.forEach(clearTimeout);
+    };
+  }, [taskId, showTask]);
 
   // Altid hele (kryds-ejer) listen — ejer-filteret regnes lokalt i `visible`,
   // så et skift af ejer-fane ikke kræver et nyt kald.

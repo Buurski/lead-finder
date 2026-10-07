@@ -5,6 +5,7 @@ import Icon from "@/components/shell/Icon";
 import AttentionPanel, { ATTENTION_KIND_ICON } from "@/components/shell/AttentionPanel";
 import AttentionActionButton from "@/components/shell/AttentionActionButton";
 import type { AttentionItem } from "@/lib/hq/attention";
+import { focusTaskFromHref } from "@/lib/hq/focus-task";
 import "@/components/shell/attention.css";
 
 // HQ-forsidens "Kræver dig": de 3 øverste haster-punkter/godkendelser, øverst på siden.
@@ -27,7 +28,7 @@ export default function AttentionSummary({ items }: { items: AttentionItem[] }) 
       <div className="hq-attn-summary-list">
         {top.map((it, i) => (
           <div key={i} className="attn-row">
-            <Link href={it.href} className="cc-navlink">
+            <Link href={it.href} className="cc-navlink" onClick={() => focusTaskFromHref(it.href)}>
               <Icon name={ATTENTION_KIND_ICON[it.kind]} />
               <span>{it.text}</span>
             </Link>

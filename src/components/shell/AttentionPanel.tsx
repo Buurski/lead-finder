@@ -4,6 +4,7 @@ import Link from "next/link";
 import Icon from "./Icon";
 import AttentionActionButton from "./AttentionActionButton";
 import type { AttentionItem } from "@/lib/hq/attention";
+import { focusTaskFromHref } from "@/lib/hq/focus-task";
 import "./attention.css";
 
 // Delt mellem Bell (topbar, alle sider) og HQ-forsidens "Kræver dig"-liste —
@@ -63,7 +64,7 @@ export default function AttentionPanel({
               <div className="cc-palette-group-label">Haster</div>
               {haster.map((it, i) => (
                 <div key={`h${i}`} className="attn-row">
-                  <Link href={it.href} className="cc-navlink" data-level="haster" onClick={onClose}>
+                  <Link href={it.href} className="cc-navlink" data-level="haster" onClick={() => { focusTaskFromHref(it.href); onClose(); }}>
                     <Icon name={ATTENTION_KIND_ICON[it.kind]} />
                     <span>{it.text}</span>
                   </Link>
@@ -77,7 +78,7 @@ export default function AttentionPanel({
               <div className="cc-palette-group-label">Til opfølgning</div>
               {obs.map((it, i) => (
                 <div key={`o${i}`} className="attn-row">
-                  <Link href={it.href} className="cc-navlink" data-level="obs" onClick={onClose}>
+                  <Link href={it.href} className="cc-navlink" data-level="obs" onClick={() => { focusTaskFromHref(it.href); onClose(); }}>
                     <Icon name={ATTENTION_KIND_ICON[it.kind]} />
                     <span>{it.text}</span>
                   </Link>

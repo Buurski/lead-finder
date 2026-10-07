@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/shell/Icon";
 import { APPROVAL_LABEL, parseApproval } from "@/lib/hq/approval";
+import { focusTaskFromHref } from "@/lib/hq/focus-task";
 import { addDays, nextMonday } from "./date-shortcuts";
 import TaskEditDialog, { type EditableTask } from "./TaskEditDialog";
 
@@ -133,7 +134,7 @@ export default function TaskRow({
                 </button>
               </span>
             )}
-            {pending && !onDecide && <Link className="cc-link" href={`/opgaver?task=${item.id}#task-${item.id}`}>Åbn godkendelsen</Link>}
+            {pending && !onDecide && <Link className="cc-link" href={`/opgaver?task=${item.id}#task-${item.id}`} onClick={(e) => focusTaskFromHref(e.currentTarget.getAttribute("href")!)}>Åbn godkendelsen</Link>}
           </div>
         )}
         {decideError && <p role="alert" className="op-approval-err">{decideError}</p>}
