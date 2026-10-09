@@ -55,6 +55,9 @@ function decodeBase64(input: string, charset?: string): string {
 
 function stripHtml(html: string): string {
   return html
+    // Citeret historik fra første citatblok og ud (Gmail/Outlook/Apple): kun det nye svar tæller (Astra 9/10).
+    .replace(/<blockquote[\s\S]*$/i, "")
+    .replace(/<div[^>]*(class="[^"]*gmail_quote|id="(divRplyFwdMsg|appendonsend)")[\s\S]*$/i, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<\/(p|div|br|li|tr|h[1-6])>/gi, "\n")

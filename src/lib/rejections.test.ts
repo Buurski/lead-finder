@@ -38,3 +38,14 @@ test("citeret afmeld-tekst i vores egen mail tæller ikke: kun selve svaret klas
   assert.equal(isRejection(body), false);
   assert.equal(isOptOut(body), false);
 });
+
+test("HTML-svar: citeret afmeld-tekst i blockquote/gmail_quote tæller ikke (Astra 9/10)", () => {
+  for (const quote of ['<blockquote type="cite"><p>Skriv afmeld, hvis du ikke vil høre mere.</p></blockquote>',
+    '<div class="gmail_quote"><div>Den tor. skrev Lucas:</div><p>Skriv afmeld</p></div>']) {
+    const raw = ["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "", `<div>Hvad koster det?</div>${quote}`].join("\r\n");
+    const body = decodeMailBody(raw);
+    assert.equal(body.includes("Hvad koster det?"), true, body);
+    assert.equal(isOptOut(body), false, body);
+    assert.equal(isRejection(body), false, body);
+  }
+});
