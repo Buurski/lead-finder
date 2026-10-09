@@ -7,6 +7,9 @@ import { createHash } from "node:crypto";
 
 export const EXPENSES_KEY = "okonomi_expenses";
 export const LEDGER_START = "2026-07-26"; // poster/overførsler SKAL være efter denne dato
+// Bankposter fra Lucas OS (Lucas 9/10): Charlies overførsel 26/9 (880 kr) afregnede alt før, så bankrækker tæller fra
+// dagen efter. Senere overførsler håndteres af den løbende saldo (en post der kommer efter hans næste overførsel, skylder han stadig).
+export const BANK_START = "2026-09-27";
 
 export type ExpenseShare = "selskab" | "lucas" | "charlie";
 export type Person = "lucas" | "charlie";
@@ -20,7 +23,7 @@ export interface Expense {
   share: ExpenseShare;
   payer: Person;
   ref?: string; // mail message-id — dedupe-nøgle
-  source: "manual" | "hermes";
+  source: "manual" | "hermes" | "bank";
   note?: string;
   deleted?: true;
 }
@@ -61,6 +64,14 @@ export function parseExpense(input: unknown, source: Expense["source"]): Expense
   const payer = payerIn as Person;
   const str = (v: unknown, n: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : undefined);
   return { id: newExpenseId(), date, vendor, amount, original: str(b.original, 40), share, payer, ref: str(b.ref, 120), source, note: str(b.note, 200) };
+}
+
+/** Lucas OS' bank-nøgle må kun oprette fælles Kinly-udgifter Lucas har betalt, fra BANK_START (null = tilladt). */
+export function bankExpenseError(e: Expense): string | null {
+  if (!e.ref?.startsWith("bank:")) return "bank-nøglen kræver ref bank:…";
+  if (e.share !== "selskab" || e.payer !== "lucas") return "bank-nøglen må kun oprette fælles udgifter Lucas har betalt";
+  if (e.date < BANK_START) return `før ${BANK_START} — afregnet med Charlies overførsel 26/9`;
+  return null;
 }
 
 /** Fjerner tombstones og dubletter på ref (første vinder — værn mod samtidige append). */

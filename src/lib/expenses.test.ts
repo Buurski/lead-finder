@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeExpenses, charlieBalance, knownRefs, looksLikeManualDuplicate, lucasOsProjection, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
+import { BANK_START, activeExpenses, bankExpenseError, charlieBalance, knownRefs, looksLikeManualDuplicate, lucasOsProjection, parseExpense, ExpenseError, type Expense, type LedgerPayment } from "./expenses.ts";
 
 const e = (date: string, amount: number, share: Expense["share"] = "selskab", payer: Expense["payer"] = "lucas"): Expense =>
   ({ id: `${date}-${amount}`, date, vendor: "x", amount, share, payer, source: "manual" });
@@ -77,4 +77,16 @@ test("Lucas OS-projektion: kun aktive, øre uden float-fejl, ingen note/ref, tom
   assert.match(p.checksum, /^[0-9a-f]{64}$/);
   assert.equal(lucasOsProjection([...all].reverse()).checksum, p.checksum, "checksum uafhængig af rækkefølge");
   assert.ok(knownRefs(all).has("<msg-2@x>"), "slettet post (tombstone uden ref) beholder sin ref → genimporteres ikke");
+});
+
+test("bank-nøglen: kun ref bank:…, fælles + Lucas betaler, fra BANK_START", () => {
+  const b = (o: Partial<Expense>): Expense => ({ ...e(BANK_START, 100), ref: "bank:abc", ...o });
+  assert.equal(bankExpenseError(b({})), null);
+  assert.equal(bankExpenseError(b({ ref: "bank:abc#12", date: "2026-10-30" })), null);
+  assert.match(bankExpenseError(b({ ref: undefined })) ?? "", /ref bank/);
+  assert.match(bankExpenseError(b({ ref: "Vercel:123" })) ?? "", /ref bank/);
+  assert.match(bankExpenseError(b({ share: "charlie" })) ?? "", /fælles/);
+  assert.match(bankExpenseError(b({ share: "lucas" })) ?? "", /fælles/);
+  assert.match(bankExpenseError(b({ payer: "charlie" })) ?? "", /fælles/);
+  assert.match(bankExpenseError(b({ date: "2026-09-26" })) ?? "", /afregnet/);
 });

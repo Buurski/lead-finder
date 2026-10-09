@@ -146,6 +146,7 @@ export default function ExpensesClient() {
             {e.original && <span className="cc-dim">{e.original}</span>}
             <span className="cc-chip" style={{ fontSize: 11 }}>{SPLITS[`${e.share}-${e.payer}` as SplitKey]?.label ?? `${e.share}/${e.payer}`}</span>
             {e.source === "hermes" && <span className="cc-chip" style={{ fontSize: 11 }}>fra mail</span>}
+            {e.source === "bank" && <span className="cc-chip" style={{ fontSize: 11 }}>fra bank</span>}
             {e.note && <span className="cc-dim" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{e.note}</span>}
             <span style={{ marginLeft: "auto", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{kr(e.amount)}</span>
             <span className="cc-dim" style={{ fontSize: 11.5, minWidth: 90, textAlign: "right" }}>

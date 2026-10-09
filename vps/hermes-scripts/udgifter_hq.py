@@ -42,28 +42,11 @@ RATES = {"DKK": 1.0, "USD": 6.9, "EUR": 7.46}  # samme faste kurser som HQ's sub
 TZ = ZoneInfo("Europe/Copenhagen")
 CHATGPT = {"vendor": "ChatGPT (Charlie betaler)", "amount": 179.0, "from": date(2026, 9, 1)}
 
-# Én konto pr. regel: lucas@kinly.dk får videresendte kopier med ANDRE message-id'er,
-# så samme kvittering må kun høstes ét sted. ref-regex = kvitteringsnummer når det findes.
-RULES = [
-    {"vendor": "Vercel", "user": "buur.aigro@gmail.com",
-     "query": 'from:vercel.com subject:"Your receipt from Vercel"',
-     "amount": r"Receipt from Vercel Inc\.\s*\$([\d.,]+)\s*Paid", "cur": "USD", "ref": r"Receipt #([\d-]+)"},
-    {"vendor": "Contabo VPS", "user": "buur.aigro@gmail.com",
-     "query": 'from:contabo.com subject:"Automatic payment via Credit Card successful"',
-     "amount": r"charged\s*€\s*([\d.,]+)", "cur": "EUR", "ref": None},
-    {"vendor": "Google Cloud (Places)", "user": "buur.aigro@gmail.com",
-     "query": 'from:payments-noreply@google.com subject:"Google Cloud Platform" subject:"Betaling modtaget"',
-     "amount": r"betaling på\s*([\d.,]+)\s*kr", "cur": "DKK", "ref": r"reference\s+(CLOUD\s+[A-Z0-9]+)"},
-    {"vendor": "OpenRouter", "user": "buur.aigro@gmail.com",
-     "query": 'from:receipts@openrouter.ai',
-     "amount": r"Amount paid\s*\$([\d.,]+)", "cur": "USD", "ref": r"Receipt #([\d-]+)"},
-]
-# Ingen høstbar mail-kvittering (Workspace: beløb kun i PDF på lucas@kinly.dk, som CLI'en på
-# VPS'en ikke når; DeepSeek: sender ingen kvitteringer). Rapporten minder om dem hver måned.
-MANUAL_REMINDERS = [
-    "Google Workspace (faktura ~d. 1., ca. €10/md — beløbet står i PDF'en i lucas@kinly.dk)",
-    "DeepSeek-topups (ingen mailkvittering — se DeepSeek-konsollen)",
-]
+# 9/10: Vercel, Contabo, Google Cloud, OpenRouter, Workspace og DeepSeek kommer nu fra Lucas' bank via Lucas OS
+# (kinly-hq-jobbet, ref bank:…, fra BANK_START 27/9) — bankens DKK er pengenes sandhed. Mail-reglerne er slået fra,
+# ellers tælles samme træk to gange. Kun ChatGPT (Charlie betaler, står ikke i Lucas' bank) bliver her.
+RULES: list[dict] = []
+MANUAL_REMINDERS: list[str] = []
 
 def parse_num(s: str) -> float | None:
     s = s.strip().rstrip(".")
