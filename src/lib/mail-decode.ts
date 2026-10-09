@@ -53,15 +53,30 @@ function decodeBase64(input: string, charset?: string): string {
   }
 }
 
-/** Fjern citeret historik, men bevar ny tekst før OG efter et citat (Astra 9/10): blockquote-blokke (også indlejrede)
- *  fjernes; Outlooks original står uciteret efter divRplyFwdMsg/appendonsend og klippes til slutningen. */
-function stripQuotedHtml(html: string): string {
-  let s = html.replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");
-  for (let prev = ""; prev !== s; ) {
-    prev = s;
-    s = s.replace(/<blockquote\b[^>]*>(?:(?!<blockquote\b)[\s\S])*?<\/blockquote>/gi, "");
+/** Fjern hele elementer hvis åbne-tag matcher `open` — balanceret over indlejrede `tag`; ulukket → resten fjernes. */
+function removeBlocks(html: string, open: RegExp, tag: string): string {
+  let s = html;
+  for (let m = s.match(open); m?.index !== undefined; m = s.match(open)) {
+    const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, "gi");
+    re.lastIndex = m.index;
+    let depth = 0;
+    let end = s.length;
+    for (let t = re.exec(s); t; t = re.exec(s)) {
+      depth += t[1] ? -1 : 1;
+      if (depth === 0) { end = t.index + t[0].length; break; }
+    }
+    s = s.slice(0, m.index) + s.slice(end);
   }
-  return s.replace(/<blockquote\b[\s\S]*$/i, ""); // ulukket citatblok: resten er citat
+  return s;
+}
+
+/** Fjern citeret historik, men bevar ny tekst før OG efter et citat (Astra 9/10): Gmails gmail_quote/gmail_attr-div og
+ *  blockquote fjernes som hele blokke (også indlejrede/ulukkede); Outlooks original står uciteret efter
+ *  divRplyFwdMsg/appendonsend og klippes til slutningen. */
+function stripQuotedHtml(html: string): string {
+  const s = html.replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");
+  return removeBlocks(removeBlocks(s, /<div\b[^>]*class="[^"]*\bgmail_(quote|attr)\b[^"]*"[^>]*>/i, "div"),
+    /<blockquote\b[^>]*>/i, "blockquote");
 }
 
 function stripHtml(html: string): string {

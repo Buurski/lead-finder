@@ -58,3 +58,15 @@ test("HTML-svar: ny tekst EFTER et citat tæller stadig (afmelding overses ikke,
   assert.equal(body.includes("tilbud"), false, body);
   assert.equal(isOptOut(body), true, body);
 });
+
+test("HTML-svar: gmail_quote-div uden blockquote er citat; svar EFTER Gmail-citat med gmail_attr tæller (Astra runde 5)", () => {
+  const html = (s: string) => decodeMailBody(["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "", s].join("\r\n"));
+  const quoted = html('<div>Hvad koster det?</div><div class="gmail_quote"><p>Skriv afmeld</p><div>indlejret</div><p>afmeld igen</p></div>');
+  assert.equal(quoted.includes("Hvad koster det?"), true, quoted);
+  assert.equal(isOptOut(quoted), false, quoted);
+  const unclosed = html('<div>Hvad koster det?</div><div class="gmail_quote gmail_quote_container"><p>Skriv afmeld</p>');
+  assert.equal(isOptOut(unclosed), false, unclosed);
+  const after = html('<div class="gmail_quote"><div dir="ltr" class="gmail_attr">On Thu, Oct 9, 2026 Lucas wrote:<br></div><blockquote class="gmail_quote"><p>Vil du se et tilbud?</p></blockquote></div><div>Afmeld venligst</div>');
+  assert.equal(after.includes("tilbud"), false, after);
+  assert.equal(isOptOut(after), true, after);
+});
