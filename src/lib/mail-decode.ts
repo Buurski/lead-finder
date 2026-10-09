@@ -53,11 +53,19 @@ function decodeBase64(input: string, charset?: string): string {
   }
 }
 
+/** Fjern citeret historik, men bevar ny tekst før OG efter et citat (Astra 9/10): blockquote-blokke (også indlejrede)
+ *  fjernes; Outlooks original står uciteret efter divRplyFwdMsg/appendonsend og klippes til slutningen. */
+function stripQuotedHtml(html: string): string {
+  let s = html.replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");
+  for (let prev = ""; prev !== s; ) {
+    prev = s;
+    s = s.replace(/<blockquote\b[^>]*>(?:(?!<blockquote\b)[\s\S])*?<\/blockquote>/gi, "");
+  }
+  return s.replace(/<blockquote\b[\s\S]*$/i, ""); // ulukket citatblok: resten er citat
+}
+
 function stripHtml(html: string): string {
-  return html
-    // Citeret historik fra første citatblok og ud (Gmail/Outlook/Apple): kun det nye svar tæller (Astra 9/10).
-    .replace(/<blockquote[\s\S]*$/i, "")
-    .replace(/<div[^>]*(class="[^"]*gmail_quote|id="(divRplyFwdMsg|appendonsend)")[\s\S]*$/i, "")
+  return stripQuotedHtml(html)
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<\/(p|div|br|li|tr|h[1-6])>/gi, "\n")
@@ -98,7 +106,9 @@ function splitHeaders(raw: string): [string, string] {
   return [raw.slice(0, idx), raw.slice(idx + sep)];
 }
 
-/** Strip quoted reply history + collapse whitespace so the preview is the new text. */
+/** Strip quoted reply history + collapse whitespace so the preview is the new text.
+ *  ponytail: i plain text stopper vi ved "On … wrote:"/"Den … skrev:" — et svar skrevet INDE i citatet (efter headeren)
+ *  tælles ikke; uciterede citater efter headeren ville ellers give falsk afmelding. HTML-svar håndterer begge (stripQuotedHtml). */
 export function cleanupBody(text: string): string {
   const lines = text.split(/\r?\n/);
   const kept: string[] = [];

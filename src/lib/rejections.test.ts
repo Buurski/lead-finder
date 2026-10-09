@@ -41,11 +41,20 @@ test("citeret afmeld-tekst i vores egen mail tæller ikke: kun selve svaret klas
 
 test("HTML-svar: citeret afmeld-tekst i blockquote/gmail_quote tæller ikke (Astra 9/10)", () => {
   for (const quote of ['<blockquote type="cite"><p>Skriv afmeld, hvis du ikke vil høre mere.</p></blockquote>',
-    '<div class="gmail_quote"><div>Den tor. skrev Lucas:</div><p>Skriv afmeld</p></div>']) {
+    '<div class="gmail_quote"><div class="gmail_attr">Den tor. 9. okt. 2026 skrev Lucas:<br></div><blockquote class="gmail_quote"><p>Skriv afmeld</p><blockquote>gl. afmeld</blockquote></blockquote></div>',
+    '<div id="divRplyFwdMsg"><b>Fra:</b> Lucas</div><div>Skriv afmeld, hvis du ikke vil høre mere.</div>']) {
     const raw = ["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "", `<div>Hvad koster det?</div>${quote}`].join("\r\n");
     const body = decodeMailBody(raw);
     assert.equal(body.includes("Hvad koster det?"), true, body);
     assert.equal(isOptOut(body), false, body);
     assert.equal(isRejection(body), false, body);
   }
+});
+
+test("HTML-svar: ny tekst EFTER et citat tæller stadig (afmelding overses ikke, Astra 9/10)", () => {
+  const raw = ["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "",
+    "<blockquote><p>Vil du se et tilbud?</p><blockquote>gammelt</blockquote></blockquote><p>Afmeld venligst</p>"].join("\r\n");
+  const body = decodeMailBody(raw);
+  assert.equal(body.includes("tilbud"), false, body);
+  assert.equal(isOptOut(body), true, body);
 });
