@@ -52,7 +52,12 @@ export async function POST(req: Request) {
         continue;
       }
       seen.add(exp.ref);
-      await store.append(EXPENSES_KEY, exp);
+      try {
+        await store.append(EXPENSES_KEY, exp);
+      } catch {
+        // Aldrig "ok" på halvt bogført arbejde (Codex Sol 9/10): de tilføjede står, ref-dedupe gør genkørsel sikker.
+        return Response.json({ ok: false, error: "lagring fejlede", added: added.length, failedIndex: index }, { status: 500 });
+      }
       added.push(exp);
     } catch (err) {
       rejected.push({ index, error: err instanceof ExpenseError ? err.message : "ugyldig" });

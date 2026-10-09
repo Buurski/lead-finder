@@ -60,6 +60,18 @@ test("manuel post ±3 dage og <1 kr fanges som mulig dublet", () => {
   assert.ok(!looksLikeManualDuplicate({ ...e("2026-09-03", 222), ref: "m" }, [{ ...manual, ref: "x" }]));
 });
 
+test("dubletmistanke kræver samme leverandør, betaler og fordeling; bankpost fanges mod mail-post ±5 %", () => {
+  const netto = { ...e("2026-10-02", 100), vendor: "Netto" };
+  const vercelBank = { ...e("2026-10-02", 100), vendor: "Vercel", ref: "bank:abc", source: "bank" as const };
+  assert.ok(!looksLikeManualDuplicate(vercelBank, [netto]), "manuel Netto blokerer ikke Vercel");
+  assert.ok(!looksLikeManualDuplicate(vercelBank, [{ ...netto, vendor: "Vercel", payer: "charlie" }]), "anden betaler");
+  const mail = { ...e("2026-10-01", 345), vendor: "Vercel Inc.", ref: "Vercel:inv-1", source: "hermes" as const };
+  assert.ok(looksLikeManualDuplicate({ ...vercelBank, amount: 331.19 }, [mail]), "mail-post samme regning");
+  assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 200 }, [mail]), "andet beløb");
+  assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 331.19, source: "hermes", ref: "Vercel:inv-2" }, [mail]), "mail mod mail = ref-dedupe");
+  assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 331.19 }, [{ ...mail, ref: "bank:old" }]), "bank mod bank = ref-dedupe");
+});
+
 test("Lucas OS-projektion: kun aktive, øre uden float-fejl, ingen note/ref, tombstone beholder ref i knownRefs", () => {
   const all: unknown[] = [
     { ...e("2026-09-02", 50.1), id: "a", ref: "<msg-1@vercel.com>", note: "Kunde: Ikast Autoservice", vendor: "Vercel" },

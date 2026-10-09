@@ -50,6 +50,21 @@ test("bank-nøglen afviser alt andet end fælles, Lucas betaler, ref bank:…, f
   assert.equal((await store.readAll(EXPENSES_KEY)).length, 0);
 });
 
+test("lagringsfejl efter første post = 500 med fremskridt; genkørsel tilføjer kun resten", async () => {
+  const mem = new InMemoryStore();
+  let n = 0;
+  const flaky = Object.create(mem) as InMemoryStore;
+  flaky.append = async (k: string, v: unknown) => { if (k === EXPENSES_KEY && ++n === 2) throw new Error("kv nede"); return mem.append(k, v); };
+  __setStore(flaky);
+  const r = await call([row({ ref: "bank:a" }), row({ ref: "bank:b", vendor: "Contabo" })], BANK);
+  assert.equal(r.status, 500);
+  assert.equal((r.body as Body & { added: number }).added, 1);
+  const again = await call([row({ ref: "bank:a" }), row({ ref: "bank:b", vendor: "Contabo" })], BANK);
+  assert.equal(again.status, 200);
+  assert.equal(again.body.added, 1);
+  assert.equal(again.body.skipped, 1);
+});
+
 test("Hermes-nøglen er uændret (mail-ref, Charlie betaler), forkert nøgle = 401", async () => {
   const h = await call([row({ ref: "chatgpt:2026-10", payer: "charlie", date: "2026-10-01", amount: 179 })], HERMES);
   assert.equal(h.body.added, 1, JSON.stringify(h.body));

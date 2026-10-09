@@ -94,7 +94,13 @@ export function knownRefs(all: unknown[]): Set<string> {
 /** Samme træk indtastet i hånden (uden ref)? ±3 dage og under 1 kr forskel. */
 export function looksLikeManualDuplicate(e: Expense, existing: Expense[]): boolean {
   const day = (iso: string) => Date.parse(iso + "T00:00:00Z") / 86_400_000;
-  return existing.some((x) => !x.ref && Math.abs(x.amount - e.amount) < 1 && Math.abs(day(x.date) - day(e.date)) <= 3);
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9æøå]/g, "");
+  const sameVendor = (a: string, b: string) => { const x = norm(a), y = norm(b); return !!x && !!y && (x.startsWith(y) || y.startsWith(x)); };
+  return existing.some((x) => sameVendor(x.vendor, e.vendor) && x.payer === e.payer && x.share === e.share &&
+    Math.abs(day(x.date) - day(e.date)) <= 3 &&
+    // manuel post: samme beløb (<1 kr). Bankpost mod en mail-post: valutakurs og gebyr flytter beløbet op til 5 %.
+    (!x.ref ? Math.abs(x.amount - e.amount) < 1
+      : e.source === "bank" && !x.ref.startsWith("bank:") && Math.abs(x.amount - e.amount) <= Math.max(1, x.amount * 0.05)));
 }
 
 /** Hvad en post flytter Charlies gæld med (+ = han skylder mere). */
