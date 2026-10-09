@@ -72,7 +72,7 @@ function CandidateCard({ c, onMark }: { c: Candidate; onMark: (id: string, actio
 }
 
 export default function MessengerPanel() {
-  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ok" | "error" | "paused">("loading");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [pool, setPool] = useState<Pool | null>(null);
   const [err, setErr] = useState("");
@@ -86,6 +86,7 @@ export default function MessengerPanel() {
       .then((r) => r.json())
       .then((d) => {
         if (d.ok === false) { setErr(d.error ?? "ukendt fejl"); setState("error"); return; }
+        if (d.paused) { setErr(d.reason ?? "Kolde førstekontakter er pauset."); setState("paused"); return; }
         setCandidates(d.candidates ?? []);
         setPool(d.pool ?? null);
         setState("ok");
@@ -116,6 +117,18 @@ export default function MessengerPanel() {
   if (state === "loading") {
     return <div style={{ display: "grid", gap: 12 }}>{[0, 1, 2].map((i) => <div key={i} className="cc-skel" style={{ height: 150 }} />)}</div>;
   }
+  if (state === "paused") {
+    return (
+      <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center" }}>
+        <Icon name="Activity" style={{ width: 18, height: 18, color: "var(--amber)" }} />
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>Messenger er pauset</div>
+          <div className="cc-dim" style={{ fontSize: 12.5 }}>{err}</div>
+        </div>
+      </div>
+    );
+  }
+
   if (state === "error") {
     return (
       <div className="cc-card cc-card-pad" style={{ display: "flex", gap: 11, alignItems: "center" }}>

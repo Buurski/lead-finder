@@ -287,8 +287,11 @@ export async function POST(req: Request) {
   } catch (err) {
     // No Sheets ≠ fatal: ingest drafts carry recipientEmail and don't need a row.
     // Only fatal if a draft has neither a row nor a recipientEmail (handled per-draft).
+    // Fail CLOSED (Sol GN2, 9/10): uden Sheets kan afmeldinger/bounces ikke tjekkes,
+    // og en ingest-kladde med egen recipientEmail ville ellers gå ud ukontrolleret.
     console.warn(JSON.stringify({ evt: "approve-send.sheets_unavailable", err: String(err) }));
-    leads = [];
+    await releaseSendLock(lockHandle).catch(() => {});
+    return NextResponse.json({ ok: false, sent: 0, failed: 0, skipped: [], note: "Sheets utilgængelig — intet sendt (afmeldinger kan ikke tjekkes)." }, { status: 503 });
   }
 
   // Seed the by-address ledger from Sheets too: any lead already emailed (by

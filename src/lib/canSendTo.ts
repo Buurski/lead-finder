@@ -64,7 +64,11 @@ export function canSendTo(
   // Normalize lead status: Sheets values arrive with stray whitespace/casing
   // ("Skip", "skip "), so trim+lowercase before the equality gate — otherwise a
   // skip-marked lead slips through and gets mailed.
-  if ((lead.status || "").trim().toLowerCase() === "skip") return { ok: false, reason: "skip" };
+  const status = (lead.status || "").trim().toLowerCase();
+  if (status === "skip") return { ok: false, reason: "skip" };
+  // E21 (Sol GN2): afmelding/bounce registreret på status-feltet blokerer også SMTP-gaten.
+  if (status === "unsubscribed" || status === "unsubscribe" || status === "afmeldt") return { ok: false, reason: "unsubscribed" };
+  if (status === "bounced") return { ok: false, reason: "bounced" };
   // Chain check on the NAME only. (Do NOT pass branch as `extra` — isChain treats
   // extra entries as chain-name substrings, so a branch like "Frisør"/"café" would
   // false-flag every salon/café as a chain. The original bug behind 0-sent.)
@@ -83,7 +87,7 @@ export function canSendTo(
   const st = (lead.emailStatus || "").trim().toLowerCase();
   if (st === "bounced") return { ok: false, reason: "bounced" };
   if (st === "replied") return { ok: false, reason: "replied" };
-  if (st === "unsubscribed" || st === "unsubscribe") return { ok: false, reason: "unsubscribed" };
+  if (st === "unsubscribed" || st === "unsubscribe" || st === "afmeldt" || st === "complained") return { ok: false, reason: "unsubscribed" };
 
   if (opts.seenEmails) {
     if (opts.seenEmails.has(email)) return { ok: false, reason: "duplicate" };

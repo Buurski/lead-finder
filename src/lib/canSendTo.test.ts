@@ -32,3 +32,10 @@ test("pladsholder-adresser fra scrapet blokeres", () => {
   }
   assert.equal(canSendTo({ ...ok, email: "none" }).reason, "bad-email");
 });
+
+test("afmeldt/bounced på status eller emailStatus blokerer SMTP-gaten (E21, Sol GN2)", () => {
+  const base = { name: "Salon Lux", email: "maja@salonlux.dk", status: "", emailStatus: "" };
+  assert.equal(canSendTo(base).ok, true);
+  for (const status of ["afmeldt", "unsubscribed", "bounced"]) assert.equal(canSendTo({ ...base, status }).ok, false, status);
+  for (const emailStatus of ["afmeldt", "complained", "unsubscribed", "bounced"]) assert.equal(canSendTo({ ...base, emailStatus }).ok, false, emailStatus);
+});
