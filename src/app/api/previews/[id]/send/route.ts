@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db/client";
-import { addressSuppressed } from "@/lib/canSendTo";
-import { getLeads } from "@/lib/sheets";
+import { previewBlockReason } from "@/lib/canSendTo";
+import { getSuppressionRows } from "@/lib/sheets";
 import { hqWrite, HqInputError, jsonBody } from "@/lib/hq/api";
 import { PreviewSendError, reconcilePreview, sendPreview } from "@/lib/hq/preview-send";
 import { readPreviewRequests, updatePreviewStatus, type SeoTjekResult } from "@/lib/preview-queue";
@@ -43,15 +43,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         deliver: async ({ to, subject, body }) => {
           // Frisk suppression lige før SMTP: modtageren kan have afmeldt sig/bouncet efter anmodningen.
           // Kold-pausen dækker ikke denne vej (svar på indgående anmodning). Sheets nede ⇒ intet sendt (Astra S2#2).
-          const leads = await getLeads().catch(() => null);
-          if (!leads) throw new PreviewSendError("kunne ikke tjekke afmeldinger — prøv igen om lidt");
-          const key = to.trim().toLowerCase();
-          if (addressSuppressed(leads, key)) throw new PreviewSendError("modtageren er afmeldt eller bounced — sendes ikke");
-          const same = leads.filter((l) => (l.email || "").trim().toLowerCase() === key);
-          // Historiske afmeldinger via svar står som status "skip" + emailStatus "replied" (før 9/10).
-          if (same.some((l) => (l.status || "").trim().toLowerCase() === "skip")) {
-            throw new PreviewSendError("leadet er markeret skip (fx afmeldt via svar) — tjek leadet i Sheets før afsendelse");
-          }
+          // Inkl. arkiverede virksomheder (Astra 9/10).
+          const rows = await getSuppressionRows().catch(() => null);
+          if (!rows) throw new PreviewSendError("kunne ikke tjekke afmeldinger — prøv igen om lidt");
+          const blocked = previewBlockReason(rows, to);
+          if (blocked) throw new PreviewSendError(blocked);
           // Samme dagsbudget pr. konto som kold-køen (Sol bølge 2 F2). Kastes før SMTP ⇒ intet sendt.
           if (!(await takeDailyBudget(sender).catch(() => false))) throw new PreviewSendError(`dagligt loft nået (${DAILY_SEND_CAP}/dag fra ${sender}) — prøv i morgen`);
           await getTransporter(sender).sendMail({

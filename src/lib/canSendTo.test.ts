@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addressSuppressed, canSendTo, isSuppressed, sharedEmailSet } from "./canSendTo.ts";
+import { addressSuppressed, canSendTo, isSuppressed, previewBlockReason, sharedEmailSet } from "./canSendTo.ts";
+
+test("preview-send: afmeldt spærrer, almindelig skip gør ikke, skip efter svar gør (Astra 9/10)", () => {
+  const a = "kunde@example.dk";
+  assert.equal(previewBlockReason([{ email: a, status: "skip", emailStatus: "" }], a), null, "frasorteret uden svar");
+  assert.match(previewBlockReason([{ email: "Kunde@Example.dk ", emailStatus: "afmeldt" }], a) ?? "", /afmeldt/);
+  assert.match(previewBlockReason([{ email: a, status: "skip", emailStatus: "replied" }], a) ?? "", /frasorteret efter et svar/);
+  assert.equal(previewBlockReason([{ email: "anden@x.dk", emailStatus: "afmeldt" }], a), null);
+});
 
 const ok = { name: "Salon Artec", branch: "frisør", email: "hej@salonartec.dk", emailStatus: "", status: "new" };
 

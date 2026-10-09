@@ -18,7 +18,7 @@ import { leadRowIndex } from "./lead-row.ts";
 //     EAI_AGAIN, socket hang up).
 //   - guaranteed logout in finally so we never leak sockets between runs.
 import { ImapFlow } from "imapflow";
-import { getLeads, updateLeadEmailStatus, updateLeadEmailStatusBulk } from "./sheets.ts";
+import { getLeads, markLeadReplied, updateLeadEmailStatusBulk } from "./sheets.ts";
 import { getActiveSenders, type SenderId } from "./senders.ts";
 import { isSuppressed } from "./canSendTo.ts";
 
@@ -263,7 +263,7 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
   }
 
   for (const rowIndex of repliedRows) {
-    await updateLeadEmailStatus(rowIndex, { emailStatus: "replied" });
+    await markLeadReplied(rowIndex); // overskriver aldrig en afmelding registreret under scanningen (Astra 9/10)
   }
   // Et svar stopper alle åbne kladder/opfølgninger til dem (spec §11).
   if (repliedRows.size) {

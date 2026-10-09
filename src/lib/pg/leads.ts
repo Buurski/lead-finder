@@ -55,6 +55,27 @@ export async function getLeads(): Promise<Lead[]> {
   return rows.map(toLead);
 }
 
+// Suppression-opslag (Astra 9/10): ALLE virksomheder med mail — også arkiverede og kunder — så en afmelding
+// aldrig forsvinder fordi leadet er arkiveret.
+export async function getSuppressionRows(): Promise<Array<{ email: string; emailStatus: string; status: string }>> {
+  const rows = await getDb()
+    .select({ email: company.email, emailStatus: company.emailStatus, status: company.leadStatus })
+    .from(company)
+    .where(sql`coalesce(${company.email}, '') <> ''`);
+  return rows.map((r) => ({ email: r.email ?? "", emailStatus: r.emailStatus ?? "", status: r.status ?? "" }));
+}
+
+// "replied" skrives kun hvis rækken ikke er afmeldt/bounced I SAMME SQL (ingen læs-så-skriv-race, Astra 9/10).
+export async function markLeadReplied(rowIndex: number): Promise<void> {
+  const blocked = sql`('bounced','unsubscribed','unsubscribe','afmeldt','complained')`;
+  await getDb()
+    .update(company)
+    .set({ emailStatus: "replied", updatedAt: new Date() })
+    .where(and(byRow(toRowNo(rowIndex)),
+      sql`lower(trim(coalesce(${company.emailStatus}, ''))) not in ${blocked}`,
+      sql`lower(trim(coalesce(${company.leadStatus}, ''))) not in ${blocked}`));
+}
+
 export async function updateLeadStatus(rowIndex: number, status: LeadStatus, notes?: string): Promise<void> {
   // Spejler sheets.ts: notes nulstilles til "" når den ikke sendes med — i
   // modsætning til batchSetLeadStatus, der lader notes stå urørt.

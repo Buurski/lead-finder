@@ -74,6 +74,19 @@ export function addressSuppressed(leads: Array<{ email?: string; emailStatus?: s
   return leads.some((l) => (l.email || "").trim().toLowerCase() === key && isSuppressed(l));
 }
 
+/** Preview-send (svar på en udtrykkelig anmodning): afmeldt/bounced spærrer altid. Almindelig frasortering ("skip")
+ *  spærrer ikke — kun historisk skip efter et svar (før 9/10 blev afmeldinger gemt som skip + replied). Astra 9/10. */
+export function previewBlockReason(rows: Array<{ email?: string; emailStatus?: string; status?: string }>, email: string): string | null {
+  const key = email.trim().toLowerCase();
+  const same = rows.filter((l) => (l.email || "").trim().toLowerCase() === key);
+  if (same.some(isSuppressed)) return "modtageren er afmeldt eller bounced — sendes ikke";
+  const low = (v?: string) => (v || "").trim().toLowerCase();
+  if (same.some((l) => low(l.status) === "skip" && low(l.emailStatus) === "replied")) {
+    return "leadet er frasorteret efter et svar (kan være en gammel afmelding) — tjek leadet før afsendelse";
+  }
+  return null;
+}
+
 export function canSendTo(
   lead: SendCandidate,
   opts: { seenEmails?: Set<string>; sharedEmails?: Set<string> } = {},

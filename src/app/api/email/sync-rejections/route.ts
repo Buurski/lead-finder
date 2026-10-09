@@ -2,7 +2,9 @@ import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadStatus, updateLeadEmailStatus } from "@/lib/sheets";
-import { isOptOut, isRejection } from "@/lib/rejections";
+import { isOptOut, isRejection, wantsContact } from "@/lib/rejections";
+import { decodeMailBody } from "@/lib/mail-decode";
+import { isSuppressed } from "@/lib/canSendTo";
 
 export const maxDuration = 120;
 
@@ -10,7 +12,10 @@ export async function POST() {
   const leads = await getLeads();
   const sentLeads = leads
     .map((lead) => ({ lead, rowIndex: leadRowIndex(lead) }))
-    .filter(({ lead }) => lead.emailSentAt && lead.email && lead.status !== "skip" && lead.status !== "client");
+    // Skip-leads scannes stadig, så et senere "afmeld" kan opgradere et tidligere "nej tak" (Astra 9/10);
+    // allerede afmeldte/bounced springes over.
+    .filter(({ lead }) => lead.emailSentAt && lead.email && lead.status !== "client" && !isSuppressed(lead));
+  const wasSkip = new Set(sentLeads.filter(({ lead }) => lead.status === "skip").map(({ rowIndex }) => rowIndex));
 
   if (sentLeads.length === 0) {
     return NextResponse.json({ scanned: 0, marked_skip: 0 });
@@ -34,7 +39,7 @@ export async function POST() {
     logger: false,
   });
 
-  const rejectedRows = new Map<number, boolean>(); // rowIdx → eksplicit opt-out
+  const rejectedRows = new Map<number, { optOut: boolean; skip: boolean }>();
   const rejectedDetails: { email: string; snippet: string }[] = [];
 
   try {
@@ -43,16 +48,17 @@ export async function POST() {
     for await (const msg of client.fetch({ since }, { envelope: true, source: true })) {
       const fromAddr = msg.envelope?.from?.[0]?.address?.toLowerCase().trim();
       if (!fromAddr || !emailToRow.has(fromAddr)) continue;
-      const source = msg.source?.toString("utf8") ?? "";
-      // Extract body text — very lightweight, only first part
-      const body = source.slice(0, 8000);
-      if (isRejection(body)) {
-        const rowIdx = emailToRow.get(fromAddr)!;
-        if (!rejectedRows.has(rowIdx)) {
-          rejectedRows.set(rowIdx, isOptOut(body));
-          rejectedDetails.push({ email: fromAddr, snippet: body.slice(0, 200).replace(/\s+/g, " ") });
-        }
-      }
+      // Kun selve svaret: dekodet, uden headers og citeret historik (vores egen "afmeld"-tekst tæller ikke, Astra 9/10).
+      const body = decodeMailBody(msg.source?.toString("utf8") ?? "").slice(0, 4000);
+      const optOut = isOptOut(body);
+      const rejection = isRejection(body);
+      if (!optOut && !rejection) continue;
+      const rowIdx = emailToRow.get(fromAddr)!;
+      if (wasSkip.has(rowIdx) && !optOut) continue; // allerede frasorteret; kun en afmelding ændrer noget
+      const prev = rejectedRows.get(rowIdx);
+      // Akkumulér over alle svar: en senere afmelding vinder over et tidligere "nej tak".
+      rejectedRows.set(rowIdx, { optOut: !!prev?.optOut || optOut, skip: !!prev?.skip || rejection || (optOut && !wantsContact(body)) });
+      if (!prev) rejectedDetails.push({ email: fromAddr, snippet: body.slice(0, 200).replace(/\s+/g, " ") });
     }
     await client.logout();
   } catch (err) {
@@ -61,8 +67,11 @@ export async function POST() {
 
   // Mark each as skip + emailStatus (double-protected). Eksplicit opt-out ⇒ "afmeldt" så
   // alle send-veje (også preview-send) ser det; høfligt nej ⇒ "replied" som før.
-  for (const [rowIdx, optOut] of rejectedRows) {
-    await updateLeadStatus(rowIdx, "skip", optOut ? "Auto-skip: afmeldt via svar" : "Auto-skip: negative reply detected");
+  // Afmelding med "ring til mig": mailen spærres, men leadet bliver stående til opkald (skip = false).
+  for (const [rowIdx, { optOut, skip }] of rejectedRows) {
+    if (skip && !wasSkip.has(rowIdx)) {
+      await updateLeadStatus(rowIdx, "skip", optOut ? "Auto-skip: afmeldt via svar" : "Auto-skip: negative reply detected");
+    }
     await updateLeadEmailStatus(rowIdx, { emailStatus: optOut ? "afmeldt" : "replied" });
     await new Promise((r) => setTimeout(r, 100));
   }

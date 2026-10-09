@@ -59,7 +59,13 @@ export function isRejection(body: string): boolean {
   return false;
 }
 
-/** Afvisning der udtrykkeligt beder om ikke at blive kontaktet igen (ikke bare "nej tak"). */
+/** Udtrykkelig afmelding (ikke bare "nej tak"). Vinder over accept-ord: "ring til mig, men fjern mig fra
+ *  listen" er en afmelding fra mail (Astra 9/10). Kald den kun på selve svaret — se decodeMailBody. */
 export function isOptOut(body: string): boolean {
-  return isRejection(body) && OPT_OUT_PATTERNS.some((p) => p.test(body));
+  return OPT_OUT_PATTERNS.some((p) => p.test(body));
+}
+
+/** Beder om kontakt (fx "ring til mig") — så skal leadet stå synligt, selvom mailen er afmeldt. */
+export function wantsContact(body: string): boolean {
+  return ACCEPT_PATTERNS.some((p) => p.test(body));
 }

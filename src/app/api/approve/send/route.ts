@@ -7,7 +7,7 @@ import { acquireSendLock, budgetKey, dailyBudgetUsed, DAILY_SEND_CAP, failedBefo
 import { createTask } from "@/lib/hq/tasks";
 import { scheduleCalendarSync } from "@/lib/hq/gcal-sync";
 import { getDb, pgEnabled } from "@/lib/db/client";
-import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
+import { getLeads, getPauseStatus, getSuppressionRows, updateLeadEmailStatus } from "@/lib/sheets";
 import { addressSuppressed, canSendTo, isSuppressed, sharedEmailSet } from "@/lib/canSendTo";
 import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
 import { hasUsableEmail } from "@/lib/leads/channel";
@@ -472,7 +472,9 @@ export async function POST(req: Request) {
             ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
             : { ok: true as boolean, reason: undefined as string | undefined };
           // Global adresse-suppression på frisk læsning: også umatchede kladder og afmeldinger midt i kørslen (Astra S2#3).
-          const suppressedNow = addressSuppressed(freshLeads, targetKey);
+          // Inkl. arkiverede virksomheder; opslag fejler ⇒ behandles som spærret (Astra 9/10).
+          const suppressionRows = await getSuppressionRows().catch(() => null);
+          const suppressedNow = !suppressionRows || addressSuppressed(suppressionRows, targetKey);
           const isCustomer = pgEnabled() ? await customerForDraft(d, target).catch(() => true) : false;
           if (!again.ok || !gate2.ok || isCustomer || suppressedNow) {
             const reason = suppressedNow ? "adressen er afmeldt/bounced" : isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";

@@ -3,6 +3,8 @@ import { google } from "googleapis";
 import { planRowDeletionRanges } from "./leads/row-plan.ts";
 import { pgEnabled } from "./db/client.ts";
 import { coldOutreachPaused } from "./leads/contactable.ts";
+import { leadRowIndex } from "./lead-row.ts";
+import { isSuppressed } from "./canSendTo.ts";
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -694,6 +696,20 @@ export async function updateLeadEmailStatus(
 // Bulk-variant (2026-07-18, council-fund): sendt-mappe-scannen kan matche
 // 100+ rækker på første kørsel — én batchUpdate i stedet for én pr. række,
 // så Sheets' write-kvote (60/100s) og cron-tiden holder.
+/** Alle rækker med mail inkl. arkiverede (Sheets har ingen arkivering → leads). */
+export async function getSuppressionRows(): Promise<Array<{ email: string; emailStatus: string; status: string }>> {
+  if (pgEnabled()) return (await import("./pg/leads.ts")).getSuppressionRows();
+  return (await getLeads()).map((l) => ({ email: l.email || "", emailStatus: l.emailStatus || "", status: l.status || "" }));
+}
+
+/** "replied" uden at overskrive afmeldt/bounced. ponytail: Sheets-vejen er læs-så-skriv (ikke atomisk); prod kører Postgres. */
+export async function markLeadReplied(rowIndex: number): Promise<void> {
+  if (pgEnabled()) return (await import("./pg/leads.ts")).markLeadReplied(rowIndex);
+  const lead = (await getLeads()).find((l) => leadRowIndex(l) === rowIndex);
+  if (lead && isSuppressed(lead)) return;
+  await updateLeadEmailStatus(rowIndex, { emailStatus: "replied" });
+}
+
 export async function updateLeadEmailStatusBulk(
   entries: {
     rowIndex: number;
