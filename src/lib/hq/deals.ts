@@ -6,35 +6,8 @@ import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 
-export const DEAL_STAGES = ["moede", "tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
-export type DealStage = (typeof DEAL_STAGES)[number];
-
-export const STAGE_LABEL: Record<DealStage, string> = {
-  moede: "Møde",
-  tilbud: "Tilbud",
-  aftalt: "Aftalt",
-  i_gang: "I gang",
-  leveret: "Leveret",
-  betalt: "Betalt",
-  tabt: "Tabt",
-};
-
-// Gamle Client.stage-værdier fra Sheets → deal-faser.
-const LEGACY: Record<string, DealStage> = {
-  lead: "tilbud", contacted: "tilbud", engaged: "tilbud", concept: "tilbud", offer: "tilbud", negotiation: "tilbud",
-  won: "aftalt", delivering: "i_gang", live: "leveret", lost: "tabt",
-};
-
-/** Deal-fase for en rå værdi (ny fase, gammel Sheets-værdi eller tom). */
-export function normalizeStage(raw: string, websiteStatus = ""): DealStage {
-  const v = raw.trim().toLowerCase();
-  if ((DEAL_STAGES as readonly string[]).includes(v)) return v as DealStage;
-  if (LEGACY[v]) return LEGACY[v];
-  // Tom fase på en gammel kunde: udled af site-status som finance.ts gjorde.
-  if (websiteStatus === "live") return "leveret";
-  if (websiteStatus === "in progress") return "i_gang";
-  return "aftalt";
-}
+import { DEAL_STAGES, STAGE_LABEL, normalizeStage, type DealStage } from "./deal-stages.ts";
+export { DEAL_STAGES, STAGE_LABEL, normalizeStage, type DealStage };
 
 export class DealInputError extends Error {}
 

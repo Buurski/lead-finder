@@ -4,6 +4,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, invoice, outreach, subscriptionPlan, task } from "../db/schema.ts";
 import { getHqSummary, stepState } from "./summary.ts";
+import { DEAL_STAGES } from "./deal-stages.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -48,10 +49,26 @@ test("HQ-tal læses korrekt fra Postgres", async () => {
   const s = await getHqSummary(db, TODAY);
   assert.deepEqual(s.kpi, { draftsPending: 1, newReplies: 1, overdueNextSteps: 1 });
   assert.deepEqual(s.funnel.map((f) => f.n), [0, 0, 2, 1, 1]); // kunde tæller som på /kunder (også uden lead-række, E2E 26/9); tragten tæller også gamle svar
+  assert.deepEqual(s.deals.map((d) => d.stage), [...DEAL_STAGES]); // alle 7 trin, fast rækkefølge
+  assert.deepEqual(s.deals.map((d) => d.n), [0, 0, 0, 1, 0, 1, 0]); // i_gang + betalt
   assert.deepEqual(s.nextSteps.map((x) => [x.company, x.state]), [["VIDA Skønhedsklinik", "forfalden"], ["Salon Artec", "snart"]]);
   assert.deepEqual(s.money, { mrr: 750, outstanding: 750, overdueCount: 1 });
   assert.equal(s.team[0].summary, "Nyhedsbrev-skabelon færdig");
   assert.equal(s.team[1].at, null);
+});
+
+test("deals er nul-fyldt for alle 7 trin i fast rækkefølge; tom/ukendt fase tæller som aftalt", async () => {
+  assert.deepEqual((await getHqSummary(db, TODAY)).deals, DEAL_STAGES.map((stage) => ({ stage, n: 0 })));
+  const [c, arkiveret] = await db.insert(company).values([{ rowNo: 5, name: "A" }, { rowNo: 6, name: "B", archived: true }]).returning();
+  await db.insert(deal).values([
+    { companyId: c.id, title: "x", stage: "moede" },
+    { companyId: c.id, title: "y", stage: "" },
+    { companyId: c.id, title: "z", stage: "ukendt" },
+    { companyId: arkiveret.id, title: "skjult", stage: "moede" }, // arkiveret virksomhed tæller ikke (som på /pipeline)
+  ]);
+  const deals = (await getHqSummary(db, TODAY)).deals;
+  assert.deepEqual(deals.map((d) => d.stage), [...DEAL_STAGES]);
+  assert.deepEqual(deals.map((d) => d.n), [1, 0, 2, 0, 0, 0, 0]);
 });
 
 test("HQ viser kun ejerens opgaver og placerer vigtige først", async () => {

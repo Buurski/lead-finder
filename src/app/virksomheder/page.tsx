@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { and, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { activity, company } from "@/lib/db/schema";
+import { activity, company, deal } from "@/lib/db/schema";
+import { DEAL_STAGES, STAGE_LABEL, normalizeStage } from "@/lib/hq/deal-stages";
 import { getDossier } from "@/lib/hq/dossier";
 import { loadOverview } from "@/lib/hq/overview-load";
 import { copenhagenNow } from "@/lib/settings";
@@ -81,8 +82,16 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
   const qFilter = q ? or(ilike(company.name, pattern), ilike(company.city, pattern), ilike(company.email, pattern)) : undefined;
   const kunderFilter = and(isNotNull(company.clientNo), eq(company.clientRemoved, false));
 
+  // Aftale-trin fra forsidens pipeline (?fase=moede …): virksomheder med en aftale i netop det trin.
+  // Aftale-tabellen er lille; trinnet normaliseres i JS så det passer med pipeline-tavlen.
+  const dealStageIds = (DEAL_STAGES as readonly string[]).includes(fase)
+    ? (await db.select({ id: deal.companyId, stage: deal.stage }).from(deal)).filter((r) => normalizeStage(r.stage) === fase).map((r) => r.id)
+    : null;
+
   const faseFilter =
-    fase === TABT_KEY
+    dealStageIds
+      ? dealStageIds.length ? inArray(company.id, dealStageIds) : sql`false`
+      : fase === TABT_KEY
       ? or(eq(company.lifecycle, "tabt"), eq(company.lifecycle, "ikke_egnet"))
       : (FASE_KEYS as readonly string[]).includes(fase)
         ? eq(company.lifecycle, fase)
@@ -171,7 +180,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
     { key: "ny", label: "Ny", n: countsByLifecycle.get("ny") ?? 0, overrides: { fase: "ny" } },
     { key: "tabt", label: "Tabt/ikke egnet", n: tabtCount, overrides: { fase: TABT_KEY } },
   ];
-  const activeChip = wantKunder ? "kunder" : fase === TABT_KEY ? "tabt" : (FASE_KEYS as readonly string[]).includes(fase) ? fase : "alle";
+  const activeChip = wantKunder ? "kunder" : dealStageIds ? "" : fase === TABT_KEY ? "tabt" : (FASE_KEYS as readonly string[]).includes(fase) ? fase : "alle";
 
   const from = total === 0 ? 0 : (side - 1) * PAGE_SIZE + 1;
   const to = Math.min(side * PAGE_SIZE, total);
@@ -179,7 +188,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
 
   return (
     <div className="cc-fade kinly-page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <PageHeader icon="Building2" title="Alle virksomheder" subtitle={`${alleTotal} virksomheder${ejer ? ` · ejer: ${ejer}` : ""}`} />
+      <PageHeader icon="Building2" title="Alle virksomheder" subtitle={`${alleTotal} virksomheder${ejer ? ` · ejer: ${ejer}` : ""}${dealStageIds ? ` · aftaler i trinnet ${STAGE_LABEL[fase as keyof typeof STAGE_LABEL]}` : ""}`} />
 
       <form action="/virksomheder" method="get" className="virk-search" role="search">
         <input type="search" name="q" defaultValue={q} placeholder="Søg på navn, by eller mail…" aria-label="Søg virksomheder" />

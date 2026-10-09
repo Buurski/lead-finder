@@ -39,10 +39,15 @@
 .hq-pipeline-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
 .hq-open-link { display: flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--text); }
 .hq-seg-bar { display: flex; gap: 4px; height: 40px; margin-bottom: 14px; }
-.hq-seg { border-radius: 10px; background: var(--surface-2); }
+.hq-seg { display: block; border-radius: 10px; background: var(--surface-2); }
 .hq-seg.on { background: var(--accent); }
 .hq-seg-labels { display: flex; gap: 4px; }
-.hq-seg-label { display: flex; flex-direction: column; gap: 2px; }
+.hq-seg-label { display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; }
+.hq-seg-label:hover .t { color: var(--text); }
+.hq-seg-sub { margin: 18px 0 8px; font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.hq-seg-bar-deals { height: 14px; margin-bottom: 10px; }
+.hq-seg-labels-deals .hq-seg-label { flex: 1 1 0; min-width: 0; }
+.hq-seg-labels-deals .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hq-seg-label .n { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .hq-seg-label .t { font-size: 12px; color: var(--text-dim); font-weight: 600; }
 

@@ -1,21 +1,3 @@
-// Klient-sikker kopi af de faser og labels der er defineret i
-// src/lib/hq/deals.ts (som har `server-only` og derfor ikke må importeres i en
-// client component). Ren, statisk data — hold i sync med deals.ts manuelt hvis
-// faserne nogensinde ændres.
-export const DEAL_STAGES = ["moede", "tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
-export type DealStage = (typeof DEAL_STAGES)[number];
-
-export const STAGE_LABEL: Record<DealStage, string> = {
-  moede: "Møde",
-  tilbud: "Tilbud",
-  aftalt: "Aftalt",
-  i_gang: "I gang",
-  leveret: "Leveret",
-  betalt: "Betalt",
-  tabt: "Tabt",
-};
-
-export function normalizeStage(raw: string): DealStage {
-  const v = raw.trim().toLowerCase();
-  return (DEAL_STAGES as readonly string[]).includes(v) ? (v as DealStage) : "tilbud";
-}
+// Klient-sikker adgang til aftale-faserne (deals.ts har `server-only` og må ikke
+// importeres i en client component). Selve definitionen bor ét sted: lib/hq/deal-stages.ts.
+export { DEAL_STAGES, STAGE_LABEL, normalizeStage, type DealStage } from "../../lib/hq/deal-stages.ts";

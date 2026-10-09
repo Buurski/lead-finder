@@ -5,7 +5,7 @@ import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal } from "../db/schema.ts";
 import { createDeal, DEAL_STAGES, DealInputError, deleteDeal, listPipeline, normalizeStage, STAGE_LABEL, updateDeal } from "./deals.ts";
-import { DEAL_STAGES as CLIENT_STAGES, STAGE_LABEL as CLIENT_LABEL } from "../../components/virksomheder/dealStages.ts";
+import { DEAL_STAGES as CLIENT_STAGES, STAGE_LABEL as CLIENT_LABEL, normalizeStage as clientNormalizeStage } from "../../components/virksomheder/dealStages.ts";
 
 let db: Db;
 let companyId: string;
@@ -84,7 +84,10 @@ test("møde er en gyldig fase før tilbud, kan sættes og logges", async () => {
   assert.ok(log.some((l) => l.includes("Møde → Tilbud")));
 });
 
-test("klient-kopien af faserne er identisk med serverens", () => {
+test("klientens faser og normalizeStage er den samme funktion som serverens", () => {
   assert.deepEqual([...CLIENT_STAGES], [...DEAL_STAGES]);
   assert.deepEqual(CLIENT_LABEL, STAGE_LABEL);
+  const inputs = ["", "moede", "won", "ukendt"];
+  assert.deepEqual(inputs.map((x) => normalizeStage(x)), ["aftalt", "moede", "aftalt", "aftalt"]);
+  assert.deepEqual(inputs.map((x) => clientNormalizeStage(x)), inputs.map((x) => normalizeStage(x)));
 });

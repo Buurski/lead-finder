@@ -4,9 +4,10 @@
 import "server-only";
 import { and, eq, gt, gte, inArray, isNotNull, ne, or, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, invoice, outreach, subscriptionPlan } from "../db/schema.ts";
+import { activity, company, deal, invoice, outreach, subscriptionPlan } from "../db/schema.ts";
 import { invoiceTotal, isOverdue, type Invoice, type Subscription } from "../invoices.ts";
 import { listMyDay, type MyDayItem } from "./tasks.ts";
+import { DEAL_STAGES, normalizeStage, type DealStage } from "./deal-stages.ts";
 
 /** Et svar der stadig venter på os: lead har svaret, er ikke flyttet videre, og vores seneste
  * mail er under 45 dage gammel. Ældre (fx maj-bølgen) er besvaret i Gmail for længst og må
@@ -54,6 +55,8 @@ export interface NextStep {
 export interface HqSummary {
   kpi: { draftsPending: number; newReplies: number; overdueNextSteps: number };
   funnel: Array<{ stage: FunnelStage; n: number }>;
+  /** Aftaler pr. trin — altid alle 7 trin i DEAL_STAGES-rækkefølge, nul-fyldt. */
+  deals: Array<{ stage: DealStage; n: number }>;
   nextSteps: NextStep[];
   money: { mrr: number; outstanding: number; overdueCount: number };
   team: Array<{ person: "lucas" | "charlie"; summary: string; at: string | null }>;
@@ -88,18 +91,22 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
   const isCustomer = and(isNotNull(company.clientNo), eq(company.clientRemoved, false));
   const leadRows = and(eq(company.archived, false), or(isNull(company.clientNo), eq(company.clientRemoved, true)));
 
-  const [[drafts], [replies], funnelRows, invRows, subRows, items] = await Promise.all([
+  const [[drafts], [replies], funnelRows, dealRows, invRows, subRows, items] = await Promise.all([
     db.select({ n }).from(outreach).where(inArray(outreach.status, OPEN_DRAFT)),
     // Ubehandlet svar: der er svaret, men ingen har flyttet leadet videre endnu.
     db.select({ n }).from(company).where(unhandledReplyWhere()),
     db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle)
       .then(async (rows) => [...rows.filter((r) => r.stage !== "kunde"), { stage: "kunde", n: (await db.select({ n }).from(company).where(and(isCustomer, eq(company.archived, false))))[0].n }]),
+    // Samme udvalg som pipeline-tavlen (listPipeline): ikke-arkiverede virksomheder, fase normaliseret ens.
+    db.select({ stage: deal.stage, n }).from(deal).innerJoin(company, and(eq(company.id, deal.companyId), eq(company.archived, false))).groupBy(deal.stage),
     db.select({ data: invoice.data }).from(invoice).where(inArray(invoice.status, UNPAID)),
     db.select({ data: subscriptionPlan.data }).from(subscriptionPlan),
     listMyDay(db, { today, owner: me === "lucas" || me === "charlie" ? me : undefined }),
   ]);
 
   const counts = new Map(funnelRows.map((r) => [r.stage, r.n]));
+  const dealCounts = new Map<DealStage, number>();
+  for (const r of dealRows) dealCounts.set(normalizeStage(r.stage), (dealCounts.get(normalizeStage(r.stage)) ?? 0) + r.n);
 
   const steps: NextStep[] = items
     .map((it) => ({
@@ -131,6 +138,7 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
       overdueNextSteps: items.filter((it) => it.bucket === "forfalden" || (it.kind === "deal" && !it.title)).length,
     },
     funnel: FUNNEL.map((stage) => ({ stage, n: counts.get(stage) ?? 0 })),
+    deals: DEAL_STAGES.map((stage) => ({ stage, n: dealCounts.get(stage) ?? 0 })),
     nextSteps: steps.slice(0, 8),
     money: {
       mrr: subs.reduce((sum, s) => sum + s.lines.reduce((a, l) => a + l.amount, 0), 0),

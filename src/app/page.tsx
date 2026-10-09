@@ -53,7 +53,7 @@ export default async function HomePage() {
       <div className="hq-section-label">I dag</div>
       <KpiRow items={kpiItems} />
 
-      <PipelineStrip funnel={summary.funnel} />
+      <PipelineStrip funnel={summary.funnel} deals={summary.deals} />
 
       <div className="hq-columns">
         <div className="hq-col-left">
