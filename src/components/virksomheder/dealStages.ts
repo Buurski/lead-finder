@@ -2,10 +2,11 @@
 // src/lib/hq/deals.ts (som har `server-only` og derfor ikke må importeres i en
 // client component). Ren, statisk data — hold i sync med deals.ts manuelt hvis
 // faserne nogensinde ændres.
-export const DEAL_STAGES = ["tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
+export const DEAL_STAGES = ["moede", "tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
 
 export const STAGE_LABEL: Record<DealStage, string> = {
+  moede: "Møde",
   tilbud: "Tilbud",
   aftalt: "Aftalt",
   i_gang: "I gang",

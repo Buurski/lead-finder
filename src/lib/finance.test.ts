@@ -13,3 +13,7 @@ test("mrrRunRate/liveClientCount: aktivt abonnement (planMrr) er MRR uanset fase
   assert.equal(stageOf({ stage: "leveret" }), "live");
   assert.equal(stageOf({ stage: "tilbud" }), "offer");
 });
+
+test("stageOf: møde regnes som en åben fase (engaged), ikke som aftalt eller tabt", () => {
+  assert.equal(stageOf({ stage: "moede" }), "engaged");
+});

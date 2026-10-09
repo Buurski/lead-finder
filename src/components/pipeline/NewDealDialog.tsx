@@ -27,7 +27,7 @@ export default function NewDealDialog({
   const [results, setResults] = useState<{ id: string; name: string; city: string }[]>([]);
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(initialCompany ?? null);
   const [title, setTitle] = useState("");
-  const [stage, setStage] = useState<DealStage>(stages[0]?.stage ?? "tilbud");
+  const [stage, setStage] = useState<DealStage>(stages.find((s) => s.stage === "tilbud")?.stage ?? stages[0]?.stage ?? "tilbud");
   const [valueDkk, setValueDkk] = useState("");
   const [mrrDkk, setMrrDkk] = useState("");
   const [owner, setOwner] = useState<Owner>("");

@@ -6,10 +6,11 @@ import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
 
-export const DEAL_STAGES = ["tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
+export const DEAL_STAGES = ["moede", "tilbud", "aftalt", "i_gang", "leveret", "betalt", "tabt"] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
 
 export const STAGE_LABEL: Record<DealStage, string> = {
+  moede: "Møde",
   tilbud: "Tilbud",
   aftalt: "Aftalt",
   i_gang: "I gang",

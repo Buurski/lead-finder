@@ -133,3 +133,9 @@ test("klaret opgave kan genåbnes og logges (E2E 26/9)", async () => {
   const acts = await db.select().from(activity);
   assert.ok(acts.some((a) => a.summary === "Opgave genåbnet: Genåbn mig"));
 });
+
+test("listMyDay: en aftale i fasen møde viser sit næste skridt (åben fase)", async () => {
+  await db.insert(deal).values({ companyId, title: "Møde hos kunden", stage: "moede", owner: "lucas", nextStep: "Mød dem torsdag", nextStepDue: TODAY });
+  const items = await listMyDay(db, { today: TODAY });
+  assert.equal(items.some((i) => i.title === "Mød dem torsdag"), true);
+});

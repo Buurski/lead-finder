@@ -37,7 +37,7 @@ export interface MyDayItem {
 
 // Åbne faser for den daglige opgaveløkke. "leveret" tæller med (der er ofte
 // stadig et næste skridt efter levering) — kun "betalt"/"tabt" er lukket.
-const OPEN_DEAL_STAGES = new Set(["tilbud", "aftalt", "i_gang", "leveret"]);
+const OPEN_DEAL_STAGES = new Set(["moede", "tilbud", "aftalt", "i_gang", "leveret"]);
 const BUCKET_ORDER: Record<DueBucket, number> = { forfalden: 0, i_dag: 1, kommende: 2, uden_dato: 3 };
 
 export function dueBucket(due: string, today: string): DueBucket {

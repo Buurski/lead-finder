@@ -41,3 +41,10 @@ test("ugyldigt website giver ingen domæne, men tæller ikke som fejl", async ()
   const rows = await listCustomerContacts(db);
   assert.deepEqual(rows[0].domains, []);
 });
+
+test("varmt lead med et møde booket tages med", async () => {
+  const [warm] = await db.insert(company).values({ rowNo: 6, name: "Salon Med Møde", leadStatus: "interested", email: "kontakt@moede.dk" }).returning();
+  await db.insert(deal).values({ companyId: warm.id, title: "Hjemmeside", stage: "moede" });
+  const rows = await listCustomerContacts(db);
+  assert.deepEqual(rows.map((r) => r.name), ["Salon Med Møde"]);
+});

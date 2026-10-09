@@ -21,7 +21,7 @@ const FUNNEL_LABEL: Record<string, string> = {
 
 // Tabt/betalt er afsluttet — de kræver ingen handling (og tæller ikke i "står stille").
 const CLOSED = STALE_EXEMPT;
-const OPEN_STAGES = new Set(["tilbud", "aftalt", "i_gang"]);
+const OPEN_STAGES = new Set(["moede", "tilbud", "aftalt", "i_gang"]);
 
 function needsAction(card: { stage: string; nextStep: string | null; nextStepDue: string | null }, today: string): boolean {
   if (CLOSED.has(card.stage)) return false;

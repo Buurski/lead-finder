@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal } from "../db/schema.ts";
-import { createDeal, DealInputError, deleteDeal, listPipeline, normalizeStage, updateDeal } from "./deals.ts";
+import { createDeal, DEAL_STAGES, DealInputError, deleteDeal, listPipeline, normalizeStage, STAGE_LABEL, updateDeal } from "./deals.ts";
+import { DEAL_STAGES as CLIENT_STAGES, STAGE_LABEL as CLIENT_LABEL } from "../../components/virksomheder/dealStages.ts";
 
 let db: Db;
 let companyId: string;
@@ -69,4 +70,21 @@ test("aftale med faktureret arbejde kan ikke slettes", async () => {
   const d = await createDeal(db, companyId, { title: "Site" }, "lucas");
   await db.insert(activity).values({ companyId, dealId: d.id, type: "arbejde", summary: "Design", billableDkk: 500, invoicedAt: new Date() });
   await assert.rejects(deleteDeal(db, d.id, "lucas"), /fakturerede/);
+});
+
+test("møde er en gyldig fase før tilbud, kan sættes og logges", async () => {
+  assert.deepEqual([...DEAL_STAGES].slice(0, 2), ["moede", "tilbud"]);
+  assert.equal(STAGE_LABEL.moede, "Møde");
+  assert.equal(normalizeStage("moede"), "moede");
+  const d = await createDeal(db, companyId, { title: "Hjemmeside", stage: "moede", nextStep: "Møde hos dem", nextStepDue: "2026-10-16" }, "lucas");
+  assert.equal(d.stage, "moede");
+  await updateDeal(db, d.id, { stage: "tilbud" }, "lucas");
+  const log = (await db.select().from(activity).where(eq(activity.companyId, companyId))).map((a) => a.summary);
+  assert.ok(log.includes("Ny aftale: Hjemmeside (Møde)"));
+  assert.ok(log.some((l) => l.includes("Møde → Tilbud")));
+});
+
+test("klient-kopien af faserne er identisk med serverens", () => {
+  assert.deepEqual([...CLIENT_STAGES], [...DEAL_STAGES]);
+  assert.deepEqual(CLIENT_LABEL, STAGE_LABEL);
 });

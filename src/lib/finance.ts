@@ -88,7 +88,7 @@ const setupOf = (d: DealInput) => num(d.setupFee);
 // legacy websiteStatus so existing rows (no stage set yet) still render.
 // Pipelinens nye faser (deals.ts) → de gamle økonomi-faser.
 const NEW_STAGE: Record<string, Stage> = {
-  tilbud: "offer", aftalt: "won", i_gang: "delivering", leveret: "live", betalt: "live", tabt: "lost",
+  moede: "engaged", tilbud: "offer", aftalt: "won", i_gang: "delivering", leveret: "live", betalt: "live", tabt: "lost",
 };
 
 export function stageOf(d: DealInput): Stage {

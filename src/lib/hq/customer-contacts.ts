@@ -4,7 +4,7 @@
 // på deltager-adresser (From/To/Cc), aldrig fritekst i mailen.
 //
 // "Kunde" = lifecycle 'kunde', plus varme leads (interesseret/svaret/kontaktet)
-// der allerede har en aftale i gang (tilbud/aftalt/i_gang) — de skriver ofte mail
+// der allerede har en aftale i gang (møde/tilbud/aftalt/i_gang) — de skriver ofte mail
 // før den formelle kunde-overgang, og skal ikke tabes af sync'en.
 import "server-only";
 import { inArray } from "drizzle-orm";
@@ -20,7 +20,7 @@ export interface CustomerContact {
 }
 
 const WARM_LIFECYCLE = new Set(["interesseret", "svaret", "kontaktet"]);
-const WARM_DEAL_STAGES = new Set(["tilbud", "aftalt", "i_gang"]);
+const WARM_DEAL_STAGES = new Set(["moede", "tilbud", "aftalt", "i_gang"]);
 
 function hostnameOf(website: string): string | null {
   const w = website.trim();
