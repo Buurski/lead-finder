@@ -77,6 +77,7 @@ function stripQuotedHtml(html: string): string {
   // Kommentarer/style/script først: tags inde i dem må ikke tælle som blokke (Astra runde 6).
   // ponytail: regex-HTML, ikke en parser — loft er eksotisk/ugyldig markup; opgradér til en rigtig parser hvis det rammer.
   const s = html
+    .replace(/<!--\[if[^\]]*\]>(<!-->)?|(<!--)?<!\[endif\]-->/gi, "") // MSO-betinget indhold er synlig tekst (Astra runde 7)
     .replace(/<!--[\s\S]*?(-->|$)/g, "")
     .replace(/<(style|script)\b[\s\S]*?(<\/\1\s*>|$)/gi, "")
     .replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");

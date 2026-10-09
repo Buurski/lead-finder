@@ -79,3 +79,13 @@ test("HTML-svar: tags i kommentarer/style/script tæller ikke som blokke — afm
     assert.equal(isOptOut(body), true, `${noise} → ${body}`);
   }
 });
+
+test("HTML-svar: Outlooks betingede MSO-indhold er synlig tekst og bevares; almindelige kommentarer fjernes (Astra runde 7)", () => {
+  const html = (s: string) => decodeMailBody(["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "", s].join("\r\n"));
+  const mso = html("<!--[if mso]><p>Afmeld venligst</p><![endif]-->");
+  assert.equal(isOptOut(mso), true, mso);
+  const rev = html("<!--[if !mso]><!--><p>Afmeld venligst</p><!--<![endif]-->");
+  assert.equal(isOptOut(rev), true, rev);
+  const plain = html("<p>Hvad koster det?</p><!-- afmeld -->");
+  assert.equal(isOptOut(plain), false, plain);
+});
