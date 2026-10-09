@@ -47,7 +47,7 @@ test("HQ-tal læses korrekt fra Postgres", async () => {
   await db.insert(activity).values({ actor: "lucas", type: "note", summary: "Nyhedsbrev-skabelon færdig", at: new Date(Date.now() - 86_400_000) }); // relativ: teamNow ser kun 7 dage tilbage fra nu
 
   const s = await getHqSummary(db, TODAY);
-  assert.deepEqual(s.kpi, { draftsPending: 1, newReplies: 1, overdueNextSteps: 1 });
+  assert.deepEqual(s.kpi, { draftsPending: 1, newReplies: 1, overdueNextSteps: 1, repliedLeads: 3 }); // 3 = alle replied i svaret/interesseret, uanset alder
   assert.deepEqual(s.funnel.map((f) => f.n), [0, 0, 2, 1, 1]); // kunde tæller som på /kunder (også uden lead-række, E2E 26/9); tragten tæller også gamle svar
   assert.deepEqual(s.deals.map((d) => d.stage), [...DEAL_STAGES]); // alle 7 trin, fast rækkefølge
   assert.deepEqual(s.deals.map((d) => d.n), [0, 0, 0, 1, 0, 1, 0]); // i_gang + betalt

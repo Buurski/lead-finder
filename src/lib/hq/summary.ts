@@ -28,6 +28,19 @@ export function unhandledReplyWhere() {
   );
 }
 
+/** Åbne leads der selv har svaret på en mail — uanset hvor gammelt svaret er (modsat unhandledReplyWhere).
+ * Livsfasen (trigger 0003) holder nej, ikke egnet, tabt og flettet ude; kunder og arkiverede er sorteret fra
+ * her. Én definition: bruges af forsidens tal OG "Har svaret"-listen (lib/hq/replied-leads.ts). */
+export function repliedLeadsWhere() {
+  return and(
+    gt(company.rowNo, 0),
+    eq(company.archived, false),
+    sql`lower(trim(${company.emailStatus})) = 'replied'`,
+    inArray(company.lifecycle, ["svaret", "interesseret"]),
+    or(isNull(company.clientNo), eq(company.clientRemoved, true)),
+  );
+}
+
 export const FUNNEL = ["ny", "kontaktet", "svaret", "interesseret", "kunde"] as const;
 export type FunnelStage = (typeof FUNNEL)[number];
 
@@ -53,7 +66,7 @@ export interface NextStep {
 }
 
 export interface HqSummary {
-  kpi: { draftsPending: number; newReplies: number; overdueNextSteps: number };
+  kpi: { draftsPending: number; newReplies: number; overdueNextSteps: number; repliedLeads: number };
   funnel: Array<{ stage: FunnelStage; n: number }>;
   /** Aftaler pr. trin — altid alle 7 trin i DEAL_STAGES-rækkefølge, nul-fyldt. */
   deals: Array<{ stage: DealStage; n: number }>;
@@ -91,10 +104,12 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
   const isCustomer = and(isNotNull(company.clientNo), eq(company.clientRemoved, false));
   const leadRows = and(eq(company.archived, false), or(isNull(company.clientNo), eq(company.clientRemoved, true)));
 
-  const [[drafts], [replies], funnelRows, dealRows, invRows, subRows, items] = await Promise.all([
+  const [[drafts], [replies], [{ n: repliedLeadsCount }], funnelRows, dealRows, invRows, subRows, items] = await Promise.all([
     db.select({ n }).from(outreach).where(inArray(outreach.status, OPEN_DRAFT)),
     // Ubehandlet svar: der er svaret, men ingen har flyttet leadet videre endnu.
     db.select({ n }).from(company).where(unhandledReplyWhere()),
+    // "Har svaret": samme WHERE som listen på /har-svaret.
+    db.select({ n }).from(company).where(repliedLeadsWhere()),
     db.select({ stage: company.lifecycle, n }).from(company).where(leadRows).groupBy(company.lifecycle)
       .then(async (rows) => [...rows.filter((r) => r.stage !== "kunde"), { stage: "kunde", n: (await db.select({ n }).from(company).where(and(isCustomer, eq(company.archived, false))))[0].n }]),
     // Samme udvalg som pipeline-tavlen (listPipeline): ikke-arkiverede virksomheder, fase normaliseret ens.
@@ -135,6 +150,7 @@ export async function getHqSummary(db: Db, today: string, me?: string | null): P
     kpi: {
       draftsPending: drafts.n,
       newReplies: replies.n,
+      repliedLeads: repliedLeadsCount,
       overdueNextSteps: items.filter((it) => it.bucket === "forfalden" || (it.kind === "deal" && !it.title)).length,
     },
     funnel: FUNNEL.map((stage) => ({ stage, n: counts.get(stage) ?? 0 })),

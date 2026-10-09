@@ -84,6 +84,7 @@ export const SECTIONS: Section[] = [
     tabs: [
       { href: "/approve", label: "Godkend" },
       { href: "/replies", label: "Svar" },
+      { href: "/har-svaret", label: "Har svaret" },
       { href: "/previews", label: "Gratis udkast" },
       { href: "/messenger", label: "Messenger" },
       { href: "/kundeopdateringer", label: "Kundeopdateringer" },

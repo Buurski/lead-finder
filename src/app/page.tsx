@@ -9,6 +9,7 @@ import Greeting from "@/components/hq/Greeting";
 import AttentionSummary from "@/components/hq/AttentionSummary";
 import KpiRow, { type KpiItem } from "@/components/hq/KpiRow";
 import PipelineStrip from "@/components/hq/PipelineStrip";
+import RepliedLeadsCard from "@/components/hq/RepliedLeadsCard";
 import NextStepsTable from "@/components/hq/NextStepsTable";
 import MoneyCard from "@/components/hq/MoneyCard";
 import TeamCard from "@/components/hq/TeamCard";
@@ -54,6 +55,8 @@ export default async function HomePage() {
       <KpiRow items={kpiItems} />
 
       <PipelineStrip funnel={summary.funnel} deals={summary.deals} />
+
+      <RepliedLeadsCard n={summary.kpi.repliedLeads} />
 
       <div className="hq-columns">
         <div className="hq-col-left">
