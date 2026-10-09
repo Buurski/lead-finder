@@ -27,6 +27,7 @@ const SCHEDULE: Record<string, string> = {
   "jev-rescore": "30 3,13 * * *",
   "snapshot": "45 3 * * *",
   "calendar-sync": "15 * * * *",
+  "moede-udfald": "40 * * * *",
   "gsc-snapshot": "30 6 * * 1",
 };
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
+import BookMeeting, { tomorrowISO } from "@/components/virksomheder/BookMeeting";
 
 export interface HarSvaretRow {
   id: string;
@@ -18,13 +19,6 @@ export interface HarSvaretRow {
   age: string; // "12 d siden"
 }
 
-// Næste kalenderdato i København (ikke UTC): sv-SE giver YYYY-MM-DD.
-function tomorrowISO(): string {
-  const dk = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
-  const t = new Date(`${dk(new Date())}T12:00:00Z`);
-  t.setUTCDate(t.getUTCDate() + 1);
-  return dk(t);
-}
 
 async function post(url: string, body: unknown): Promise<void> {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -66,6 +60,7 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
         {row.phone && <a href={`tel:${row.phone.replace(/\s+/g, "")}`} className="cc-btn">Ring</a>}
         <button type="button" className="cc-btn" disabled={busy} onClick={logCall}>Log opkald</button>
         <button type="button" className="cc-btn" disabled={busy} onClick={() => setLater((v) => !v)} aria-expanded={later}>Ring senere</button>
+        <BookMeeting companyId={row.id} owner={me} />
         {row.email && <a href={`mailto:${row.email}`} className="cc-btn">Mail igen</a>}
       </div>
       {later && (

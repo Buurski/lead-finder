@@ -47,6 +47,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SLOT_START = "09:00"; // dagens tidløse opgaver fordeles herfra
 const SLOT_STEP_MIN = 15; // minutter pr. tidløs opgave
 const TIMED_DURATION_MIN = 30;
+const MEETING_DURATION_MIN = 60; // mødeopgaver (Book møde)
 
 function addMinutes(time: string, add: number): string {
   const [h, m] = time.split(":").map(Number);
@@ -89,7 +90,7 @@ function buildEvent(item: MyDayItem, day: string, time: string, durationMin: num
 
 /**
  * Opgaver → kalenderbegivenheder for én dag ad gangen. Tidsatte lægges på deres
- * eget tidspunkt (30 min); tidløse fordeles fra kl. 09 i 15-min-slots (vigtige
+ * eget tidspunkt (30 min, møder 60); tidløse fordeles fra kl. 09 i 15-min-slots (vigtige
  * først, så efter id), så de ikke ligger oven i hinanden. Forfaldne opgaver
  * flyttes til i dag, så de minder igen hver morgen til de er klaret.
  */
@@ -103,7 +104,7 @@ export function toEvents(items: MyDayItem[], today: string): CalEvent[] {
   const events: CalEvent[] = [];
   for (const [day, dayItems] of byDay) {
     for (const item of dayItems) {
-      if (item.dueTime) events.push(buildEvent(item, day, item.dueTime, TIMED_DURATION_MIN, item.due < today));
+      if (item.dueTime) events.push(buildEvent(item, day, item.dueTime, item.meeting ? MEETING_DURATION_MIN : TIMED_DURATION_MIN, item.due < today));
     }
     const untimed = dayItems
       .filter((i) => !i.dueTime)

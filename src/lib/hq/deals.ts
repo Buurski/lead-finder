@@ -2,9 +2,10 @@
 // nyhedsbrev i gang + hjemmesidepas). Hver ændring skriver en hændelse i
 // tidslinjen med hvem der gjorde det.
 import "server-only";
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, deal, task } from "../db/schema.ts";
+import { copenhagenNow } from "../settings.ts";
 
 import { DEAL_STAGES, STAGE_LABEL, normalizeStage, type DealStage } from "./deal-stages.ts";
 export { DEAL_STAGES, STAGE_LABEL, normalizeStage, type DealStage };
@@ -98,8 +99,27 @@ export async function updateDeal(db: Db, dealId: string, p: DealPatch, actor: st
     if (changes.length) {
       await tx.insert(activity).values({ companyId: before.companyId, dealId, actor, type: "fase", summary: `${after.title || "Aftale"}: ${changes.join(", ")}` });
     }
+    if (fields.stage === "tilbud" && normalizeStage(before.stage) === "moede") await quoteFollowUps(tx as unknown as Db, after);
     return after;
   });
+}
+
+/** Møde → Tilbud: opgaverne "Send tilbud" (+2 dage) og "Følg op" (+5 dage), ejet af aftalens ejer.
+ * Ingen dubletter: findes der allerede åbne opfølgninger på aftalen, oprettes ingen nye. */
+async function quoteFollowUps(tx: Db, d: typeof deal.$inferSelect) {
+  const open = await tx.select({ id: task.id }).from(task)
+    .where(and(isNull(task.doneAt), sql`${task.data}->>'dealId' = ${d.id}`, sql`${task.data}->>'kind' in ('tilbud-send', 'tilbud-foelg')`));
+  if (open.length) return;
+  const [c] = await tx.select({ name: company.name }).from(company).where(eq(company.id, d.companyId));
+  const name = c?.name || "kunden";
+  const owner = d.owner === "charlie" ? "charlie" : "lucas";
+  const [y, m, day] = copenhagenNow().date.split("-").map(Number);
+  const plus = (n: number) => new Date(Date.UTC(y, m - 1, day + n)).toISOString().slice(0, 10);
+  const base = { companyId: d.companyId, dealId: d.id, clientName: name, owner };
+  await tx.insert(task).values([
+    { ...base, title: `Send tilbud til ${name}`, due: plus(2), data: { kind: "tilbud-send", dealId: d.id } },
+    { ...base, title: `Følg op på tilbud til ${name}`, due: plus(5), data: { kind: "tilbud-foelg", dealId: d.id } },
+  ]);
 }
 
 /**

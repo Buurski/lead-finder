@@ -9,6 +9,7 @@ import Icon from "@/components/shell/Icon";
 import LogWorkDialog from "@/components/shell/LogWorkDialog";
 import NewDealDialog from "@/components/pipeline/NewDealDialog";
 import NewTaskDialog from "@/components/shell/NewTaskDialog";
+import BookMeeting from "./BookMeeting";
 
 type DialogKind = "arbejde" | "opgave" | "aftale" | null;
 
@@ -51,6 +52,7 @@ export default function ProfileQuickActions({
         <button className="cc-btn virk-btn-press" onClick={() => setDialog("opgave")}>
           <Icon name="ListChecks" style={{ width: 14, height: 14 }} /> Ny opgave
         </button>
+        <BookMeeting companyId={companyId} owner={defaultOwner} className="cc-btn virk-btn-press" />
         <button className="cc-btn virk-btn-press" onClick={() => setDialog("aftale")}>
           <Icon name="Briefcase" style={{ width: 14, height: 14 }} /> Ny aftale
         </button>

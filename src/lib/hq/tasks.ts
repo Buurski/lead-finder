@@ -32,7 +32,14 @@ export interface MyDayItem {
   dueTime: string; // HH:MM eller "" (aftalers næste skridt har altid "" — se gcal-sync)
   note: string;
   important: boolean;
+  /** Mødeopgave (booket via "Book møde"): kalenderen giver den 60 min. Ingen kolonne — markøren ligger i task.data. */
+  meeting?: boolean;
   bucket: DueBucket;
+}
+
+/** Mødeopgaver er mærket `task.data.kind = "moede"` (ingen migration). */
+export function isMeetingData(data: unknown): boolean {
+  return !!data && typeof data === "object" && !Array.isArray(data) && (data as { kind?: unknown }).kind === "moede";
 }
 
 // Åbne faser for den daglige opgaveløkke. "leveret" tæller med (der er ofte
@@ -57,7 +64,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
   // (fælles-regel #23); getHqSummary() kalder denne funktion fra sin egen
   // Promise.all, så to samtidige forespørgsler herinde ovenpå det er for meget.
   const taskRows = await db
-    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, dueTime: task.dueTime, owner: task.owner, note: task.note, important: task.important })
+    .select({ id: task.id, companyId: task.companyId, clientName: task.clientName, title: task.title, due: task.due, dueTime: task.dueTime, owner: task.owner, note: task.note, important: task.important, data: task.data })
     .from(task)
     .where(opts.owner ? and(isNull(task.doneAt), eq(task.owner, opts.owner)) : isNull(task.doneAt));
   const dealRows = await db
@@ -79,6 +86,7 @@ export async function listMyDay(db: Db, opts: { owner?: Owner; today: string }):
       dueTime: t.dueTime,
       note: t.note,
       important: t.important,
+      meeting: isMeetingData(t.data),
       bucket: dueBucket(t.due, opts.today),
     })),
     ...dealRows

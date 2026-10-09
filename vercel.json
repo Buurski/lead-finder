@@ -61,6 +61,10 @@
       "schedule": "15 * * * *"
     },
     {
+      "path": "/api/cron/moede-udfald",
+      "schedule": "40 * * * *"
+    },
+    {
       "path": "/api/cron/gsc-snapshot",
       "schedule": "30 6 * * 1"
     },
