@@ -18,12 +18,23 @@ export interface UnbilledItem {
 }
 
 export async function unbilledWork(db: Db, companyId: string): Promise<UnbilledItem[]> {
+  return (await unbilledWorkMany(db, [companyId])).get(companyId) ?? [];
+}
+
+/** Ufaktureret arbejde for flere virksomheder i ét hug (nyeste først pr. virksomhed). */
+export async function unbilledWorkMany(db: Db, companyIds: string[]): Promise<Map<string, UnbilledItem[]>> {
+  const out = new Map<string, UnbilledItem[]>();
+  if (!companyIds.length) return out;
   const rows = await db
-    .select({ id: activity.id, summary: activity.summary, amount: activity.billableDkk, at: activity.at, actor: activity.actor })
+    .select({ id: activity.id, companyId: activity.companyId, summary: activity.summary, amount: activity.billableDkk, at: activity.at, actor: activity.actor })
     .from(activity)
-    .where(and(eq(activity.companyId, companyId), eq(activity.type, "arbejde"), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
+    .where(and(inArray(activity.companyId, companyIds), eq(activity.type, "arbejde"), gt(activity.billableDkk, 0), isNull(activity.invoicedAt)))
     .orderBy(desc(activity.at));
-  return rows.map((r) => ({ ...r, amount: r.amount ?? 0, at: r.at.toISOString() }));
+  for (const { companyId, ...r } of rows) {
+    if (!companyId) continue;
+    out.set(companyId, [...(out.get(companyId) ?? []), { ...r, amount: r.amount ?? 0, at: r.at.toISOString() }]);
+  }
+  return out;
 }
 
 /** Laver faktura-kladden af de valgte aktiviteter. Returnerer fakturaen. */

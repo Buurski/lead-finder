@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getDb } from "@/lib/db/client";
 import { getHqSummary } from "@/lib/hq/summary";
-import { getAttention } from "@/lib/hq/attention";
+import { getAttentionShared } from "@/lib/hq/attention";
 import { copenhagenNow } from "@/lib/settings";
 import { readPreviewRequests } from "@/lib/preview-queue";
 import { currentUser } from "@/lib/current-user";
@@ -32,7 +32,7 @@ export default async function HomePage() {
   // forbindelse, fælles-regel #23). readPreviewRequests er KV, kan løbe ved siden af.
   const previewRequestsPromise = readPreviewRequests().catch(() => []);
   const summary = await getHqSummary(db, date, user);
-  const attention = await getAttention(db, { owner, today: date });
+  const attention = await getAttentionShared(db, owner, date);
   const previewRequests = await previewRequestsPromise;
 
   const inbound = previewRequests.filter((p) => p.status === "ny").length;

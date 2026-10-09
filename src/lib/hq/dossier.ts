@@ -2,7 +2,7 @@
 // profilsiden og som kontekst-pakke til Hermes (så Hermes ikke selv skal slå op).
 // Postgres er facit for tal; vault-noterne (wiki/kunder) er facit for viden.
 import "server-only";
-import { desc, eq, isNull, and } from "drizzle-orm";
+import { desc, eq, inArray, isNull, and } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact, deal, invoice, site, task } from "../db/schema.ts";
 import { invoiceTotal, isOverdue, type Invoice } from "../invoices.ts";
@@ -69,22 +69,65 @@ export async function getDossier(
     db.select({ data: invoice.data }).from(invoice).where(eq(invoice.companyId, companyId)),
     db.select().from(site).where(eq(site.companyId, companyId)).limit(1),
   ]);
-  const invoices = invRows.map((r) => r.data as Invoice).sort((a, b) => (a.number < b.number ? 1 : -1));
+  const notes = pickNotes(companyId, c.name, opts.notes ?? (opts.loadNotes ? await opts.loadNotes(c.name).catch(() => []) : []));
+  return assembleDossier(c, { deals, contacts, activities, openTasks, invRows, site: s ?? null }, notes, opts.today);
+}
+
+function assembleDossier(
+  c: typeof company.$inferSelect,
+  p: { deals: Dossier["deals"]; contacts: Dossier["contacts"]; activities: Dossier["activities"]; openTasks: Dossier["openTasks"]; invRows: Array<{ data: unknown }>; site: Dossier["site"] },
+  notes: DossierNote[],
+  today: string,
+): Dossier {
+  const invoices = p.invRows.map((r) => r.data as Invoice).sort((a, b) => (a.number < b.number ? 1 : -1));
   const open = invoices.filter((i) => ["sendt", "forfalden", "rykket"].includes(i.status));
   return {
     company: c,
-    deals,
-    contacts,
-    activities,
-    openTasks,
+    deals: p.deals,
+    contacts: p.contacts,
+    activities: p.activities,
+    openTasks: p.openTasks,
     invoices,
     balance: {
       unpaid: open.reduce((sum, i) => sum + invoiceTotal(i).total, 0),
-      overdue: open.filter((i) => isOverdue(i, opts.today)).reduce((sum, i) => sum + invoiceTotal(i).total, 0),
+      overdue: open.filter((i) => isOverdue(i, today)).reduce((sum, i) => sum + invoiceTotal(i).total, 0),
     },
-    site: s ?? null,
-    notes: pickNotes(companyId, c.name, opts.notes ?? (opts.loadNotes ? await opts.loadNotes(c.name).catch(() => []) : [])),
+    site: p.site,
+    notes,
   };
+}
+
+/**
+ * Samme Dossier som getDossier, men for mange virksomheder (rækkerne er allerede hentet) i
+ * ét hug: 6 forespørgsler uanset antal (i stedet for 7 pr. virksomhed). Uden vault-noter (notes = []) — til
+ * attention/oversigter, ikke profilsiden.
+ */
+export async function getDossiers(db: Db, cs: Array<typeof company.$inferSelect>, opts: { today: string }): Promise<Dossier[]> {
+  if (!cs.length) return [];
+  const companyIds = cs.map((c) => c.id);
+  const by = <T extends { companyId: string | null }>(rows: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows) if (r.companyId) m.set(r.companyId, [...(m.get(r.companyId) ?? []), r]);
+    return m;
+  };
+  const deals = by(await db.select().from(deal).where(inArray(deal.companyId, companyIds)).orderBy(desc(deal.updatedAt)));
+  const contacts = by(await db.select().from(contact).where(inArray(contact.companyId, companyIds)));
+  // ponytail: henter alle aktiviteter for de valgte kunder og skærer til 20 pr. kunde i JS —
+  // window-funktion (row_number) hvis kunder får tusindvis af aktiviteter.
+  const acts = by(await db.select().from(activity).where(inArray(activity.companyId, companyIds)).orderBy(desc(activity.at)));
+  const tasks = by(await db.select().from(task).where(and(inArray(task.companyId, companyIds), isNull(task.doneAt))));
+  const invs = by(await db.select({ companyId: invoice.companyId, data: invoice.data }).from(invoice).where(inArray(invoice.companyId, companyIds)));
+  const sites = by(await db.select().from(site).where(inArray(site.companyId, companyIds)));
+  return cs.map((c) =>
+    assembleDossier(c, {
+      deals: deals.get(c.id) ?? [],
+      contacts: contacts.get(c.id) ?? [],
+      activities: (acts.get(c.id) ?? []).slice(0, 20),
+      openTasks: tasks.get(c.id) ?? [],
+      invRows: invs.get(c.id) ?? [],
+      site: sites.get(c.id)?.[0] ?? null,
+    }, [], opts.today),
+  );
 }
 
 const kr = (n: number) => `${n.toLocaleString("da-DK")} kr`;

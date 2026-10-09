@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { getAttention } from "@/lib/hq/attention";
+import { getAttentionShared } from "@/lib/hq/attention";
 import { currentUser } from "@/lib/current-user";
 import { copenhagenNow } from "@/lib/settings";
 import { isCommandCenterRequest } from "@/lib/cc-auth";
@@ -28,6 +28,6 @@ export async function GET(req: Request) {
     owner = me === "lucas" || me === "charlie" ? me : null; // "delt"/null → vis for begge
   }
   const { date } = copenhagenNow();
-  const items = await getAttention(getDb(), { owner, today: date });
+  const items = await getAttentionShared(getDb(), owner, date);
   return NextResponse.json({ items });
 }

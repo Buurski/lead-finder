@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
 import AttentionPanel from "./AttentionPanel";
+import { takeAttentionSeed } from "./attention-seed";
 import type { AttentionItem } from "@/lib/hq/attention";
 
 // Klokken i topbaren: "hvad kræver min opmærksomhed nu?" — opgaver, svar,
@@ -18,6 +19,14 @@ export default function Bell() {
   useEffect(() => {
     if (pathname === "/login") return;
     let alive = true;
+    // Forsiden har allerede regnet listen på serveren — brug den frem for at regne den igen.
+    const seeded = pathname === "/" ? takeAttentionSeed() : null;
+    if (seeded) {
+      queueMicrotask(() => alive && setItems(seeded));
+      return () => {
+        alive = false;
+      };
+    }
     // Ét retry-forsøg: siden har ofte en byge af prefetch-kald lige efter
     // hydrering (nav-links, ⌘K), og klokkens eget kald kan tabe det kapløb.
     // Et enkelt gensvar 1s senere er billigere end at vise en falsk "intet".

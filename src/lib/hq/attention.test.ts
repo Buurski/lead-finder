@@ -67,3 +67,30 @@ test("tom liste er tom, ikke en fejl", async () => {
   const items = await getAttention(db, { owner: "lucas", today: TODAY });
   assert.deepEqual(items, []);
 });
+
+// N+1-vagt: antal SQL-kald i getAttention må ikke vokse med antal kunder.
+async function sqlCountFor(customers: number): Promise<number> {
+  const fresh = await freshTestDb();
+  const rows = Array.from({ length: customers }, (_, i) => ({ rowNo: -(i + 1), clientNo: i + 1, name: `Kunde ${i + 1}` }));
+  const cs = await fresh.insert(company).values(rows).returning();
+  await fresh.insert(task).values(cs.slice(0, 5).map((c) => ({ companyId: c.id, clientName: c.name, title: "Ring", due: "2026-09-01", owner: "lucas" })));
+  await fresh.insert(invoice).values(cs.map((c, i) => ({
+    number: String(100 + i), companyId: c.id, clientName: c.name, status: "forfalden", issueDate: "2026-09-01", dueDate: "2026-09-10",
+    data: { number: String(100 + i), clientName: c.name, recipient: { name: c.name }, issueDate: "2026-09-01", dueDate: "2026-09-10", lines: [{ description: "Pas", amount: 750 }], vatRate: 0, status: "forfalden", payerType: "cvr" },
+  })));
+  let n = 0;
+  const client = (fresh as unknown as { $client: { query: (...a: unknown[]) => unknown } }).$client;
+  const orig = client.query.bind(client);
+  client.query = (...a: unknown[]) => { n++; return orig(...a); };
+  const items = await getAttention(fresh, { owner: "lucas", today: TODAY });
+  assert.ok(items.some((i) => i.kind === "kunde"), "kunde-linjer med (loft på 30 punkter)");
+  return n;
+}
+
+test("getAttention: højst 15 SQL-kald, og samme antal ved 20 og 40 kunder", async () => {
+  const n20 = await sqlCountFor(20);
+  const n40 = await sqlCountFor(40);
+  assert.ok(n20 <= 15, `${n20} SQL-kald ved 20 kunder`);
+  console.log(`SQL-kald: 20 kunder=${n20}, 40 kunder=${n40}`);
+  assert.equal(n40, n20);
+});

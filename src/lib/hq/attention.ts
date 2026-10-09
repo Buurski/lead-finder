@@ -3,15 +3,16 @@
 // (tasks.ts/summary.ts's definitioner, overview.ts's kundeattention) — ingen
 // ny forretningslogik, ingen skrivning.
 import "server-only";
+import { cache } from "react";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { company, invoice, outreach } from "../db/schema.ts";
 import { isOverdue, type InvoiceStatus } from "../invoices.ts";
 import { readPreviewRequests } from "../preview-queue.ts";
 import { listMyDay, type Owner } from "./tasks.ts";
-import { getDossier } from "./dossier.ts";
+import { getDossiers } from "./dossier.ts";
 import { unhandledReplyWhere } from "./summary.ts";
-import { loadOverview } from "./overview-load.ts";
+import { loadOverviews } from "./overview-load.ts";
 import { markPaidAction, taskDoneAction, type AttentionAction } from "./overview.ts";
 import { AUTO_FRIST_MS, denneMaaned, oversigt } from "./kunde-rapport.ts";
 
@@ -78,26 +79,27 @@ export async function getAttention(
   // venter, forfaldent, intet svar i X dage). Kun rigtige kunder (client_no sat),
   // få rækker — sekventielt, lokal pglite tåler kun 1 forbindelse.
   const customers = await db
-    .select({ id: company.id })
+    .select()
     .from(company)
     .where(and(isNotNull(company.clientNo), eq(company.clientRemoved, false), eq(company.archived, false)));
-  for (const c of customers) {
-    const dossier = await getDossier(db, c.id, { today: opts.today });
-    if (!dossier) continue;
-    const overview = await loadOverview(db, dossier, now);
-    for (const a of overview.attention) {
+  // Batch: samme antal forespørgsler uanset antal kunder (før: N × ~10).
+  const ordered = await getDossiers(db, customers, { today: opts.today });
+  const overviews = await loadOverviews(db, ordered, now);
+  ordered.forEach((dossier, i) => {
+    for (const a of overviews[i].attention) {
       if (a.level !== "haster") continue;
       if (a.action?.url.startsWith("/api/opgaver/")) continue; // opgaver + næste skridt er allerede med fra punkt 1
-      items.push({ level: "haster", kind: "kunde", text: `${dossier.company.name}: ${a.text}`, href: `/virksomheder/${c.id}`, companyId: c.id, action: a.action });
+      items.push({ level: "haster", kind: "kunde", text: `${dossier.company.name}: ${a.text}`, href: `/virksomheder/${dossier.company.id}`, companyId: dossier.company.id, action: a.action });
     }
-  }
+  });
 
   // 4) Fakturaer — forfaldne (per faktura) + kladder ældre end 3 dage (samlet linje).
-  const unpaid = await db
-    .select({ number: invoice.number, companyId: invoice.companyId, clientName: invoice.clientName, status: invoice.status, dueDate: invoice.dueDate })
+  const invRows = await db
+    .select({ number: invoice.number, companyId: invoice.companyId, clientName: invoice.clientName, status: invoice.status, dueDate: invoice.dueDate, issueDate: invoice.issueDate })
     .from(invoice)
-    .where(inArray(invoice.status, ["sendt", "forfalden", "rykket"]));
-  for (const inv of unpaid) {
+    .where(inArray(invoice.status, ["sendt", "forfalden", "rykket", "kladde"])); // ét kald for både ubetalte og kladder
+  for (const inv of invRows) {
+    if (inv.status === "kladde") continue;
     if (!isOverdue({ status: inv.status as InvoiceStatus, dueDate: inv.dueDate }, opts.today)) continue;
     items.push({
       level: "haster",
@@ -109,11 +111,7 @@ export async function getAttention(
       action: markPaidAction(inv.number),
     });
   }
-  const draftInvoices = await db
-    .select({ issueDate: invoice.issueDate })
-    .from(invoice)
-    .where(eq(invoice.status, "kladde"));
-  const staleDrafts = draftInvoices.filter((d) => daysSince(`${d.issueDate}T12:00:00Z`, now) >= 3);
+  const staleDrafts = invRows.filter((d) => d.status === "kladde" && daysSince(`${d.issueDate}T12:00:00Z`, now) >= 3);
   if (staleDrafts.length > 0) {
     items.push({ level: "obs", kind: "faktura", text: `${staleDrafts.length} ${staleDrafts.length === 1 ? "fakturakladde ligger" : "fakturakladder ligger"} klar — ikke sendt`, href: "/fakturaer" });
   }
@@ -161,3 +159,7 @@ export async function getAttention(
   const keep = new Set([...items.filter(isAgg), ...items.filter((i) => !isAgg(i)).slice(0, MAX_ITEMS - items.filter(isAgg).length)]);
   return items.filter((i) => keep.has(i));
 }
+
+// Én beregning pr. request: side + server-komponenter der beder om samme (ejer, dag) deler
+// resultatet. Klokken i browseren genbruger forsidens liste via components/shell/attention-seed.ts.
+export const getAttentionShared = cache((db: Db, owner: Owner | null, today: string) => getAttention(db, { owner, today }));

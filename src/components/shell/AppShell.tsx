@@ -12,8 +12,6 @@ import QuickActions from "./QuickActions";
 
 interface Counts {
   queue?: number;
-  needs?: number;
-  invoicesOverdue?: number;
 }
 
 interface PauseInfo {
@@ -44,22 +42,34 @@ export default function AppShell({
   const [counts, setCounts] = useState<Counts>({});
   const [pause, setPause] = useState<PauseInfo | null>(null);
 
-  // Hydrate badge counts from the read-only deck summary. Best-effort.
+  // Badge-tæller: slank route (ét count, ingen Sheets/GitHub), cachet 30 s af browseren.
   useEffect(() => {
     if (pathname === "/login") return;
     let alive = true;
-    fetch("/api/deck/summary")
+    fetch("/api/deck/counts")
       .then((r) => r.json())
       .then((d) => {
-        if (!alive || !d) return;
-        setCounts({ queue: d?.queue?.pending, needs: d?.needsYou?.length, invoicesOverdue: d?.invoicesOverdue });
-        setPause(d?.pause ?? null);
+        if (alive && typeof d?.queue === "number") setCounts({ queue: d.queue });
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, [pathname]);
+
+  // Pause-banneret bor i Sheets (A2) — hentes kun ved første indlæsning, ikke ved hver navigation.
+  useEffect(() => {
+    if (window.location.pathname === "/login") return;
+    let alive = true;
+    fetch("/api/review/halt-all", { method: "HEAD" })
+      .then((r) => {
+        if (alive && r.status === 200) setPause({ paused: true, until: r.headers.get("X-Paused-Until") });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ⌘K / Ctrl+K åbner kommando-paletten fra hvor som helst i skallen.
   useEffect(() => {

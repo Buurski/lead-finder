@@ -4,6 +4,7 @@ import Link from "next/link";
 import Icon from "@/components/shell/Icon";
 import AttentionPanel, { ATTENTION_KIND_ICON } from "@/components/shell/AttentionPanel";
 import AttentionActionButton from "@/components/shell/AttentionActionButton";
+import { seedAttention } from "@/components/shell/attention-seed";
 import type { AttentionItem } from "@/lib/hq/attention";
 import "@/components/shell/attention.css";
 
@@ -12,6 +13,7 @@ import "@/components/shell/attention.css";
 // Ingen haster-punkter → intet at vise, sektionen udelades helt.
 export default function AttentionSummary({ items }: { items: AttentionItem[] }) {
   const [open, setOpen] = useState(false);
+  seedAttention(items); // klokken genbruger listen i stedet for at hente den igen
   const haster = items.filter((i) => i.level === "haster");
   if (haster.length === 0) return null;
   const top = haster.slice(0, 3);
