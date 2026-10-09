@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canSendTo, sharedEmailSet } from "./canSendTo.ts";
+import { canSendTo, isSuppressed, sharedEmailSet } from "./canSendTo.ts";
 
 const ok = { name: "Salon Artec", branch: "frisør", email: "hej@salonartec.dk", emailStatus: "", status: "new" };
 
@@ -38,4 +38,12 @@ test("afmeldt/bounced på status eller emailStatus blokerer SMTP-gaten (E21, Sol
   assert.equal(canSendTo(base).ok, true);
   for (const status of ["afmeldt", "unsubscribed", "bounced"]) assert.equal(canSendTo({ ...base, status }).ok, false, status);
   for (const emailStatus of ["afmeldt", "complained", "unsubscribed", "bounced"]) assert.equal(canSendTo({ ...base, emailStatus }).ok, false, emailStatus);
+});
+
+test("isSuppressed: afmeldt/bounced på status eller emailStatus kommer i adresse-registret (Astra S2#3)", () => {
+  for (const emailStatus of ["afmeldt", " Afmeldt ", "unsubscribe", "unsubscribed", "complained", "bounced"]) {
+    assert.equal(isSuppressed({ emailStatus }), true, emailStatus);
+  }
+  for (const status of ["afmeldt", "unsubscribed", "bounced"]) assert.equal(isSuppressed({ status }), true, status);
+  for (const emailStatus of ["", "sent", "replied", "messenger-queued"]) assert.equal(isSuppressed({ emailStatus, status: "new" }), false, emailStatus);
 });

@@ -25,6 +25,8 @@ const WORKED_STATUS = new Set([
 const CONTACTED_EMAIL = new Set([
   "sent", "opened", "clicked", "replied", "followup",
   "bounced", "unsubscribed", "unsubscribe", "afmeldt", "complained",
+  // Kølagt til Messenger via emailStatus må ikke genvises i vault-feedet (Astra S2#5).
+  "messenger", "messenger-queued",
 ]);
 
 /**

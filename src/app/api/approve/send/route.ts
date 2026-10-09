@@ -8,7 +8,7 @@ import { createTask } from "@/lib/hq/tasks";
 import { scheduleCalendarSync } from "@/lib/hq/gcal-sync";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
-import { canSendTo, sharedEmailSet } from "@/lib/canSendTo";
+import { canSendTo, isSuppressed, sharedEmailSet } from "@/lib/canSendTo";
 import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
@@ -60,9 +60,12 @@ const randGap = () => GAP_MIN_MS + Math.floor(Math.random() * (GAP_MAX_MS - GAP_
 // outcome status (replied/bounced/unsubscribed). A bare emailStatus "sent" WITHOUT
 // emailSentAt is a stale/queued marker from the May limit-hit batch (mails were
 // queued, marked, but never actually went out) — those are still sendable.
-const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string }) =>
+// Afmeldt/bounced i ALLE stavemåder (status eller emailStatus) tæller også, så adressen
+// lander i det globale register og ikke kan mailes via en umatchet kladde (Astra S2#3).
+const alreadyEmailed = (l: { emailSentAt?: string; emailStatus?: string; status?: string }) =>
   Boolean(l.emailSentAt && l.emailSentAt.trim()) ||
-  /^(replied|bounced|unsubscribed)$/i.test((l.emailStatus || "").trim());
+  /^replied$/i.test((l.emailStatus || "").trim()) ||
+  isSuppressed(l);
 
 // "Godkendt" = approved ELLER edited. "edited" er legacy-status fra før
 // edit-actionen begyndte at sætte "approved" — UI'et viser begge som godkendt
@@ -442,7 +445,13 @@ export async function POST(req: Request) {
 
           // 7. FRISK MODTAGER + GATES for ALLE kladder (Sol R2/inspektion): modtageren kan
           // være rettet, og et svar/afmelding/kunde kan være landet siden run-start.
-          const freshLead = lead ? (await getLeads().catch(() => [])).find((l) => l.id === lead.id) : undefined;
+          const freshLeads = await getLeads().catch(() => null);
+          if (!freshLeads) {
+            skipped.push({ name: d.name, reason: "kunne ikke genlæse leads — intet sendt" });
+            send({ type: "skipped", index: processed, total, name: d.name, reason: "kunne ikke genlæse leads — intet sendt" });
+            continue;
+          }
+          const freshLead = lead ? freshLeads.find((l) => l.id === lead.id) : undefined;
           if (lead && !freshLead) {
             skipped.push({ name: d.name, reason: "lead ikke fundet ved genlæsning" });
             send({ type: "skipped", index: processed, total, name: d.name, reason: "lead ikke fundet ved genlæsning" });
@@ -462,9 +471,11 @@ export async function POST(req: Request) {
           const gate2 = freshLead
             ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
             : { ok: true as boolean, reason: undefined as string | undefined };
+          // Global adresse-suppression på frisk læsning: også umatchede kladder og afmeldinger midt i kørslen (Astra S2#3).
+          const addressSuppressed = freshLeads.some((l) => (l.email || "").trim().toLowerCase() === targetKey && isSuppressed(l));
           const isCustomer = pgEnabled() ? await customerForDraft(d, target).catch(() => true) : false;
-          if (!again.ok || !gate2.ok || isCustomer) {
-            const reason = isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
+          if (!again.ok || !gate2.ok || isCustomer || addressSuppressed) {
+            const reason = addressSuppressed ? "adressen er afmeldt/bounced" : isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;

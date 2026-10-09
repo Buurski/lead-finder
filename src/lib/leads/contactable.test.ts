@@ -24,3 +24,9 @@ test("§10-kill-switch: pauset som default, kun '0' åbner (E18)", () => {
   assert.equal(coldOutreachPaused({ COLD_OUTREACH_PAUSED: "" }), true);
   assert.equal(coldOutreachPaused({ COLD_OUTREACH_PAUSED: " 0 " }), false);
 });
+
+test("kølagt til Messenger via emailStatus genvises aldrig (Astra S2#5)", () => {
+  for (const emailStatus of ["messenger-queued", " Messenger "]) {
+    assert.equal(isContactable(lead({ emailStatus })), false, emailStatus);
+  }
+});

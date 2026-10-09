@@ -56,6 +56,17 @@ export function sharedEmailSet(leads: Array<{ name: string; email?: string }>): 
 // Pladsholder-adresser fra scrapet (demo-skabeloner, "user@domain.com" osv.).
 const PLACEHOLDER_EMAIL = /@(domain\.com|example\.(com|org|dk)|demolink\.org|email\.com)$/;
 
+const UNSUBSCRIBED = new Set(["unsubscribed", "unsubscribe", "afmeldt", "complained"]);
+
+/** Afmeldt eller bounced på status- ELLER emailStatus-feltet. Adresse-registret og preview-send
+ *  bruger den, så en afmeldt adresse aldrig får mail via en anden kladde/virksomhed (Astra S2#2/#3). */
+export function isSuppressed(l: { emailStatus?: string; status?: string }): boolean {
+  return [l.status, l.emailStatus].some((v) => {
+    const s = (v || "").trim().toLowerCase();
+    return s === "bounced" || UNSUBSCRIBED.has(s);
+  });
+}
+
 export function canSendTo(
   lead: SendCandidate,
   opts: { seenEmails?: Set<string>; sharedEmails?: Set<string> } = {},
