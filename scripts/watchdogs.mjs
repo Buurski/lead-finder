@@ -78,7 +78,10 @@ const alerts = [];
 // Genopretter I jobbet: saet checket ind igen (exists(`daily/${todayCph()}.md`) -> alert til "both").
 
 // 2. leadgen.json er under 26 timer gammel
-{
+// Springes over mens data/leadgen.paused findes (Lucas 9/10: lead-finding pauset til §10 er afklaret;
+// Hermes-cron 89f66dea4d2f + leadgen-watchdog f4e371754ed9 er også pauset). Genoptag: slet filen + resume begge.
+if (exists("data/leadgen.paused")) console.log("leadgen.json: PAUSET (data/leadgen.paused) -> spring over");
+else {
   let ageH = null;
   try {
     const j = JSON.parse(fs.readFileSync(path.join(VAULT, "data/leadgen.json"), "utf-8"));
