@@ -142,24 +142,37 @@ export function cleanupBody(text: string): string {
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/** Første text/plain (ellers text/html) i et evt. indlejret multipart (mixed/related > alternative); vedhæftede filer
+ *  springes over (Opus 9/10: svar med bilag, iOS-foto og Outlook-logo blev før slet ikke dekodet). */
+function findText(headers: string, body: string, depth = 0): { plain?: string; html?: string } {
+  if (/Content-Disposition:\s*attachment/i.test(headers)) return {};
+  const boundary = headers.match(/boundary="?([^";\r\n]+)"?/i)?.[1];
+  if (/Content-Type:\s*multipart/i.test(headers) && boundary) {
+    if (depth >= 5) return {};
+    const out: { plain?: string; html?: string } = {};
+    for (const part of body.split(new RegExp(`--${boundary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:--)?\\r?\\n?`))) {
+      const [h, b] = splitHeaders(part);
+      const r = findText(h, b, depth + 1);
+      out.plain ??= r.plain;
+      out.html ??= r.html;
+      if (out.plain) break;
+    }
+    return out;
+  }
+  if (/Content-Type:\s*text\/plain/i.test(headers)) return { plain: decodePart(headers, body) };
+  if (/Content-Type:\s*text\/html/i.test(headers)) return { html: decodePart(headers, body) };
+  return {};
+}
+
 /** Raw RFC822 source → clean readable plain text. */
 export function decodeMailBody(raw: string): string {
   if (!raw) return "";
   const [topHeaders, topBody] = splitHeaders(raw);
-
-  // Multipart: find the text/plain part (fallback text/html).
-  const boundaryMatch = topHeaders.match(/boundary="?([^";\r\n]+)"?/i);
-  if (/Content-Type:\s*multipart/i.test(topHeaders) && boundaryMatch) {
-    const parts = topBody.split(new RegExp(`--${boundaryMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:--)?\\r?\\n?`));
-    let html = "";
-    for (const part of parts) {
-      const [h, b] = splitHeaders(part);
-      if (/Content-Type:\s*text\/plain/i.test(h)) return cleanupBody(decodePart(h, b));
-      if (/Content-Type:\s*text\/html/i.test(h)) html = decodePart(h, b);
-    }
-    if (html) return cleanupBody(html);
+  if (/Content-Type:\s*multipart/i.test(topHeaders)) {
+    const { plain, html } = findText(topHeaders, topBody);
+    const text = plain ?? html;
+    if (text) return cleanupBody(text);
   }
-
   // Single part.
   return cleanupBody(decodePart(topHeaders, topBody));
 }
