@@ -70,6 +70,7 @@ test("dubletmistanke kræver samme leverandør, betaler og fordeling; bankpost f
   assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 200 }, [mail]), "andet beløb");
   assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 331.19, source: "hermes", ref: "Vercel:inv-2" }, [mail]), "mail mod mail = ref-dedupe");
   assert.ok(!looksLikeManualDuplicate({ ...vercelBank, amount: 331.19 }, [{ ...mail, ref: "bank:old" }]), "bank mod bank = ref-dedupe");
+  assert.ok(looksLikeManualDuplicate({ ...mail, ref: "Vercel:inv-9" }, [{ ...vercelBank, amount: 331.19 }]), "mail efter bank (Sol 9/10)");
 });
 
 test("Lucas OS-projektion: kun aktive, øre uden float-fejl, ingen note/ref, tombstone beholder ref i knownRefs", () => {
