@@ -2,62 +2,9 @@ import { leadRowIndex } from "@/lib/lead-row";
 import { NextResponse } from "next/server";
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadStatus, updateLeadEmailStatus } from "@/lib/sheets";
+import { isOptOut, isRejection } from "@/lib/rejections";
 
 export const maxDuration = 120;
-
-// Phrases indicating the recipient does NOT want further contact
-const REJECTION_PATTERNS = [
-  // Explicit opt-out
-  /ikke kontakt/i,
-  /stop med at sende/i,
-  /fjern mig/i,
-  /afmeld/i,
-  /unsubscribe/i,
-  /ikke skrive til/i,
-  /ikke kontakte mig/i,
-  /ikke kontakte os/i,
-  /lad være/i,
-  /ønsker ikke/i,
-  // Polite "no"
-  /\bnej tak\b/i,
-  /tak men nej/i,
-  /tak men ellers/i,
-  /ellers tak/i,
-  /ikke interesseret/i,
-  /ingen interesse/i,
-  /har ingen interess/i,           // "interesse" partial match
-  /det har ingen interesse/i,
-  /\bikke aktuelt\b/i,
-  /ikke er aktuelt/i,
-  /tak for tilbudet/i,
-  /vi har allerede/i,
-  /vi er glade for/i,
-  /tilfreds med vores/i,
-  /ny hjemmeside lige nu/i,
-  /lige nu/i,                       // mild — often paired with "no" but check context
-];
-
-// Phrases indicating ACCEPTING/asking for more — should NOT skip these
-const ACCEPT_PATTERNS = [
-  /\bring til mig\b/i,
-  /\bvelkommen til at ringe\b/i,
-  /\bhvad er prisen\b/i,
-  /\bgerne se\b/i,
-  /\bgerne høre mere\b/i,
-  /vil gerne tage et kig/i,
-  /lyder spændende/i,
-  /lad os tage en snak/i,
-  /book et møde/i,
-  /møde med/i,
-  /\bja tak\b/i,
-];
-
-function isRejection(body: string): boolean {
-  // Don't classify as rejection if it's clearly accepting
-  for (const p of ACCEPT_PATTERNS) if (p.test(body)) return false;
-  for (const p of REJECTION_PATTERNS) if (p.test(body)) return true;
-  return false;
-}
 
 export async function POST() {
   const leads = await getLeads();
@@ -87,7 +34,7 @@ export async function POST() {
     logger: false,
   });
 
-  const rejectedRows = new Set<number>();
+  const rejectedRows = new Map<number, boolean>(); // rowIdx → eksplicit opt-out
   const rejectedDetails: { email: string; snippet: string }[] = [];
 
   try {
@@ -102,7 +49,7 @@ export async function POST() {
       if (isRejection(body)) {
         const rowIdx = emailToRow.get(fromAddr)!;
         if (!rejectedRows.has(rowIdx)) {
-          rejectedRows.add(rowIdx);
+          rejectedRows.set(rowIdx, isOptOut(body));
           rejectedDetails.push({ email: fromAddr, snippet: body.slice(0, 200).replace(/\s+/g, " ") });
         }
       }
@@ -112,10 +59,11 @@ export async function POST() {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 
-  // Mark each as skip + emailStatus=replied (so they're double-protected)
-  for (const rowIdx of rejectedRows) {
-    await updateLeadStatus(rowIdx, "skip", "Auto-skip: negative reply detected");
-    await updateLeadEmailStatus(rowIdx, { emailStatus: "replied" });
+  // Mark each as skip + emailStatus (double-protected). Eksplicit opt-out ⇒ "afmeldt" så
+  // alle send-veje (også preview-send) ser det; høfligt nej ⇒ "replied" som før.
+  for (const [rowIdx, optOut] of rejectedRows) {
+    await updateLeadStatus(rowIdx, "skip", optOut ? "Auto-skip: afmeldt via svar" : "Auto-skip: negative reply detected");
+    await updateLeadEmailStatus(rowIdx, { emailStatus: optOut ? "afmeldt" : "replied" });
     await new Promise((r) => setTimeout(r, 100));
   }
 

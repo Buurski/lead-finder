@@ -8,7 +8,7 @@ import { createTask } from "@/lib/hq/tasks";
 import { scheduleCalendarSync } from "@/lib/hq/gcal-sync";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { getLeads, getPauseStatus, updateLeadEmailStatus } from "@/lib/sheets";
-import { canSendTo, isSuppressed, sharedEmailSet } from "@/lib/canSendTo";
+import { addressSuppressed, canSendTo, isSuppressed, sharedEmailSet } from "@/lib/canSendTo";
 import { buildSentLedger, followUpAllowed, isFollowUpDraft } from "@/lib/followup-gate";
 import { hasUsableEmail } from "@/lib/leads/channel";
 import { bizKey } from "@/lib/leads/suppress";
@@ -472,10 +472,10 @@ export async function POST(req: Request) {
             ? canSendTo({ name: freshLead.name, branch: freshLead.branch, email: target, emailStatus: freshLead.emailStatus, status: freshLead.status }, { sharedEmails })
             : { ok: true as boolean, reason: undefined as string | undefined };
           // Global adresse-suppression på frisk læsning: også umatchede kladder og afmeldinger midt i kørslen (Astra S2#3).
-          const addressSuppressed = freshLeads.some((l) => (l.email || "").trim().toLowerCase() === targetKey && isSuppressed(l));
+          const suppressedNow = addressSuppressed(freshLeads, targetKey);
           const isCustomer = pgEnabled() ? await customerForDraft(d, target).catch(() => true) : false;
-          if (!again.ok || !gate2.ok || isCustomer || addressSuppressed) {
-            const reason = addressSuppressed ? "adressen er afmeldt/bounced" : isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
+          if (!again.ok || !gate2.ok || isCustomer || suppressedNow) {
+            const reason = suppressedNow ? "adressen er afmeldt/bounced" : isCustomer ? "er kunde — ingen kold mail" : !again.ok ? again.reason ?? "blokeret" : gate2.reason ?? "blokeret";
             skipped.push({ name: d.name, reason });
             send({ type: "skipped", index: processed, total, name: d.name, reason });
             continue;

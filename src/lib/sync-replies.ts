@@ -20,6 +20,7 @@ import { leadRowIndex } from "./lead-row.ts";
 import { ImapFlow } from "imapflow";
 import { getLeads, updateLeadEmailStatus, updateLeadEmailStatusBulk } from "./sheets.ts";
 import { getActiveSenders, type SenderId } from "./senders.ts";
+import { isSuppressed } from "./canSendTo.ts";
 
 export interface SyncRepliesResult {
   synced: number;
@@ -221,7 +222,8 @@ export async function syncReplies(): Promise<SyncRepliesResult> {
   const leads = await getLeads();
   const candidates = leads
     .map((lead) => ({ lead, rowIndex: leadRowIndex(lead), name: lead.name }))
-    .filter(({ lead }) => lead.email && lead.emailStatus !== "replied");
+    // Afmeldt/bounced overskrives aldrig med "replied" — så forsvinder suppressionen (Opus S2#2, 9/10).
+    .filter(({ lead }) => lead.email && lead.emailStatus !== "replied" && !isSuppressed(lead));
   if (candidates.length === 0) return { synced: 0, checked: 0, names: [] };
 
   const sendDates = candidates

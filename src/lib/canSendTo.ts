@@ -67,6 +67,13 @@ export function isSuppressed(l: { emailStatus?: string; status?: string }): bool
   });
 }
 
+/** Globalt opslag på normaliseret adresse: er NOGET lead med denne adresse afmeldt/bounced?
+ *  Fanger også umatchede kladder og afmeldinger registreret på en anden virksomhed (Astra S2#3). */
+export function addressSuppressed(leads: Array<{ email?: string; emailStatus?: string; status?: string }>, email: string): boolean {
+  const key = email.trim().toLowerCase();
+  return leads.some((l) => (l.email || "").trim().toLowerCase() === key && isSuppressed(l));
+}
+
 export function canSendTo(
   lead: SendCandidate,
   opts: { seenEmails?: Set<string>; sharedEmails?: Set<string> } = {},

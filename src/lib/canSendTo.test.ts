@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canSendTo, isSuppressed, sharedEmailSet } from "./canSendTo.ts";
+import { addressSuppressed, canSendTo, isSuppressed, sharedEmailSet } from "./canSendTo.ts";
 
 const ok = { name: "Salon Artec", branch: "frisør", email: "hej@salonartec.dk", emailStatus: "", status: "new" };
 
@@ -46,4 +46,15 @@ test("isSuppressed: afmeldt/bounced på status eller emailStatus kommer i adress
   }
   for (const status of ["afmeldt", "unsubscribed", "bounced"]) assert.equal(isSuppressed({ status }), true, status);
   for (const emailStatus of ["", "sent", "replied", "messenger-queued"]) assert.equal(isSuppressed({ emailStatus, status: "new" }), false, emailStatus);
+});
+
+test("addressSuppressed: umatchet kladde til afmeldt adresse på ANDET lead blokeres (Astra S2#3 trin 7)", () => {
+  const leads = [
+    { name: "Frisør A", email: "Info@Salon.dk ", emailStatus: "afmeldt" },
+    { name: "Café B", email: "hej@cafe.dk", emailStatus: "sent" },
+  ];
+  assert.equal(addressSuppressed(leads, "info@salon.dk"), true);
+  assert.equal(addressSuppressed(leads, "hej@cafe.dk"), false);
+  assert.equal(addressSuppressed(leads, "ny@kunde.dk"), false);
+  assert.equal(addressSuppressed([{ email: "x@y.dk", status: "bounced" }], " X@Y.dk"), true);
 });
