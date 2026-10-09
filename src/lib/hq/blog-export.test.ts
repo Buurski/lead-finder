@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
-import { createPost, updatePost } from "./posts.ts";
+import { createPost, recordJev, revisionOf, updatePost } from "./posts.ts";
 import { afterSectionFor, confirmPublished, exportablePosts, parseBody, toKinlyPost } from "./blog-export.ts";
 
 let db: Db;
@@ -49,6 +49,7 @@ async function greenInPublicer(title = "Hvad koster en hjemmeside i 2026") {
   const p = await createPost(db, { title }, "hermes");
   await updatePost(db, p.id, { category: "pris", excerpt: EXCERPT, body: body(p.slug), proofs: { sources: SOURCES, faq: FAQ, council: COUNCIL }, images: { a: cand("a"), b: cand("b") } }, "hermes");
   await updatePost(db, p.id, { images: { choice: "both" }, proofs: { factcheck: { note: "læst" } } }, "charlie");
+  await recordJev(db, p.id, { ready: true, score: 0.9, issue: "" }, "lucas");
   return updatePost(db, p.id, { stage: "publicer" }, "charlie");
 }
 
@@ -72,9 +73,13 @@ test("grønt kort i Publicer eksporteres i kinly.dk-format; tjeklisten flyttes u
   assert.deepEqual(post.sections.map((s) => s.heading), ["Hvad prisen består af", "Drift"]);
   assert.deepEqual(post.tjekliste, { heading: "Hvad kan du gøre nu", items: ["Tjek din egen side på mobilen", "Find tre konkurrenter", "Skriv prisen op"] });
   assert.ok(post.sections[1].paragraphs.some((x) => x.includes(`?ref=blog-${p.slug}`)), "CTA'en følger med");
-  assert.equal(post.cover.src, `/img/blog/${p.slug}-hero.png`);
-  assert.equal(post.images?.[0].src, `/img/blog/${p.slug}-billede.png`);
-  assert.deepEqual(files.map((f) => f.url), ["https://cdn.kinly.dk/a.png", "https://cdn.kinly.dk/b.png"]);
+  assert.equal(post.cover.src, `/img/blog/${p.slug}-hero.webp`);
+  assert.equal(post.og?.src, `/img/blog/${p.slug}-og.webp`);
+  assert.equal(post.og?.alt, post.cover.alt);
+  assert.equal(post.images?.[0].src, `/img/blog/${p.slug}-b.webp`);
+  assert.deepEqual(files.map((f) => f.path), [`img/blog/${p.slug}-hero.webp`, `img/blog/${p.slug}-og.webp`, `img/blog/${p.slug}-b.webp`]);
+  assert.ok(items[0].gate.jev?.ready, "Jev-resultatet følger med, så jobbet kan kontrollere det offline");
+  assert.equal(items[0].gate.checklist.revision, items[0].revision);
   assert.equal(post.sources?.length, 5);
   assert.equal(post.faq?.length, 3);
 });
@@ -93,17 +98,29 @@ test("confirmPublished kræver 200 fra siden, før kortet bliver Udgivet", async
   const url = `https://kinly.dk/blog/${p.slug}/`;
   let fetched = "";
   const fake = (status: number, body = "x") => (async (u: string) => { fetched = u; return new Response(body, { status }); }) as unknown as typeof fetch;
+  const proof = { revision: revisionOf(p), releaseSha: "473bdbc4ca54708a" };
   // SSRF: en fremmed url hentes aldrig.
-  await assert.rejects(confirmPublished(db, p.id, "http://169.254.169.254/latest", fake(200)), /url skal være/);
+  await assert.rejects(confirmPublished(db, p.id, "http://instance-credentials.invalid/latest", fake(200), proof), /url skal være/);
   assert.equal(fetched, "");
-  await assert.rejects(confirmPublished(db, p.id, url, fake(404)), /ikke live/);
+  await assert.rejects(confirmPublished(db, p.id, url, fake(404), proof), /ikke live/);
   // 200 uden kortets titel = en anden side med samme slug.
-  await assert.rejects(confirmPublished(db, p.id, url, fake(200, "<h1>Et gammelt opslag</h1>")), /titel/);
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, "<h1>Et gammelt opslag</h1>"), proof), /titel/);
   const html = `<h1>${p.title.replace(/'/g, "&#x27;").replace(/&/g, "&amp;")}</h1>`;
-  const after = await confirmPublished(db, p.id, url, fake(200, html));
+  // Uden Lucas' merge-sha bliver intet meldt udgivet — heller ikke med 200 + titel.
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, html), { revision: "x", releaseSha: "" }), /release-bevis/);
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, html), { revision: "gammelrevision12", releaseSha: "473bdbc4ca54708a" }), /anden version/);
+  const after = await confirmPublished(db, p.id, url, fake(200, html), proof);
   assert.equal(after.stage, "udgivet");
   assert.equal(after.publishedUrl, url);
-  await assert.rejects(confirmPublished(db, p.id, url, fake(200, html)), /ikke i Publicer/);
+  assert.match(after.note ?? "", /473bdbc4/, "release-sha'en gemmes som bevis");
+  await assert.rejects(confirmPublished(db, p.id, url, fake(200, html), proof), /ikke i Publicer/);
+});
+
+test("valgt billede uden alt-tekst eller kundesamtykke stopper eksporten", () => {
+  const row = { id: "x", title: "T", slug: "t-t-t", category: "pris", excerpt: "e", body: "", proofs: {}, updatedBy: "lucas", images: { a: { ...cand("a"), alt: "" }, b: null, choice: "a" } };
+  assert.throws(() => toKinlyPost(row), /alt-tekst/);
+  const kunde = { id: "x", title: "T", slug: "t-t-t", category: "kundecases", excerpt: "e", body: "", proofs: {}, updatedBy: "lucas", images: { a: { ...cand("a"), source: "kundens eget site" }, b: null, choice: "a" } };
+  assert.throws(() => toKinlyPost(kunde), /samtykke/);
 });
 
 test("ordnet valg c,a: cover = C, billedet i teksten = A med afterSection fra placement og caption fra kredit", () => {
@@ -113,9 +130,9 @@ test("ordnet valg c,a: cover = C, billedet i teksten = A med afterSection fra pl
   });
   const { post, files } = toKinlyPost(row("c,a", "efter-afsnit-1"));
   assert.equal(post.cover.src, "/img/blog/tre-billeder-hero.webp");
-  assert.deepEqual(files.map((f) => f.url), ["https://cdn.kinly.dk/c.webp", "https://cdn.kinly.dk/a.png"]);
+  assert.deepEqual(files.map((f) => f.url), ["https://cdn.kinly.dk/c.webp", "https://cdn.kinly.dk/c.webp", "https://cdn.kinly.dk/a.png"]);
   assert.equal(post.images?.length, 1);
-  assert.equal(post.images?.[0].src, "/img/blog/tre-billeder-billede.png");
+  assert.equal(post.images?.[0].src, "/img/blog/tre-billeder-b.webp");
   assert.equal(post.images?.[0].afterSection, 0); // "efter afsnit 1" = efter sektion med indeks 0
   assert.equal(post.images?.[0].caption, "Kilde: Unsplash / Jane Doe");
   assert.equal(toKinlyPost(row("c,a", "efter-afsnit-1", "Foto: Kinly")).post.images?.[0].caption, "Foto: Kinly");
@@ -123,7 +140,7 @@ test("ordnet valg c,a: cover = C, billedet i teksten = A med afterSection fra pl
   // Et enkelt valg giver kun cover.
   assert.equal(toKinlyPost(row("a", "hero")).post.images, undefined);
   // Legacy "both" = a som cover, b i teksten.
-  assert.equal(toKinlyPost(row("both", "hero")).post.cover.src, "/img/blog/tre-billeder-hero.png");
+  assert.equal(toKinlyPost(row("both", "hero")).post.cover.src, "/img/blog/tre-billeder-hero.webp");
 });
 
 test("afterSectionFor: efter-afsnit-N (klemt), ellers midterste sektion", () => {
