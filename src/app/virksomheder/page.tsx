@@ -193,6 +193,7 @@ export default async function VirksomhederPage({ searchParams }: { searchParams:
       <form action="/virksomheder" method="get" className="virk-search" role="search">
         <input type="search" name="q" defaultValue={q} placeholder="Søg på navn, by eller mail…" aria-label="Søg virksomheder" />
         {ejer && <input type="hidden" name="ejer" value={ejer} />}
+        {wantKunder ? <input type="hidden" name="kunder" value="1" /> : fase && <input type="hidden" name="fase" value={fase} />}
         <button type="submit" className="cc-btn virk-btn-press">Søg</button>
       </form>
 

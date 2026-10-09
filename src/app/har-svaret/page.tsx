@@ -10,8 +10,10 @@ export const dynamic = "force-dynamic";
 
 const dateFmt = new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen" });
 
+// Kalenderdage i København (ikke 24-timersperioder): i går kl. 23 er "i går", også kl. 09.
+const dkDay = (t: number) => Date.parse(new Date(t).toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }));
 function ageLabel(iso: string): string {
-  const d = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+  const d = Math.round((dkDay(Date.now()) - dkDay(Date.parse(iso))) / 86_400_000);
   return d <= 0 ? "i dag" : d === 1 ? "i går" : `${d} d siden`;
 }
 
