@@ -2,6 +2,7 @@ import { google } from "googleapis";
 
 import { planRowDeletionRanges } from "./leads/row-plan.ts";
 import { pgEnabled } from "./db/client.ts";
+import { coldOutreachPaused } from "./leads/contactable.ts";
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -1095,6 +1096,10 @@ function classifyCell(value: string, failClosed: boolean): { paused: boolean; ra
  * cron-jobs and any caller that wants to know "is anything paused").
  */
 export async function getPauseStatus(scope: PauseScope = "all"): Promise<PauseStatus> {
+  // §10-kill-switch vinder over arket (og virker selv hvis Sheets er nede).
+  if (scope === "cold" && coldOutreachPaused()) {
+    return { paused: true, until: "COLD_OUTREACH_PAUSED (§10)", scope, masterActive: false, scopeActive: true };
+  }
   await ensurePauseScheduleTab();
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({

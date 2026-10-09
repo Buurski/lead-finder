@@ -46,7 +46,7 @@ Claude rører ALDRIG Hermes' cron-config/.env — cron-idéer lægges i vaulten
 (`wiki/os/hermes-cron-ideer.md`), Lucas opretter selv. Shim-redeploy:
 se `vps/README.md`. Env: `HERMES_API_URL` + `HERMES_API_SECRET`.
 Fejlsøgning: `/api/hermes/status` er offentlig (uden basic auth) og viser
-`shimStatus` (0=ingen forbindelse, 401=forkert secret) + secret-fingerprint.
+`shimStatus` (0=ingen forbindelse, 401=forkert secret). Ingen URL/fingerprint offentligt (E17, 9/10).
 
 ## Søsterprojekt: buur-cms (kunde-CMS — planlagt 2026-06-07)
 

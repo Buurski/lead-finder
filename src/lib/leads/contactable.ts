@@ -17,10 +17,25 @@ const WORKED_STATUS = new Set([
   "not-interested", "ikke-interesseret", "ikke interesseret", "nej",
   "interested", "interesseret", "called", "ringet",
   "messenger", "messenger-queued", "contacted", "kontaktet", "replied",
+  // E21 (9/10): afmeldte/bouncede må aldrig dukke op igen, heller ikke på en anden kanal.
+  "unsubscribed", "unsubscribe", "afmeldt", "bounced",
 ]);
 
 // Any emailStatus that means an email already went out (or got a reply).
-const CONTACTED_EMAIL = new Set(["sent", "opened", "clicked", "replied", "followup"]);
+const CONTACTED_EMAIL = new Set([
+  "sent", "opened", "clicked", "replied", "followup",
+  "bounced", "unsubscribed", "unsubscribe", "afmeldt", "complained",
+]);
+
+/**
+ * §10-kill-switch (E18, 9/10): nye KOLDE førstekontakter (mail + Messenger-feed) er
+ * pauset indtil Lucas har afklaret markedsføringslovens §10. Default = pauset; kun
+ * COLD_OUTREACH_PAUSED="0" åbner igen. Opfølgning til leads der selv har svaret
+ * går ikke gennem kold-scopet og rammes ikke.
+ */
+export function coldOutreachPaused(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.COLD_OUTREACH_PAUSED ?? "1").trim() !== "0";
+}
 
 /**
  * True only when a lead has NEVER been contacted and is free to approach:

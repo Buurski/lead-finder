@@ -4,7 +4,7 @@ import { selectMessengerCandidates, isMessengerEligible } from "@/lib/messenger/
 import type { MessengerCandidate } from "@/lib/messenger/select";
 import { loadMessengerState, handledIds } from "@/lib/messenger/state";
 import { readVaultJson } from "@/lib/vault";
-import { suppressedNameSet } from "@/lib/leads/contactable";
+import { suppressedNameSet, coldOutreachPaused } from "@/lib/leads/contactable";
 
 interface VaultMessenger { at?: string; candidates?: MessengerCandidate[] }
 
@@ -18,6 +18,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function GET(req: Request) {
+  // §10-kill-switch (E18): feeden er KUN kolde førstekontakter → tom mens pauset.
+  if (coldOutreachPaused()) {
+    return NextResponse.json({ ok: true, paused: true, reason: "Kolde førstekontakter er pauset (markedsføringslovens §10) indtil Lucas har afklaret det.", candidates: [] });
+  }
   const limit = Math.min(25, Math.max(1, parseInt(new URL(req.url).searchParams.get("limit") || "12", 10) || 12));
 
   let leads;
