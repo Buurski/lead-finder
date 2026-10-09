@@ -18,10 +18,12 @@ export interface HarSvaretRow {
   age: string; // "12 d siden"
 }
 
+// Næste kalenderdato i København (ikke UTC): sv-SE giver YYYY-MM-DD.
 function tomorrowISO(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  const dk = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" });
+  const t = new Date(`${dk(new Date())}T12:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + 1);
+  return dk(t);
 }
 
 async function post(url: string, body: unknown): Promise<void> {
@@ -50,22 +52,19 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
     }
   }
 
-  // Ring: åbner telefonen (tel:-linket) og logger opkaldet på tidslinjen.
-  const ring = () => run("Opkald logget", () => post(`/api/virksomheder/${row.id}/activity`, { type: "opkald", summary: `Ringede til ${row.name}` }));
-  // Ring senere: udfaldet "ring-op" laver opgaven "Ring til X" på den valgte dato.
+  // Log opkald: eksplicit knap (tel:-linket logger ikke selv — på en pc uden telefon sker opkaldet ikke).
+  const logCall = () => run("Opkald logget", () => post(`/api/virksomheder/${row.id}/activity`, { type: "opkald", summary: `Ringede til ${row.name}` }));
+  // Ring senere: en almindelig opgave "Ring til X" på den valgte dato (ingen tidslinje-linje om et afsendt svar).
   const ringLater = () => run(`Opgave oprettet til ${due}`, async () => {
-    await post(`/api/replies/${row.rowNo}/udfald`, { outcome: "ring-op", followUpDue: due, owner: me });
+    await post("/api/opgaver", { companyId: row.id, owner: me, title: `Ring til ${row.name}`, due });
     setLater(false);
   });
 
   return (
     <div className="hs-actions">
       <div className="hs-btns">
-        {row.phone ? (
-          <a href={`tel:${row.phone.replace(/\s+/g, "")}`} className="cc-btn" onClick={() => { if (!busy) void ring(); }}>Ring</a>
-        ) : (
-          <button type="button" className="cc-btn" disabled={busy} onClick={ring}>Log opkald</button>
-        )}
+        {row.phone && <a href={`tel:${row.phone.replace(/\s+/g, "")}`} className="cc-btn">Ring</a>}
+        <button type="button" className="cc-btn" disabled={busy} onClick={logCall}>Log opkald</button>
         <button type="button" className="cc-btn" disabled={busy} onClick={() => setLater((v) => !v)} aria-expanded={later}>Ring senere</button>
         {row.email && <a href={`mailto:${row.email}`} className="cc-btn">Mail igen</a>}
       </div>

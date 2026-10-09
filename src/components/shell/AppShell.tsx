@@ -57,19 +57,22 @@ export default function AppShell({
     };
   }, [pathname]);
 
-  // Pause-banneret bor i Sheets (A2) — hentes kun ved første indlæsning, ikke ved hver navigation.
+  // Pause-banneret bor i Sheets (A2): 200 = på pause, 204 = ikke. Hentes ved hvert sideskift, så et
+  // ophævet stop forsvinder igen (204 rydder state).
   useEffect(() => {
-    if (window.location.pathname === "/login") return;
+    if (pathname === "/login") return;
     let alive = true;
     fetch("/api/review/halt-all", { method: "HEAD" })
       .then((r) => {
-        if (alive && r.status === 200) setPause({ paused: true, until: r.headers.get("X-Paused-Until") });
+        if (!alive) return;
+        if (r.status === 200) setPause({ paused: true, until: r.headers.get("X-Paused-Until") });
+        else if (r.status === 204) setPause(null);
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, []);
+  }, [pathname]);
 
   // ⌘K / Ctrl+K åbner kommando-paletten fra hvor som helst i skallen.
   useEffect(() => {

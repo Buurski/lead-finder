@@ -32,7 +32,7 @@ const lastContact = sql<string | null>`greatest(
 )`;
 
 /** Ældst kontakt først (de mest forsømte øverst); leads uden nogen dato til sidst. */
-export async function listRepliedLeads(db: Db, limit = 300): Promise<RepliedLead[]> {
+export async function listRepliedLeads(db: Db): Promise<RepliedLead[]> {
   const rows = await db
     .select({
       id: company.id,
@@ -49,7 +49,6 @@ export async function listRepliedLeads(db: Db, limit = 300): Promise<RepliedLead
     })
     .from(company)
     .where(repliedLeadsWhere())
-    .orderBy(sql`${lastContact} asc nulls last`, company.name)
-    .limit(limit);
+    .orderBy(sql`${lastContact} asc nulls last`, company.name);
   return rows.map((r) => ({ ...r, lastContactAt: r.lastContactAt ? new Date(r.lastContactAt).toISOString() : null }));
 }

@@ -1,6 +1,6 @@
 /* "Har svaret"-listen: rækker på desktop, stablet kort på mobil. */
 .hs-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: var(--amber-dim); color: var(--text); font-size: 13px; font-weight: 600; }
-.hs-card { overflow: hidden; }
+.hs-card { container-type: inline-size; }
 .hs-head, .hs-row {
   display: grid;
   grid-template-columns: minmax(180px, 1.6fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) 70px 70px 110px minmax(240px, 1.5fr);
@@ -20,7 +20,8 @@
 .hs-msg { font-size: 12px; color: var(--text-dim); }
 .hs-empty { padding: 28px 18px; color: var(--text-dim); }
 
-@media (max-width: 900px) {
+/* Kortets egen bredde afgør layoutet (sidebaren æder af skærmen): under ~1040 px stables rækken i stedet for at klippe knapper. */
+@container (max-width: 1040px) {
   .hs-head { display: none; }
   .hs-row { grid-template-columns: 1fr 1fr; padding: 14px 16px; }
   .hs-row > :first-child, .hs-row > :last-child { grid-column: 1 / -1; }

@@ -6,6 +6,7 @@ import type { Db } from "../db/client.ts";
 import { activity, company } from "../db/schema.ts";
 import { listRepliedLeads } from "./replied-leads.ts";
 import { getHqSummary } from "./summary.ts";
+import { createTask } from "./tasks.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -77,6 +78,10 @@ test("Ring logger et opkald via den eksisterende rute — og ingen mail-afsendel
   assert.match(ui, /\/api\/virksomheder\/\$\{row\.id\}\/activity/);
   assert.match(ui, /type: "opkald"/);
   assert.match(ui, /mailto:/);
+  assert.doesNotMatch(ui, /onClick=\{[^}]*ring\b/, "tel:-linket må ikke logge automatisk");
+  assert.match(ui, /Log opkald/);
+  assert.match(ui, /"\/api\/opgaver"/);
+  assert.doesNotMatch(ui, /udfald/, "Ring senere må ikke bruge udfalds-ruten");
   for (const f of [ui, readFileSync(new URL("./replied-leads.ts", import.meta.url), "utf8"), readFileSync(new URL("../../app/har-svaret/page.tsx", import.meta.url), "utf8")]) {
     assert.doesNotMatch(f, /nodemailer|resend|brevo|sendMail|transport/i);
   }
@@ -84,4 +89,32 @@ test("Ring logger et opkald via den eksisterende rute — og ingen mail-afsendel
   await db.insert(activity).values({ companyId: c.A.id, actor: "lucas", type: "opkald", summary: "Ringede til A svaret gammel" });
   const a = (await listRepliedLeads(db)).find((l) => l.name[0] === "A")!;
   assert.ok(Date.now() - Date.parse(a.lastContactAt!) < 60_000);
+});
+
+test("lead_status afmeldt/nej med replied + livsfase svaret er hverken i listen eller i KPI", async () => {
+  await seed();
+  const rows = await db.insert(company).values([
+    { rowNo: 21, name: "K afmeldt", emailStatus: "replied", leadStatus: " Afmeldt ", emailSentAt: ago(5) },
+    { rowNo: 22, name: "L nej", emailStatus: "replied", leadStatus: "nej", emailSentAt: ago(5) },
+  ]).returning();
+  assert.deepEqual(rows.map((r) => r.lifecycle), ["svaret", "svaret"], "triggeren kender ikke disse stavemåder");
+  const list = await listRepliedLeads(db);
+  assert.ok(!list.some((l) => /^[KL] /.test(l.name)));
+  assert.equal((await getHqSummary(db, "2026-10-09")).kpi.repliedLeads, list.length);
+});
+
+test("listen har intet loft: KPI = liste også ved over 300 leads", async () => {
+  await db.insert(company).values(Array.from({ length: 320 }, (_, i) => ({ rowNo: 100 + i, name: `Lead ${i}`, emailStatus: "replied", emailSentAt: ago(3) })));
+  const list = await listRepliedLeads(db);
+  assert.equal(list.length, 320);
+  assert.equal((await getHqSummary(db, "2026-10-09")).kpi.repliedLeads, 320);
+});
+
+test("Ring senere = almindelig opgave Ring til X: ændrer ikke Sidst kontaktet og skriver ingen aktivitet", async () => {
+  const c = await seed();
+  const before = (await listRepliedLeads(db)).find((l) => l.name[0] === "A")!.lastContactAt;
+  const t = await createTask(db, { companyId: c.A.id, owner: "lucas", title: `Ring til ${c.A.name}`, due: "2026-10-12" });
+  assert.equal(t.companyId, c.A.id);
+  assert.equal((await db.select().from(activity)).length, 0);
+  assert.equal((await listRepliedLeads(db)).find((l) => l.name[0] === "A")!.lastContactAt, before);
 });

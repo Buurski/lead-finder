@@ -28,6 +28,14 @@ export function unhandledReplyWhere() {
   );
 }
 
+// lead_status-værdier der betyder nej / afmeldt / frasorteret. Spejler nej-, afmeldt- og skip-værdierne i
+// WORKED_STATUS i src/lib/leads/contactable.ts (ikke eksporteret dér; "interested"/"called" hører IKKE
+// hjemme her, de er netop de åbne svar). Ret begge steder, hvis en ny stavemåde dukker op.
+const NOT_REPLIED_LEAD_STATUS = [
+  "nej", "not-interested", "ikke-interesseret", "ikke interesseret",
+  "afmeldt", "unsubscribed", "unsubscribe", "bounced", "complained", "skip", "frasorteret",
+];
+
 /** Åbne leads der selv har svaret på en mail — uanset hvor gammelt svaret er (modsat unhandledReplyWhere).
  * Livsfasen (trigger 0003) holder nej, ikke egnet, tabt og flettet ude; kunder og arkiverede er sorteret fra
  * her. Én definition: bruges af forsidens tal OG "Har svaret"-listen (lib/hq/replied-leads.ts). */
@@ -36,6 +44,8 @@ export function repliedLeadsWhere() {
     gt(company.rowNo, 0),
     eq(company.archived, false),
     sql`lower(trim(${company.emailStatus})) = 'replied'`,
+    // Eksplicit nej/afmeldt/frasorteret, uafhængigt af triggeren (som ikke kender alle stavemåder).
+    sql`lower(trim(${company.leadStatus})) not in (${sql.join(NOT_REPLIED_LEAD_STATUS.map((s) => sql`${s}`), sql`, `)})`,
     inArray(company.lifecycle, ["svaret", "interesseret"]),
     or(isNull(company.clientNo), eq(company.clientRemoved, true)),
   );
