@@ -70,3 +70,12 @@ test("HTML-svar: gmail_quote-div uden blockquote er citat; svar EFTER Gmail-cita
   assert.equal(after.includes("tilbud"), false, after);
   assert.equal(isOptOut(after), true, after);
 });
+
+test("HTML-svar: tags i kommentarer/style/script tæller ikke som blokke — afmelding efter citat bevares (Astra runde 6)", () => {
+  for (const noise of ["<!-- <div> -->", "<style>.x::before{content:'<div>'}</style>", "<script>var s='<div>'</script>"]) {
+    const raw = ["From: kunde@example.dk", "Content-Type: text/html; charset=utf-8", "",
+      `<div class="gmail_quote">${noise}<blockquote>Tilbud</blockquote></div><p>Afmeld venligst</p>`].join("\r\n");
+    const body = decodeMailBody(raw);
+    assert.equal(isOptOut(body), true, `${noise} → ${body}`);
+  }
+});

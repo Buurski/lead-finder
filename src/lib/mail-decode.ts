@@ -74,7 +74,12 @@ function removeBlocks(html: string, open: RegExp, tag: string): string {
  *  blockquote fjernes som hele blokke (også indlejrede/ulukkede); Outlooks original står uciteret efter
  *  divRplyFwdMsg/appendonsend og klippes til slutningen. */
 function stripQuotedHtml(html: string): string {
-  const s = html.replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");
+  // Kommentarer/style/script først: tags inde i dem må ikke tælle som blokke (Astra runde 6).
+  // ponytail: regex-HTML, ikke en parser — loft er eksotisk/ugyldig markup; opgradér til en rigtig parser hvis det rammer.
+  const s = html
+    .replace(/<!--[\s\S]*?(-->|$)/g, "")
+    .replace(/<(style|script)\b[\s\S]*?(<\/\1\s*>|$)/gi, "")
+    .replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "");
   return removeBlocks(removeBlocks(s, /<div\b[^>]*class="[^"]*\bgmail_(quote|attr)\b[^"]*"[^>]*>/i, "div"),
     /<blockquote\b[^>]*>/i, "blockquote");
 }
