@@ -33,7 +33,9 @@ export async function bookMeeting(db: Db, p: BookMeetingInput) {
   return db.transaction(async (tx0) => {
     const tx = tx0 as unknown as Db;
     // Serialisér pr. virksomhed: lås virksomhedsrækken, læs så aftalerne (låst) og vælg EFTER låsen.
-    const [c] = await tx.select({ id: company.id, name: company.name }).from(company).where(eq(company.id, String(p.companyId))).for("update");
+    // "no key update" (ikke "update"): FK-indsættelser (activity/deal → company) tager KEY SHARE, som
+    // "update" blokerer — det gav deadlock mod updateDeal (Sol H7 r2 #1). Bookinger serialiseres stadig.
+    const [c] = await tx.select({ id: company.id, name: company.name }).from(company).where(eq(company.id, String(p.companyId))).for("no key update");
     if (!c) throw new DealInputError("virksomheden findes ikke");
     const existing = (await tx.select().from(deal).where(eq(deal.companyId, c.id)).for("update"))
       .filter((d) => ["moede", "tilbud"].includes(normalizeStage(d.stage)))
