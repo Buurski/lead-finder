@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
 import BookMeeting, { tomorrowISO } from "@/components/virksomheder/BookMeeting";
+import { gmailRepliesUrl } from "@/lib/hq/gmail-link";
 
 export interface HarSvaretRow {
   id: string;
@@ -61,6 +62,7 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
         <button type="button" className="cc-btn" disabled={busy} onClick={logCall}>Log opkald</button>
         <button type="button" className="cc-btn" disabled={busy} onClick={() => setLater((v) => !v)} aria-expanded={later}>Ring senere</button>
         <BookMeeting companyId={row.id} owner={me} />
+        {row.email && <a href={gmailRepliesUrl(row.email, row.owner, me)} target="_blank" rel="noopener noreferrer" className="cc-btn">Se svar</a>}
         {row.email && <a href={`mailto:${row.email}`} className="cc-btn">Mail igen</a>}
       </div>
       {later && (
