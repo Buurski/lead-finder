@@ -105,21 +105,22 @@ export async function updateDeal(db: Db, dealId: string, p: DealPatch, actor: st
 }
 
 /** Møde → Tilbud: opgaverne "Send tilbud" (+2 dage) og "Følg op" (+5 dage), ejet af aftalens ejer.
- * Ingen dubletter: findes der allerede åbne opfølgninger på aftalen, oprettes ingen nye. */
+ * Ingen dubletter: hver type tjekkes for sig, og kun de typer uden åben opgave oprettes. */
 async function quoteFollowUps(tx: Db, d: typeof deal.$inferSelect) {
-  const open = await tx.select({ id: task.id }).from(task)
+  const open = await tx.select({ kind: sql<string>`${task.data}->>'kind'` }).from(task)
     .where(and(isNull(task.doneAt), sql`${task.data}->>'dealId' = ${d.id}`, sql`${task.data}->>'kind' in ('tilbud-send', 'tilbud-foelg')`));
-  if (open.length) return;
+  const has = new Set(open.map((r) => r.kind));
   const [c] = await tx.select({ name: company.name }).from(company).where(eq(company.id, d.companyId));
   const name = c?.name || "kunden";
   const owner = d.owner === "charlie" ? "charlie" : "lucas";
   const [y, m, day] = copenhagenNow().date.split("-").map(Number);
   const plus = (n: number) => new Date(Date.UTC(y, m - 1, day + n)).toISOString().slice(0, 10);
   const base = { companyId: d.companyId, dealId: d.id, clientName: name, owner };
-  await tx.insert(task).values([
+  const rows = [
     { ...base, title: `Send tilbud til ${name}`, due: plus(2), data: { kind: "tilbud-send", dealId: d.id } },
     { ...base, title: `Følg op på tilbud til ${name}`, due: plus(5), data: { kind: "tilbud-foelg", dealId: d.id } },
-  ]);
+  ].filter((r) => !has.has(r.data.kind));
+  if (rows.length) await tx.insert(task).values(rows);
 }
 
 /**

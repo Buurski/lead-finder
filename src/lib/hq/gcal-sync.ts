@@ -55,6 +55,13 @@ function addMinutes(time: string, add: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+/** Slutdato: ruller sluttiden over midnat, er det næste dag. */
+function endDayOf(day: string, time: string, add: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const [y, mo, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, mo - 1, d + Math.floor((h * 60 + m + add) / 1440))).toISOString().slice(0, 10);
+}
+
 // Påmindelse dagen før kl. 17, beregnet som minutter før starttidspunktet (så den
 // rammer kl. 17 uanset hvornår på dagen opgaven ligger, ikke kun ved 08:00).
 // Ponytail: ignorerer DST-skiftedage (op til 1 times fejl to gange om året).
@@ -80,7 +87,7 @@ function buildEvent(item: MyDayItem, day: string, time: string, durationMin: num
     summary: summary.slice(0, 250),
     description: description.slice(0, 4000),
     start: { dateTime: `${day}T${time}:00`, timeZone: TZ },
-    end: { dateTime: `${day}T${addMinutes(time, durationMin)}:00`, timeZone: TZ },
+    end: { dateTime: `${endDayOf(day, time, durationMin)}T${addMinutes(time, durationMin)}:00`, timeZone: TZ },
     reminders: { useDefault: false as const, overrides: [{ method: "popup" as const, minutes: eveningBeforeMinutes(day, time) }, { method: "popup" as const, minutes: 0 }] },
     transparency: "transparent" as const,
   };

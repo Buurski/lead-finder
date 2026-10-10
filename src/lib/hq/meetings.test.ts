@@ -8,7 +8,7 @@ import { copenhagenNow } from "../settings.ts";
 import { createDeal, updateDeal } from "./deals.ts";
 import { listMyDay } from "./tasks.ts";
 import { toEvents } from "./gcal-sync.ts";
-import { bookMeeting, sweepMeetingOutcomes } from "./meetings.ts";
+import { bookMeeting, copenhagenInstant, sweepMeetingOutcomes } from "./meetings.ts";
 
 let db: Db;
 let companyId: string;
@@ -96,6 +96,56 @@ test("moede → tilbud opretter Send tilbud (+2 d) og Følg op (+5 d); ingen dub
   await updateDeal(db, d.id, { stage: "moede" }, "lucas");
   await updateDeal(db, d.id, { stage: "tilbud" }, "lucas");
   assert.equal((await db.select().from(task).where(eq(task.dealId, d.id))).length, 2);
+});
+
+test("copenhagenInstant: almindelig dag og DST-skiftedage", () => {
+  const z = (day: string, time: string) => new Date(copenhagenInstant(day, time)).toISOString();
+  assert.equal(z("2026-06-10", "10:00"), "2026-06-10T08:00:00.000Z");
+  assert.equal(z("2026-12-10", "10:00"), "2026-12-10T09:00:00.000Z");
+  assert.equal(z("2026-03-29", "01:30"), "2026-03-29T00:30:00.000Z"); // før springet (CET)
+  assert.equal(z("2026-03-29", "03:30"), "2026-03-29T01:30:00.000Z"); // efter springet (CEST)
+  assert.equal(z("2026-10-25", "02:30"), "2026-10-25T01:30:00.000Z"); // tvetydig: senere forekomst (CET)
+  assert.equal(z("2026-10-25", "03:30"), "2026-10-25T02:30:00.000Z");
+  assert.equal(z("2026-10-25", "01:30"), "2026-10-24T23:30:00.000Z"); // før efterårsskiftet (CEST)
+});
+
+test("bookMeeting: samtidige bookinger på samme virksomhed giver én aftale", async () => {
+  await Promise.all([book(), book({ due: "2026-10-21" })]);
+  assert.equal((await db.select().from(deal).where(eq(deal.companyId, companyId))).length, 1);
+});
+
+test("toEvents: møde kl. 23:00 slutter næste dag kl. 00:00", async () => {
+  await book({ due: "2026-10-20", dueTime: "23:00" });
+  const items = await listMyDay(db, { owner: "lucas", today: "2026-10-19" });
+  const meeting = toEvents(items, "2026-10-19").find((e) => e.summary.startsWith("Møde"))!;
+  assert.equal(meeting.start.dateTime, "2026-10-20T23:00:00");
+  assert.equal(meeting.end.dateTime, "2026-10-21T00:00:00");
+});
+
+test("cron mødeudfald lukker mødeopgaven; ældre møder (uden vindue) tages med; brugerlukket møde får intet udfald", async () => {
+  const old = await book({ due: "2026-01-05", dueTime: "09:00" });
+  const doneByUser = await book({ due: "2026-01-06", dueTime: "09:00" });
+  const future = await book({ due: "2099-01-01", dueTime: "10:00" });
+  await db.update(task).set({ doneAt: new Date() }).where(eq(task.id, doneByUser.task.id));
+  const now = new Date("2026-10-20T12:00:00Z");
+  assert.equal((await sweepMeetingOutcomes(db, now)).created, 1);
+  assert.equal((await sweepMeetingOutcomes(db, now)).created, 0);
+  const all = await db.select().from(task);
+  const byId = (id: string) => all.find((t) => t.id === id)!;
+  assert.ok(byId(old.task.id).doneAt, "mødet er lukket");
+  assert.equal(byId(future.task.id).doneAt, null);
+  const outcomes = all.filter((t) => (t.data as { kind?: string } | null)?.kind === "moede-udfald");
+  assert.deepEqual(outcomes.map((t) => (t.data as { moedeId: string }).moedeId), [old.task.id]);
+  const items = await listMyDay(db, { owner: "lucas", today: "2026-10-20" });
+  assert.ok(!items.some((i) => i.id === old.task.id), "lukket møde er ude af min dag");
+});
+
+test("moede → tilbud: kun den manglende opfølgningstype oprettes", async () => {
+  const d = await createDeal(db, companyId, { title: "Hjemmeside", stage: "moede", owner: "lucas" }, "lucas");
+  await db.insert(task).values({ companyId, dealId: d.id, owner: "lucas", title: "Følg op", due: "2026-10-30", data: { kind: "tilbud-foelg", dealId: d.id } });
+  await updateDeal(db, d.id, { stage: "tilbud" }, "lucas");
+  const kinds = (await db.select().from(task).where(eq(task.dealId, d.id))).map((t) => (t.data as { kind: string }).kind).sort();
+  assert.deepEqual(kinds, ["tilbud-foelg", "tilbud-send"]);
 });
 
 test("andre fase-skift opretter ingen opfølgningsopgaver", async () => {
