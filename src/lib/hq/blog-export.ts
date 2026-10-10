@@ -6,7 +6,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
-import { chosenSlots, markPublished, readChecklist, readImages, readProofs, revisionOf, type BlogImageCandidate } from "./posts.ts";
+import { chosenSlots, isCustomerImage, markPublished, readChecklist, readImages, readJev, readProofs, revisionOf, type BlogImageCandidate, type BlogChecklist, type BlogJev } from "./posts.ts";
 
 type Row = typeof blogPost.$inferSelect;
 
@@ -24,6 +24,8 @@ export interface KinlyPost {
   hook: string;
   shortAnswer?: string;
   cover: KinlyImage;
+  /** OG-udsnit af heroen (1200x630) med samme alt-tekst. */
+  og?: KinlyImage;
   sections: KinlySection[];
   images?: KinlyImage[];
   sources?: { label: string; url: string }[];
@@ -36,6 +38,12 @@ export interface ExportItem {
   post: KinlyPost;
   /** Billeder der skal hentes og lægges i kinly-site/public/<path>. */
   files: { url: string; path: string }[];
+  /**
+   * De gates kortet stod igennem, med i svaret så udgiver-scriptet kan
+   * fail-closer validereklarheden offline uden at kalde HQ (spec: "kræver
+   * JEV/precheck uden live-kald i test"). Begge skal matche `revision`.
+   */
+  gate: { checklist: BlogChecklist; jev: BlogJev | null };
 }
 
 const TJEKLISTE = /gøre nu|tjekliste|kom i gang|næste skridt/i;
@@ -99,13 +107,20 @@ function cphToday(now = new Date()): string {
 }
 
 /** Ét kort i Publicer → kinly.dk-opslag. Kaster, hvis kortet mangler noget kinly.dk kræver. */
-export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" | "excerpt" | "body" | "images" | "proofs" | "updatedBy">, now = new Date()): Omit<ExportItem, "revision"> {
+export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" | "excerpt" | "body" | "images" | "proofs" | "updatedBy">, now = new Date()): Omit<ExportItem, "revision" | "gate"> {
   const slug = row.slug;
   const images = readImages(row.images);
   const proofs = readProofs(row.proofs);
   // Rækkefølgen er menneskets: første valgte = cover, andet = billedet i teksten.
   const chosen = chosenSlots(images).map((s) => images[s]).filter((k): k is BlogImageCandidate => Boolean(k));
   if (!chosen.length) throw new Error(`${slug}: intet valgt billede`);
+  // Fail-closed (Lucas 25-09): et valgt billede uden alt-tekst, eller et
+  // kundebillede uden registreret samtykke, stopper eksporten — det bliver
+  // aldrig til et mock-billede eller en offentlig fil uden bevis.
+  for (const k of chosen) {
+    if (!k.alt?.trim()) throw new Error(`${slug}: valgt billede mangler alt-tekst`);
+    if (isCustomerImage(k) && !k.consentRef?.trim()) throw new Error(`${slug}: kundebillede ${k.id} mangler kundens samtykke (consentRef)`);
+  }
 
   const { intro, sections: parsed } = parseBody(row.body);
   let sections = parsed;
@@ -121,8 +136,19 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
   if (!sections.length) sections = [{ heading: row.title, paragraphs: [] }];
   if (extraIntro.length) sections[0].paragraphs.unshift(...extraIntro);
 
-  const files = chosen.map((k, i) => ({ url: k.desktopUrl || k.url, path: `img/blog/${slug}-${i === 0 ? "hero" : "billede"}.${ext(k.desktopUrl || k.url)}` }));
-  const img = (k: BlogImageCandidate, i: number): KinlyImage => ({ src: `/${files[i].path}`, alt: k.alt, ...(k.consentRef ? { consentRef: k.consentRef } : {}) });
+  // Filerne skal hedde præcis det kode.sh-vagten tillader (public/img/blog/
+  // <slug>-hero.webp og -og.webp) og det sitet renderer: hero 1600x900,
+  // OG-udsnit 1200x630 afledt af den valgte hero, og ved to valgte billeder
+  // <slug>-b.webp i brødteksten. Udgiver-scriptet konverterer til webp.
+  const heroSrc = chosen[0].desktopUrl || chosen[0].url;
+  const files = [
+    { url: heroSrc, path: `img/blog/${slug}-hero.webp` },
+    { url: heroSrc, path: `img/blog/${slug}-og.webp` },
+    ...(chosen[1] ? [{ url: chosen[1].desktopUrl || chosen[1].url, path: `img/blog/${slug}-b.webp` }] : []),
+  ];
+  const cover: KinlyImage = { src: `/img/blog/${slug}-hero.webp`, alt: chosen[0].alt, ...(chosen[0].consentRef ? { consentRef: chosen[0].consentRef } : {}) };
+  // OG-billedet er et udsnit af heroen og bærer samme alt-tekst.
+  const og: KinlyImage = { src: `/img/blog/${slug}-og.webp`, alt: chosen[0].alt };
 
   const post: KinlyPost = {
     slug,
@@ -136,10 +162,21 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
     author: proofs.factcheck?.by === "charlie" ? "Charlie Nielsen" : "Lucas Buur",
     hook,
     ...(intro[1] ? { shortAnswer: intro[1] } : {}),
-    cover: img(chosen[0], 0),
+    cover,
+    og,
     sections,
     ...(chosen[1]
-      ? { images: [{ ...img(chosen[1], 1), afterSection: afterSectionFor(chosen[1].placement, sections.length), ...captionFor(chosen[1].credit) }] }
+      ? {
+          images: [
+            {
+              src: `/img/blog/${slug}-b.webp`,
+              alt: chosen[1].alt,
+              afterSection: afterSectionFor(chosen[1].placement, sections.length),
+              ...captionFor(chosen[1].credit),
+              ...(chosen[1].consentRef ? { consentRef: chosen[1].consentRef } : {}),
+            },
+          ],
+        }
       : {}),
     ...(proofs.sources.length
       ? { sources: proofs.sources.map((s) => ({ label: s.claim.length > 140 ? `${s.claim.slice(0, 137)}…` : s.claim || s.url, url: s.url })) }
@@ -150,7 +187,7 @@ export function toKinlyPost(row: Pick<Row, "id" | "title" | "slug" | "category" 
   return { id: row.id, post, files };
 }
 
-/** Kort i Publicer med grøn tjekliste for PRÆCIS den nuværende tekst — samme gate som markPublished. */
+/** Kort i Publicer med grøn tjekliste OG grønt Jev for PRÉCIS den nuværende tekst — samme gate som markPublished. */
 export async function exportablePosts(db: Db, now = new Date()): Promise<{ items: ExportItem[]; skipped: { id: string; error: string }[] }> {
   const rows = await db.select().from(blogPost).where(eq(blogPost.stage, "publicer"));
   const items: ExportItem[] = [];
@@ -162,8 +199,15 @@ export async function exportablePosts(db: Db, now = new Date()): Promise<{ items
       skipped.push({ id: row.id, error: "tjeklisten er ikke grøn for den nuværende tekst" });
       continue;
     }
+    // Fail-closed (kontrakt 25-09): udgiver-jobbet skal kunne kontrollere Jev
+    // offline, så et grønt svar på en gammel kladde aldrig når kinly.dk.
+    const jev = readJev(row.jev);
+    if (!jev || !jev.ready || jev.revision !== revision) {
+      skipped.push({ id: row.id, error: "Jev-resultatet mangler eller er ikke grønt for den nuværende tekst" });
+      continue;
+    }
     try {
-      items.push({ ...toKinlyPost(row, now), revision });
+      items.push({ ...toKinlyPost(row, now), revision, gate: { checklist: stored, jev } });
     } catch (e) {
       skipped.push({ id: row.id, error: String((e as Error).message ?? e).slice(0, 200) });
     }
@@ -171,19 +215,29 @@ export async function exportablePosts(db: Db, now = new Date()): Promise<{ items
   return { items, skipped };
 }
 
-/** Udgiveren melder et opslag live. HQ henter selv siden og kræver 200 + titlen i HTML'en før Udgivet. */
-export async function confirmPublished(db: Db, id: string, url: unknown, fetcher: typeof fetch = fetch) {
+/** Hvad udgiver-jobbet skal levere som menneskets release-bevis (kontrakt 9/10). */
+export interface ReleaseProof { revision: string; releaseSha: string }
+
+/** Udgiveren melder et opslag live. Kræver BÅDE menneskets release-bevis og en læst live-url. */
+export async function confirmPublished(db: Db, id: string, url: unknown, fetcher: typeof fetch = fetch, proof?: unknown) {
   const [row] = await db.select().from(blogPost).where(eq(blogPost.id, id));
   if (!row) throw new Error("indlægget findes ikke");
   if (typeof url !== "string") throw new Error("url mangler");
-  // Kun kortets egen adresse hentes (ingen vilkårlige url'er — SSRF, Opus-council 26/9).
   const expected = `https://kinly.dk/blog/${row.slug}/`;
   if (!row.slug || url !== expected) throw new Error(`url skal være ${expected}`);
+  // 1) Menneskets release-bevis: jobbet klargør kun en privat PR. At grenen er
+  // merget er Lucas' handling, og sha'en binder den til PRÆCIS denne version.
+  const p = (proof ?? {}) as Partial<ReleaseProof>;
+  const sha = String(p.releaseSha ?? "").trim();
+  if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error("release-bevis mangler: jobbet må ikke melde et opslag udgivet uden Lucas' merge-sha");
+  if (String(p.revision ?? "") !== revisionOf(row)) {
+    throw new Error("release-beviset er til en anden version af teksten — faktatjek igen, før opslaget meldes udgivet");
+  }
+  // 2) Live-url'en læses: 200 alene beviser ikke at DETTE kort er udgivet.
   const res = await fetcher(expected, { redirect: "manual", headers: { "user-agent": "KinlyHQ-udgiver" } });
   if (res.status !== 200) throw new Error(`siden er ikke live endnu (HTTP ${res.status})`);
-  // 200 alene beviser ikke at DETTE kort er udgivet (fx en ældre side med samme slug): titlen skal stå i HTML'en.
   if (!decodeEntities(await res.text()).includes(row.title)) throw new Error("siden svarer, men viser ikke kortets titel — ikke dette opslag");
-  return markPublished(db, id, { url: expected }, "udgiver");
+  return markPublished(db, id, { url: expected, note: `udgivet efter Lucas' release ${sha.slice(0, 8)}` }, "udgiver");
 }
 
 function decodeEntities(html: string): string {
