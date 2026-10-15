@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { slippedBefore, weekGrid } from "@/lib/hq/marketing-calc";
 import { STATUS_LABEL, TRACK_LABEL, type DraftDto } from "@/lib/hq/marketing-types";
+import DateInput from "./DateInput";
 import Info from "./Info";
 import { mk, niceDay } from "./api";
 import "./marketing.css";
@@ -13,11 +14,11 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
   const [busy, setBusy] = useState<string | null>(null);
   const weeks = weekGrid(today, 4);
 
-  async function setDate(d: DraftDto, plannedFor: string | null) {
+  async function save(d: DraftDto, body: Record<string, unknown>) {
     setBusy(d.id);
     setError("");
     try {
-      const r = await mk<{ draft: DraftDto }>({ action: "draftUpdate", id: d.id, draft: { plannedFor } });
+      const r = await mk<{ draft: DraftDto }>(body);
       setItems((xs) => xs.map((x) => (x.id === d.id ? r.draft : x)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Noget gik galt.");
@@ -25,6 +26,8 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
       setBusy(null);
     }
   }
+  const setDate = (d: DraftDto, plannedFor: string | null) => save(d, { action: "draftUpdate", id: d.id, draft: { plannedFor } });
+  const posted = (d: DraftDto) => save(d, { action: "draftAction", id: d.id, op: "posted" });
 
   const live = items.filter((d) => d.status !== "droppet");
   const undated = live.filter((d) => d.status === "godkendt" && !d.plannedFor);
@@ -53,6 +56,12 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
                       <div key={d.id} className="mk-cal-item" data-status={d.status} title={`${TRACK_LABEL[d.track]} · ${STATUS_LABEL[d.status]}`}>
                         {d.title}
                         <div className="mk-dim" style={{ fontSize: 11 }}>{TRACK_LABEL[d.track]} · {STATUS_LABEL[d.status]}</div>
+                        {d.status !== "postet" && (
+                          <div className="mk-row" style={{ marginTop: 6 }}>
+                            <DateInput className="cc-input" label={`Flyt dato for ${d.title}`} value={d.plannedFor} disabled={busy === d.id} onCommit={(v) => setDate(d, v)} />
+                            {d.status === "godkendt" && <button type="button" className="cc-btn" disabled={busy === d.id} onClick={() => posted(d)} title="Tryk når du selv har lagt den ud. HQ poster ikke noget.">Jeg har lagt den ud</button>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -63,6 +72,7 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
         );
       })}
 
+      {error && <p className="mk-err" role="alert">{error}</p>}
       {outside.length > 0 && (
         <div className="mk-warn"><strong>Før denne uge</strong>{outside.map((d) => <span key={d.id}>{niceDay(d.plannedFor!)}: {d.title} ({STATUS_LABEL[d.status]})</span>)}</div>
       )}
@@ -76,12 +86,11 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
             {undated.map((d) => (
               <div key={d.id} className="mk-row" style={{ justifyContent: "space-between" }}>
                 <span className="mk-grow" style={{ fontSize: 14 }}>{d.title}</span>
-                <input className="cc-input" type="date" aria-label={`Dato for ${d.title}`} disabled={busy === d.id} min={today} onChange={(e) => e.target.value && setDate(d, e.target.value)} />
+                <DateInput className="cc-input" label={`Dato for ${d.title}`} value={null} min={today} disabled={busy === d.id} onCommit={(v) => v && setDate(d, v)} />
               </div>
             ))}
           </div>
         )}
-        {error && <p className="mk-err" role="alert">{error}</p>}
       </section>
     </div>
   );

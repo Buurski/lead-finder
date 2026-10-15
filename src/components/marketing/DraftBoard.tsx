@@ -2,13 +2,14 @@
 // Kladder: tre spor (faceless/AI = hovedspor, Lucas+Charlie = fase 2, Dag N). Handlinger:
 // godkend / ret / drop / prioritet. Drop er en status (kan hentes tilbage), intet slettes.
 // Al validering ligger på serveren (hq/marketing.ts); her vises kun det der mangler, i hverdagssprog.
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import {
   MUSIC_KINDS, MUSIC_LABEL, MUSIC_LICENSE_OK, PRIORITY_LABEL, STATUS_LABEL, TRACKS, TRACK_LABEL, TRACK_NOTE,
   approvalBlockers, hasPlaceholder, type DraftDto, type MusicKind, type Track,
 } from "@/lib/hq/marketing-types";
-import Info from "./Info";
+import DateInput from "./DateInput";
+import Field from "./Field";
 import { mk, niceDay } from "./api";
 import "./marketing.css";
 
@@ -19,15 +20,6 @@ const rank = (d: DraftDto) => d.priority * 1000 - (d.score ?? 0) * 10;
 const sortDrafts = (xs: DraftDto[]) => [...xs].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, "da"));
 
 type Patch = Record<string, unknown>;
-
-function Field({ label, info, children }: { label: string; info?: string; children: React.ReactNode }) {
-  return (
-    <div className="mk-field">
-      <span className="mk-label">{label}{info && <Info label={`Hvad er ${label.toLowerCase()}?`}>{info}</Info>}</span>
-      {children}
-    </div>
-  );
-}
 
 function EditForm({ d, onSave, onCancel, busy }: { d: DraftDto; onSave: (p: Patch) => void; onCancel: () => void; busy: boolean }) {
   const [f, setF] = useState({
@@ -84,11 +76,15 @@ function EditForm({ d, onSave, onCancel, busy }: { d: DraftDto; onSave: (p: Patc
   );
 }
 
-function DraftCard({ d, today, onChange }: { d: DraftDto; today: string; onChange: (d: DraftDto) => void }) {
+function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; onChange: (d: DraftDto) => void; focus?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const blockers = useMemo(() => approvalBlockers(d), [d]);
+  const trueId = useId();
+  const dateId = useId();
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => { if (focus) ref.current?.scrollIntoView({ block: "center" }); }, [focus]);
 
   async function run(body: Record<string, unknown>, after?: () => void) {
     setBusy(true);
@@ -109,7 +105,7 @@ function DraftCard({ d, today, onChange }: { d: DraftDto; today: string; onChang
 
   const live = d.status !== "droppet";
   return (
-    <article className="cc-card mk-draft" data-status={d.status} aria-label={d.title}>
+    <article ref={ref} className="cc-card mk-draft" data-status={d.status} aria-label={d.title}>
       <div className="mk-chips">
         {d.label && <span className={`cc-chip mk-chip-${d.label.toLowerCase()}`}>{d.label}</span>}
         <span className="cc-chip">{STATUS_LABEL[d.status]}</span>
@@ -145,8 +141,8 @@ function DraftCard({ d, today, onChange }: { d: DraftDto; today: string; onChang
                   {[1, 2, 3].map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
                 </select>
               </Field>
-              <Field label="Dato" info="Hvornår du vil lægge den ud. Den kommer med i kalenderen.">
-                <input className="cc-input mk-input" type="date" value={d.plannedFor ?? ""} disabled={busy} onChange={(e) => update({ plannedFor: e.target.value || null })} />
+              <Field label="Dato" forId={dateId} info="Hvornår du vil lægge den ud. Den kommer med i kalenderen.">
+                <DateInput id={dateId} value={d.plannedFor} disabled={busy} onCommit={(v) => update({ plannedFor: v })} />
               </Field>
             </div>
           )}
@@ -163,9 +159,9 @@ function DraftCard({ d, today, onChange }: { d: DraftDto; today: string; onChang
                   <label className="mk-check"><input type="checkbox" checked={d.customerOk} disabled={busy} onChange={(e) => checks({ customerOk: e.target.checked })} />
                     <span>Kunden har sagt ja, skriftligt</span></label>
                 )}
-                <Field label="Sandt i dag?" info="Alt vi siger om AI, tal og tider skal være sandt den dag, videoen lægges ud. Sæt en dato, når du har tjekket det.">
+                <Field label="Sandt i dag?" forId={trueId} info="Alt vi siger om AI, tal og tider skal være sandt den dag, videoen lægges ud. Sæt en dato, når du har tjekket det.">
                   <div className="mk-row">
-                    <input className="cc-input mk-input mk-grow" type="date" value={d.trueCheckedOn ?? ""} disabled={busy} onChange={(e) => checks({ trueCheckedOn: e.target.value || null })} />
+                    <DateInput id={trueId} className="cc-input mk-input mk-grow" value={d.trueCheckedOn} disabled={busy} onCommit={(v) => checks({ trueCheckedOn: v })} />
                     <button type="button" className="cc-btn" disabled={busy} onClick={() => checks({ trueCheckedOn: today })}>I dag</button>
                   </div>
                 </Field>
@@ -241,7 +237,10 @@ export default function DraftBoard({ initial, today, duoNotes = [] }: { initial:
   const [items, setItems] = useState(initial);
   const [track, setTrack] = useState<Track>("faceless");
   const [filter, setFilter] = useState<Filter>("aktive");
+  const [focusId, setFocusId] = useState<string | null>(null);
   const upsert = (d: DraftDto) => setItems((xs) => (xs.some((x) => x.id === d.id) ? xs.map((x) => (x.id === d.id ? d : x)) : [d, ...xs]));
+  // Ny eller flyttet kladde: vis det spor og den fane, den står i, og scroll ned til den, så man ser, at det lykkedes.
+  const reveal = (d: DraftDto) => { upsert(d); setTrack(d.track); setFilter(d.status === "droppet" ? "droppet" : d.status === "postet" ? "postet" : "aktive"); setFocusId(d.id); };
 
   const inTrack = items.filter((d) => d.track === track);
   const shown = sortDrafts(inTrack.filter((d) => (filter === "aktive" ? d.status === "kladde" || d.status === "godkendt" : d.status === filter)));
@@ -276,12 +275,12 @@ export default function DraftBoard({ initial, today, duoNotes = [] }: { initial:
         ))}
       </div>
 
-      <NewDraft track={track} onCreated={upsert} />
+      <NewDraft track={track} onCreated={reveal} />
 
       {shown.length === 0 ? (
         <div className="cc-card mk-card"><p className="mk-p">Ingen kladder her. {inTrack.length > 0 ? "Prøv et andet filter ovenfor." : "Tryk “+ Ny kladde” for at lave den første."}</p></div>
       ) : (
-        <div className="mk-drafts">{shown.map((d) => <DraftCard key={d.id} d={d} today={today} onChange={upsert} />)}</div>
+        <div className="mk-drafts">{shown.map((d) => <DraftCard key={d.id} d={d} today={today} onChange={(n) => (n.track !== d.track ? reveal(n) : upsert(n))} focus={d.id === focusId} />)}</div>
       )}
     </div>
   );
