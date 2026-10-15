@@ -217,6 +217,7 @@ export const leadReply = pgTable("lead_reply", {
   account: text("account").notNull(), // "lucas" | "charlie": indbakken der modtog svaret
   messageId: text("message_id").notNull().unique(), // RFC Message-ID → upsert er idempotent
   threadId: text("thread_id"),
+  fromEmail: text("from_email"), // lowercased afsenderadresse; null = ældre række (brug virksomhedens adresse)
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
   subject: text("subject").notNull().default(""),
   snippet: text("snippet"), // null efter opbevaringsfristen

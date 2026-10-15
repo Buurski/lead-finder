@@ -91,11 +91,30 @@ test("saveCaptured: gemmer nye, er idempotent, og tæller samme Message-ID fra b
   assert.equal(row.companyId, a.id);
   assert.equal(row.asksCall, true);
   assert.equal(row.snippet, "Ja tak, ring gerne.");
+  assert.equal(row.fromEmail, "a@salon.dk"); // afsenderadressen gemmes (lowercased)
 
   const again = await saveCaptured(db, both, byEmail);
   assert.equal(again.existing, 1);
   assert.equal(again.inserted, 0);
   assert.equal((await db.select().from(leadReply)).length, 1);
+});
+
+test("ældre række uden afsender får den udfyldt ved næste scan, og en udfyldt række overskrives aldrig", async () => {
+  const { a } = await seed();
+  await db.insert(leadReply).values([
+    { companyId: a.id, account: "lucas", messageId: "<old@x>", receivedAt: new Date("2026-09-01T10:00:00Z"), subject: "Re: x", snippet: "ok", category: "other", asksCall: false },
+    { companyId: a.id, account: "lucas", messageId: "<set@x>", fromEmail: "bevares@salon.dk", receivedAt: new Date("2026-09-02T10:00:00Z"), subject: "Re: y", snippet: "ok", category: "other", asksCall: false },
+  ]);
+  const byEmail = await replyCandidates(db);
+  const r = await saveCaptured(db, [raw({ messageId: "<old@x>" }), raw({ messageId: "<set@x>" }), raw({ messageId: "<ukendt@x>", from: "ukendt@x.dk" })], byEmail);
+  assert.equal(r.inserted, 0);
+  const rows = Object.fromEntries((await db.select().from(leadReply)).map((x) => [x.messageId, x.fromEmail]));
+  assert.equal(rows["<old@x>"], "a@salon.dk");
+  assert.equal(rows["<set@x>"], "bevares@salon.dk");
+  // dry-run udfylder intet
+  await db.update(leadReply).set({ fromEmail: null });
+  await saveCaptured(db, [raw({ messageId: "<old@x>" })], byEmail, { dryRun: true });
+  assert.equal((await db.select().from(leadReply).where(eq(leadReply.messageId, "<old@x>")))[0].fromEmail, null);
 });
 
 test("saveCaptured dryRun: tæller men skriver intet", async () => {

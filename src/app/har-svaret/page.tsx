@@ -63,6 +63,7 @@ export default async function HarSvaretPage() {
       replyCategory: l.reply ? (CATEGORY_LABEL[l.reply.category] ?? l.reply.category) : "",
       replySubject: l.reply?.subject ?? "",
       replyAccount: l.reply?.account ?? "",
+      replyFrom: l.reply?.fromEmail ?? "",
       snippet: l.reply?.snippet ?? "",
       phoneInReply: l.reply?.asksCall && l.reply.snippet ? (phoneInText(l.reply.snippet) ?? "") : "",
       weSent: weSentLabel(l.mailsSent, l.lastMailAt),

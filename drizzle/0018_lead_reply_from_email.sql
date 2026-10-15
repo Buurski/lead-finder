@@ -1,0 +1,1 @@
+ALTER TABLE "lead_reply" ADD COLUMN "from_email" text;

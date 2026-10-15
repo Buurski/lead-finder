@@ -153,3 +153,9 @@ Udskudt (kendt begrænsning, ingen af dem sender eller skriver noget):
 - Første backfill kørte lokalt, hvor `GMAIL_USER` er en ANDEN Gmail-konto end den Vercel bruger til Lucas (Vercel markerer Gmail-nøglerne som skjulte, så prod-kontoen kan kun læses fra Vercel selv). 137 rækker (maj–28. aug) ligger derfor i den gamle postkasse, ikke i lucas@kinly.dk.
 - De rækker er relabelet `account = 'gammel'` (`OLD_MAILBOX` i `gmail-link.ts`): "Åbn i Gmail" åbner søgningen uden `authuser` i stedet for Kinly-indbakken.
 - `POST /api/replies/capture` tager `{ days }` (1-365, ellers 30) og har `maxDuration 300`, så prod-kontoens historik kan hentes fra den indloggede side.
+
+## 16. Afsenderadresse (migration 0018, additiv)
+
+- `lead_reply.from_email` (nullable) gemmer adressen svaret kom fra. Gmail-link og "Skriv tilbage" bruger den før virksomhedens hovedadresse; null (ældre rækker) falder tilbage til virksomhedens adresse som før. Løser udskudt punkt i §14.
+- Ældre prod-rækker udfyldes af næste scan, hvor mailen ses igen (`fillMissingFromEmail`, rører kun tomme felter). Rækker fra den gamle postkasse (`gammel`) kan prod ikke læse og bliver ved med at bruge virksomhedens adresse.
+- Rækkefølge i prod: kør migration 0018 FØR merge/deploy (siden selecter kolonnen).

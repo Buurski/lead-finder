@@ -1,7 +1,7 @@
 // DB-siden af svar-indsamlingen (spec 2026-10-15-har-svaret-kontekst-design.md §4-5): hvem skal vi lytte efter,
 // idempotent gem, og opbevaringsfrist. IMAP-delen bor i lib/capture-replies.ts. Intet sendes.
 import "server-only";
-import { and, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { company, contact, leadReply } from "../db/schema.ts";
 import { isSuppressed } from "../canSendTo.ts";
@@ -71,11 +71,22 @@ export interface NewLeadReply {
   account: string;
   messageId: string;
   threadId: string | null;
+  fromEmail: string;
   receivedAt: Date;
   subject: string;
   snippet: string;
   category: string;
   asksCall: boolean;
+}
+
+/** Udfylder afsenderadressen på rækker gemt før kolonnen fandt sted. Rører kun rækker hvor den er tom. Returnerer antal rettet. */
+export async function fillMissingFromEmail(db: Db, items: Array<{ messageId: string; fromEmail: string }>): Promise<number> {
+  let n = 0;
+  for (const it of items) {
+    const out = await db.update(leadReply).set({ fromEmail: it.fromEmail }).where(and(eq(leadReply.messageId, it.messageId), isNull(leadReply.fromEmail))).returning({ id: leadReply.id });
+    n += out.length;
+  }
+  return n;
 }
 
 export async function existingMessageIds(db: Db, ids: string[]): Promise<Set<string>> {
