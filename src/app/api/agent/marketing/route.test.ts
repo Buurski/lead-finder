@@ -63,7 +63,7 @@ test("gyldig POST laver kun en kladde (status kladde, source agent, createdBy he
 });
 
 test("agenten kan ikke godkende, prioritere, planlaegge eller saette ok-felter", async () => {
-  const forbidden = [{ status: "godkendt" }, { status: "postet" }, { priority: 1 }, { plannedFor: "2026-10-20" }, { charlieOk: true }, { customerOk: true }, { trueCheckedOn: "2026-10-15" }, { createdBy: "lucas" }];
+  const forbidden = [{ status: "godkendt" }, { status: "postet" }, { priority: 1 }, { plannedFor: "2026-10-20" }, { charlieOk: true }, { customerOk: true }, { trueCheckedOn: "2026-10-15" }, { createdBy: "lucas" }, { musicLicense: "erhverv-ok" }, { customerCase: false }];
   for (const extra of forbidden) {
     const r = await post({ title: "x", ...extra });
     assert.equal(r.status, 400, JSON.stringify(extra));

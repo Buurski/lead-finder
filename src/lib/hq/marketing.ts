@@ -3,13 +3,13 @@
 // findes ét sted. Mønster: hq/posts.ts (Drizzle) + competitors.ts (valideringshjælpere).
 // HQ poster, sender og køber intet: "postet" er et menneskes egen markering.
 import "server-only";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { marketingDraft, marketingMeasure, marketingRef } from "../db/schema.ts";
 import { CompetitorInputError, bool, enumOf, int, noUnknownKeys, num, obj, str } from "./competitors.ts";
 import { abBoard } from "./marketing-calc.ts";
 import {
-  AB_STATUSES, LABELS, MUSIC_KINDS, TRACKS, approvalBlockers,
+  AB_STATUSES, LABELS, MUSIC_KINDS, MarketingConflictError, TRACKS, approvalBlockers,
   type DraftDto, type DraftStatus, type MeasureDto, type MusicKind, type RefDto, type RefKind, type Track,
 } from "./marketing-types.ts";
 
@@ -83,7 +83,8 @@ function musicKind(v: unknown): MusicKind | undefined {
 const CONTENT_KEYS = ["track", "title", "hook", "script", "shotlist", "caption", "lengthS", "musicKind", "musicLicense", "musicNote", "customerCase"] as const;
 const META_KEYS = ["label", "priority", "plannedFor", "note", "risk"] as const;
 // Agenten (Hermes) må kun skrive indholdet — aldrig prioritet, dato, godkendelser eller status.
-const AGENT_KEYS = ["track", "title", "hook", "script", "shotlist", "caption", "lengthS", "musicKind", "musicLicense", "musicNote", "customerCase", "label", "note", "risk"] as const;
+// musicLicense og customerCase er menneske-gates: agenten kan ikke opfylde dem (se createDraft).
+const AGENT_KEYS = ["track", "title", "hook", "script", "shotlist", "caption", "lengthS", "musicKind", "musicNote", "label", "note", "risk"] as const;
 const HUMAN_KEYS = [...CONTENT_KEYS, ...META_KEYS] as const;
 
 type DraftPatch = Partial<{
@@ -144,6 +145,17 @@ export async function getDraft(db: Db, id: unknown): Promise<DraftDto> {
   return toDraft(await getRow(db, id));
 }
 
+/** Optimistisk lås: opdaterer kun hvis status stadig er den, vi læste. 0 rækker = en anden nåede først (409). */
+async function saveIf(db: Db, row: DraftRow, set: Partial<typeof marketingDraft.$inferInsert>): Promise<DraftDto> {
+  const [next] = await db
+    .update(marketingDraft)
+    .set({ ...set, updatedAt: new Date() })
+    .where(and(eq(marketingDraft.id, row.id), eq(marketingDraft.status, row.status)))
+    .returning();
+  if (!next) throw new MarketingConflictError("Kladden blev ændret af en anden, mens du arbejdede. Opdatér siden og prøv igen.");
+  return toDraft(next);
+}
+
 /** Ny kladde. status er ALTID "kladde" — ingen vej herfra til godkendt/postet. */
 export async function createDraft(db: Db, raw: unknown, actor: string, via: "human" | "agent" = "human"): Promise<DraftDto> {
   const o = obj(raw, "kladde");
@@ -151,7 +163,8 @@ export async function createDraft(db: Db, raw: unknown, actor: string, via: "hum
   const p = parseDraftPatch(o, true);
   const [row] = await db
     .insert(marketingDraft)
-    .values({ ...p, status: "kladde", source: via === "agent" ? "agent" : "manuel", createdBy: actor, updatedBy: actor })
+    // Agent-kladder er konservativt "kundecase": kundens ok skal sættes af et menneske, før den kan godkendes.
+    .values({ ...p, ...(via === "agent" ? { customerCase: true } : {}), status: "kladde", source: via === "agent" ? "agent" : "manuel", createdBy: actor, updatedBy: actor })
     .returning();
   return toDraft(row);
 }
@@ -166,12 +179,9 @@ export async function updateDraft(db: Db, id: unknown, raw: unknown, actor: stri
   const cur = row as unknown as Record<string, unknown>;
   const changedContent = CONTENT_KEYS.some((k) => k in p && (p as Record<string, unknown>)[k] !== cur[k]);
   const status = row.status === "godkendt" && changedContent ? "kladde" : row.status;
-  const [next] = await db
-    .update(marketingDraft)
-    .set({ ...p, status, updatedBy: actor, updatedAt: new Date() })
-    .where(eq(marketingDraft.id, row.id))
-    .returning();
-  return toDraft(next);
+  // Nyt indhold på en godkendt kladde: alle menneske-tjek gælder den gamle version og nulstilles.
+  const reset = row.status === "godkendt" && changedContent ? { charlieOk: false, customerOk: false, trueCheckedOn: null } : {};
+  return saveIf(db, row, { ...p, ...reset, status, updatedBy: actor });
 }
 
 export type DraftAction = "approve" | "drop" | "restore" | "posted";
@@ -198,13 +208,15 @@ export async function draftAction(db: Db, id: unknown, action: unknown, actor: s
       if (d.status !== "droppet") fail("Kun en droppet kladde kan hentes tilbage.");
       status = "kladde";
       break;
-    case "posted":
+    case "posted": {
       if (d.status !== "godkendt") fail("Kun en godkendt kladde kan markeres som postet.");
+      const blockers = approvalBlockers(d);
+      if (blockers.length) fail(`Kan ikke markeres som postet endnu. ${blockers.join(" ")}`);
       status = "postet";
       break;
+    }
   }
-  const [next] = await db.update(marketingDraft).set({ status, updatedBy: actor, updatedAt: new Date() }).where(eq(marketingDraft.id, row.id)).returning();
-  return toDraft(next);
+  return saveIf(db, row, { status, updatedBy: actor });
 }
 
 /** Menneskets egne tjek: Charlies ja, kundens ok og "sandt pr. dato". Agenten kan aldrig sætte dem. */
@@ -219,8 +231,10 @@ export async function setChecks(db: Db, id: unknown, raw: unknown, actor: string
   if (k !== undefined) set.customerOk = k;
   const t = day(o.trueCheckedOn, "trueCheckedOn");
   if (t !== undefined) set.trueCheckedOn = t;
-  const [next] = await db.update(marketingDraft).set({ ...set, updatedBy: actor, updatedAt: new Date() }).where(eq(marketingDraft.id, row.id)).returning();
-  return toDraft(next);
+  // Fjernes et ok på en godkendt kladde, er den ikke længere godkendt.
+  const merged = { ...toDraft(row), ...set } as DraftDto;
+  const status = row.status === "godkendt" && approvalBlockers(merged).length ? "kladde" : row.status;
+  return saveIf(db, row, { ...set, status, updatedBy: actor });
 }
 
 // ---------------------------------------------------------------- hooks, tests, inspiration
@@ -273,6 +287,8 @@ export async function setAbStatus(db: Db, id: unknown, status: unknown): Promise
 
 // ---------------------------------------------------------------- manuel måling
 
+// Formularer sender tal som tekst ("1000"): accepter dem, men afvis alt der ikke er et tal ("abc" bliver NaN).
+const numeric = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? Number(v) : v);
 const NUM_KEYS = ["views", "saves", "shares", "newFollowers", "profileVisits", "linkClicks", "inquiries"] as const;
 
 export async function addMeasure(db: Db, raw: unknown, actor: string): Promise<MeasureDto> {
@@ -280,14 +296,14 @@ export async function addMeasure(db: Db, raw: unknown, actor: string): Promise<M
   noUnknownKeys(o, ["postedOn", "draftId", "abId", "arm", "parId", "armAssigned", "postUrl", ...NUM_KEYS, "skipPct", "fullViewPct", "watchS", "note"], "måling");
   const set: Partial<typeof marketingMeasure.$inferInsert> = {};
   for (const k of NUM_KEYS) {
-    const v = o[k] === "" ? undefined : int(o[k], k, 0);
+    const v = o[k] === "" ? undefined : int(numeric(o[k]), k, 0);
     if (v !== undefined) set[k] = v;
   }
   for (const k of ["skipPct", "fullViewPct"] as const) {
-    const v = o[k] === "" ? undefined : num(o[k], k, 0, 100);
+    const v = o[k] === "" ? undefined : num(numeric(o[k]), k, 0, 100);
     if (v !== undefined) set[k] = v;
   }
-  const w = o.watchS === "" ? undefined : num(o.watchS, "watchS", 0, 3600);
+  const w = o.watchS === "" ? undefined : num(numeric(o.watchS), "watchS", 0, 3600);
   if (w !== undefined) set.watchS = w;
   const arm = o.arm === undefined || o.arm === null || o.arm === "" ? "" : enumOf(o.arm, "arm", ["A", "B"] as const)!;
 

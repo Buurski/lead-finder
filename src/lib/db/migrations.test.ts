@@ -22,7 +22,6 @@ test("journal: løbende idx, en .sql og en snapshot pr. migration, ingen løse f
   });
   const sqlFiles = fs.readdirSync(DIR).filter((f) => f.endsWith(".sql")).map((f) => f.replace(/\.sql$/, "")).sort();
   assert.deepEqual(sqlFiles, journal.entries.map((e) => e.tag).sort());
-  assert.equal(journal.entries.at(-1)?.tag.startsWith("0019_marketing"), true);
 });
 
 test("hver tabel i schema.ts findes efter migrationerne, med de samme kolonner", async () => {

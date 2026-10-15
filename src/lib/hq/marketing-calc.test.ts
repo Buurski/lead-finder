@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { abVerdict, funnel, mondayOf, median, savesSharesPer1000, todayCph, weekGrid } from "./marketing-calc.ts";
+import { abVerdict, funnel, measurePayload, mondayOf, median, savesSharesPer1000, slippedBefore, todayCph, weekGrid } from "./marketing-calc.ts";
 import { approvalBlockers, hasPlaceholder } from "./marketing-types.ts";
 
 const rep = (n: number, v: number) => Array.from({ length: n }, () => v);
@@ -93,10 +93,35 @@ test("kalender: mandag-til-søndag, uger over månedsskifte, dansk dato", () => 
 test("godkendelses-regler er de samme i UI og server", () => {
   assert.equal(hasPlaceholder("Dag [N] af at bygge Kinly"), true);
   assert.equal(hasPlaceholder("7 ting din forside skal have"), false);
-  const base = { hook: "x", track: "faceless", charlieOk: false, customerCase: false, customerOk: false, musicKind: "ingen", musicLicense: "" } as const;
+  const base = { hook: "x", track: "faceless", charlieOk: false, customerCase: false, customerOk: false, musicKind: "ingen", musicLicense: "", trueCheckedOn: "2026-10-15" } as const;
   assert.deepEqual(approvalBlockers(base), []);
   assert.equal(approvalBlockers({ ...base, track: "duo" }).length, 1);
   assert.equal(approvalBlockers({ ...base, musicKind: "licenseret", musicLicense: "ukendt" }).length, 1);
   assert.equal(approvalBlockers({ ...base, musicKind: "licenseret", musicLicense: "erhverv-ok" }).length, 0);
   assert.equal(approvalBlockers({ ...base, musicKind: "original-lyd" }).length, 0);
+});
+
+test("sandt-dato er en godkendelses-blocker", () => {
+  const base = { hook: "x", track: "faceless", charlieOk: false, customerCase: false, customerOk: false, musicKind: "ingen", musicLicense: "", trueCheckedOn: null } as const;
+  assert.equal(approvalBlockers(base).length, 1);
+  assert.match(approvalBlockers(base)[0], /Sandt i dag/);
+  assert.equal(approvalBlockers({ ...base, trueCheckedOn: "2026-10-15" }).length, 0);
+});
+
+test("maaling-payload: tal bliver tal, tomme felter udelades, tekst forbliver tekst", () => {
+  const p = measurePayload({ postedOn: "2026-10-16", views: "1000", skipPct: "42.5", postUrl: "https://x.dk/a", saves: "", note: "hej" });
+  assert.deepEqual(p, { postedOn: "2026-10-16", views: 1000, skipPct: 42.5, postUrl: "https://x.dk/a", note: "hej" });
+  assert.equal(typeof p.views, "number");
+});
+
+test("kalender: 'foer denne uge' viser aldrig postet eller droppet", () => {
+  const rows = [
+    { status: "godkendt", plannedFor: "2026-10-05" },
+    { status: "postet", plannedFor: "2026-10-05" },
+    { status: "droppet", plannedFor: "2026-10-05" },
+    { status: "kladde", plannedFor: "2026-10-09" },
+    { status: "godkendt", plannedFor: "2026-10-12" },
+    { status: "godkendt", plannedFor: null },
+  ];
+  assert.deepEqual(slippedBefore(rows, "2026-10-12").map((r) => r.status + r.plannedFor), ["godkendt2026-10-05", "kladde2026-10-09"]);
 });
