@@ -19,6 +19,7 @@ export const NAV_PRIMARY: NavItem[] = [
   { href: "/kunder", label: "Kunder", icon: "Building2", hint: "Aktive kunder" },
   { href: "/opgaver", label: "Opgaver", icon: "ListChecks", hint: "Min dag, opgaver og næste skridt" },
   { href: "/pipeline", label: "Pipeline", icon: "Workflow", hint: "Deals, blog, konkurrenter og SEO" },
+  { href: "/marketing", label: "Marketing", icon: "Megaphone", hint: "Korte videoer: kladder, kalender, tests og tal" },
   { href: "/approve", label: "Indbakke", icon: "Inbox", hint: "Kladder til godkendelse", badge: "queue" },
   { href: "/leadgen", label: "Leadgen", icon: "Radar", hint: "Nye virksomheder" },
   { href: "/okonomi", label: "Økonomi", icon: "CircleDollarSign", hint: "Fakturaer, MRR og forecast" },
@@ -47,6 +48,12 @@ const NAV_SEARCHABLE_EXTRA: NavItem[] = [
   { href: "/konkurrenter", label: "Konkurrenter", icon: "Users", hint: "Konkurrentanalyse, mønstre og huller" },
   { href: "/seo", label: "SEO", icon: "Search", hint: "Målinger og historik" },
   { href: "/tests", label: "Tests", icon: "Target", hint: "Idéer vi afprøver på kinly.dk i en uge" },
+  { href: "/marketing/kladder", label: "Marketing: kladder", icon: "Megaphone", hint: "Videokladder: godkend, ret, drop" },
+  { href: "/marketing/kalender", label: "Marketing: kalender", icon: "Calendar", hint: "Hvad skal ud hvornår" },
+  { href: "/marketing/hooks", label: "Marketing: hooks", icon: "Sparkles", hint: "Åbninger med Kinly-eksempler" },
+  { href: "/marketing/tests", label: "Marketing: A/B-tests", icon: "Scale", hint: "Hvilken udgave virker bedst" },
+  { href: "/marketing/maaling", label: "Marketing: måling", icon: "BarChart3", hint: "Læg tal ind fra opslag" },
+  { href: "/marketing/musik", label: "Marketing: musik", icon: "Mic", hint: "Licens og regler for lyd" },
 ];
 
 // Flad liste til ⌘K: hele IA'en, rail-item først.
@@ -78,6 +85,20 @@ export interface Section {
 }
 
 export const SECTIONS: Section[] = [
+  {
+    // Kinlys korte videoer (Marketing). Tragten er forsiden; resten er faner.
+    root: "/marketing",
+    tabs: [
+      { href: "/marketing", label: "Tragt" },
+      { href: "/marketing/kladder", label: "Kladder" },
+      { href: "/marketing/kalender", label: "Kalender" },
+      { href: "/marketing/hooks", label: "Hooks" },
+      { href: "/marketing/tests", label: "A/B-tests" },
+      { href: "/marketing/maaling", label: "Måling" },
+      { href: "/marketing/inspiration", label: "Inspiration" },
+      { href: "/marketing/musik", label: "Musik" },
+    ],
+  },
   { root: "/kunder", tabs: [{ href: "/kunder", label: "Kunder" }, { href: "/kunder/rapporter", label: "Månedsrapporter" }, { href: "/virksomheder", label: "Alle virksomheder" }] },
   {
     root: "/approve",

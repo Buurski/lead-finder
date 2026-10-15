@@ -5,6 +5,7 @@
 import {
   boolean,
   check,
+  date,
   integer,
   jsonb,
   numeric,
@@ -353,4 +354,92 @@ export const blogPost = pgTable(
   // To indlæg må ikke dele slug; tomme slugs er tilladte (ideer endnu uden titel)
   // og holdes ude af indekset, samme greb som company_place_id_uq.
   (t) => [uniqueIndex("blog_post_slug_uq").on(t.slug).where(sql`${t.slug} <> ''`)],
+);
+
+// Marketing (/marketing): Kinlys korte video. Alt her er KLADDER og tal Lucas/Charlie
+// selv har målt — HQ poster, sender og køber intet. Tre tabeller:
+//  - marketing_draft: et videokort (spor faceless | duo | dag-n). Status kladde →
+//    godkendt → postet, eller droppet (ingen hård sletning). Menneskers felter
+//    (status, priority, planned_for, *_ok, true_checked_on) kan agenten aldrig sætte.
+//  - marketing_ref: hooks, A/B-tests, inspiration og noter (kind). Små, mest seedet.
+//  - marketing_measure: manuel måling pr. opslag (null = ikke målt, aldrig 0).
+// ext_key = seed-nøgle (idempotent seed: samme nøgle sættes aldrig to gange).
+export const marketingDraft = pgTable(
+  "marketing_draft",
+  {
+    id: id(),
+    extKey: text("ext_key"),
+    track: text("track").notNull().default("faceless"),
+    title: text("title").notNull().default(""),
+    hook: text("hook").notNull().default(""),
+    script: text("script").notNull().default(""),
+    shotlist: text("shotlist").notNull().default(""),
+    caption: text("caption").notNull().default(""),
+    label: text("label").notNull().default(""),
+    priority: integer("priority").notNull().default(2),
+    score: integer("score"),
+    status: text("status").notNull().default("kladde"),
+    plannedFor: date("planned_for"),
+    lengthS: integer("length_s"),
+    musicKind: text("music_kind").notNull().default("ingen"),
+    musicLicense: text("music_license").notNull().default(""),
+    musicNote: text("music_note").notNull().default(""),
+    customerCase: boolean("customer_case").notNull().default(false),
+    customerOk: boolean("customer_ok").notNull().default(false),
+    charlieOk: boolean("charlie_ok").notNull().default(false),
+    trueCheckedOn: date("true_checked_on"),
+    risk: text("risk").notNull().default(""),
+    note: text("note").notNull().default(""),
+    source: text("source").notNull().default("manuel"),
+    createdBy: text("created_by").notNull().default(""),
+    updatedBy: text("updated_by").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("marketing_draft_ext_key_uq").on(t.extKey).where(sql`${t.extKey} is not null`)],
+);
+
+export const marketingRef = pgTable(
+  "marketing_ref",
+  {
+    id: id(),
+    extKey: text("ext_key"),
+    kind: text("kind").notNull(),
+    title: text("title").notNull().default(""),
+    body: text("body").notNull().default(""),
+    data: jsonb("data").notNull().default({}),
+    status: text("status").notNull().default(""),
+    createdBy: text("created_by").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("marketing_ref_ext_key_uq").on(t.extKey).where(sql`${t.extKey} is not null`), index("marketing_ref_kind_idx").on(t.kind)],
+);
+
+export const marketingMeasure = pgTable(
+  "marketing_measure",
+  {
+    id: id(),
+    postedOn: date("posted_on").notNull(),
+    draftId: uuid("draft_id"),
+    abId: uuid("ab_id"),
+    arm: text("arm").notNull().default(""),
+    parId: text("par_id").notNull().default(""),
+    armAssigned: text("arm_assigned").notNull().default(""),
+    postUrl: text("post_url").notNull().default(""),
+    views: integer("views"),
+    saves: integer("saves"),
+    shares: integer("shares"),
+    newFollowers: integer("new_followers"),
+    profileVisits: integer("profile_visits"),
+    linkClicks: integer("link_clicks"),
+    inquiries: integer("inquiries"),
+    skipPct: real("skip_pct"),
+    fullViewPct: real("full_view_pct"),
+    watchS: real("watch_s"),
+    note: text("note").notNull().default(""),
+    createdBy: text("created_by").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("marketing_measure_posted_idx").on(t.postedOn), index("marketing_measure_ab_idx").on(t.abId)],
 );
