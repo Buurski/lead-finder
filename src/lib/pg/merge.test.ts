@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
-import { activity, company, deal, invoice, site } from "../db/schema.ts";
+import { activity, company, deal, invoice, leadReply, site } from "../db/schema.ts";
 import { mergeCompanies } from "./merge.ts";
 import { getLeads } from "./leads.ts";
 import { getClients } from "./clients.ts";
@@ -50,6 +50,15 @@ test("KT VVS: kunden flettes ind i lead-rækken — ét firma med kundenummer, d
   // Gamle funktioner ser det rigtige: én kunde, og lead-rækken 18 lever stadig.
   assert.deepEqual((await getClients()).map((c) => [c.id, c.name]), [["3", "KT VVS"]]);
   assert.deepEqual((await getLeads()).map((l) => l.id), ["18"]);
+});
+
+test("indsamlede svar (lead_reply) følger med ved fletning (Sol 15/10)", async () => {
+  const [a] = await db.insert(company).values({ rowNo: 2, name: "A" }).returning();
+  const [b] = await db.insert(company).values({ rowNo: 3, name: "A dublet" }).returning();
+  await db.insert(leadReply).values({ companyId: b.id, account: "lucas", messageId: "<m@x>", receivedAt: new Date(), subject: "Re: x", snippet: "Ja tak", category: "interested", asksCall: false });
+  await mergeCompanies(db, a.id, b.id, "lucas");
+  assert.equal((await db.select().from(leadReply).where(eq(leadReply.companyId, a.id))).length, 1);
+  assert.equal((await db.select().from(leadReply).where(eq(leadReply.companyId, b.id))).length, 0);
 });
 
 test("to primære deals: keep's forbliver primær, drop's bliver almindelig", async () => {

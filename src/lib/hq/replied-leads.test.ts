@@ -81,7 +81,9 @@ test("Ring logger et opkald via den eksisterende rute — og ingen mail-afsendel
   assert.doesNotMatch(ui, /onClick=\{[^}]*ring\b/, "tel:-linket må ikke logge automatisk");
   assert.match(ui, /Log opkald/);
   assert.match(ui, /"\/api\/opgaver"/);
-  assert.doesNotMatch(ui, /udfald/, "Ring senere må ikke bruge udfalds-ruten");
+  // Kun "Luk (nej tak)" bruger udfalds-ruten (udfaldet ikke-interesseret); Ring senere gør ikke.
+  assert.doesNotMatch(ui.slice(ui.indexOf("const ringLater"), ui.indexOf("// Luk")), /udfald/, "Ring senere må ikke bruge udfalds-ruten");
+  assert.match(ui, /outcome: "ikke-interesseret"/);
   for (const f of [ui, readFileSync(new URL("./replied-leads.ts", import.meta.url), "utf8"), readFileSync(new URL("../../app/har-svaret/page.tsx", import.meta.url), "utf8")]) {
     assert.doesNotMatch(f, /nodemailer|resend|brevo|sendMail|transport/i);
   }

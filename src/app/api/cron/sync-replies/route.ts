@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncReplies, syncSentFolders } from "@/lib/sync-replies";
+import { captureReplies } from "@/lib/capture-replies";
+import { safeError } from "@/lib/hq/lead-replies";
 import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/sync-replies — the automatic reply-sync hook for Vercel Cron.
@@ -25,10 +27,16 @@ export async function GET(req: Request) {
       // her må aldrig vælte svar-synken.
       let sent: Awaited<ReturnType<typeof syncSentFolders>> | null = null;
       try { sent = await syncSentFolders(); } catch (err) { console.warn("[sync-replies] sent-scan fejlede:", err); }
+      // Svar-uddrag til HQ's "Har svaret" (spec 2026-10-15). Slået fra indtil REPLY_CAPTURE=1 og migration 0017
+      // er kørt i prod. Best-effort som sendt-scanningen; 14 dages vindue dækker et par udeblevne kørsler.
+      let captured: Awaited<ReturnType<typeof captureReplies>> | null = null;
+      if (process.env.REPLY_CAPTURE === "1") {
+        try { captured = await captureReplies({ since: new Date(Date.now() - 14 * 86_400_000) }); } catch (err) { console.warn("[sync-replies] svar-indsamling fejlede:", safeError(err)); }
+      }
       return {
-        result: { ...r, sent },
-        note: `tjekket ${r.checked} · ${r.synced} nye svar · ${sent?.stamped ?? "?"} manuelle kontakter stemplet`,
-        meta: { synced: r.synced, checked: r.checked, sentStamped: sent?.stamped ?? -1 },
+        result: { ...r, sent, captured },
+        note: `tjekket ${r.checked} · ${r.synced} nye svar · ${sent?.stamped ?? "?"} manuelle kontakter stemplet${captured ? ` · ${captured.inserted} svar-uddrag gemt` : ""}`,
+        meta: { synced: r.synced, checked: r.checked, sentStamped: sent?.stamped ?? -1, captured: captured?.inserted ?? -1 },
       };
     });
     return NextResponse.json({ ok: true, synced, checked, names, sent, note: "svar + sendt-mapper synket — ingen mail sendt" });

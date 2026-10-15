@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
 import BookMeeting, { tomorrowISO } from "@/components/virksomheder/BookMeeting";
 import { gmailRepliesUrl } from "@/lib/hq/gmail-link";
+import { BUCKET_LABEL, BUCKET_ORDER, type ReplyBucket } from "@/lib/hq/reply-bucket";
 
 export interface HarSvaretRow {
   id: string;
@@ -16,15 +17,28 @@ export interface HarSvaretRow {
   jev: string; // "" = ingen karakter
   owner: string;
   lifecycle: string;
-  lastContact: string; // færdigformateret dato, "" = ingen dato
-  age: string; // "12 d siden"
+  bucket: ReplyBucket;
+  why: string; // én linje: hvorfor denne kanal
+  hasReply: boolean;
+  replyAt: number; // ms, 0 = ingen
+  replyWhen: string; // "12. jun. 2026 · 120 d siden"
+  replyLag: string; // "1 d efter vores mail"
+  replyCategory: string; // "Spørgsmål"
+  replySubject: string;
+  replyAccount: string; // "lucas" | "charlie"
+  snippet: string; // "" = ingen tekst
+  phoneInReply: string; // nummer fra svaret hvis de bad om opkald
+  weSent: string;
+  marks: string[];
 }
-
 
 async function post(url: string, body: unknown): Promise<void> {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "kunne ikke gemme");
 }
+
+const telHref = (n: string) => `tel:${n.replace(/\s+/g, "")}`;
+const reSubject = (s: string) => (!s ? "" : `?subject=${encodeURIComponent(/^re:/i.test(s) ? s : `Re: ${s}`)}`);
 
 function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
   const router = useRouter();
@@ -49,21 +63,44 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
 
   // Log opkald: eksplicit knap (tel:-linket logger ikke selv — på en pc uden telefon sker opkaldet ikke).
   const logCall = () => run("Opkald logget", () => post(`/api/virksomheder/${row.id}/activity`, { type: "opkald", summary: `Ringede til ${row.name}` }));
-  // Ring senere: en almindelig opgave "Ring til X" på den valgte dato (ingen tidslinje-linje om et afsendt svar).
   const ringLater = () => run(`Opgave oprettet til ${due}`, async () => {
     await post("/api/opgaver", { companyId: row.id, owner: me, title: `Ring til ${row.name}`, due });
     setLater(false);
   });
+  // Luk = det eksisterende udfald "ikke interesseret": lead-status, stop af kolde kladder, tidslinje. Intet sendes.
+  const close = () => run("Lukket", () => post(`/api/replies/${row.rowNo}/udfald`, { outcome: "ikke-interesseret", note: "Lukket fra Har svaret", owner: me }));
+
+  const gmail = row.email ? <a href={gmailRepliesUrl(row.email, row.replyAccount || row.owner, me)} target="_blank" rel="noopener noreferrer" className={row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk" ? "cc-btn cc-btn-accent" : "cc-btn"}>Åbn i Gmail</a> : null;
+  const write = row.email ? <a href={`mailto:${row.email}${reSubject(row.replySubject)}`} className={row.bucket === "skriv" ? "cc-btn cc-btn-accent" : "cc-btn"}>Skriv tilbage</a> : null;
+  const callNumber = row.phoneInReply || row.phone;
+  const call = callNumber ? <a href={telHref(callNumber)} className={row.bucket === "ring" ? "cc-btn cc-btn-accent" : "cc-btn"}>Ring{row.phoneInReply ? ` ${row.phoneInReply}` : ""}</a> : null;
+  const closed = row.bucket === "luk"; // nej: ingen Ring, ingen Mail igen — kun Luk og Gmail
 
   return (
     <div className="hs-actions">
       <div className="hs-btns">
-        {row.phone && <a href={`tel:${row.phone.replace(/\s+/g, "")}`} className="cc-btn">Ring</a>}
-        <button type="button" className="cc-btn" disabled={busy} onClick={logCall}>Log opkald</button>
-        <button type="button" className="cc-btn" disabled={busy} onClick={() => setLater((v) => !v)} aria-expanded={later}>Ring senere</button>
-        <BookMeeting companyId={row.id} owner={me} />
-        {row.email && <a href={gmailRepliesUrl(row.email, row.owner, me)} target="_blank" rel="noopener noreferrer" className="cc-btn">Se svar</a>}
-        {row.email && <a href={`mailto:${row.email}`} className="cc-btn">Mail igen</a>}
+        {row.bucket === "luk" && <button type="button" className="cc-btn cc-btn-accent" disabled={busy} onClick={close}>Luk (nej tak)</button>}
+        {row.bucket === "ring" && call}
+        {(row.bucket === "skriv" || row.bucket === "ring") && write}
+        {(row.bucket === "skriv" || row.bucket === "ring") && gmail}
+        {(row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk") && gmail}
+        {!closed && (
+          <details className="hs-more">
+            <summary className="cc-btn" aria-label="Flere handlinger">…</summary>
+            <div className="hs-more-body">
+              {row.bucket !== "ring" && call && (
+                <div className="hs-warn">
+                  <a href={telHref(callNumber)} className="cc-btn">Ring</a>
+                  <span>De bad ikke om opkald. Tjek reklamebeskyttelse (CVR) først.</span>
+                </div>
+              )}
+              {row.bucket !== "skriv" && row.bucket !== "ring" && write}
+              <button type="button" className="cc-btn" disabled={busy} onClick={logCall}>Log opkald</button>
+              <button type="button" className="cc-btn" disabled={busy} onClick={() => setLater((v) => !v)} aria-expanded={later}>Ring senere</button>
+              <BookMeeting companyId={row.id} owner={me} />
+            </div>
+          </details>
+        )}
       </div>
       {later && (
         <div className="hs-later">
@@ -76,30 +113,82 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
   );
 }
 
-export default function HarSvaretList({ rows, me }: { rows: HarSvaretRow[]; me: "lucas" | "charlie" }) {
+export default function HarSvaretList({ rows, me, captureReady }: { rows: HarSvaretRow[]; me: "lucas" | "charlie"; captureReady: boolean }) {
+  const router = useRouter();
+  const [filter, setFilter] = useState<ReplyBucket | "alle">("alle");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState("");
+  const counts = Object.fromEntries(BUCKET_ORDER.map((b) => [b, rows.filter((r) => r.bucket === b).length])) as Record<ReplyBucket, number>;
+  const shown = filter === "alle" ? rows : rows.filter((r) => r.bucket === filter);
+
+  async function refresh() {
+    setRefreshing(true);
+    setRefreshMsg("");
+    try {
+      const res = await fetch("/api/replies/capture", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "kunne ikke hente svar");
+      const failed = Object.keys(body.errors ?? {});
+      setRefreshMsg(`${body.inserted} nye svar hentet${failed.length ? ` · fejl på ${failed.join(", ")}` : ""}`);
+      router.refresh();
+    } catch (e) {
+      setRefreshMsg(e instanceof Error ? e.message : "kunne ikke hente svar");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="cc-card hs-card">
-      <div className="hs-head" aria-hidden="true">
-        <span>Virksomhed</span>
-        <span>Telefon</span>
-        <span>Sidst kontaktet</span>
-        <span>Jev</span>
-        <span>Ejer</span>
-        <span>Status</span>
-        <span />
+      <div className="hs-toolbar">
+        <div className="hs-chips" role="group" aria-label="Filtrér efter kanal">
+          <button type="button" className="hs-chip" aria-pressed={filter === "alle"} onClick={() => setFilter("alle")}>Alle <b>{rows.length}</b></button>
+          {BUCKET_ORDER.map((b) => (
+            <button key={b} type="button" className="hs-chip" data-bucket={b} aria-pressed={filter === b} disabled={counts[b] === 0} onClick={() => setFilter(b)}>
+              {BUCKET_LABEL[b]} <b>{counts[b]}</b>
+            </button>
+          ))}
+        </div>
+        <div className="hs-refresh">
+          {refreshMsg && <span className="hs-msg" role="status">{refreshMsg}</span>}
+          <button type="button" className="cc-btn" disabled={refreshing || !captureReady} onClick={refresh} title={captureReady ? "Henter nye svar fra Gmail (læser kun)" : "Slås til sammen med migration 0017"}>
+            {refreshing ? "Henter…" : "Opdatér svar"}
+          </button>
+        </div>
       </div>
       <ul className="hs-list">
-        {rows.map((r) => (
-          <li key={r.id} className="hs-row">
-            <div className="hs-name">
-              <Link href={`/virksomheder/${r.id}`} className="cc-link">{r.name || "(uden navn)"}</Link>
+        {shown.map((r) => (
+          <li key={r.id} className="hs-row" data-bucket={r.bucket}>
+            <div className="hs-who">
+              <Link href={`/virksomheder/${r.id}`} className="cc-link hs-name">{r.name || "(uden navn)"}</Link>
               <span className="hs-sub">{r.place || "–"}</span>
+              <div className="hs-tags">
+                <span className="cc-chip" style={{ ...lifecycleChipStyle(r.lifecycle), whiteSpace: "nowrap" }}>{lifecycleLabel(r.lifecycle)}</span>
+                {r.jev && <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {r.jev}</span>}
+                {r.marks.map((m) => <span key={m} className="cc-chip hs-mark">{m}</span>)}
+              </div>
+              <span className="hs-sub">{r.weSent}</span>
             </div>
-            <div className="hs-phone">{r.phone ? <a href={`tel:${r.phone.replace(/\s+/g, "")}`} className="cc-link">{r.phone}</a> : <span className="cc-dim">–</span>}</div>
-            <div className="hs-last">{r.lastContact ? <>{r.lastContact}<span className="hs-sub">{r.age}</span></> : <span className="cc-dim">–</span>}</div>
-            <div>{r.jev ? <span className="cc-chip" style={{ background: "var(--bg-3)", color: "var(--text-muted)" }}>Jev {r.jev}</span> : <span className="cc-dim">–</span>}</div>
-            <div className="hs-owner">{r.owner || <span className="cc-dim">–</span>}</div>
-            <div><span className="cc-chip" style={{ ...lifecycleChipStyle(r.lifecycle), whiteSpace: "nowrap" }}>{lifecycleLabel(r.lifecycle)}</span></div>
+            <div className="hs-reply">
+              {r.hasReply ? (
+                <>
+                  <div className="hs-reply-head">
+                    <span className="cc-chip hs-cat">{r.replyCategory}</span>
+                    <span className="hs-sub">Svarede {r.replyWhen}{r.replyLag ? ` · ${r.replyLag}` : ""}</span>
+                  </div>
+                  {r.snippet ? (
+                    <details className="hs-snippet">
+                      <summary>{r.snippet}</summary>
+                    </details>
+                  ) : (
+                    <span className="hs-sub">Uddraget er slettet efter 180 dage. Åbn Gmail for teksten.</span>
+                  )}
+                </>
+              ) : (
+                <span className="hs-sub">Ingen svar-mail hentet.</span>
+              )}
+              <span className="hs-why"><b>{BUCKET_LABEL[r.bucket]}:</b> {r.why}</span>
+            </div>
             <Actions row={r} me={me} />
           </li>
         ))}
