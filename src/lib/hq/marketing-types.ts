@@ -105,3 +105,16 @@ export interface MeasureDto {
 }
 
 export const AB_STATUSES = ["planlagt", "kører", "afsluttet"] as const;
+
+/** Hvad der mangler, før en kladde må godkendes. Tom liste = klar. Samme regler på server og i UI. */
+export function approvalBlockers(d: Pick<DraftDto, "hook" | "track" | "charlieOk" | "customerCase" | "customerOk" | "musicKind" | "musicLicense">): string[] {
+  const out: string[] = [];
+  if (!d.hook.trim()) out.push("Hooket mangler.");
+  else if (hasPlaceholder(d.hook)) out.push("Hooket har en pladsholder som [N]. Fyld det rigtige tal i først.");
+  if (d.track === "duo" && !d.charlieOk) out.push("Charlie skal have sagt ja (skriftligt) til ansigt, navn og ord.");
+  if (d.customerCase && !d.customerOk) out.push("Kundens skriftlige ok mangler.");
+  if (d.musicKind === "licenseret" && d.musicLicense !== MUSIC_LICENSE_OK) out.push(`Musikken skal have licensen "${MUSIC_LICENSE_OK}".`);
+  return out;
+}
+/** "[N]" / "[målt tal]" i en hook må aldrig renderes ufyldt. */
+export const hasPlaceholder = (t: string) => /\[[^\]\n]{1,24}\]/.test(t);

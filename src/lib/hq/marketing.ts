@@ -9,11 +9,12 @@ import { marketingDraft, marketingMeasure, marketingRef } from "../db/schema.ts"
 import { CompetitorInputError, bool, enumOf, int, noUnknownKeys, num, obj, str } from "./competitors.ts";
 import { abVerdict, savesSharesPer1000, type AbCall } from "./marketing-calc.ts";
 import {
-  AB_STATUSES, LABELS, MUSIC_KINDS, MUSIC_LICENSE_OK, TRACKS,
+  AB_STATUSES, LABELS, MUSIC_KINDS, TRACKS, approvalBlockers,
   type DraftDto, type DraftStatus, type MeasureDto, type MusicKind, type RefDto, type RefKind, type Track,
 } from "./marketing-types.ts";
 
 export { CompetitorInputError as MarketingInputError };
+export { approvalBlockers };
 
 type DraftRow = typeof marketingDraft.$inferSelect;
 type RefRow = typeof marketingRef.$inferSelect;
@@ -171,17 +172,6 @@ export async function updateDraft(db: Db, id: unknown, raw: unknown, actor: stri
     .where(eq(marketingDraft.id, row.id))
     .returning();
   return toDraft(next);
-}
-
-/** Hvad der mangler, før en kladde må godkendes. Tom liste = klar. */
-export function approvalBlockers(d: Pick<DraftDto, "hook" | "track" | "charlieOk" | "customerCase" | "customerOk" | "musicKind" | "musicLicense">): string[] {
-  const out: string[] = [];
-  if (!d.hook.trim()) out.push("Hooket mangler.");
-  else if (/\[[^\]\n]{1,24}\]/.test(d.hook)) out.push("Hooket har en pladsholder som [N]. Fyld det rigtige tal i først.");
-  if (d.track === "duo" && !d.charlieOk) out.push("Charlie skal have sagt ja (skriftligt) til ansigt, navn og ord.");
-  if (d.customerCase && !d.customerOk) out.push("Kundens skriftlige ok mangler.");
-  if (d.musicKind === "licenseret" && d.musicLicense !== MUSIC_LICENSE_OK) out.push(`Musikken skal have licensen "${MUSIC_LICENSE_OK}".`);
-  return out;
 }
 
 export type DraftAction = "approve" | "drop" | "restore" | "posted";

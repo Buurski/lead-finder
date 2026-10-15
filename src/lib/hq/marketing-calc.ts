@@ -134,3 +134,28 @@ export function funnel(rows: MeasureNums[]): Funnel {
   });
   return { posts: rows.length, steps };
 }
+
+// ---------------------------------------------------------------- datoer (kalenderen)
+
+/** Dagens dato i Danmark som ÅÅÅÅ-MM-DD (sv-SE giver ISO-formen). */
+export const todayCph = (now = new Date()): string => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Copenhagen" }).format(now);
+
+/** Mandagen i ugen for en ÅÅÅÅ-MM-DD-dato. */
+export function mondayOf(day: string): string {
+  const d = new Date(day + "T00:00:00Z");
+  const back = (d.getUTCDay() + 6) % 7; // man=0 … søn=6
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+
+/** `weeks` uger á 7 dage fra mandagen i ugen for `from`. */
+export function weekGrid(from: string, weeks: number): string[][] {
+  const start = new Date(mondayOf(from) + "T00:00:00Z");
+  return Array.from({ length: weeks }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const x = new Date(start);
+      x.setUTCDate(start.getUTCDate() + w * 7 + d);
+      return x.toISOString().slice(0, 10);
+    }),
+  );
+}

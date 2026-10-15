@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { abVerdict, funnel, median, savesSharesPer1000 } from "./marketing-calc.ts";
+import { abVerdict, funnel, mondayOf, median, savesSharesPer1000, todayCph, weekGrid } from "./marketing-calc.ts";
+import { approvalBlockers, hasPlaceholder } from "./marketing-types.ts";
 
 const rep = (n: number, v: number) => Array.from({ length: n }, () => v);
 
@@ -74,4 +75,28 @@ test("tragten: tom = null overalt, ikke 0; andel af forrige trin", () => {
   assert.deepEqual(f.steps.map((s) => s.value), [1500, 35, 15, 1]);
   assert.equal(f.steps[1].ofPrev, 2.3);
   assert.equal(f.steps[0].ofPrev, null);
+});
+
+test("kalender: mandag-til-søndag, uger over månedsskifte, dansk dato", () => {
+  assert.equal(mondayOf("2026-10-15"), "2026-10-12"); // torsdag
+  assert.equal(mondayOf("2026-10-12"), "2026-10-12"); // mandag
+  assert.equal(mondayOf("2026-10-18"), "2026-10-12"); // søndag
+  const g = weekGrid("2026-10-15", 2);
+  assert.equal(g.length, 2);
+  assert.deepEqual(g[0].slice(0, 2), ["2026-10-12", "2026-10-13"]);
+  assert.equal(g[1][6], "2026-10-25");
+  assert.equal(weekGrid("2026-10-30", 1)[0][6], "2026-11-01");
+  // 22:30 UTC er allerede næste dag i København (sommertid, UTC+2)
+  assert.equal(todayCph(new Date("2026-07-01T22:30:00Z")), "2026-07-02");
+});
+
+test("godkendelses-regler er de samme i UI og server", () => {
+  assert.equal(hasPlaceholder("Dag [N] af at bygge Kinly"), true);
+  assert.equal(hasPlaceholder("7 ting din forside skal have"), false);
+  const base = { hook: "x", track: "faceless", charlieOk: false, customerCase: false, customerOk: false, musicKind: "ingen", musicLicense: "" } as const;
+  assert.deepEqual(approvalBlockers(base), []);
+  assert.equal(approvalBlockers({ ...base, track: "duo" }).length, 1);
+  assert.equal(approvalBlockers({ ...base, musicKind: "licenseret", musicLicense: "ukendt" }).length, 1);
+  assert.equal(approvalBlockers({ ...base, musicKind: "licenseret", musicLicense: "erhverv-ok" }).length, 0);
+  assert.equal(approvalBlockers({ ...base, musicKind: "original-lyd" }).length, 0);
 });
