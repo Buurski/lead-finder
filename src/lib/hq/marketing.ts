@@ -63,9 +63,12 @@ function day(v: unknown, label: string, required = false): string | null | undef
     if (required) fail(`${label} mangler`);
     return null;
   }
-  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(new Date(v + "T00:00:00Z").getTime())) {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(new Date(v + "T00:00:00Z").getTime()) || new Date(v + "T00:00:00Z").toISOString().slice(0, 10) !== v) {
     fail(`${label} skal være en dato (ÅÅÅÅ-MM-DD)`);
   }
+  // Et tastet årstal bliver til 0002, 0020 … på vej mod 2026: afvis alt der ikke ligner en rigtig dato.
+  const year = Number((v as string).slice(0, 4));
+  if (year < 2020 || year > 2100) fail(`${label} ser forkert ud: årstallet skal ligge mellem 2020 og 2100`);
   return v as string;
 }
 function httpUrl(v: unknown, label: string): string | undefined {
@@ -291,48 +294,80 @@ export async function setAbStatus(db: Db, id: unknown, status: unknown): Promise
 const numeric = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? Number(v) : v);
 const NUM_KEYS = ["views", "saves", "shares", "newFollowers", "profileVisits", "linkClicks", "inquiries"] as const;
 
-export async function addMeasure(db: Db, raw: unknown, actor: string): Promise<MeasureDto> {
-  const o = obj(raw, "måling");
-  noUnknownKeys(o, ["postedOn", "draftId", "abId", "arm", "parId", "armAssigned", "postUrl", ...NUM_KEYS, "skipPct", "fullViewPct", "watchS", "note"], "måling");
+/** Tal fra formularen → kolonner. `clear`: et tomt felt betyder "ikke målt" og nulstiller (ved ret); ved ny måling udelades det. */
+function measureNumbers(o: Record<string, unknown>, clear: boolean): Partial<typeof marketingMeasure.$inferInsert> {
   const set: Partial<typeof marketingMeasure.$inferInsert> = {};
+  const pick = <T>(k: keyof typeof set, v: T | undefined) => {
+    if (v !== undefined) (set as Record<string, unknown>)[k] = v;
+    else if (clear && (o[k as string] === "" || o[k as string] === null)) (set as Record<string, unknown>)[k] = null;
+  };
   for (const k of NUM_KEYS) {
     const v = o[k] === "" ? undefined : int(numeric(o[k]), k, 0);
-    if (v !== undefined) set[k] = v;
+    if (v !== undefined && v > 2_000_000_000) fail(`${k} er for stort`);
+    pick(k, v);
   }
-  for (const k of ["skipPct", "fullViewPct"] as const) {
-    const v = o[k] === "" ? undefined : num(numeric(o[k]), k, 0, 100);
-    if (v !== undefined) set[k] = v;
-  }
-  const w = o.watchS === "" ? undefined : num(numeric(o.watchS), "watchS", 0, 3600);
-  if (w !== undefined) set.watchS = w;
-  const arm = o.arm === undefined || o.arm === null || o.arm === "" ? "" : enumOf(o.arm, "arm", ["A", "B"] as const)!;
+  for (const k of ["skipPct", "fullViewPct"] as const) pick(k, o[k] === "" ? undefined : num(numeric(o[k]), k, 0, 100));
+  pick("watchS", o.watchS === "" ? undefined : num(numeric(o.watchS), "watchS", 0, 3600));
+  return set;
+}
 
-  let abId: string | undefined;
+const MEASURE_KEYS = ["postedOn", "draftId", "abId", "arm", "parId", "armAssigned", "postUrl", ...NUM_KEYS, "skipPct", "fullViewPct", "watchS", "note"];
+
+/** Kobling til kladde/test/udgave, valideret ens ved ny og ret. */
+async function measureLinks(db: Db, o: Record<string, unknown>) {
+  const arm = o.arm === undefined || o.arm === null || o.arm === "" ? "" : enumOf(o.arm, "arm", ["A", "B"] as const)!;
+  let abId: string | null = null;
   if (o.abId !== undefined && o.abId !== null && o.abId !== "") {
     abId = uuid(o.abId, "abId");
     const [t] = await db.select().from(marketingRef).where(eq(marketingRef.id, abId));
     if (!t || t.kind !== "ab") fail("testen findes ikke");
     if (!arm) fail("vælg A eller B, når målingen hører til en test");
   } else if (arm) fail("A/B hører kun til en måling, der er koblet til en test");
+  let draftId: string | null = null;
+  if (o.draftId !== undefined && o.draftId !== null && o.draftId !== "") draftId = (await getRow(db, o.draftId)).id;
+  return { arm, abId, draftId };
+}
 
-  let draftId: string | undefined;
-  if (o.draftId !== undefined && o.draftId !== null && o.draftId !== "") {
-    draftId = (await getRow(db, o.draftId)).id;
-  }
+export async function addMeasure(db: Db, raw: unknown, actor: string): Promise<MeasureDto> {
+  const o = obj(raw, "måling");
+  noUnknownKeys(o, MEASURE_KEYS, "måling");
+  const set = measureNumbers(o, false);
+  const links = await measureLinks(db, o);
   const [row] = await db
     .insert(marketingMeasure)
     .values({
       ...set,
+      ...links,
       postedOn: day(o.postedOn, "postedOn", true) as string,
-      draftId: draftId ?? null,
-      abId: abId ?? null,
-      arm,
       parId: str(o.parId, "parId", 40) ?? "",
       armAssigned: str(o.armAssigned, "armAssigned", 120) ?? "",
       postUrl: httpUrl(o.postUrl, "postUrl") ?? "",
       note: str(o.note, "note", 1000) ?? "",
       createdBy: actor,
     })
+    .returning();
+  return toMeasure(row);
+}
+
+/** Ret en måling, der blev tastet forkert. Hele formularen sendes igen; tomme tal = ikke målt. */
+export async function updateMeasure(db: Db, id: unknown, raw: unknown): Promise<MeasureDto> {
+  const key = uuid(id);
+  const [cur] = await db.select().from(marketingMeasure).where(eq(marketingMeasure.id, key));
+  if (!cur) fail("målingen findes ikke");
+  const o = obj(raw, "måling");
+  noUnknownKeys(o, MEASURE_KEYS, "måling");
+  const set = measureNumbers(o, true);
+  const links = await measureLinks(db, o);
+  const [row] = await db
+    .update(marketingMeasure)
+    .set({
+      ...set,
+      ...links,
+      postedOn: day(o.postedOn, "postedOn", true) as string,
+      postUrl: httpUrl(o.postUrl, "postUrl") ?? "",
+      note: str(o.note, "note", 1000) ?? "",
+    })
+    .where(eq(marketingMeasure.id, key))
     .returning();
   return toMeasure(row);
 }

@@ -5,12 +5,13 @@
 //   { action: "draftAction", id, op }         op = approve | drop | restore | posted
 //   { action: "draftChecks", id, checks }     Charlies ja, kundens ok, "sandt pr. dato"
 //   { action: "measureAdd", measure }         manuel måling
+//   { action: "measureUpdate", id, measure }  ret en måling (tomme tal = ikke målt)
 //   { action: "abCreate", test } · { action: "abStatus", id, status }
 //   { action: "inspirationAdd", item }
 import { hqWrite, jsonBody, HqInputError } from "@/lib/hq/api";
 import { getDb } from "@/lib/db/client";
 import {
-  addInspiration, addMeasure, createAb, createDraft, draftAction, setAbStatus, setChecks, updateDraft,
+  addInspiration, addMeasure, createAb, createDraft, draftAction, setAbStatus, setChecks, updateDraft, updateMeasure,
 } from "@/lib/hq/marketing";
 
 export const runtime = "nodejs";
@@ -30,6 +31,8 @@ export async function POST(req: Request) {
         return { draft: await setChecks(db, body.id, body.checks, actor) };
       case "measureAdd":
         return { measure: await addMeasure(db, body.measure, actor) };
+      case "measureUpdate":
+        return { measure: await updateMeasure(db, body.id, body.measure) };
       case "abCreate":
         return { test: await createAb(db, body.test, actor) };
       case "abStatus":
