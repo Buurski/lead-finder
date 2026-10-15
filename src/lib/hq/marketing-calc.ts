@@ -1,0 +1,136 @@
+// marketing-calc.ts — ren regning til /marketing (ingen db, ingen server-only, så
+// klienten må importere den). To ting: A/B-dommen og tragten.
+
+// ---------------------------------------------------------------- A/B-dom
+
+export type AbVerdict = "for-tidligt" | "ingen-afgoerelse" | "signal" | "skaer";
+export interface AbCall {
+  verdict: AbVerdict;
+  /** Armen med højest median (null ved lighed eller når der ikke kan siges noget). */
+  ahead: "A" | "B" | null;
+  nA: number;
+  nB: number;
+  medA: number | null;
+  medB: number | null;
+  /** Kort dansk tekst til skærmen. */
+  text: string;
+}
+
+export const AB_MIN = 3; // under det: for tidligt
+export const AB_CUT_MIN = 5; // fra og med det må en arm skæres
+export const AB_CUT_GAP = 0.25; // arm ≥ 25 % dårligere end den anden
+
+export const AB_LABEL: Record<AbVerdict, string> = {
+  "for-tidligt": "For tidligt",
+  "ingen-afgoerelse": "Ingen afgørelse",
+  signal: "Signal",
+  skaer: "Skær",
+};
+
+export function median(xs: number[]): number | null {
+  if (xs.length === 0) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+/**
+ * Dommen over to arme. `a` og `b` er ét tal pr. opslag (fx gem + delinger pr. 1000
+ * visninger); opslag uden tal skal være sorteret fra FØR kaldet.
+ * Rækkefølge (første træffer gælder):
+ *  1. færre end 3 opslag i en af armene            → for tidligt
+ *  2. begge medianer er 0                          → ingen afgørelse
+ *  3. mindst 5 opslag i begge og den dårligste arms median er ≥ 25 % under den bedste → skær
+ *  4. ellers (mindst 3 i begge)                    → signal (retning, ikke bevis)
+ */
+export function abVerdict(a: number[], b: number[]): AbCall {
+  const nA = a.length;
+  const nB = b.length;
+  const medA = median(a);
+  const medB = median(b);
+  const base = { nA, nB, medA, medB };
+  if (Math.min(nA, nB) < AB_MIN) {
+    const need = AB_MIN - Math.min(nA, nB);
+    return { ...base, verdict: "for-tidligt", ahead: null, text: `For tidligt: der skal mindst ${AB_MIN} opslag på hver side. Mangler ${need} mere.` };
+  }
+  const mA = medA ?? 0;
+  const mB = medB ?? 0;
+  if (mA === 0 && mB === 0) {
+    return { ...base, verdict: "ingen-afgoerelse", ahead: null, text: "Ingen afgørelse: begge sider ligger på 0." };
+  }
+  const ahead = mA === mB ? null : mA > mB ? "A" : "B";
+  if (ahead && Math.min(nA, nB) >= AB_CUT_MIN) {
+    const best = Math.max(mA, mB);
+    const worst = Math.min(mA, mB);
+    if ((best - worst) / best >= AB_CUT_GAP - 1e-9) {
+      const loser = ahead === "A" ? "B" : "A";
+      return { ...base, verdict: "skaer", ahead, text: `Skær: ${loser} er mindst 25 % dårligere end ${ahead} efter ${Math.min(nA, nB)}+ opslag. Drop ${loser}.` };
+    }
+  }
+  return {
+    ...base,
+    verdict: "signal",
+    ahead,
+    text: ahead ? `Signal: ${ahead} ligger foran. Det er en retning, ikke et bevis.` : "Signal: siderne ligger lige. Fortsæt, til der er mindst 5 opslag på hver.",
+  };
+}
+
+// ---------------------------------------------------------------- tal pr. opslag
+
+export interface MeasureNums {
+  views: number | null;
+  saves: number | null;
+  shares: number | null;
+  newFollowers?: number | null;
+  profileVisits: number | null;
+  linkClicks?: number | null;
+  inquiries: number | null;
+}
+
+/** Gem + delinger pr. 1000 visninger. null når visninger mangler/0 — så tæller opslaget ikke med. */
+export function savesSharesPer1000(m: Pick<MeasureNums, "views" | "saves" | "shares">): number | null {
+  if (!m.views || m.views <= 0) return null;
+  if (m.saves == null && m.shares == null) return null;
+  return Math.round((((m.saves ?? 0) + (m.shares ?? 0)) / m.views) * 10_000) / 10;
+}
+
+// ---------------------------------------------------------------- tragten
+
+export interface FunnelStep {
+  key: "reach" | "keep" | "profile" | "inquiry";
+  label: string;
+  /** null = ingen opslag har målt det trin. */
+  value: number | null;
+  /** Andel af forrige trin i procent (null hvis ét af trinnene mangler eller forrige er 0). */
+  ofPrev: number | null;
+}
+export interface Funnel {
+  posts: number;
+  steps: FunnelStep[];
+}
+
+const sum = (xs: Array<number | null>): number | null => {
+  const v = xs.filter((x): x is number => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) : null;
+};
+
+/** Rækkevidde → gem/delinger → profilbesøg → henvendelser. Kun manuelle tal; manglende = null, aldrig 0. */
+export function funnel(rows: MeasureNums[]): Funnel {
+  const reach = sum(rows.map((r) => r.views));
+  const keepParts = rows.map((r) => (r.saves == null && r.shares == null ? null : (r.saves ?? 0) + (r.shares ?? 0)));
+  const keep = sum(keepParts);
+  const profile = sum(rows.map((r) => r.profileVisits));
+  const inquiry = sum(rows.map((r) => r.inquiries));
+  const vals: Array<[FunnelStep["key"], string, number | null]> = [
+    ["reach", "Rækkevidde", reach],
+    ["keep", "Gemt og delt", keep],
+    ["profile", "Profilbesøg", profile],
+    ["inquiry", "Henvendelser", inquiry],
+  ];
+  const steps = vals.map(([key, label, value], i): FunnelStep => {
+    const prev = i > 0 ? vals[i - 1][2] : null;
+    const ofPrev = value != null && prev != null && prev > 0 ? Math.round((value / prev) * 1000) / 10 : null;
+    return { key, label, value, ofPrev };
+  });
+  return { posts: rows.length, steps };
+}
