@@ -147,3 +147,9 @@ Rettet (alle med test): `replyCandidates` spærrer også `leadStatus` afmeldt/bo
 Udskudt (kendt begrænsning, ingen af dem sender eller skriver noget):
 - Gmail-link og "Skriv tilbage" bruger virksomhedens hovedadresse, ikke den faktiske afsender (kontakt der svarer fra en anden adresse, eller tom hovedadresse). Kræver en `from_email`-kolonne i 0017.
 - "Vi skrev" viser antal mails og dato, ikke trin og vinkel fra `outreach` (§7).
+
+## 15. Gammel postkasse og 365-dages scan (15/10, efter prod-kørsel)
+
+- Første backfill kørte lokalt, hvor `GMAIL_USER` er en ANDEN Gmail-konto end den Vercel bruger til Lucas (Vercel markerer Gmail-nøglerne som skjulte, så prod-kontoen kan kun læses fra Vercel selv). 137 rækker (maj–28. aug) ligger derfor i den gamle postkasse, ikke i lucas@kinly.dk.
+- De rækker er relabelet `account = 'gammel'` (`OLD_MAILBOX` i `gmail-link.ts`): "Åbn i Gmail" åbner søgningen uden `authuser` i stedet for Kinly-indbakken.
+- `POST /api/replies/capture` tager `{ days }` (1-365, ellers 30) og har `maxDuration 300`, så prod-kontoens historik kan hentes fra den indloggede side.

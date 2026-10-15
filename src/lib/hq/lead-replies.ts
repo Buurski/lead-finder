@@ -8,6 +8,15 @@ import { isSuppressed } from "../canSendTo.ts";
 
 export const SNIPPET_RETENTION_DAYS = 180;
 
+export const CAPTURE_DEFAULT_DAYS = 30;
+export const CAPTURE_MAX_DAYS = 365;
+
+/** Vinduet for "Opdatér svar": body.days som helt tal 1-365, ellers 30. Ugyldigt input giver 30, aldrig et større vindue. */
+export function captureWindowDays(body: unknown): number {
+  const d = (body as { days?: unknown } | null)?.days;
+  return typeof d === "number" && Number.isInteger(d) && d >= 1 && d <= CAPTURE_MAX_DAYS ? d : CAPTURE_DEFAULT_DAYS;
+}
+
 // Postgres 42P01 = undefined_table (lead_reply før migration 0017); drizzle pakker driverfejlen ind i `cause`.
 export function isMissingTable(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } };
