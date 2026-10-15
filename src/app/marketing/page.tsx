@@ -89,7 +89,7 @@ export default async function MarketingPage() {
         {byTrack.length > 0 && (
           <section className="cc-card mk-card" aria-labelledby="mk-spor">
             <h2 className="mk-h2" id="mk-spor">Pr. spor<Info label="Hvad er et spor?">Et spor er en slags video: faceless/AI, Lucas+Charlie eller Dag N. Her kan du se, hvilket spor der giver mest.</Info></h2>
-            <div className="mk-scroll">
+            <div className="mk-scroll" tabIndex={0} role="region" aria-label="Tal pr. spor (kan rulles sidelæns)">
               <table className="mk-table">
                 <thead><tr><th>Spor</th><th className="num">Opslag</th>{f.steps.map((s) => <th key={s.key} className="num">{s.label}</th>)}</tr></thead>
                 <tbody>

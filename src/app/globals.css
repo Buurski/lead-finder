@@ -358,7 +358,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.025e
   transition: border-color 130ms ease;
 }
 .cc-search-pill:hover { border-color: var(--border-strong); }
-.cc-search-pill .txt { font-size: 13px; flex: 1; color: var(--text-dim); }
+.cc-search-pill .txt { font-size: 13px; flex: 1; color: var(--text-muted); }
 .cc-search-kbd {
   background: var(--accent); color: var(--kinly-ink);
   font-family: var(--font-mono); font-size: 11px; font-weight: 700;

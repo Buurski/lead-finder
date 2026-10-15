@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AB_LABEL, abBoard, type AbBoardItem } from "@/lib/hq/marketing-calc";
 import { AB_STATUSES, type MeasureDto, type RefDto } from "@/lib/hq/marketing-types";
+import Field from "./Field";
 import Info from "./Info";
 import { mk } from "./api";
 import "./marketing.css";
@@ -90,10 +91,10 @@ function NewTest({ onCreated }: { onCreated: (t: RefDto) => void }) {
   return (
     <form className="cc-card mk-card mk-form" onSubmit={submit}>
       <h2 className="mk-h2">Ny test</h2>
-      <div className="mk-field"><span className="mk-label">Hvad tester vi?</span><input className="cc-input mk-input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required maxLength={200} placeholder="Fx: slutkort “Gem” mod “Send”" /></div>
+      <Field label="Hvad tester vi?"><input className="cc-input mk-input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required maxLength={200} placeholder="Fx: slutkort “Gem” mod “Send”" /></Field>
       <div className="mk-grid2">
-        <div className="mk-field"><span className="mk-label">Udgave A</span><textarea className="mk-textarea" rows={3} value={f.armA} onChange={(e) => setF({ ...f, armA: e.target.value })} required maxLength={600} /></div>
-        <div className="mk-field"><span className="mk-label">Udgave B</span><textarea className="mk-textarea" rows={3} value={f.armB} onChange={(e) => setF({ ...f, armB: e.target.value })} required maxLength={600} /></div>
+        <Field label="Udgave A"><textarea className="mk-textarea" rows={3} value={f.armA} onChange={(e) => setF({ ...f, armA: e.target.value })} required maxLength={600} /></Field>
+        <Field label="Udgave B"><textarea className="mk-textarea" rows={3} value={f.armB} onChange={(e) => setF({ ...f, armB: e.target.value })} required maxLength={600} /></Field>
       </div>
       <p className="mk-p mk-small">Skift kun én ting mellem A og B. Alt andet skal være ens.</p>
       {error && <p className="mk-err" role="alert">{error}</p>}

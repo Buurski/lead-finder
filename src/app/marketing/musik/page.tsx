@@ -48,7 +48,7 @@ export default async function MusikPage() {
             <>
               <p className="mk-p mk-small">{withMusic.length} af {live.length} har valgt lyd. {noMusic} har ingen musik. Ret det på kladden under <Link className="cc-link" style={{ textDecoration: "underline" }} href="/marketing/kladder">Kladder</Link>.</p>
               {withMusic.length > 0 && (
-                <div className="mk-scroll">
+                <div className="mk-scroll" tabIndex={0} role="region" aria-label="Musikvalg pr. video (kan rulles sidelæns)">
                   <table className="mk-table">
                     <thead><tr><th>Video</th><th>Spor</th><th>Lyd</th><th>Licens</th><th>Note</th></tr></thead>
                     <tbody>
