@@ -209,6 +209,22 @@ export const activity = pgTable("activity", {
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Leads' svar-mails (spec 2026-10-15-har-svaret-kontekst-design.md §4). Kun uddrag (≤600 tegn);
+// snippet nulstilles efter 180 dage (captureReplies), resten er metadata.
+export const leadReply = pgTable("lead_reply", {
+  id: id(),
+  companyId: uuid("company_id").notNull().references(() => company.id),
+  account: text("account").notNull(), // "lucas" | "charlie": indbakken der modtog svaret
+  messageId: text("message_id").notNull().unique(), // RFC Message-ID → upsert er idempotent
+  threadId: text("thread_id"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+  subject: text("subject").notNull().default(""),
+  snippet: text("snippet"), // null efter opbevaringsfristen
+  category: text("category").notNull().default("other"), // ReplyCategory (reply.ts)
+  asksCall: boolean("asks_call").notNull().default(false),
+  createdAt: createdAt(),
+}, (t) => [index("lead_reply_company_received_idx").on(t.companyId, t.receivedAt)]);
+
 export const task = pgTable("task", {
   id: id(),
   legacyId: text("legacy_id").unique(),

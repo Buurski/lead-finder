@@ -119,3 +119,14 @@ Princip: de svarede på mail, så mail er standardkanalen. Ring kun hvis de selv
 2. Gamle svar (>60 d): kun vis, eller også tilbyde "Er det stadig aktuelt?" som kladde? Det er en jura-vurdering (§10), derfor ikke foreslået her.
 3. OK at Ring skjules bag "…" medmindre de selv bad om opkald?
 4. Backfill 365 dage tilbage OK?
+
+## 12. PR 1 — afvigelser fra spec'en (implementeret)
+
+- `captureReplies` bor i `src/lib/capture-replies.ts` (ikke i `sync-replies.ts`, som er uændret); DB-delen i `src/lib/hq/lead-replies.ts`, parseren i `src/lib/hq/reply-parse.ts`.
+- `category` gemmer hele `ReplyCategory` (også `unsubscribe` og `wrong-person`), ikke kun listen i §4.
+- `asks_call`: et telefonnummer alene tæller **ikke** (står i de fleste signaturer). Kun "ring/ringe", "giv et ring" og "telefonsamtale"; "ringer/ringede" tæller ikke. Nummeret læses fra uddraget når UI'et skal vise det.
+- Kategori og opkalds-tjek læser hele den signatur-rensede tekst, ikke det 600-tegns klippede uddrag.
+- Afmeldte/bouncede/arkiverede leads lyttes der ikke efter (§4 persondata-minimering).
+- Cron-hook kører kun når `REPLY_CAPTURE=1` er sat i Vercel (default fra), så en deploy før migration 0017 ikke rammer en tabel der ikke findes.
+- Rettet i forbifarten ved roden: `cleanupBody` (`mail-decode.ts`) klippede ikke dansk Gmail-citatheader "Den … kl. … skrev Navn <mail>:". Rammer også `/replies`. Regressionstest tilføjet.
+- Dry-run mod prod er IKKE kørt endnu (kræver Lucas' ja: det læser begge Gmail-konti).

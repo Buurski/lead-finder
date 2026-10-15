@@ -41,3 +41,11 @@ for (const [name, raw, want] of cases) {
     assert.equal(isOptOut(body), want, JSON.stringify(body.slice(0, 200)));
   });
 }
+
+// Dansk Gmail-header med navn/mail før kolon (også ombrudt over to linjer) skal klippe citatet, ikke blive i svaret.
+test("mail-decode: 'Den … skrev Navn <mail>:' klipper citatet, hel og ombrudt", () => {
+  for (const header of [gAttr, "Den tor. 9. okt. 2026 kl. 10.00 skrev Lucas Buur\n<lucas@kinly.dk>:"]) {
+    const body = decodeMailBody(top(plain(`Nej tak.\n\n${header}\n\n${OUR}\n`, "base64")));
+    assert.equal(body, "Nej tak.", JSON.stringify(body));
+  }
+});

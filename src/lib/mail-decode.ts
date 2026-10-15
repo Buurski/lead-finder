@@ -135,7 +135,8 @@ export function cleanupBody(text: string): string {
   const kept: string[] = [];
   for (const line of lines) {
     if (/^\s*>/.test(line)) continue;                       // quoted
-    if (/^\s*(On .+wrote:|Den .+skrev:|-{2,}\s*Original)/i.test(line)) break; // reply header
+    // Dansk Gmail: "Den tor. 9. okt. 2026 kl. 10.00 skrev Lucas <mail>:" (navn/mail før kolon, ofte ombrudt) — derfor dato/kl. før "skrev".
+    if (/^\s*(On .+wrote:|Den .+skrev:|Den\s.*\b(?:20\d\d|kl\.).*\bskrev\b|-{2,}\s*Original)/i.test(line)) break; // reply header
     if (/^\s*(From|Fra|Sent|Sendt|To|Til|Subject|Emne):/i.test(line) && kept.length > 3) break;
     kept.push(line);
   }
