@@ -63,6 +63,13 @@ test("replyCandidates: adresse delt af to aktive virksomheder kan ikke henføres
   assert.equal(m.get("k@x.dk"), q.id);
 });
 
+test("captureWindowDays: 1-365 helt tal, alt andet giver 30 (aldrig et større vindue)", async () => {
+  const { captureWindowDays } = await import("./hq/lead-replies.ts");
+  assert.equal(captureWindowDays({ days: 365 }), 365);
+  assert.equal(captureWindowDays({ days: 1 }), 1);
+  for (const bad of [{ days: 366 }, { days: 0 }, { days: -5 }, { days: 1.5 }, { days: "365" }, { days: null }, {}, null, undefined, "x"]) assert.equal(captureWindowDays(bad), 30, JSON.stringify(bad));
+});
+
 test("safeError: aldrig SQL-parametre fra en drizzle-fejl", async () => {
   const { safeError } = await import("./hq/lead-replies.ts");
   const err = Object.assign(new Error('Failed query: insert into "lead_reply" ... params: ja tak, ring til mig 12345678'), { name: "DrizzleQueryError", cause: Object.assign(new Error("duplicate key value\nDETAIL: Key (x)=(y)"), { code: "23505" }) });

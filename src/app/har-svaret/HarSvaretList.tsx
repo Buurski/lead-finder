@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { lifecycleChipStyle, lifecycleLabel } from "@/components/virksomheder/lifecycle";
 import BookMeeting, { tomorrowISO } from "@/components/virksomheder/BookMeeting";
-import { gmailRepliesUrl } from "@/lib/hq/gmail-link";
+import { gmailRepliesUrl, OLD_MAILBOX } from "@/lib/hq/gmail-link";
 import { BUCKET_LABEL, BUCKET_ORDER, type ReplyBucket } from "@/lib/hq/reply-bucket";
 
 export interface HarSvaretRow {
@@ -70,7 +70,7 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
   // Luk = det eksisterende udfald "ikke interesseret": lead-status, stop af kolde kladder, tidslinje. Intet sendes.
   const close = () => run("Lukket", () => post(`/api/replies/${row.rowNo}/udfald`, { outcome: "ikke-interesseret", note: "Lukket fra Har svaret", owner: me }));
 
-  const gmail = row.email ? <a href={gmailRepliesUrl(row.email, row.replyAccount || row.owner, me)} target="_blank" rel="noopener noreferrer" className={row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk" ? "cc-btn cc-btn-accent" : "cc-btn"}>Åbn i Gmail</a> : null;
+  const gmail = row.email ? <a href={gmailRepliesUrl(row.email, row.replyAccount || row.owner, me)} title={row.replyAccount === OLD_MAILBOX ? "Svaret ligger i den gamle postkasse" : undefined} target="_blank" rel="noopener noreferrer" className={row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk" ? "cc-btn cc-btn-accent" : "cc-btn"}>Åbn i Gmail</a> : null;
   const write = row.email ? <a href={`mailto:${row.email}${reSubject(row.replySubject)}`} className={row.bucket === "skriv" ? "cc-btn cc-btn-accent" : "cc-btn"}>Skriv tilbage</a> : null;
   const callNumber = row.phoneInReply || row.phone;
   const call = callNumber ? <a href={telHref(callNumber)} className={row.bucket === "ring" ? "cc-btn cc-btn-accent" : "cc-btn"}>Ring{row.phoneInReply ? ` ${row.phoneInReply}` : ""}</a> : null;
