@@ -181,3 +181,18 @@ export function abBoard(tests: RefDto[], measures: MeasureDto[]): AbBoardItem[] 
   });
 }
 
+
+// ---------------------------------------------------------------- små UI-regler (rene, så de kan testes)
+
+const MEASURE_NUMBERS = new Set(["views", "saves", "shares", "newFollowers", "profileVisits", "linkClicks", "inquiries", "skipPct", "fullViewPct", "watchS"]);
+/** Formularens tekstfelter → serverens payload: tomme felter udelades, tal sendes som tal. */
+export function measurePayload(form: Record<string, string>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(form)) if (v !== "") out[k] = MEASURE_NUMBERS.has(k) ? Number(v) : v;
+  return out;
+}
+
+/** Planer der gled forbi før denne uge. Postet er overstået og hører ikke med. */
+export function slippedBefore<T extends { status: string; plannedFor: string | null }>(drafts: T[], firstDay: string): T[] {
+  return drafts.filter((d) => d.status !== "droppet" && d.status !== "postet" && d.plannedFor != null && d.plannedFor < firstDay);
+}

@@ -2,7 +2,7 @@
 // Manuel måling: tal læses af fra Instagram/TikTok og skrives ind her. Intet hentes automatisk.
 // Et felt der lades tomt betyder "ikke målt" (ikke nul).
 import { useState } from "react";
-import { savesSharesPer1000 } from "@/lib/hq/marketing-calc";
+import { measurePayload, savesSharesPer1000 } from "@/lib/hq/marketing-calc";
 import type { DraftDto, MeasureDto, RefDto } from "@/lib/hq/marketing-types";
 import Info from "./Info";
 import { mk, niceDay } from "./api";
@@ -36,8 +36,7 @@ export default function Measure({ drafts, tests, initial, today }: { drafts: Dra
     setError("");
     setSaved(false);
     try {
-      const measure: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(f)) if (v !== "") measure[k] = v;
+      const measure = measurePayload(f);
       const res = await mk<{ measure: MeasureDto }>({ action: "measureAdd", measure });
       setRows((r) => [res.measure, ...r]);
       setF({ postedOn: f.postedOn });

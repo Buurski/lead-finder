@@ -1,7 +1,7 @@
 "use client";
 // Kalender: fire uger frem fra denne uges mandag. Kun datoer, intet lægges ud herfra.
 import { useState } from "react";
-import { weekGrid } from "@/lib/hq/marketing-calc";
+import { slippedBefore, weekGrid } from "@/lib/hq/marketing-calc";
 import { STATUS_LABEL, TRACK_LABEL, type DraftDto } from "@/lib/hq/marketing-types";
 import Info from "./Info";
 import { mk, niceDay } from "./api";
@@ -28,7 +28,7 @@ export default function Calendar({ initial, today }: { initial: DraftDto[]; toda
 
   const live = items.filter((d) => d.status !== "droppet");
   const undated = live.filter((d) => d.status === "godkendt" && !d.plannedFor);
-  const outside = live.filter((d) => d.plannedFor && d.plannedFor < weeks[0][0]);
+  const outside = slippedBefore(items, weeks[0][0]);
 
   return (
     <div className="mk-wrap">
