@@ -53,6 +53,19 @@ test("asksForCall: ring/ringe/giv et ring/telefonsamtale ja; ringer/ringede/bart
   for (const t of ["vi ringer til jer", "han ringede i går", "mit nummer er 12 34 56 78", "CVR 12345678"]) assert.equal(asksForCall(t), false, t);
 });
 
+test("negeret opkaldsønske er ikke asksCall (Sol 15/10)", () => {
+  for (const t of ["Send gerne flere oplysninger, men ring ikke til mig.", "Undlad at ringe.", "Vi vil helst ikke ringes op", "Uden at ringe, tak."]) assert.equal(asksForCall(t), false, t);
+  assert.equal(asksForCall("Det lyder fint. Ring gerne i morgen."), true); // negation i en anden sætning ændrer intet
+});
+
+test("danske og engelske afslutninger klippes: navn, mail og telefon i signaturen gemmes ikke (Sol 15/10)", () => {
+  for (const sign of ["Med venlig hilsen\r\nKarina\r\nkarina@salon.dk\r\nTlf 12 34 56 78", "Mvh\r\nKarina\r\nTlf 12 34 56 78", "Venlig hilsen Karina", "Bedste hilsner\r\nKarina", "Kind regards\r\nKarina"]) {
+    const p = parseReply(mail(`Hvad koster det?\r\n\r\n${sign}`), "Re: x");
+    assert.equal(p.snippet, "Hvad koster det?", sign);
+    assert.equal(p.asksCall, false);
+  }
+});
+
 test("tom brødtekst giver tomt uddrag og kategori other", () => {
   const p = parseReply(mail(""), "Re: x");
   assert.equal(p.snippet, "");

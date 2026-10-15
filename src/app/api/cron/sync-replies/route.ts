@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncReplies, syncSentFolders } from "@/lib/sync-replies";
 import { captureReplies } from "@/lib/capture-replies";
+import { safeError } from "@/lib/hq/lead-replies";
 import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/sync-replies — the automatic reply-sync hook for Vercel Cron.
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
       // er kørt i prod. Best-effort som sendt-scanningen; 14 dages vindue dækker et par udeblevne kørsler.
       let captured: Awaited<ReturnType<typeof captureReplies>> | null = null;
       if (process.env.REPLY_CAPTURE === "1") {
-        try { captured = await captureReplies({ since: new Date(Date.now() - 14 * 86_400_000) }); } catch (err) { console.warn("[sync-replies] svar-indsamling fejlede:", err); }
+        try { captured = await captureReplies({ since: new Date(Date.now() - 14 * 86_400_000) }); } catch (err) { console.warn("[sync-replies] svar-indsamling fejlede:", safeError(err)); }
       }
       return {
         result: { ...r, sent, captured },

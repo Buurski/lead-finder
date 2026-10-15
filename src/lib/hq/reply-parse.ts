@@ -34,12 +34,17 @@ export function isAutoReplyMail(rawSource: string, subject: string): boolean {
 // Et telefonnummer alene tæller ikke: det står i de fleste signaturer. Nummeret læses fra uddraget når siden viser det.
 const ASKS_CALL = /\b(ring|ringe)\b|\bgiv\s+(mig|os)\s+et\s+ring\b|\btelefonsamtale\b|\b(snakke|tale)\s+(sammen\s+)?(i|på)\s+telefon(en)?\b/i;
 
+// En sætning med negation ("ring ikke", "uden at ringe") er aldrig et opkaldsønske. Hellere et ønske for lidt end for meget:
+// "ring" er den kanal der kræver reklamebeskyttelses-tjek.
+const NEGATION = /\b(ikke|aldrig|undlad|undgå|uden|ingen)\b/i;
+
 export function asksForCall(text: string): boolean {
-  return ASKS_CALL.test(text);
+  return text.split(/(?<=[.!?])\s+/).some((s) => ASKS_CALL.test(s) && !NEGATION.test(s));
 }
 
-// Signaturer uden "-- "-streg: afslut ved de almindelige mobil-/klient-hilsner.
-const SIGNATURE_START = /^(--\s*$|sendt fra min |sent from my |hent outlook |get outlook )/i;
+// Signaturer: "-- "-streg, mobil-/klient-hilsner og de almindelige danske/engelske afslutninger (linjestart). Klippes af
+// uddrag, kategori og opkalds-tjek, så navn, mail og telefon i signaturen hverken gemmes eller læses som svar.
+const SIGNATURE_START = /^(--\s*$|sendt fra min |sent from my |hent outlook |get outlook |(med )?venlig(e)? hilsen\b|mvh\b|m\.v\.h\b|bedste hilsner\b|kind regards\b|best regards\b|regards\b)/i;
 
 /** Brødtekst uden signatur, på én linje. Kategori og opkalds-tjek læser denne fulde tekst, ikke det klippede uddrag. */
 export function flatBody(text: string): string {

@@ -20,6 +20,8 @@ test("ingen hentet svar-mail → tjek", () => {
 test("gammel: grænsen er mere end 60 dage; auto-reply og spørgsmål gamle ender begge i gammel", () => {
   assert.equal(b({ receivedAt: ago(OLD_REPLY_DAYS) }), "skriv");
   assert.equal(b({ receivedAt: ago(OLD_REPLY_DAYS + 1) }), "gammel");
+  assert.equal(b({ asksCall: true, receivedAt: ago(OLD_REPLY_DAYS + 1 / 24) }), "gammel"); // 60 d + 1 t: over grænsen, ikke rundet ned (Sol 15/10)
+  assert.equal(b({ asksCall: true, receivedAt: ago(OLD_REPLY_DAYS - 1 / 24) }), "ring");
   assert.equal(b({ category: "auto-reply", receivedAt: ago(100) }), "gammel");
   assert.equal(b({ asksCall: true, receivedAt: ago(100) }), "gammel");
 });

@@ -25,7 +25,8 @@ try {
   r = await captureReplies({ since, dryRun: !apply });
 } catch (err) {
   // Mangler lead_reply (migration 0017 ikke kørt) fejler opslaget her; en dry-run uden tabellen kan ikke tælle "existing".
-  console.error("fejlede:", String(err).slice(0, 300));
+  const { safeError } = await import(pathToFileURL(path.join(REPO_ROOT, "src", "lib", "hq", "lead-replies.ts")).href);
+  console.error("fejlede:", safeError(err));
   process.exit(1);
 }
 console.log(JSON.stringify(r, null, 1));

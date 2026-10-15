@@ -5,7 +5,7 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { activity, company, contact, deal, invoice, outreach, site, subscriptionPlan, task } from "../db/schema.ts";
+import { activity, company, contact, deal, invoice, leadReply, outreach, site, subscriptionPlan, task } from "../db/schema.ts";
 
 export class MergeError extends Error {}
 
@@ -44,7 +44,7 @@ export async function mergeCompanies(db: Db, keepId: string, dropId: string, act
     if (keepPrimary) await tx.update(deal).set({ isPrimary: false }).where(eq(deal.companyId, dropId));
 
     // 2. Flyt alt der peger på drop.
-    for (const t of [deal, contact, activity, task, invoice, site, subscriptionPlan] as const) {
+    for (const t of [deal, contact, activity, task, invoice, site, subscriptionPlan, leadReply] as const) {
       await tx.update(t).set({ companyId: keepId }).where(eq(t.companyId, dropId));
     }
     // Kladdernes join-kolonne følger med (selve draft.leadId i jsonb er historik og røres ikke).

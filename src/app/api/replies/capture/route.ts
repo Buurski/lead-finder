@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { HqInputError, hqWrite } from "@/lib/hq/api";
 import { captureReplies } from "@/lib/capture-replies";
-import { isMissingTable } from "@/lib/hq/lead-replies";
+import { isMissingTable, safeError } from "@/lib/hq/lead-replies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       return { ok: true, inserted: r.inserted, matched: r.matched, errors: r.errors };
     } catch (err) {
       if (isMissingTable(err)) throw new HqInputError("Svar-uddrag er ikke slået til endnu (migration 0017 mangler).");
-      throw err;
+      throw new Error(safeError(err)); // aldrig rå drizzle-fejl: den rummer SQL-parametre (svar-uddrag)
     }
   });
 }

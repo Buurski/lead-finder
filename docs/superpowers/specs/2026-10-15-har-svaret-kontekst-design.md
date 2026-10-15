@@ -139,3 +139,11 @@ Princip: de svarede på mail, så mail er standardkanalen. Ring kun hvis de selv
 - Luk-knappen bruger det eksisterende udfald `ikke-interesseret`. Intet sendes nogen steder; "Skriv tilbage" er et `mailto:`.
 - Luk-rækker har hverken Ring eller Mail igen. Ring bag "…" kun når de ikke bad om opkald (med CVR-advarsel).
 - Klassifikatoren er ikke finjusteret på "Uklart" (ville flytte ~3 mails og deles med andre flows).
+
+## 14. Sol-review 15/10 — rettet og udskudt
+
+Rettet (alle med test): `replyCandidates` spærrer også `leadStatus` afmeldt/bounced (samme `isSuppressed` som send-gaten) og spærrer en afmeldt adresse globalt, så den ikke genindsamles under en anden virksomhed; en adresse delt af flere aktive virksomheder udelades (kan ikke henføres). Svar-fejl logges/returneres via `safeError` (ingen SQL-parametre = ingen svar-uddrag i logs). Signaturer (Med venlig hilsen, Mvh, Bedste hilsner, Kind regards) klippes af uddrag, kategori og opkalds-tjek. Negerede opkaldsønsker ("ring ikke") er ikke `asksCall` (hellere for lidt Ring end for meget). `mergeCompanies` flytter `lead_reply` med. Gammel-grænsen sammenlignes i ms, ikke afrundede døgn.
+
+Udskudt (kendt begrænsning, ingen af dem sender eller skriver noget):
+- Gmail-link og "Skriv tilbage" bruger virksomhedens hovedadresse, ikke den faktiske afsender (kontakt der svarer fra en anden adresse, eller tom hovedadresse). Kræver en `from_email`-kolonne i 0017.
+- "Vi skrev" viser antal mails og dato, ikke trin og vinkel fra `outreach` (§7).

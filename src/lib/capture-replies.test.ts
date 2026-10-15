@@ -40,6 +40,37 @@ test("replyCandidates: lead- og kontaktmails lowercased; arkiverede og afmeldte 
   assert.deepEqual([...m.entries()].sort(), [["a@salon.dk", a.id], ["vaerk@d.dk", d.id]]);
 });
 
+test("replyCandidates: leadStatus afmeldt spærrer, og en afmeldt adresse er spærret globalt (også på en anden virksomhed/kontakt) (Sol 15/10)", async () => {
+  const [, , z] = await db.insert(company).values([
+    { rowNo: 11, name: "X afmeldt via leadStatus", email: "x@x.dk", emailStatus: "replied", leadStatus: " Afmeldt " },
+    { rowNo: 12, name: "Y samme adresse som afmeldt", email: "X@X.dk" },
+    { rowNo: 13, name: "Z kontakt med afmeldt adresse", email: "" },
+  ]).returning();
+  await db.insert(contact).values({ companyId: z.id, name: "K", email: "x@x.dk" });
+  assert.equal((await replyCandidates(db)).size, 0);
+});
+
+test("replyCandidates: adresse delt af to aktive virksomheder kan ikke henføres og udelades; lead-mail slår kontakt-mail", async () => {
+  const [p, q, r] = await db.insert(company).values([
+    { rowNo: 21, name: "P", email: "fælles@x.dk" },
+    { rowNo: 22, name: "Q", email: "fælles@x.dk" },
+    { rowNo: 23, name: "R", email: "r@x.dk" },
+  ]).returning();
+  await db.insert(contact).values([{ companyId: p.id, name: "K1", email: "r@x.dk" }, { companyId: q.id, name: "K2", email: "k@x.dk" }]);
+  const m = await replyCandidates(db);
+  assert.equal(m.has("fælles@x.dk"), false);
+  assert.equal(m.get("r@x.dk"), r.id); // egen adresse vinder over P's kontakt
+  assert.equal(m.get("k@x.dk"), q.id);
+});
+
+test("safeError: aldrig SQL-parametre fra en drizzle-fejl", async () => {
+  const { safeError } = await import("./hq/lead-replies.ts");
+  const err = Object.assign(new Error('Failed query: insert into "lead_reply" ... params: ja tak, ring til mig 12345678'), { name: "DrizzleQueryError", cause: Object.assign(new Error("duplicate key value\nDETAIL: Key (x)=(y)"), { code: "23505" }) });
+  const s = safeError(err);
+  assert.match(s, /23505/);
+  assert.doesNotMatch(s, /ring til mig|12345678|params/);
+});
+
 test("saveCaptured: gemmer nye, er idempotent, og tæller samme Message-ID fra begge konti én gang", async () => {
   const { a } = await seed();
   const byEmail = await replyCandidates(db);

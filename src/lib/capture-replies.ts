@@ -5,7 +5,7 @@ import { ImapFlow } from "imapflow";
 import { getDb, type Db } from "./db/client.ts";
 import { getActiveSenders } from "./senders.ts";
 import { parseReply } from "./hq/reply-parse.ts";
-import { existingMessageIds, expireOldSnippets, isMissingTable, replyCandidates, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
+import { existingMessageIds, expireOldSnippets, isMissingTable, replyCandidates, safeError, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
 
 const CONNECT_TIMEOUT_MS = 15_000;
 const SOCKET_TIMEOUT_MS = 30_000;
@@ -112,7 +112,7 @@ export async function collectReplies(db: Db, since: Date): Promise<{ raws: RawRe
     try {
       raws.push(...(await scanAccount(account, emails, since)));
     } catch (err) {
-      errors[account.id] = String(err).slice(0, 200);
+      errors[account.id] = safeError(err);
     }
   }
   return { raws, byEmail, errors };

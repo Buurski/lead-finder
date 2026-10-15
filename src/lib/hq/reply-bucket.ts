@@ -39,8 +39,9 @@ export function bucketFor(i: BucketInput, now: Date = new Date()): BucketResult 
     return { bucket: "luk", why: "De har sagt nej eller bedt om at blive fjernet. Luk dem." };
   }
   if (!i.receivedAt) return { bucket: "tjek", why: "Ingen svar-mail hentet. Åbn Gmail og læs den." };
-  const age = Math.floor((now.getTime() - i.receivedAt.getTime()) / 86_400_000);
-  if (age > OLD_REPLY_DAYS) return { bucket: "gammel", why: `Svaret er ${age} dage gammelt. Kun til info.` };
+  const ms = now.getTime() - i.receivedAt.getTime();
+  const age = Math.floor(ms / 86_400_000);
+  if (ms > OLD_REPLY_DAYS * 86_400_000) return { bucket: "gammel", why: `Svaret er ${age} dage gammelt. Kun til info.` };
   if (i.category === "auto-reply") return { bucket: "tjek", why: "Automatisk svar, ikke et menneske." };
   if (i.category === "other" || i.category === "wrong-person" || !i.hasSnippet) {
     return { bucket: "tjek", why: "Uklart svar. Læs det i Gmail, før du gør noget." };
