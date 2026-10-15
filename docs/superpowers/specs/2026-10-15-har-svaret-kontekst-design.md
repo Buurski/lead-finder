@@ -159,3 +159,9 @@ Udskudt (kendt begrænsning, ingen af dem sender eller skriver noget):
 - `lead_reply.from_email` (nullable) gemmer adressen svaret kom fra. Gmail-link og "Skriv tilbage" bruger den før virksomhedens hovedadresse; null (ældre rækker) falder tilbage til virksomhedens adresse som før. Løser udskudt punkt i §14.
 - Ældre prod-rækker udfyldes af næste scan, hvor mailen ses igen (`fillMissingFromEmail`, rører kun tomme felter). Rækker fra den gamle postkasse (`gammel`) kan prod ikke læse og bliver ved med at bruge virksomhedens adresse.
 - Rækkefølge i prod: kør migration 0018 FØR merge/deploy (siden selecter kolonnen).
+
+## 17. Rettelse af §15 (15/10, efter migration 0018)
+
+- Relabelingen til `gammel` var en fejl og er rullet tilbage (alle 179 `lucas`-rækker + 2 `charlie`). Målt read-only: de 137 første rækker findes både i den gamle lokale postkasse (137/137) og i prod-scanningen (derfor blev afsenderen udfyldt), men IKKE i Charlies (0/137). De ligger altså også i Kinly-indbakken, så Kinly-linket var rigtigt.
+- `OLD_MAILBOX`-grenen i `gmail-link.ts` er nu ubrugt (ingen række har `account = 'gammel'`). Den er harmløs og kan fjernes ved lejlighed.
+- Lærdom: lokal `.env.local` læser en anden Gmail-konto end Vercel. Tjek altid hvilken postkasse en række ligger i (Message-ID mod begge) før du relabeler.
