@@ -129,4 +129,13 @@ Princip: de svarede på mail, så mail er standardkanalen. Ring kun hvis de selv
 - Afmeldte/bouncede/arkiverede leads lyttes der ikke efter (§4 persondata-minimering).
 - Cron-hook kører kun når `REPLY_CAPTURE=1` er sat i Vercel (default fra), så en deploy før migration 0017 ikke rammer en tabel der ikke findes.
 - Rettet i forbifarten ved roden: `cleanupBody` (`mail-decode.ts`) klippede ikke dansk Gmail-citatheader "Den … kl. … skrev Navn <mail>:". Rammer også `/replies`. Regressionstest tilføjet.
-- Dry-run mod prod er IKKE kørt endnu (kræver Lucas' ja: det læser begge Gmail-konti).
+- Dry-run mod prod er kørt (Lucas' ja 15/10, kun tal): 150 mails/365 d, 62 af 75 åbne leads har et fanget svar. Intet skrevet. Migration 0017 og `--apply` afventer Lucas' ja.
+
+## 13. PR 2 — afvigelser fra spec'en (implementeret)
+
+- Bucket-præcedens i `bucketFor()` (`src/lib/hq/reply-bucket.ts`): Luk → intet svar = Tjek → **Gammel (>60 d) før kategori** → autosvar/uklart/forkert person/uden uddrag = Tjek → asks_call = Ring → ellers Skriv. §6-tabellens "Gammel undtagen Luk" gælder altså også Tjek: et 90 dage gammelt autosvar står som Gammel.
+- Data: `listRepliedLeadsWithContext` (`replied-leads.ts`) bruger `repliedLeadsWhere()` uændret, så KPI og liste har stadig samme mængde. Mangler `lead_reply` (før migration 0017) gives `captureReady=false`: siden virker, alle står som Tjek, advarsel øverst, "Opdatér svar" er slået fra.
+- "Opdatér svar" kalder `POST /api/replies/capture` (30 d, læser kun Gmail, skriver kun `lead_reply`). Uden tabel svarer ruten med en dansk fejl.
+- Luk-knappen bruger det eksisterende udfald `ikke-interesseret`. Intet sendes nogen steder; "Skriv tilbage" er et `mailto:`.
+- Luk-rækker har hverken Ring eller Mail igen. Ring bag "…" kun når de ikke bad om opkald (med CVR-advarsel).
+- Klassifikatoren er ikke finjusteret på "Uklart" (ville flytte ~3 mails og deles med andre flows).

@@ -1,28 +1,55 @@
-/* "Har svaret"-listen: rækker på desktop, stablet kort på mobil. */
+/* "Har svaret": ét kort pr. lead — hvem · hvad de svarede · hvad vi gør. Stables på smalle skærme. */
 .hs-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: var(--amber-dim); color: var(--text); font-size: 13px; font-weight: 600; }
+.hs-note-warn { background: var(--red-dim); }
 .hs-card { container-type: inline-size; }
-.hs-head, .hs-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.6fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) 70px 70px 110px minmax(240px, 1.5fr);
-  gap: 12px;
-  align-items: center;
-  padding: 12px 18px;
-}
-.hs-head { font-size: 11.5px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.hs-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.hs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hs-chip { font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; }
+.hs-chip b { font-weight: 700; color: var(--text); margin-left: 3px; }
+.hs-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: white; }
+.hs-chip[aria-pressed="true"] b { color: white; }
+.hs-chip:disabled { opacity: 0.45; cursor: default; }
+.hs-refresh { display: flex; gap: 10px; align-items: center; }
 .hs-list { list-style: none; margin: 0; padding: 0; }
-.hs-row { border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.hs-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.1fr) minmax(260px, 1.8fr) minmax(200px, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  font-size: 13.5px;
+}
 .hs-row:last-child { border-bottom: 0; }
-.hs-name, .hs-last { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hs-row[data-bucket="skriv"] { border-left-color: var(--green); }
+.hs-row[data-bucket="ring"] { border-left-color: var(--blue); }
+.hs-row[data-bucket="tjek"] { border-left-color: var(--amber); }
+.hs-row[data-bucket="luk"] { border-left-color: var(--red); }
+.hs-row[data-bucket="gammel"] { opacity: 0.82; }
+.hs-who, .hs-reply { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.hs-name { font-weight: 650; }
 .hs-sub { font-size: 12px; color: var(--text-dim); }
+.hs-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.hs-mark { background: var(--amber-dim); color: var(--text); white-space: nowrap; }
+.hs-cat { background: var(--bg-3); color: var(--text); white-space: nowrap; }
+.hs-reply-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hs-snippet summary { cursor: pointer; list-style: none; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hs-snippet summary::-webkit-details-marker { display: none; }
+.hs-snippet[open] summary { -webkit-line-clamp: unset; display: block; }
+.hs-why { font-size: 12.5px; color: var(--text-muted); }
 .hs-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.hs-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.hs-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.hs-more { position: relative; }
+.hs-more > summary { list-style: none; cursor: pointer; }
+.hs-more > summary::-webkit-details-marker { display: none; }
+.hs-more-body { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin-top: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface, var(--bg-3)); min-width: 220px; }
+.hs-warn { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font-size: 12px; color: var(--text-muted); }
 .hs-later { display: flex; gap: 6px; align-items: center; }
 .hs-msg { font-size: 12px; color: var(--text-dim); }
 .hs-empty { padding: 28px 18px; color: var(--text-dim); }
 
-/* Kortets egen bredde afgør layoutet (sidebaren æder af skærmen): under ~1040 px stables rækken i stedet for at klippe knapper. */
-@container (max-width: 1040px) {
-  .hs-head { display: none; }
-  .hs-row { grid-template-columns: 1fr 1fr; padding: 14px 16px; }
-  .hs-row > :first-child, .hs-row > :last-child { grid-column: 1 / -1; }
+/* Kortets egen bredde afgør layoutet (sidebaren æder af skærmen): smalt = kolonne, handlinger under svaret. */
+@container (max-width: 900px) {
+  .hs-row { grid-template-columns: 1fr; gap: 10px; padding: 14px 16px; }
 }

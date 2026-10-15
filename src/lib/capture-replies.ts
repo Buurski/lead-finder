@@ -5,7 +5,7 @@ import { ImapFlow } from "imapflow";
 import { getDb, type Db } from "./db/client.ts";
 import { getActiveSenders } from "./senders.ts";
 import { parseReply } from "./hq/reply-parse.ts";
-import { existingMessageIds, expireOldSnippets, replyCandidates, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
+import { existingMessageIds, expireOldSnippets, isMissingTable, replyCandidates, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
 
 const CONNECT_TIMEOUT_MS = 15_000;
 const SOCKET_TIMEOUT_MS = 30_000;
@@ -30,12 +30,6 @@ export interface CaptureResult {
   byCategory: Record<string, number>; // kun nye svar
   expired: number; // uddrag nulstillet efter 180 dage
   errors: Record<string, string>;
-}
-
-// Postgres 42P01 = undefined_table; drizzle pakker driverfejlen ind i `cause`.
-function isMissingTable(err: unknown): boolean {
-  const e = err as { code?: string; cause?: { code?: string } };
-  return e?.code === "42P01" || e?.cause?.code === "42P01";
 }
 
 /** Parser, dedupér og gem. Ingen IMAP: kernen testes uden netværk. */
@@ -108,23 +102,26 @@ async function scanAccount(
   }
 }
 
-/**
- * Scan INBOX på begge konti siden `since` og gem nye svar. `dryRun`: læser Gmail + DB, skriver intet.
- * En kontos fejl stopper ikke den anden (rapporteres i `errors`).
- */
-export async function captureReplies(opts: { since: Date; dryRun?: boolean; db?: Db }): Promise<CaptureResult> {
-  const db = opts.db ?? getDb();
+/** Læser svar-mails fra begge konti siden `since` (kun Gmail, intet gemmes). En kontos fejl stopper ikke den anden. */
+export async function collectReplies(db: Db, since: Date): Promise<{ raws: RawReply[]; byEmail: Map<string, string>; errors: Record<string, string> }> {
   const byEmail = await replyCandidates(db);
   const emails = new Set(byEmail.keys());
   const errors: Record<string, string> = {};
   const raws: RawReply[] = [];
   for (const account of getActiveSenders()) {
     try {
-      raws.push(...(await scanAccount(account, emails, opts.since)));
+      raws.push(...(await scanAccount(account, emails, since)));
     } catch (err) {
       errors[account.id] = String(err).slice(0, 200);
     }
   }
+  return { raws, byEmail, errors };
+}
+
+/** Scan INBOX på begge konti siden `since` og gem nye svar. `dryRun`: læser Gmail + DB, skriver intet. */
+export async function captureReplies(opts: { since: Date; dryRun?: boolean; db?: Db }): Promise<CaptureResult> {
+  const db = opts.db ?? getDb();
+  const { raws, byEmail, errors } = await collectReplies(db, opts.since);
   const saved = await saveCaptured(db, raws, byEmail, { dryRun: opts.dryRun });
   const expired = opts.dryRun ? 0 : await expireOldSnippets(db);
   return { ...saved, expired, errors };

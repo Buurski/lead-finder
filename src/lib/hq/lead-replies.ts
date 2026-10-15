@@ -7,6 +7,12 @@ import { company, contact, leadReply } from "../db/schema.ts";
 
 export const SNIPPET_RETENTION_DAYS = 180;
 
+// Postgres 42P01 = undefined_table (lead_reply før migration 0017); drizzle pakker driverfejlen ind i `cause`.
+export function isMissingTable(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } };
+  return e?.code === "42P01" || e?.cause?.code === "42P01";
+}
+
 // Afmeldte/bouncede lytter vi ikke efter: deres svar skal ikke ligge i vores DB (samme sæt som isSuppressed).
 const SUPPRESSED_EMAIL_STATUS = ["unsubscribed", "unsubscribe", "afmeldt", "bounced", "complained"];
 
