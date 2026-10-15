@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { freshTestDb } from "./db/test-db.ts";
 import type { Db } from "./db/client.ts";
 import { company, contact, leadReply } from "./db/schema.ts";
@@ -89,4 +89,14 @@ test("expireOldSnippets: nulstiller kun uddrag ældre end 180 dage, beholder met
   assert.equal(o.snippet, null);
   assert.equal(o.category, "other");
   assert.equal(y.snippet, "nyt");
+});
+
+test("saveCaptured dryRun virker før migrationen er kørt (lead_reply findes ikke); rigtig kørsel fejler stadig", async () => {
+  await seed();
+  const byEmail = await replyCandidates(db);
+  await db.execute(sql`drop table lead_reply`);
+  const r = await saveCaptured(db, [raw({})], byEmail, { dryRun: true });
+  assert.equal(r.wouldInsert, 1);
+  assert.equal(r.existing, 0);
+  await assert.rejects(saveCaptured(db, [raw({})], byEmail));
 });

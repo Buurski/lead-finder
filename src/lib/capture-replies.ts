@@ -32,10 +32,20 @@ export interface CaptureResult {
   errors: Record<string, string>;
 }
 
+// Postgres 42P01 = undefined_table; drizzle pakker driverfejlen ind i `cause`.
+function isMissingTable(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } };
+  return e?.code === "42P01" || e?.cause?.code === "42P01";
+}
+
 /** Parser, dedupér og gem. Ingen IMAP: kernen testes uden netværk. */
 export async function saveCaptured(db: Db, raws: RawReply[], byEmail: Map<string, string>, opts: { dryRun?: boolean } = {}): Promise<Omit<CaptureResult, "errors" | "expired">> {
   const unique = new Map(raws.map((r) => [r.messageId, r])); // samme mail i begge konti tæller én gang
-  const known = await existingMessageIds(db, [...unique.keys()]);
+  // Dry-run før migration 0017 er kørt: tabellen findes ikke endnu, så intet er "allerede gemt".
+  const known = await existingMessageIds(db, [...unique.keys()]).catch((err) => {
+    if (opts.dryRun && isMissingTable(err)) return new Set<string>();
+    throw err;
+  });
   const fresh = [...unique.values()].filter((r) => !known.has(r.messageId));
 
   const rows: NewLeadReply[] = [];
