@@ -7,14 +7,14 @@ import { asc, desc, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { marketingDraft, marketingMeasure, marketingRef } from "../db/schema.ts";
 import { CompetitorInputError, bool, enumOf, int, noUnknownKeys, num, obj, str } from "./competitors.ts";
-import { abVerdict, savesSharesPer1000, type AbCall } from "./marketing-calc.ts";
+import { abBoard } from "./marketing-calc.ts";
 import {
   AB_STATUSES, LABELS, MUSIC_KINDS, TRACKS, approvalBlockers,
   type DraftDto, type DraftStatus, type MeasureDto, type MusicKind, type RefDto, type RefKind, type Track,
 } from "./marketing-types.ts";
 
 export { CompetitorInputError as MarketingInputError };
-export { approvalBlockers };
+export { approvalBlockers, abBoard };
 
 type DraftRow = typeof marketingDraft.$inferSelect;
 type RefRow = typeof marketingRef.$inferSelect;
@@ -269,23 +269,6 @@ export async function setAbStatus(db: Db, id: unknown, status: unknown): Promise
   if (!row || row.kind !== "ab") fail("testen findes ikke");
   const [next] = await db.update(marketingRef).set({ status: s, updatedAt: new Date() }).where(eq(marketingRef.id, key)).returning();
   return toRef(next);
-}
-
-export interface AbBoardItem {
-  test: RefDto;
-  call: AbCall;
-  /** Tal pr. opslag pr. arm (gem + delinger pr. 1000), til visning. */
-  values: { A: number[]; B: number[] };
-}
-
-/** Dommen pr. test: opslag uden visninger tæller ikke med (kan ikke regnes pr. 1000). */
-export function abBoard(tests: RefDto[], measures: MeasureDto[]): AbBoardItem[] {
-  return tests.map((test) => {
-    const mine = measures.filter((m) => m.abId === test.id);
-    const pick = (arm: string) => mine.filter((m) => m.arm === arm).map(savesSharesPer1000).filter((x): x is number => x != null);
-    const values = { A: pick("A"), B: pick("B") };
-    return { test, values, call: abVerdict(values.A, values.B) };
-  });
 }
 
 // ---------------------------------------------------------------- manuel måling

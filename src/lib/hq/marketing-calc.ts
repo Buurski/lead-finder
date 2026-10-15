@@ -1,6 +1,8 @@
 // marketing-calc.ts — ren regning til /marketing (ingen db, ingen server-only, så
 // klienten må importere den). To ting: A/B-dommen og tragten.
 
+import type { MeasureDto, RefDto } from "./marketing-types.ts";
+
 // ---------------------------------------------------------------- A/B-dom
 
 export type AbVerdict = "for-tidligt" | "ingen-afgoerelse" | "signal" | "skaer";
@@ -159,3 +161,23 @@ export function weekGrid(from: string, weeks: number): string[][] {
     }),
   );
 }
+
+// ---------------------------------------------------------------- dom pr. test
+
+export interface AbBoardItem {
+  test: RefDto;
+  call: AbCall;
+  /** Tal pr. opslag pr. arm (gem + delinger pr. 1000), til visning. */
+  values: { A: number[]; B: number[] };
+}
+
+/** Dommen pr. test: opslag uden visninger tæller ikke med (kan ikke regnes pr. 1000). */
+export function abBoard(tests: RefDto[], measures: MeasureDto[]): AbBoardItem[] {
+  return tests.map((test) => {
+    const mine = measures.filter((m) => m.abId === test.id);
+    const pick = (arm: string) => mine.filter((m) => m.arm === arm).map(savesSharesPer1000).filter((x): x is number => x != null);
+    const values = { A: pick("A"), B: pick("B") };
+    return { test, values, call: abVerdict(values.A, values.B) };
+  });
+}
+
