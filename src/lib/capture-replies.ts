@@ -5,7 +5,7 @@ import { ImapFlow } from "imapflow";
 import { getDb, type Db } from "./db/client.ts";
 import { getActiveSenders } from "./senders.ts";
 import { parseReply } from "./hq/reply-parse.ts";
-import { existingMessageIds, expireOldSnippets, isMissingTable, replyCandidates, safeError, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
+import { existingMessageIds, expireOldSnippets, fillMissingFromEmail, isMissingTable, replyCandidates, safeError, saveLeadReplies, type NewLeadReply } from "./hq/lead-replies.ts";
 
 const CONNECT_TIMEOUT_MS = 15_000;
 const SOCKET_TIMEOUT_MS = 30_000;
@@ -49,9 +49,11 @@ export async function saveCaptured(db: Db, raws: RawReply[], byEmail: Map<string
     if (!companyId) continue;
     const p = parseReply(r.source, r.subject);
     byCategory[p.category] = (byCategory[p.category] ?? 0) + 1;
-    rows.push({ companyId, account: r.account, messageId: r.messageId, threadId: r.threadId, receivedAt: r.receivedAt, subject: r.subject.slice(0, 300), snippet: p.snippet, category: p.category, asksCall: p.asksCall });
+    rows.push({ companyId, account: r.account, messageId: r.messageId, threadId: r.threadId, fromEmail: r.from, receivedAt: r.receivedAt, subject: r.subject.slice(0, 300), snippet: p.snippet, category: p.category, asksCall: p.asksCall });
   }
   const inserted = opts.dryRun ? 0 : await saveLeadReplies(db, rows);
+  // Ældre rækker (gemt før from_email fandtes) får afsenderen ved næste scan, hvor mailen igen ses.
+  if (!opts.dryRun) await fillMissingFromEmail(db, [...unique.values()].filter((r) => known.has(r.messageId) && byEmail.has(r.from)).map((r) => ({ messageId: r.messageId, fromEmail: r.from })));
   return {
     matched: unique.size,
     existing: known.size,

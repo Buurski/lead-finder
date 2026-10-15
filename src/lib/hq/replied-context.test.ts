@@ -31,7 +31,7 @@ test("kontekst: nyeste svar vælges, bucket sættes, 'vi skrev' og mærker komme
   const c = await seed();
   await db.insert(leadReply).values([
     reply(c.A.id, { receivedAt: ago(40), snippet: "gammelt", category: "other" }),
-    reply(c.A.id, {}),
+    reply(c.A.id, { fromEmail: "svarer@a.dk" }),
     reply(c.B.id, { category: "not-interested", snippet: "Nej tak." }),
     reply(c.C.id, { receivedAt: ago(90) }),
   ]);
@@ -41,6 +41,7 @@ test("kontekst: nyeste svar vælges, bucket sættes, 'vi skrev' og mærker komme
   assert.equal(captureReady, true);
   const by = Object.fromEntries(leads.map((l) => [l.name[0], l]));
   assert.equal(by.A.reply?.snippet, "Hvad koster det?");
+  assert.equal(by.A.reply?.fromEmail, "svarer@a.dk");
   assert.equal(by.A.bucket, "skriv");
   assert.equal(by.A.mailsSent, 1);
   assert.equal(by.A.calledNoLog, true);

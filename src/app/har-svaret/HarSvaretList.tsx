@@ -25,7 +25,8 @@ export interface HarSvaretRow {
   replyLag: string; // "1 d efter vores mail"
   replyCategory: string; // "Spørgsmål"
   replySubject: string;
-  replyAccount: string; // "lucas" | "charlie"
+  replyAccount: string; // "lucas" | "charlie" | "gammel"
+  replyFrom: string; // adressen svaret kom fra; "" = ældre række
   snippet: string; // "" = ingen tekst
   phoneInReply: string; // nummer fra svaret hvis de bad om opkald
   weSent: string;
@@ -70,8 +71,9 @@ function Actions({ row, me }: { row: HarSvaretRow; me: "lucas" | "charlie" }) {
   // Luk = det eksisterende udfald "ikke interesseret": lead-status, stop af kolde kladder, tidslinje. Intet sendes.
   const close = () => run("Lukket", () => post(`/api/replies/${row.rowNo}/udfald`, { outcome: "ikke-interesseret", note: "Lukket fra Har svaret", owner: me }));
 
-  const gmail = row.email ? <a href={gmailRepliesUrl(row.email, row.replyAccount || row.owner, me)} title={row.replyAccount === OLD_MAILBOX ? "Svaret ligger i den gamle postkasse" : undefined} target="_blank" rel="noopener noreferrer" className={row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk" ? "cc-btn cc-btn-accent" : "cc-btn"}>Åbn i Gmail</a> : null;
-  const write = row.email ? <a href={`mailto:${row.email}${reSubject(row.replySubject)}`} className={row.bucket === "skriv" ? "cc-btn cc-btn-accent" : "cc-btn"}>Skriv tilbage</a> : null;
+  const to = row.replyFrom || row.email; // svar-adressen vinder over virksomhedens hovedadresse
+  const gmail = to ? <a href={gmailRepliesUrl(to, row.replyAccount || row.owner, me)} title={row.replyAccount === OLD_MAILBOX ? "Svaret ligger i den gamle postkasse" : undefined} target="_blank" rel="noopener noreferrer" className={row.bucket === "tjek" || row.bucket === "gammel" || row.bucket === "luk" ? "cc-btn cc-btn-accent" : "cc-btn"}>Åbn i Gmail</a> : null;
+  const write = to ? <a href={`mailto:${to}${reSubject(row.replySubject)}`} className={row.bucket === "skriv" ? "cc-btn cc-btn-accent" : "cc-btn"}>Skriv tilbage</a> : null;
   const callNumber = row.phoneInReply || row.phone;
   const call = callNumber ? <a href={telHref(callNumber)} className={row.bucket === "ring" ? "cc-btn cc-btn-accent" : "cc-btn"}>Ring{row.phoneInReply ? ` ${row.phoneInReply}` : ""}</a> : null;
   const closed = row.bucket === "luk"; // nej: ingen Ring, ingen Mail igen — kun Luk og Gmail

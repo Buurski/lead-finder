@@ -61,6 +61,8 @@ export interface RepliedLeadReply {
   category: string;
   asksCall: boolean;
   subject: string;
+  /** Adressen svaret kom fra; null = ældre række (så bruges virksomhedens adresse). */
+  fromEmail: string | null;
   /** null efter opbevaringsfristen (180 dage) */
   snippet: string | null;
 }
@@ -100,7 +102,7 @@ export async function listRepliedLeadsWithContext(db: Db, now: Date = new Date()
     const replies = await db.select().from(leadReply).where(inArray(leadReply.companyId, ids)).orderBy(leadReply.companyId, desc(leadReply.receivedAt));
     for (const r of replies) {
       if (latest.has(r.companyId)) continue; // sorteret nyeste først pr. virksomhed
-      latest.set(r.companyId, { receivedAt: r.receivedAt.toISOString(), account: r.account, category: r.category, asksCall: r.asksCall, subject: r.subject, snippet: r.snippet });
+      latest.set(r.companyId, { receivedAt: r.receivedAt.toISOString(), account: r.account, category: r.category, asksCall: r.asksCall, subject: r.subject, fromEmail: r.fromEmail, snippet: r.snippet });
     }
   } catch (err) {
     if (!isMissingTable(err)) throw err;
