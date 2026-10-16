@@ -19,8 +19,8 @@ const FELTER = [
 ] as const;
 const tekster = (a: Annonce) => [a.overskrift, a.primaer_tekst, a.beskrivelse, a.still_tekst];
 
-test("annoncer.json: 10 til 14 stills, og hver har alle felter med den rigtige type", () => {
-  assert.ok(rows.length >= 10 && rows.length <= 14, `antal: ${rows.length}`);
+test("annoncer.json: 8 til 14 stills, og hver har alle felter med den rigtige type", () => {
+  assert.ok(rows.length >= 8 && rows.length <= 14, `antal: ${rows.length}`);
   assert.equal(new Set(rows.map((r) => r.id)).size, rows.length, "id skal være unikke");
   for (const r of rows) {
     for (const f of FELTER) assert.ok(f in r, `${r.id}: mangler ${f}`);
@@ -75,9 +75,11 @@ test("annoncer.json: kilder med fil:linje, og kunde-ja er falsk for alle", () =>
   }
 });
 
-test("annoncer.json: begge formater pr. motiv, ens tekst, og billederne findes i den rigtige størrelse", () => {
+test("annoncer.json: 4:5 pr. motiv (GPT-annoncer kun 4:5, Metas feed-format), ens tekst, og billederne findes i den rigtige størrelse", () => {
   for (const m of motiver(rows)) {
-    assert.deepEqual(m.formater.map((f) => f.format).sort(), ["1080x1080", "1080x1350"], `${m.slug}: begge formater`);
+    const formater = m.formater.map((f) => f.format).sort();
+    const gpt = rows.find((x) => x.slug === m.slug)!.skabelon === "gpt";
+    assert.deepEqual(formater, gpt ? ["1080x1350"] : ["1080x1080", "1080x1350"], `${m.slug}: formater`);
     for (const r of rows.filter((x) => x.slug === m.slug)) {
       assert.equal(r.overskrift, m.tekst.overskrift);
       assert.equal(r.primaer_tekst, m.tekst.primaer_tekst);
@@ -125,8 +127,11 @@ test("foldBeslutninger: sidste række pr. motiv vinder, og ugyldige rækker spri
 test("godkend og drop gemmes i store, nulstilles, og afviser ukendt motiv og status", async () => {
   __setStore(new InMemoryStore());
   try {
-    const slug = loadAnnoncer()[0].slug;
+    const slug = loadAnnoncer().find((a) => a.kunde === null)!.slug;
+    const kundeSlug = loadAnnoncer().find((a) => venterPaaKunde(a))!.slug;
     assert.deepEqual(await listBeslutninger(), {});
+    await assert.rejects(() => setBeslutning(kundeSlug, "godkendt", "lucas"), /KRÆVER KUNDE-OK/);
+    assert.equal((await setBeslutning(kundeSlug, "droppet", "lucas"))[kundeSlug].status, "droppet");
     let r = await setBeslutning(slug, "godkendt", "lucas");
     assert.equal(r[slug].status, "godkendt");
     r = await setBeslutning(slug, "droppet", "charlie");

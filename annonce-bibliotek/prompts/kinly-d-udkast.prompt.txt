@@ -1,0 +1,41 @@
+Use case: ads-marketing.
+Create ONE finished premium Facebook / Instagram feed ad for Kinly, a two-person web studio in Herning, Denmark. Portrait 4:5, 1080 x 1350 pixels (or closest supported true 4:5 size). Return one single finished image, not a collage of alternatives. This is ad D: see the site before choosing us.
+
+Reference roles: attached Image 1 (ref-booksy.png) is STRUCTURE and advertising polish reference only: very large top headline, bold clean background, photographic devices, soft layered shadows, floating chip, pill CTA. Image 2 (ref-kinly-enheder.png) is device photography and calm premium warm shadow reference only. Image 3 (ref-font-spacegrotesk.png) is precise TYPOGRAPHY reference: use Space Grotesk throughout every line of text, geometric grotesk, exactly match glyph construction and flat hooked y descender. Do not copy any website content or any other text from references.
+
+ART DIRECTION:
+Flat warm-white background exactly #FAF6EF. Premium Danish agency design, calm, spacious, crisply typeset, commercial product photography. One soft studio light source from upper left. Physically realistic silver Apple hardware; no illustration or cartoon. No logo anywhere, no watermark, no device wordmarks, no extra decorative objects.
+
+TYPE AND COPY, ONLY THESE FIVE TEXT STRINGS:
+Top-left margin approximately 64 px. Very large Space Grotesk Medium headline, left aligned, approximately 96 px, exactly TWO lines:
+Line 1, dark #191713: "Se jeres side,"
+Line 2, ember #D4500F: "før I vælger os."
+Use full Danish characters exactly, including ø and æ. Comfortable line spacing, clean margins, preserve the specified two-line break. Make headline unmistakably dominant.
+Below headline, Space Grotesk Regular approximately 36 px, #55504A, single line:
+"I ser et rigtigt udkast, før I siger ja."
+Below subtitle, pill button filled #191713 with warm white #FAF6EF Space Grotesk approximately 32 px text:
+"Se jeres udkast"
+CTA is sized comfortably to its wording, around x64 y390, 330-360 px wide and 74-82 px tall. Keep plenty of clear separation from devices.
+One floating WHITE rounded chip near the phone, with a small ember check mark, Space Grotesk dark #191713 text:
+"Fra 3.997 kr. ekskl. moms"
+Do not add quotes around text. No other text.
+
+LOWER 55% DEVICE COMPOSITION:
+Silver Apple MacBook Pro 14-inch, open, slight restrained perspective turned a little to the right. Correct contemporary aluminium chassis, clean keyboard and trackpad, thin black display bezel with central black notch. All FOUR screen corners must remain visible. Screen's native aspect ratio exactly 1512:982, with only modest perspective. Approximate laptop position: display from x350-1020, y640-1080, with base extending toward y1180. Keep entire device inside canvas. Aim for calm natural catalogue photography, not exaggerated 3D perspective.
+Silver Apple iPhone 17 Pro standing IN FRONT of the laptop's left corner, at approximately x90-335, y670-1200. Correct physical proportions, slim even black bezels, Dynamic Island, photographic metal edge highlights and side buttons. Phone is perfectly FLAT to camera: no yaw, no pitch, no 3D turn, no in-plane rotation. All phone screen corners visible. Exact phone screen width:height ratio 402:874. Approximately 229 x 498 px visible screen within around 245 x 530 px hardware. Phone overlaps ONLY a small part of laptop's left bezel or chassis, never hides any laptop display corner or significant green screen. Adjust positions to satisfy those invariants.
+Warm soft layered floor shadows, tinted by warm background rather than flat gray. Real contact shadows under device contact points. Soft upper-left lighting on hardware only.
+
+EXTREMELY IMPORTANT CHROMA KEY SCREENS:
+These screens will receive real screenshots after generation. Treat their interiors as exact clean digital chroma plates, entirely independent from all photographic lighting.
+MacBook screen: solid pure bright green #00FF00, flat and uniform, edge to edge inside the black display bezel. Only the black physical notch interrupts green.
+iPhone screen: solid pure magenta #FF00FF, flat and uniform, edge to edge inside black display bezel. Only the black Dynamic Island interrupts magenta.
+Absolutely NO UI, status bar, icons, time, websites, text, reflections, glare, highlights, texture, gradients, color variations, shading, cast shadow, or light falloff on EITHER screen. Every interior screen pixel is its exact pure key color, apart from black notch or Dynamic Island. Photorealistic lighting belongs to metal and bezels, never the chroma fills.
+
+CHIP PLACEMENT:
+Floating white price chip near phone, ideally above or to its left in available clear space. Soft warm layered shadow. No UI chip may overlap any device bezel by more than 40 px, or cover more than a tiny sliver of either screen. Prefer chip entirely clear of both screens; place it around x65-510, y565-630, just above devices. Price text stays on ONE line.
+
+LOGO CLEAR AREA:
+Keep bottom-right rectangle x780-1020, y1240-1310 perfectly empty warm-white #FAF6EF. No logo, type, hardware, chips, or shadows in this area. Leave sufficient bottom breathing room.
+
+FINAL QUALITY CHECK:
+Exact five copy strings and Danish spelling. Space Grotesk all text. 4:5 portrait. Very large two-line headline. One dark pill CTA. One white price chip with ember check. One MacBook, one front-facing iPhone. Correct screen proportions; four laptop display corners exposed. Two perfectly uniform pure key-color screens. Premium photographic hardware and warm subtle shadows. No additional copy or branding.

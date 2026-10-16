@@ -1,0 +1,50 @@
+Generated with built-in image_gen. Initial generation prompt followed by final targeted edit prompt.
+
+Use case: ads-marketing.
+Create ONE finished, premium Facebook/Instagram feed advertisement for Kinly, a two-person Danish web studio. Portrait 4:5 canvas, target 1080 x 1350 pixels (or exact 4:5 supported resolution). Produce the actual finished raster ad, not a design board or a photo of an ad.
+
+STYLE REFERENCES in conversation:
+Image 1 ref-booksy.png is a style/composition reference ONLY: confident solid color blocks, very large headline, polished photographic device cutouts, floating pill labels and realistic soft layered shadows.
+Image 2 ref-kinly-enheder.png is a device presentation reference ONLY: calm premium photographic Apple hardware, slight angle, realistic metal and soft floor/contact shadows. Do NOT copy any website content.
+Image 3 ref-font-spacegrotesk.png is the typography reference. All type must match Space Grotesk, including its distinctive flat hooked y descender. Headline Medium weight; caption Regular. Geometric grotesk letterforms precisely, with correct Danish æ and ø.
+
+EXACT LAYOUT using coordinates on a 1080 x 1350 canvas, scale proportionally if necessary:
+Full width warm white #FAF6EF top band from y=0 to y=405, about 30% canvas height. Clean flat solid fill.
+Headline left aligned at x=64, starting around y=70, extremely large approximately 100-105px Space Grotesk Medium, comfortable precise spacing, fitting fully within canvas, exactly TWO lines:
+Line 1 in deep ink #191713: "Samme værksted."
+Line 2 in ember #D4500F: "Ny hjemmeside."
+These are literal Danish words, every character and period exact. Do not split either line, do not add any other headline.
+
+Below y=405, split remaining canvas exactly down its vertical middle at x=540:
+Left half x=0..539: solid soft warm grey #E7E2DA.
+Right half x=540..1080: solid deep ink #191713.
+Hard clean color division. Backgrounds flat with only natural device shadows.
+
+LEFT DEVICE:
+One photorealistic current Apple iPhone 17 Pro, black titanium finish. Standing upright on its bottom edge, front facing, rotated about 4 degrees counterclockwise within image plane (leans left). Correct real Apple phone proportions, thin even black bezels, accurate pill-shaped black Dynamic Island at top inside display, real dark metallic edge highlights and visible precise side buttons, beautiful product photography. Phone centered around x=265, approximate height 600px and width 285px excluding tilt, its bottom contact point near y=1195. Entire phone visible.
+ABOVE left phone, small white floating pill, subtle warm shadow, text exactly "Før" in #191713 Space Grotesk Medium.
+LEFT SCREEN: entire rounded display area inside black bezel, edge to edge, MUST BE PERFECTLY UNIFORM PURE GREEN #00FF00 (RGB 0,255,0). A flat solid chroma key insert, no variation anywhere. Only black Dynamic Island sits above green. NO interface, NO status bar, NO clock, NO icons, NO home indicator, NO screenshot, NO reflection, NO glare, NO gradient, NO texture, NO shadow over green screen.
+
+RIGHT DEVICE:
+One photorealistic current Apple iPhone 17 Pro, silver finish. Standing upright on bottom edge, front facing, rotated about 4 degrees clockwise within image plane (leans right). Same correct hardware design as left, thin even black bezels, black Dynamic Island, refined real metal edge highlights and correct side buttons. About 12% larger than left phone in both dimensions: approximate height 672px, width 319px excluding tilt, centered around x=810, bottom contact point near y=1195. Entire phone visible.
+ABOVE right phone, small ember #D4500F floating pill, subtle shadow, text exactly "Efter" in warm white #FAF6EF Space Grotesk Medium.
+RIGHT SCREEN: entire rounded display area inside black bezel, edge to edge, MUST BE PERFECTLY UNIFORM PURE MAGENTA #FF00FF (RGB 255,0,255). A flat solid chroma key insert, no variation anywhere. Only black Dynamic Island sits above magenta. NO interface, NO status bar, NO clock, NO icons, NO home indicator, NO screenshot, NO reflection, NO glare, NO gradient, NO texture, NO shadow over magenta screen.
+
+CONNECTING ELEMENT:
+A slender ember #D4500F arrow pointing horizontally from left phone toward right phone, crossing center split, visible in gap between devices around y=850. Restrained premium line and small arrowhead, no text.
+
+SHADOWS / LIGHT:
+One soft studio light from top left. Soft layered photorealistic shadows behind/below devices; contact shadow where bottom edge touches implied surface. Left shadows warm and taupe tinted with #E7E2DA background, right shadows deep warm ink tinted, never flat neutral grey. Real metal reflections allowed ONLY on hardware edges, never anywhere inside either key color screen. Photographic hardware, not illustration, not 3D cartoon. Smooth flat background, no decorative textures.
+
+FOOTER:
+Bottom right, within right ink half, small readable Space Grotesk Regular warm white #FAF6EF caption exactly "Ikast AutoService, Ikast", near x=600..1016, y=1270.
+Keep bottom left rectangle x=60..300, y=1240..1310 completely empty and clean warm grey for a real logo to be inserted later. No printed logo placeholder.
+
+TEXT WHITELIST (only these five strings may appear):
+"Samme værksted."
+"Ny hjemmeside."
+"Før"
+"Efter"
+"Ikast AutoService, Ikast"
+
+No logo, no Apple wordmarks or visible brand marks, no watermark, no CTA text, no additional copy. Only TWO phones, no laptop for this specific Ad B. Polished finished agency-quality composition, large confident type, clean device silhouette, precise Danish spelling, excellent spacing. Make the screen key fields perfectly pure and flat; these will receive real website screenshots later.

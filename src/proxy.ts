@@ -38,7 +38,8 @@ export const config = {
   // fremtidig api/agent/*-rute SKAL selv kalde verifyHermesRequest.
   // api/kalender/ er undtaget (Google henter ICS uden login) — ruten svarer 404
   // uden gyldigt pr.-bruger-token.
-  matcher: ["/((?!_next/|api/health|api/cron/|api/kalender/|api/hermes/status|api/hermes/crm-dossier$|api/agent/|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|api/auth/password$|api/auth/setup$|studio/demo-site/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
+  // Billeder er undtaget, UNDTAGEN annoncer/: annonce-kladder med kundeskærme må ikke kunne hentes uden login før kundens ja.
+  matcher: ["/((?!_next/|api/health|api/cron/|api/kalender/|api/hermes/status|api/hermes/crm-dossier$|api/agent/|seo-tjek$|seo-tjek/rapport/|api/seo-tjek/unsubscribe|login$|api/auth/magic$|api/auth/verify$|api/auth/password$|api/auth/setup$|studio/demo-site/|favicon.ico|(?!annoncer/).*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?)$).*)"],
 };
 
 

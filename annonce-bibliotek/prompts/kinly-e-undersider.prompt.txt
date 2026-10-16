@@ -1,0 +1,26 @@
+Use case: ads-marketing. Create ONE finished premium Facebook/Instagram feed ad for Kinly, a two-person Danish web studio. Portrait 4:5, target 1080x1350 pixels (or closest native 4:5). Single full-bleed ad, no mockup of an ad, no surrounding border. Follow the supplied references' polished Meta ad structure: huge headline above beautifully photographed Apple phones, floating white pill labels, sophisticated soft shadows. Calm premium Kinly aesthetic. The three provided references guide polish, hardware realism, and exact Space Grotesk typography.
+
+COMPOSITION, coordinates relative to 1080x1350:
+Flat deep ink background #191713. Behind phones only, an extremely subtle broad warm ember #D4500F light pool, smooth with no banding. Empty dark bottom-left rectangle x60–300,y1240–1310 reserved for later logo placement; no mark or objects there.
+
+TOP TYPOGRAPHY: All text everywhere is Space Grotesk, exactly like the font reference, geometric grotesk with a flat hooked y descender. At x64,y60, left aligned, tight leading, Space Grotesk Medium, very large off-white #FAF6EF. Two dominant lines about 120px:
+Én side
+pr. ydelse.
+A third SINGLE line below, about 60% of headline size, ember #D4500F:
+Klar til Google fra dag ét.
+Fit this third line across available width without splitting it. Preserve Danish accents exactly: É, æ, å, ø, é. Typography is sharp, intentional and professionally typeset.
+
+LOWER 60%: Exactly THREE silver iPhone 17 Pro phones in a fan arrangement, standing upright side by side. Clean photographic current Apple hardware: realistic silver metal rim highlights and side buttons, thin even black bezels, correct black horizontal pill Dynamic Island. Every phone FACE IS PARALLEL TO THE CAMERA, zero yaw or pitch, zero 3D turn or foreshortening. Only in-plane rotation: LEFT -9 degrees, MIDDLE 0 degrees, RIGHT +9 degrees. Each screen's unrotated width:height is EXACTLY 402:874. Middle phone 8% bigger and in front. Adjacent phones overlap about 25% of their width. Preserve recognizably slender phone proportions. Arrange within approximately x85–1000 and y535–1215, bottom ends fully visible, floor shadow beneath. Middle screen dominates; side screen's outer edges remain visible. Light source top left. Soft layered warm ink/ember-tinted shadows between hardware and on floor; never flat grey.
+
+CRITICAL CHROMA SCREENS, for later screenshot replacement: each screen is perfectly FLAT, UNIFORM, PURE SATURATED COLOR, clean edge to edge inside black bezel, with no UI or status bar, no glare, no reflection, no gradient, no texture, no brightness variation and NO cast shadow on the visible colored screen. Left screen exact RGB(0,255,0) #00FF00 green. Middle screen exact RGB(255,0,255) #FF00FF magenta. Right screen exact RGB(0,255,255) #00FFFF cyan. The black Dynamic Island is the only feature on each colored screen. Photorealistic highlights belong ONLY on silver hardware, not screens. Screens must stay straight-sided, with natural corner radii.
+
+LABELS: Exactly three small horizontal white #FFFFFF pill labels, dark #191713 Space Grotesk text and soft warm shadow. Each floating in the open gap ABOVE its corresponding phone. Place left label above left phone, center label above middle phone, right label above right phone. Separate labels, perfectly legible, may overlap bezel by maximum 40px, never cover more than a sliver of any screen. Label texts, one per phone:
+Left: Dæk
+Middle: Tesla-værksted
+Right: Lånebil
+No separators printed between pills.
+
+BOTTOM RIGHT: Small Space Grotesk Regular, off-white #FAF6EF at 70% opacity, right aligned, one line:
+Ikast AutoService, kodet af Kinly
+
+ONLY the seven supplied text elements above may appear. No logo, watermark, CTA copy, website address, additional text, icons, MacBook, people, workshop scenery or other objects. Finished professional agency art direction, photographic devices, no illustration or cartoon. Prioritize correct screen geometry, exact pure flat screen fills and exact Danish text.

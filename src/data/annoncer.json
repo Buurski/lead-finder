@@ -1,61 +1,14 @@
 [
   {
-    "id": "demo-forst-ikast-1080x1080",
-    "slug": "demo-forst-ikast",
-    "format": "1080x1080",
-    "billede": "/annoncer/demo-forst-ikast-1080x1080.png",
-    "overskrift": "Se din nye forside før du betaler",
-    "primaer_tekst": "Du får en gratis demo af din nye hjemmeside, før du betaler. Kodet fra bunden af Lucas i Herning.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Få tilbud",
-    "still_tekst": "Eksempel fra Kinly Ikast Se din nye forside før du betaler ikastautoservice.dk Eksempel på en færdig side: ikastautoservice.dk, skærmbillede 16. oktober 2026 Gratis demo før betaling Kodet fra bunden Du ejer den 100 %",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
-        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/AGENTS.md:25",
-        "fakta": "Lucas Buur, 20, Herning, solo web-freelancer"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-desktop.png (live ikastautoservice.dk, 16/10-2026)"
-    ],
-    "kunde": "Ikast AutoService",
-    "kunde_ja": false,
-    "skabelon": "desktop",
-    "test_celle": "K6",
-    "koncept": "Se forsiden før du betaler",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live.",
-      "Billedteksten siger 'Eksempel', så stillen ikke ligner kundens egen demo."
-    ]
-  },
-  {
-    "id": "demo-forst-ikast-1080x1350",
-    "slug": "demo-forst-ikast",
+    "id": "gpt-haand-kinly-1080x1350",
+    "slug": "gpt-haand-kinly",
     "format": "1080x1350",
-    "billede": "/annoncer/demo-forst-ikast-1080x1350.png",
-    "overskrift": "Se din nye forside før du betaler",
-    "primaer_tekst": "Du får en gratis demo af din nye hjemmeside, før du betaler. Kodet fra bunden af Lucas i Herning.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
+    "billede": "/annoncer/gpt-haand-kinly-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
     "cta": "Få tilbud",
-    "still_tekst": "Eksempel fra Kinly Ikast Se din nye forside før du betaler ikastautoservice.dk Eksempel på en færdig side: ikastautoservice.dk, skærmbillede 16. oktober 2026 Gratis demo før betaling Kodet fra bunden Du ejer den 100 %",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
     "kilde_fakta": [
       {
         "fil": "KnowledgeOS/context/priser.md:21",
@@ -68,123 +21,76 @@
       {
         "fil": "KnowledgeOS/context/priser.md:25",
         "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
-        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/AGENTS.md:25",
-        "fakta": "Lucas Buur, 20, Herning, solo web-freelancer"
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-desktop.png (live ikastautoservice.dk, 16/10-2026)"
+      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (live kinly.dk forside)"
     ],
-    "kunde": "Ikast AutoService",
+    "kunde": null,
     "kunde_ja": false,
-    "skabelon": "desktop",
-    "test_celle": "K6",
-    "koncept": "Se forsiden før du betaler",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
     "anbefalet_start": true,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live.",
-      "Billedteksten siger 'Eksempel', så stillen ikke ligner kundens egen demo."
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
+      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
-    "id": "ikast-foer-efter-1080x1080",
-    "slug": "ikast-foer-efter",
-    "format": "1080x1080",
-    "billede": "/annoncer/ikast-foer-efter-1080x1080.png",
-    "overskrift": "Før og efter. Samme værksted.",
-    "primaer_tekst": "Ikast AutoService før og efter. Samme værksted, ny hjemmeside fra Kinly. Kunden ejer den 100 %.",
-    "beskrivelse": "Få en gratis demo, før du betaler.",
+    "id": "gpt-foer-efter-ikast-1080x1350",
+    "slug": "gpt-foer-efter-ikast",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-foer-efter-ikast-1080x1350.png",
+    "overskrift": "Samme værksted. Ny hjemmeside.",
+    "primaer_tekst": "Ikast AutoService fik en ny hjemmeside, kodet fra bunden, med en side pr. ydelse og fast pris. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Kodet af Kinly i Herning.",
     "cta": "Få tilbud",
-    "still_tekst": "Kinly · Ikast AutoService Før og efter. Samme værksted. Ny hjemmeside, kodet fra bunden. Kunden ejer den 100 %. Før: det gamle site. Efter: ikastautoservice.dk, skærmbilleder af mobilvisning, 16. oktober 2026.",
+    "still_tekst": "Samme værksted. Ny hjemmeside. Før Efter Ikast AutoService, Ikast",
     "kilde_fakta": [
       {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
-        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
       },
       {
         "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:72",
         "fakta": "autoservice.nu er det gamle site og navn, stadig online"
       },
       {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/ikast-gammel-mobil.webp (Kinlys eget case-billede: kinly-site/public/img/cases/ikast-autoservice-foer-mobil.webp)",
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)"
-    ],
-    "kunde": "Ikast AutoService",
-    "kunde_ja": false,
-    "skabelon": "foerEfter",
-    "test_celle": "K2",
-    "koncept": "Før og efter",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live.",
-      "Før-billedet viser autoservice.nu, den gamle platform (logo synligt). Det er Kinlys eget case-billede, men tjek at I er trygge ved at vise det i en annonce.",
-      "Ingen hastighedstal i stillen: de er ikke målt. Mål PageSpeed før og efter, hvis der skal tal på."
-    ]
-  },
-  {
-    "id": "ikast-foer-efter-1080x1350",
-    "slug": "ikast-foer-efter",
-    "format": "1080x1350",
-    "billede": "/annoncer/ikast-foer-efter-1080x1350.png",
-    "overskrift": "Før og efter. Samme værksted.",
-    "primaer_tekst": "Ikast AutoService før og efter. Samme værksted, ny hjemmeside fra Kinly. Kunden ejer den 100 %.",
-    "beskrivelse": "Få en gratis demo, før du betaler.",
-    "cta": "Få tilbud",
-    "still_tekst": "Kinly · Ikast AutoService Før og efter. Samme værksted. Ny hjemmeside, kodet fra bunden. Kunden ejer den 100 %. Før: det gamle site. Efter: ikastautoservice.dk, skærmbilleder af mobilvisning, 16. oktober 2026.",
-    "kilde_fakta": [
-      {
         "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
         "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:72",
-        "fakta": "autoservice.nu er det gamle site og navn, stadig online"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/ikast-gammel-mobil.webp (Kinlys eget case-billede: kinly-site/public/img/cases/ikast-autoservice-foer-mobil.webp)",
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)"
+      "public/annoncer/kilde/skaerm-ikast-gammel.png (autoservice.nu) + skaerm-ikast-side-daek.png (live ikastautoservice.dk/service/daek/)"
     ],
     "kunde": "Ikast AutoService",
     "kunde_ja": false,
-    "skabelon": "foerEfter",
-    "test_celle": "K2",
+    "skabelon": "gpt",
+    "test_celle": "K5",
     "koncept": "Før og efter",
-    "anbefalet_start": true,
+    "anbefalet_start": false,
     "advarsler": [
       "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live.",
-      "Før-billedet viser autoservice.nu, den gamle platform (logo synligt). Det er Kinlys eget case-billede, men tjek at I er trygge ved at vise det i en annonce.",
-      "Ingen hastighedstal i stillen: de er ikke målt. Mål PageSpeed før og efter, hvis der skal tal på."
+      "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
+      "Før-skærmen viser det gamle site autoservice.nu, som stadig er online.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   },
   {
-    "id": "pris-3997-1080x1080",
-    "slug": "pris-3997",
-    "format": "1080x1080",
-    "billede": "/annoncer/pris-3997-1080x1080.png",
-    "overskrift": "Ny hjemmeside fra 3.997 kr. ekskl. moms",
-    "primaer_tekst": "Kodet fra bunden, ikke en skabelon. Du ejer den 100 %, og du ser en gratis demo, før du betaler.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
+    "id": "gpt-haand-ikast-1080x1350",
+    "slug": "gpt-haand-ikast",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-ikast-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
     "cta": "Få tilbud",
-    "still_tekst": "Ny hjemmeside fra 3.997 kr. ekskl. moms Du ejer den. Kodet fra bunden, ikke en skabelon.",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
     "kilde_fakta": [
       {
         "fil": "KnowledgeOS/context/priser.md:21",
@@ -201,39 +107,33 @@
       {
         "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
         "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/wiki/kunder/vida-klinik.md:57",
-        "fakta": "VIDA-siden er bygget, deployet og forsiden godkendt af Lene"
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)",
-      "public/annoncer/kilde/vida-live-phone.png (live vida-klinik.dk, 16/10-2026)",
-      "public/annoncer/kilde/ikast-live-phone-ydelser.png (live ikastautoservice.dk, 16/10-2026)"
+      "public/annoncer/kilde/skaerm-ikast-lang-daek.png (live ikastautoservice.dk/service/daek/)"
     ],
-    "kunde": "Ikast AutoService og VIDA",
+    "kunde": "Ikast AutoService",
     "kunde_ja": false,
-    "skabelon": "pris",
-    "test_celle": "K3",
-    "koncept": "Prisen på farve",
-    "anbefalet_start": true,
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": false,
     "advarsler": [
-      "Strimlen viser forsider fra Ikast AutoService og VIDA: begge skal sige ja (VIDA: Lene).",
-      "Kosmetisk klinik: markedsføringsregler er ikke tjekket (vault vida-klinik.md:111). Stillen viser kun VIDAs forside, ingen behandlinger.",
-      "Prisen er den ægte startpris fra kinly.dk. Vis den aldrig ved siden af Wix eller andre billige abonnementer (fakta.md:13)."
+      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   },
   {
-    "id": "pris-3997-1080x1350",
-    "slug": "pris-3997",
+    "id": "gpt-pris-kinly-1080x1350",
+    "slug": "gpt-pris-kinly",
     "format": "1080x1350",
-    "billede": "/annoncer/pris-3997-1080x1350.png",
-    "overskrift": "Ny hjemmeside fra 3.997 kr. ekskl. moms",
-    "primaer_tekst": "Kodet fra bunden, ikke en skabelon. Du ejer den 100 %, og du ser en gratis demo, før du betaler.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
+    "billede": "/annoncer/gpt-pris-kinly-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
     "cta": "Få tilbud",
-    "still_tekst": "Ny hjemmeside fra 3.997 kr. ekskl. moms Du ejer den. Kodet fra bunden, ikke en skabelon.",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
     "kilde_fakta": [
       {
         "fil": "KnowledgeOS/context/priser.md:21",
@@ -248,385 +148,232 @@
         "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
       },
       {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
-        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/wiki/kunder/vida-klinik.md:57",
-        "fakta": "VIDA-siden er bygget, deployet og forsiden godkendt af Lene"
+        "fil": "KnowledgeOS/context/priser.md:48",
+        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)",
-      "public/annoncer/kilde/vida-live-phone.png (live vida-klinik.dk, 16/10-2026)",
-      "public/annoncer/kilde/ikast-live-phone-ydelser.png (live ikastautoservice.dk, 16/10-2026)"
+      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"
     ],
-    "kunde": "Ikast AutoService og VIDA",
+    "kunde": null,
     "kunde_ja": false,
-    "skabelon": "pris",
-    "test_celle": "K3",
-    "koncept": "Prisen på farve",
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
     "anbefalet_start": true,
     "advarsler": [
-      "Strimlen viser forsider fra Ikast AutoService og VIDA: begge skal sige ja (VIDA: Lene).",
-      "Kosmetisk klinik: markedsføringsregler er ikke tjekket (vault vida-klinik.md:111). Stillen viser kun VIDAs forside, ingen behandlinger.",
-      "Prisen er den ægte startpris fra kinly.dk. Vis den aldrig ved siden af Wix eller andre billige abonnementer (fakta.md:13)."
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
+      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
-    "id": "noter-det-vi-ikke-goer-1080x1080",
-    "slug": "noter-det-vi-ikke-goer",
-    "format": "1080x1080",
-    "billede": "/annoncer/noter-det-vi-ikke-goer-1080x1080.png",
-    "overskrift": "Det vi ikke gør",
-    "primaer_tekst": "Ingen WordPress, ingen skabeloner, ingen binding på driften. Du ejer koden 100 %, og du får prisen på skrift først.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "16. okt. 2026 Det vi ikke gør WordPress Skabeloner Binding på driften Regning før du har godkendt siden Det du får Kodet fra bunden til dig Gratis demo før du betaler Du ejer koden 100 % Pris på skrift, før du siger ja Forside fra 3.997 kr. ekskl. moms.",
+    "id": "gpt-pris-ikast-1080x1350",
+    "slug": "gpt-pris-ikast",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-pris-ikast-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
     "kilde_fakta": [
       {
-        "fil": "KnowledgeOS/AGENTS.md:29",
-        "fakta": "Kodede hjemmesider, ikke WordPress, kunden ejer 100 %"
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
       },
       {
         "fil": "KnowledgeOS/context/priser.md:25",
         "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:47",
-        "fakta": "Ingen binding, kan opsiges når som helst, koden ejes 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:49",
-        "fakta": "Regningen kommer først, når siden er godkendt og klar"
       },
       {
         "fil": "KnowledgeOS/context/priser.md:48",
         "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
       },
       {
+        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
+        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"
+    ],
+    "kunde": "Ikast AutoService",
+    "kunde_ja": false,
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-udkast-kinly-1080x1350",
+    "slug": "gpt-udkast-kinly",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-udkast-kinly-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
+    "kilde_fakta": [
+      {
         "fil": "KnowledgeOS/context/priser.md:21",
         "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
       },
       {
         "fil": "KnowledgeOS/context/priser.md:46",
         "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:49",
+        "fakta": "Regningen kommer først, når siden er godkendt og klar"
       }
     ],
-    "billede_kilder": [],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"
+    ],
     "kunde": null,
     "kunde_ja": false,
-    "skabelon": "noter",
-    "test_celle": "K4",
-    "koncept": "Det vi ikke gør (noter-look)",
-    "anbefalet_start": false,
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": true,
     "advarsler": [
-      "Reserve-koncept: tages i brug, hvis et af de fem andre taber efter 7 til 10 dage.",
-      "'Binding på driften' gælder Hjemmesidepasset (priser.md:27 og :47). Ret teksten, hvis tilbuddet ændrer sig."
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
+      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
-    "id": "noter-det-vi-ikke-goer-1080x1350",
-    "slug": "noter-det-vi-ikke-goer",
+    "id": "gpt-udkast-ikast-1080x1350",
+    "slug": "gpt-udkast-ikast",
     "format": "1080x1350",
-    "billede": "/annoncer/noter-det-vi-ikke-goer-1080x1350.png",
-    "overskrift": "Det vi ikke gør",
-    "primaer_tekst": "Ingen WordPress, ingen skabeloner, ingen binding på driften. Du ejer koden 100 %, og du får prisen på skrift først.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "16. okt. 2026 Det vi ikke gør WordPress Skabeloner Binding på driften Regning før du har godkendt siden Det du får Kodet fra bunden til dig Gratis demo før du betaler Du ejer koden 100 % Pris på skrift, før du siger ja Forside fra 3.997 kr. ekskl. moms.",
+    "billede": "/annoncer/gpt-udkast-ikast-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
     "kilde_fakta": [
       {
-        "fil": "KnowledgeOS/AGENTS.md:29",
-        "fakta": "Kodede hjemmesider, ikke WordPress, kunden ejer 100 %"
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
       },
       {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:47",
-        "fakta": "Ingen binding, kan opsiges når som helst, koden ejes 100 %"
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
       },
       {
         "fil": "KnowledgeOS/context/priser.md:49",
         "fakta": "Regningen kommer først, når siden er godkendt og klar"
       },
       {
-        "fil": "KnowledgeOS/context/priser.md:48",
-        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
-      },
+        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
+        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"
+    ],
+    "kunde": "Ikast AutoService",
+    "kunde_ja": false,
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-undersider-kinly-1080x1350",
+    "slug": "gpt-undersider-kinly",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-undersider-kinly-1080x1350.png",
+    "overskrift": "Én side pr. ydelse",
+    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
+    "beskrivelse": "Forside + undersider, kodet fra bunden.",
+    "cta": "Få tilbud",
+    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Værksted Webbureau Vipper og bryn kinly.dk",
+    "kilde_fakta": [
       {
         "fil": "KnowledgeOS/context/priser.md:21",
         "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
       },
       {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
+        "fil": "KnowledgeOS/context/priser.md:22",
+        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Klar til Google og Maps fra dag ét"
       }
     ],
-    "billede_kilder": [],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png, -herning.png, -oejenvipper.png (live kinly.dk-undersider)"
+    ],
     "kunde": null,
     "kunde_ja": false,
-    "skabelon": "noter",
+    "skabelon": "gpt",
     "test_celle": "K4",
-    "koncept": "Det vi ikke gør (noter-look)",
-    "anbefalet_start": false,
-    "advarsler": [
-      "Reserve-koncept: tages i brug, hvis et af de fem andre taber efter 7 til 10 dage.",
-      "'Binding på driften' gælder Hjemmesidepasset (priser.md:27 og :47). Ret teksten, hvis tilbuddet ændrer sig."
-    ]
-  },
-  {
-    "id": "lucas-herning-1080x1080",
-    "slug": "lucas-herning",
-    "format": "1080x1080",
-    "billede": "/annoncer/lucas-herning-1080x1080.png",
-    "overskrift": "Bygget af Lucas, fra Herning",
-    "primaer_tekst": "Ikke et bureau med kontor og ansatte. Det er bare mig, til en fair pris. Du ejer 100 % af koden.",
-    "beskrivelse": "Gratis demo, før du betaler.",
-    "cta": "Send besked",
-    "still_tekst": "Kinly · Herning Bygget af Lucas, fra Herning Ikke et bureau med kontor og ansatte. Det er bare mig, til en fair pris. Kodet fra bunden Du ejer 100 % af koden Gratis demo før du betaler",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/AGENTS.md:25",
-        "fakta": "Lucas Buur, 20, Herning, solo web-freelancer"
-      },
-      {
-        "fil": "KnowledgeOS/context/brand-og-tone.md:18",
-        "fakta": "Kernebudskab: bare mig, til en fair pris, ikke et bureau med kontor og ansatte"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/lucas.jpg (kinly-site/public/img/team/lucasnew.jpg, Lucas' eget portræt)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "team",
-    "test_celle": "K5",
-    "koncept": "Personen bag",
+    "koncept": "Én side pr. ydelse",
     "anbefalet_start": true,
     "advarsler": [
-      "Charlie er ikke med. Skal han med på billedet eller i teksten, kræver det hans skriftlige ja først."
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
+      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
-    "id": "lucas-herning-1080x1350",
-    "slug": "lucas-herning",
+    "id": "gpt-undersider-ikast-1080x1350",
+    "slug": "gpt-undersider-ikast",
     "format": "1080x1350",
-    "billede": "/annoncer/lucas-herning-1080x1350.png",
-    "overskrift": "Bygget af Lucas, fra Herning",
-    "primaer_tekst": "Ikke et bureau med kontor og ansatte. Det er bare mig, til en fair pris. Du ejer 100 % af koden.",
-    "beskrivelse": "Gratis demo, før du betaler.",
-    "cta": "Send besked",
-    "still_tekst": "Kinly · Herning Bygget af Lucas, fra Herning Ikke et bureau med kontor og ansatte. Det er bare mig, til en fair pris. Kodet fra bunden Du ejer 100 % af koden Gratis demo før du betaler",
+    "billede": "/annoncer/gpt-undersider-ikast-1080x1350.png",
+    "overskrift": "Én side pr. ydelse",
+    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
+    "beskrivelse": "Forside + undersider, kodet fra bunden.",
+    "cta": "Få tilbud",
+    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Dæk Tesla-værksted Lånebil Ikast AutoService, kodet af Kinly",
     "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/AGENTS.md:25",
-        "fakta": "Lucas Buur, 20, Herning, solo web-freelancer"
-      },
-      {
-        "fil": "KnowledgeOS/context/brand-og-tone.md:18",
-        "fakta": "Kernebudskab: bare mig, til en fair pris, ikke et bureau med kontor og ansatte"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
       {
         "fil": "KnowledgeOS/context/priser.md:21",
         "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/lucas.jpg (kinly-site/public/img/team/lucasnew.jpg, Lucas' eget portræt)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "team",
-    "test_celle": "K5",
-    "koncept": "Personen bag",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Charlie er ikke med. Skal han med på billedet eller i teksten, kræver det hans skriftlige ja først."
-    ]
-  },
-  {
-    "id": "ikast-mobil-1080x1080",
-    "slug": "ikast-mobil",
-    "format": "1080x1080",
-    "billede": "/annoncer/ikast-mobil-1080x1080.png",
-    "overskrift": "Sådan ser den ud på mobilen",
-    "primaer_tekst": "Ikast AutoService har fået en ny hjemmeside fra Kinly. Kodet fra bunden, ikke en skabelon.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "Kinly · Ikast AutoService Sådan ser den ud på mobilen Autoværksted i Ikast Forside fra 3.997 kr. ekskl. moms. Gratis demo før betaling. Skærmbillede af ikastautoservice.dk, 16. oktober 2026",
-    "kilde_fakta": [
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:22",
+        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Klar til Google og Maps fra dag ét"
+      },
       {
         "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
         "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)"
+      "public/annoncer/kilde/skaerm-ikast-side-daek.png, -tesla.png, -laanebil.png (live ikastautoservice.dk)"
     ],
     "kunde": "Ikast AutoService",
     "kunde_ja": false,
-    "skabelon": "mobil",
-    "test_celle": "K1",
-    "koncept": "Kundeside på mobil",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live."
-    ]
-  },
-  {
-    "id": "ikast-mobil-1080x1350",
-    "slug": "ikast-mobil",
-    "format": "1080x1350",
-    "billede": "/annoncer/ikast-mobil-1080x1350.png",
-    "overskrift": "Sådan ser den ud på mobilen",
-    "primaer_tekst": "Ikast AutoService har fået en ny hjemmeside fra Kinly. Kodet fra bunden, ikke en skabelon.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "Kinly · Ikast AutoService Sådan ser den ud på mobilen Autoværksted i Ikast Forside fra 3.997 kr. ekskl. moms. Gratis demo før betaling. Skærmbillede af ikastautoservice.dk, 16. oktober 2026",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/wiki/kunder/ikast-autoservice.md:13",
-        "fakta": "Aktiv kunde, live på ikastautoservice.dk, kodet side, synlig reference"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/ikast-live-phone.png (live ikastautoservice.dk, 16/10-2026)"
-    ],
-    "kunde": "Ikast AutoService",
-    "kunde_ja": false,
-    "skabelon": "mobil",
-    "test_celle": "K1",
-    "koncept": "Kundeside på mobil",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
-      "Skærmbilledet er taget live 16. oktober 2026. Tjek at forsiden ikke er ændret, før annoncen går live."
-    ]
-  },
-  {
-    "id": "vida-mobil-1080x1080",
-    "slug": "vida-mobil",
-    "format": "1080x1080",
-    "billede": "/annoncer/vida-mobil-1080x1080.png",
-    "overskrift": "Hjemmeside til en skønhedsklinik",
-    "primaer_tekst": "VIDA har fået en ny hjemmeside fra Kinly. Kodet fra bunden, ikke en skabelon, og kunden ejer den 100 %.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "Kinly · VIDA Hjemmeside til en klinik Skønhedsklinik i Gl. Hasseris Forside fra 3.997 kr. ekskl. moms. Gratis demo før betaling. Skærmbillede af vida-klinik.dk, 16. oktober 2026",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/wiki/kunder/vida-klinik.md:57",
-        "fakta": "VIDA-siden er bygget, deployet og forsiden godkendt af Lene"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/vida-live-phone.png (live vida-klinik.dk, 16/10-2026)"
-    ],
-    "kunde": "VIDA",
-    "kunde_ja": false,
-    "skabelon": "mobil",
-    "test_celle": "K1",
-    "koncept": "Kundeside på mobil",
+    "skabelon": "gpt",
+    "test_celle": "K4",
+    "koncept": "Én side pr. ydelse",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: VIDA (Lene) skal sige ja til skærmbillede og navn i en annonce.",
-      "Kosmetisk klinik: markedsføringsregler for kosmetiske behandlinger er ikke tjekket (vault vida-klinik.md:111). Stillen viser kun forsiden, ingen behandlinger eller før/efter.",
-      "Ikke med i anbefalet startsæt: Ikast-versionen dækker K1, og VIDA venter på ja og tjek af reglerne."
-    ]
-  },
-  {
-    "id": "vida-mobil-1080x1350",
-    "slug": "vida-mobil",
-    "format": "1080x1350",
-    "billede": "/annoncer/vida-mobil-1080x1350.png",
-    "overskrift": "Hjemmeside til en skønhedsklinik",
-    "primaer_tekst": "VIDA har fået en ny hjemmeside fra Kinly. Kodet fra bunden, ikke en skabelon, og kunden ejer den 100 %.",
-    "beskrivelse": "Forside fra 3.997 kr. ekskl. moms.",
-    "cta": "Læs mere",
-    "still_tekst": "Kinly · VIDA Hjemmeside til en klinik Skønhedsklinik i Gl. Hasseris Forside fra 3.997 kr. ekskl. moms. Gratis demo før betaling. Skærmbillede af vida-klinik.dk, 16. oktober 2026",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/wiki/kunder/vida-klinik.md:57",
-        "fakta": "VIDA-siden er bygget, deployet og forsiden godkendt af Lene"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/vida-live-phone.png (live vida-klinik.dk, 16/10-2026)"
-    ],
-    "kunde": "VIDA",
-    "kunde_ja": false,
-    "skabelon": "mobil",
-    "test_celle": "K1",
-    "koncept": "Kundeside på mobil",
-    "anbefalet_start": false,
-    "advarsler": [
-      "Kunde-ja mangler: VIDA (Lene) skal sige ja til skærmbillede og navn i en annonce.",
-      "Kosmetisk klinik: markedsføringsregler for kosmetiske behandlinger er ikke tjekket (vault vida-klinik.md:111). Stillen viser kun forsiden, ingen behandlinger eller før/efter.",
-      "Ikke med i anbefalet startsæt: Ikast-versionen dækker K1, og VIDA venter på ja og tjek af reglerne."
+      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Skærmene viser tre Ikast-undersider, taget live 16. oktober 2026.",
+      "Ikast har flere undersider end 4.997-pakkens 3. Teksten nævner pakkeprisen, ikke hvad Ikast har betalt.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   }
 ]

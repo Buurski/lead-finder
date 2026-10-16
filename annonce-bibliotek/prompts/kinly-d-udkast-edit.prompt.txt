@@ -1,0 +1,16 @@
+Edit the attached generated Kinly ad into ONE final production image. Preserve the same typography, exact Danish wording, two-line headline, CTA, price chip, premium silver devices, and simple warm-white composition. Use reference Image 3's Space Grotesk letterforms for ALL text.
+
+Mandatory corrections:
+1. Canvas must be a true 4:5 portrait: exactly 1080x1350 pixels, or 1088x1360 / 1024x1280 if those are supported. Do NOT output 1092x1440 or any 3:4 canvas.
+2. Whole MacBook must fit inside canvas with 60px right margin. Current front-right corner is cut off. Shrink and raise device group: entire laptop and phone, including their soft warm floor shadows, must finish above y1200 in 1080x1350 coordinates. Lower-right x780-1020 y1240-1310 must be totally empty, untouched #FAF6EF background. No hardware or shadows there. Keep laptop slight perspective turned right, NOT exaggerated.
+3. Phone remains perfectly flat front-on, no rotation or 3D turn. Silver iPhone 17 Pro with physical thin even black bezels, side buttons, Dynamic Island. Phone SCREEN width:height must be EXACTLY 402:874. Laptop is MacBook Pro 14-inch with aluminium body, thin black bezel and central notch; SCREEN native aspect ratio 1512:982. All four corners of each screen fully visible. Phone overlaps laptop left chassis or bezel only, never green display or any laptop screen corner.
+4. Critical: replace both screen interiors with mathematically flat chroma plates. Laptop: pure digital RGB(0,255,0), hex #00FF00. Phone: pure digital RGB(255,0,255), hex #FF00FF. NO texture, NO noise, NO gradients, NO reflections, NO shadows, NO color drift. These surfaces are flat graphic-design color fills, NOT photographed lit surfaces. The only non-key pixels inside them are BLACK physical laptop notch and phone Dynamic Island. Do not render physical lighting on these fills. Current image has green and magenta pixel variation; remove all of it. Uniform solid exact color from edge to edge within bezels.
+5. Replace current ivory textured background with one precise solid graphic-design background #FAF6EF (RGB250,246,239). No texture, noise, vignette or gradient. The only tonal differences allowed outside type and devices are local soft layered warm floor/contact shadows directly under hardware, and local soft white-chip shadow. Keep realistic metal product photography on hardware; graphic-design background and screens are perfectly flat digital colors.
+6. Exact text only, with no added branding or logo:
+Line 1, #191713, large Space Grotesk Medium: Se jeres side,
+Line 2, #D4500F, large Space Grotesk Medium: før I vælger os.
+Below, #55504A Space Grotesk Regular approx36px: I ser et rigtigt udkast, før I siger ja.
+Dark #191713 pill, warm-white Space Grotesk approx32px: Se jeres udkast
+One white chip, ember check mark, dark Space Grotesk: Fra 3.997 kr. ekskl. moms
+
+Maintain clean composition, generous breathing room, same headline size hierarchy and left alignment at64px. Device group occupies lower55%. Price chip above or near phone, entirely clear of both screens. No chip overlap on screens. Only one laptop and one phone, no logo, no watermark, no other copy. Photorealistic high-end agency ad. Deliver single image.

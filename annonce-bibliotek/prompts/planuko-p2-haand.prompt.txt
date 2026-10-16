@@ -1,0 +1,32 @@
+Use case: ads-marketing.
+Create ONE finished premium Facebook/Instagram feed advertisement for Planuko, a Danish weekly meal-planning app. Output a single portrait 4:5 PNG, 1080x1350 pixels or closest supported exact 4:5 size. Generate the complete image directly, including all typography and the photographic hand and phone. No collage of ads, no multiple variants.
+
+Art direction: the strong hierarchy, oversized top headline, photographic phone-in-hand, and floating UI chips of premium Booksy Meta ads. Calm, warm, polished, real Scandinavian commercial photography combined with crisp graphic typography. The attached Booksy montage is style inspiration only: do not reproduce any Booksy content, turquoise, people, or words.
+
+Background: perfectly flat warm cream #FFF7EC. A broad, very subtle pale yellow #F6EAD6 band behind the phone, with flat color and clean edges; no gradient banding, no texture. Bottom-left rectangle x60–320, y1230–1310 must remain empty, flat #FFF7EC, completely free of objects, sleeve, shadow, text, or logo.
+
+Layout in coordinates relative to 1080x1350:
+Top-left headline starts around x64,y64. Very large Plus Jakarta Sans ExtraBold, tightly spaced, left aligned, tight leading. EXACTLY TWO LINES, each complete on one line:
+"Hele ugens"
+"aftensmad."
+First line dark charcoal #2B2B2B; second line burgundy #7A1F2B. Headline dominates the upper part. Keep the spelling, casing and period exactly.
+Below headline, one single unbroken line in Nunito SemiBold, around 38px (fit to available width), warm brown #6E5B4E:
+"Retter, pris og indkøbsliste til jeres budget."
+Leave clear separation between this line and phone.
+
+Lower right: large current Apple iPhone 17 Pro in silver held naturally by ONE photorealistic human hand, natural skin with real pores and subtle creases, short clean nails, no rings, plain oatmeal knit sleeve. Anatomically correct hand, plausible grip on phone edges. Front-facing phone, tilt maximum 7 degrees, nearly upright. Phone about 68 percent of canvas height, starts below subtitle, continues beyond bottom crop. Realistic silver metal edges and side buttons, very thin even black bezels, rounded display corners, correct black horizontal pill Dynamic Island near top center. Premium product photo, not illustration or CGI-looking plastic.
+
+CRITICAL PHONE SCREEN: perfectly uniform, flat, pure saturated magenta #FF00FF, completely edge to edge INSIDE the thin black bezel, following rounded display corners. ONLY interruption is the solid black Dynamic Island at top. This is an intentional chroma replacement screen. NO app UI, icons, digits, time, status bar, signal, battery, home indicator, buttons, text, glare, glass reflection, highlights, gradients, shading, or texture anywhere within the magenta display. The photographic phone frame and hand can have natural shading, but the magenta screen MUST stay solid #FF00FF.
+
+Two separate floating white #FFFFFF chips overlapping LEFT edge of phone, in the open area below subtitle. Generous padding, rounded rectangle radius around 20px, soft layered warm brown-tinted shadows, sophisticated hierarchy. Each has small burgundy #7A1F2B checkmark at left and bold Nunito dark charcoal #2B2B2B text. Keep each phrase on one line, crisp legible Danish:
+Chip 1: "Indkøbsliste fra REMA 1000"
+Chip 2: "7 dages gratis prøve"
+Chips float across left phone edge without hiding Dynamic Island; arranged vertically with breathing room.
+
+Lighting: one large soft light from top left. Soft warm brown-tinted layered shadows, never grey. Keep flat cream background and logo reserve clean.
+
+EXACT TEXT ONLY: Hele ugens / aftensmad. / Retter, pris og indkøbsliste til jeres budget. / Indkøbsliste fra REMA 1000 / 7 dages gratis prøve
+Correct Danish ø in indkøbsliste and prøve. No other text. No Planuko wordmark or any other logo. No watermark. No food photos, fridge, clock, decorative badges, extra props, people or faces. No border. Deliver one finished image.
+
+Final refinement via built-in imagegen:
+Use case: precise-object-edit. Refine this single finished ad. Preserve ALL text exactly, fonts, type sizes, two-line headline, typography positions, chip design, phone, photographic hand, sleeve, lighting, and composition. Do not redesign or add anything. Change only flat graphic color regions: remove the subtle generated noise/texture and color variation from background and magenta screen. The entire phone display inside its black bezel, excluding black Dynamic Island and overlaying chips, must be a single UNIFORM EXACT RGB(255,0,255) #FF00FF fill. Absolutely zero screen pixel noise, no shading, no gradient, no reflection. Warm cream graphic background must be single flat exact RGB(255,247,236) #FFF7EC except existing pale band exact RGB(246,234,214) #F6EAD6 and existing warm object/chip shadows. Preserve realistic photo texture on hand and physical metal phone only. Bottom-left logo reserve x60-320,y1230-1310 relative to 1080x1350 remains empty, uniform cream. Preserve complete existing Danish wording and both checkmarks verbatim. One finished portrait 4:5 PNG, preferably exact 1120x1400 or 1080x1350. No added text, no logo, no watermark.

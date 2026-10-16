@@ -5,7 +5,7 @@
 import "server-only";
 import { store } from "../store.ts";
 import data from "../../data/annoncer.json" with { type: "json" };
-import { ANNONCE_STATUSES, foldBeslutninger, type Annonce, type AnnonceBeslutning, type AnnonceStatus } from "./annoncer-types.ts";
+import { ANNONCE_STATUSES, foldBeslutninger, venterPaaKunde, type Annonce, type AnnonceBeslutning, type AnnonceStatus } from "./annoncer-types.ts";
 import { CompetitorInputError } from "./competitors.ts";
 
 export const BESLUTNING_KEY = "marketing-annoncer-beslutninger";
@@ -17,8 +17,11 @@ export async function listBeslutninger(): Promise<Record<string, AnnonceBeslutni
 }
 
 export async function setBeslutning(slug: unknown, status: unknown, actor: string): Promise<Record<string, AnnonceBeslutning>> {
-  if (typeof slug !== "string" || !loadAnnoncer().some((a) => a.slug === slug)) throw new CompetitorInputError("Ukendt annonce.");
+  const motiv = typeof slug === "string" ? loadAnnoncer().find((a) => a.slug === slug) : undefined;
+  if (typeof slug !== "string" || !motiv) throw new CompetitorInputError("Ukendt annonce.");
   if (typeof status !== "string" || !(ANNONCE_STATUSES as readonly string[]).includes(status)) throw new CompetitorInputError("Ukendt status.");
+  // en annonce med en kundes side kan aldrig blive klar, før kunden har sagt ja skriftligt (kunde_ja i data)
+  if (status === "godkendt" && venterPaaKunde(motiv)) throw new CompetitorInputError(`KRÆVER KUNDE-OK (${motiv.kunde}): kan ikke godkendes uden kundens skriftlige ja.`);
   const row: AnnonceBeslutning = { slug, status: status as AnnonceStatus, by: actor, at: new Date().toISOString() };
   await store.append(BESLUTNING_KEY, row);
   return listBeslutninger();

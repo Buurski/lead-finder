@@ -1,0 +1,19 @@
+Use your built-in image generation tool to create ONE finished Facebook/Instagram feed ad image, portrait 4:5 (1080x1350 or the closest 4:5 size you support). Generate it as an image; do not write code to draw it.
+
+Client: Planuko, a Danish meal-planning app. You set a weekly food budget and get the week's dinners with a shopping list from REMA 1000.
+
+Style benchmark: the longest-running Danish meal-kit statics are bold short text on one strong flat colour with a single clear price promise, and the product big and real. Match that clarity. Premium app-launch quality like Apple App Store feature ads.
+
+Composition:
+- Background: flat Planuko burgundy #7A1F2B. No gradient, no texture.
+- Top-left, ~64px margin, headline in Plus Jakarta Sans ExtraBold (geometric, friendly, tight), colour cream #FFF7EC, very large, left aligned, tight leading, exactly two lines:
+  line 1: Sæt et budget.
+  line 2: Få ugens aftensmad.
+- Below, one line in Nunito SemiBold ~38px, cream #FFF7EC at 85%: Retter og indkøbsliste fra REMA 1000
+- Lower 62%: two current Apple iPhone 17 Pro phones (silver), photographic, front facing, correct Dynamic Island, thin even black bezels, metal edge highlights and side buttons. Left phone smaller, tilted -6 degrees, set back; right phone 10% larger, tilted +4 degrees, in front, overlapping the left one by about 20%. Soft layered shadows tinted deep burgundy-brown (never grey), one light from top left, soft floor shadow.
+- Screen key colours (flat, uniform, edge to edge inside the bezel, no UI, no status bar, no glare): left phone pure green #00FF00, right phone pure magenta #FF00FF. Real app screenshots are placed there afterwards.
+- One floating cream chip (#FFF7EC, ~20px radius, soft layered shadow) overlapping the right phone's left edge, with a small burgundy check mark and #2B2B2B Nunito Bold text: Passer til jeres budget
+- Keep the bottom-left corner (x 60-320, y 1230-1310) empty flat burgundy; the real logo is added later.
+- Danish letters exactly right (æ ø å). Only the text given here. No logo, no watermark, no food photos, no fridge, no clock.
+
+When done, copy the generated PNG into the current working directory as planuko-p1-budget.png and print its absolute path and pixel size.

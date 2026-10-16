@@ -1,0 +1,11 @@
+Ad B: before and after.
+- Top band (full width, about 30% of the height): warm white #FAF6EF. Headline in Space Grotesk Medium, #191713, left aligned, ~64px margin, very large, two lines:
+  line 1: Samme værksted.
+  line 2: Ny hjemmeside.   (this second line in ember #D4500F)
+- Below the band the canvas is split vertically 50/50: left half soft warm grey #E7E2DA, right half deep ink #191713.
+- Left half: an iPhone 17 Pro (black titanium) standing upright, front facing, slightly smaller, tilted about 4 degrees left. Its screen key colour: pure green #00FF00. Above it a small white pill label with #191713 text: Før
+- Right half: an iPhone 17 Pro (silver) standing upright, front facing, about 12% larger than the left one, tilted about 4 degrees right, its shadow falling on the ink background. Its screen key colour: pure magenta #FF00FF. Above it a pill label in ember #D4500F with #FAF6EF text: Efter
+- A thin ember arrow pointing from the left phone to the right phone, crossing the split.
+- Bottom right, small Space Grotesk Regular #FAF6EF text: Ikast AutoService, Ikast
+- Keep the bottom-left of the LEFT half (x 60-300, y 1240-1310) empty for the logo.
+When done, copy the generated PNG into the current working directory as kinly-b-foer-efter.png and print its absolute path and pixel size.

@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import Info from "./Info";
 import {
-  HEADLINE_MAX, PLAN, PLAN_TAL, PRIMARY_MAX, venterPaaKunde,
+  HEADLINE_MAX, PLAN, PLAN_TAL, PRIMARY_MAX, kundeOkMaerke, venterPaaKunde,
   type AnnonceBeslutning, type AnnonceMotiv, type AnnonceStatus,
 } from "@/lib/hq/annoncer-types";
 import "./marketing.css";
@@ -146,8 +146,8 @@ function Motiv({ m, status, onDecide, busy }: { m: AnnonceMotiv; status: Annonce
 
       {venter && (
         <div className="mk-bad" role="alert">
-          <strong>Kundens ja mangler: {a.kunde}</strong>
-          <span>Må ikke bruges i en annonce, før kunden har sagt ja skriftligt til billede og navn.</span>
+          <strong>{kundeOkMaerke(a)}</strong>
+          <span>Må ikke bruges i en annonce, før kunden har sagt ja skriftligt til billede og navn. Brug kinly.dk-varianten imens.</span>
         </div>
       )}
 
@@ -171,7 +171,7 @@ function Motiv({ m, status, onDecide, busy }: { m: AnnonceMotiv; status: Annonce
       </details>
 
       <div className="mk-actions">
-        {status !== "godkendt" && <button type="button" className="cc-btn cc-btn-accent" disabled={busy} onClick={() => onDecide("godkendt")}>{venter ? "Godkend, men vent på kundens ja" : "Godkend"}</button>}
+        {status !== "godkendt" && <button type="button" className="cc-btn cc-btn-accent" disabled={busy || venter} title={venter ? "Kundens skriftlige ja mangler" : undefined} onClick={() => onDecide("godkendt")}>{venter ? "Venter på kundens ja" : "Godkend"}</button>}
         {status !== "droppet" && <button type="button" className="cc-btn" disabled={busy} onClick={() => onDecide("droppet")}>Drop</button>}
         {status !== "afventer" && <button type="button" className="cc-btn" disabled={busy} onClick={() => onDecide("afventer")}>Nulstil</button>}
       </div>

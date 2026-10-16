@@ -1,0 +1,53 @@
+Mode: built-in image_gen
+
+INITIAL GENERATION
+
+Use case: ads-marketing.
+Create ONE finished premium Facebook/Instagram feed advertisement for Kinly, a two-person web studio in Herning, Denmark. Portrait 4:5, preferably 1080x1350 pixels (otherwise closest exact 4:5 supported size). One single final ad, not a collage or variants.
+Reference images: Image 1 ref-booksy.png is ONLY a reference for direct-response ad STRUCTURE: solid brand colour, enormous headline up top, photographic hand holding phone, floating white benefit chips, pill CTA. Image 2 ref-kinly-enheder.png is ONLY a reference for premium realistic device materials and soft layered shadows. Image 3 ref-font-spacegrotesk.png is the EXACT TYPOGRAPHY reference: match Space Grotesk throughout, geometric grotesk, characteristic flat hooked y descender. Do not copy any reference's website, logo, other text, turquoise, or images into the ad.
+
+BACKGROUND: perfectly flat solid Kinly ember orange #D4500F. No gradient, vignette, texture or decorative shapes. All unused space is this exact flat orange.
+LAYOUT measured relative to 1080x1350:
+At upper left, generous 64px top and left inset, large left-aligned off-white #FAF6EF Space Grotesk Medium headline with tight leading. Exactly TWO lines, each visually spanning around 80 percent of canvas width, second line MUST stay on one line:
+Ny hjemmeside,
+kodet fra bunden.
+Both headline lines match the provided Space Grotesk letterforms, not generic neo-grotesk. Clear comma after hjemmeside and period after bunden.
+Below headline, one single line of Space Grotesk Regular about 38px, off-white #FAF6EF, reading verbatim:
+Fra 3.997 kr. ekskl. moms
+Below price, left aligned, a wide black-charcoal #191713 pill button with off-white #FAF6EF Space Grotesk text about 34px, reading verbatim:
+Se jeres udkast
+Keep all top text and CTA fully visible with generous spacing.
+
+PHONE AND HAND: lower RIGHT, a very photorealistic natural light-skinned human hand with anatomically correct fingers, short clean natural nails, no rings, plain sleeve. Hand naturally holds a current Apple iPhone 17 Pro in silver. Genuine high-end commercial photography, realistic skin texture, silver metal edge highlights and small side buttons. Phone front is perfectly parallel and flat to camera, perfectly front-facing, no perspective or 3D turn, at most 2 degrees in-plane rotation, ideally exactly upright. Phone about 70 percent of canvas height; its top starts around y420 and its bottom is cropped by bottom canvas edge. Right margin about 50px. Phone screen has real tall narrow iPhone proportions: screen width to screen height EXACTLY 402:874, never a wide short phone. Even thin black bezels and correct single black Dynamic Island pill near screen top.
+CRITICAL SCREEN: edge-to-edge inside the black bezel is a PERFECTLY UNIFORM PURE MAGENTA #FF00FF flat fill. Only black Dynamic Island on top of it. Absolutely NO screen UI, text, website, status bar, time, icons, home indicator, reflections, glare, gradient, texture, shadow, or lighting variation. Screen is a clean chroma replacement area, not a reflective display. Magenta must stay uniform right up to inner bezel. The hand grips the edges, avoids covering the screen.
+
+CHIPS: two white #FFFFFF floating rounded rectangular chips to LEFT of phone, around y700 and y820. Approximately 18px corner radius with soft layered deep orange-brown shadows. Each chip overlaps left phone bezel at most 40px; keep almost entire magenta screen visible. Each chip has one small ember #D4500F checkmark at left, followed by charcoal #191713 Space Grotesk text, single line per chip, enough font size to read in feed. Exact chip text:
+Gratis demo, før I betaler
+Siden er 100 % jeres
+Two separate chips only. No other copy.
+BOTTOM-LEFT: preserve x60–300 and y1220–1300 completely empty FLAT #D4500F for a future logo. No hand, sleeve, shadow or text there.
+
+LIGHTING: single soft studio light source from upper left, photographic hand and device, premium soft layered shadows tinted deep orange-brown, never grey. Screen and background stay flat exact fills unaffected by studio lighting.
+Polished professional agency quality with bold simple Booksy structure. All Danish characters exact, especially ø in før. All lettering Space Grotesk. No logo, no watermark, no extra text. Deliver exactly one image.
+
+COMPOSITION EDIT
+
+Edit this Kinly advertisement into the final deliverable. Image 1 is edit target. Image 2 is typography reference only. Keep its exact two-line headline, all Danish words and punctuation, left-aligned hierarchy, black pill CTA, two benefit chips and photographic hand. Keep the same polished structure and Space Grotesk font look from Image 2.
+
+Make these precise corrections:
+1. BACKGROUND MUST BE ONE FLAT SOLID COLOUR #D4500F across whole canvas. Current background has a visible orange lighting gradient: remove that gradient, vignette and grain completely. Empty background top left, top right, and bottom left all have identical #D4500F fill. Local soft deep orange-brown cast shadows may exist immediately behind chips and hand/phone only, but no broad background lighting or vignette. Bottom-left x60–300 y1220–1300 (coordinates on a 1080x1350 canvas) remains entirely empty solid #D4500F with no shadow.
+2. Enlarge the silver iPhone 17 Pro and hand in LOWER RIGHT. Phone top should start at y420; full inferred phone height approximately 1000px on 1350px canvas, extending past lower image edge. Its BOTTOM MUST BE CROPPED BY BOTTOM EDGE OF IMAGE. Do not show lower phone edge at all. Phone screen must keep EXACT 402:874 width:height proportions, thin even black bezel, realistic silver metal edge. Phone front perfectly straight, facing camera, no perspective, no tilt. Target outer width ~450px and inferred height ~1000px, left x565 right x1015, y420 bottom beyond1350. Phone taller and wider than in current image. Real photographic hand gripping edges with clean nails no rings and plain sleeve, cropped at bottom/right, no hand blocking the screen. Keep headline, price and CTA unobstructed.
+3. SCREEN MUST BE PERFECTLY FLAT UNIFORM SOLID #FF00FF magenta, no variation, reflection, glare, shadow, gradient, status bar, home indicator or UI. One simple correct black Dynamic Island pill only. No blue highlight or glowing dot inside Dynamic Island.
+4. Keep white floating benefit chips left of phone, max40px overlap onto left phone bezel, screen almost fully visible. Exact single-line chip text "Gratis demo, før I betaler" and "Siden er 100 % jeres", small ember checkmarks, #191713 Space Grotesk, white #FFFFFF cards with18px corners and soft local orange-brown shadows.
+5. Price line should be Space Grotesk Regular about38px at1080px width, exact "Fra 3.997 kr. ekskl. moms". CTA text about34px "Se jeres udkast", pill #191713, letters #FAF6EF. Headline very large Space Grotesk Medium #FAF6EF exact two lines "Ny hjemmeside," / "kodet fra bunden." Match exact font reference, including hooked flat y descender.
+
+Deliver ONE final portrait 4:5 image, preferably1080x1350, closest supported exact4:5 size acceptable. No logo, watermark or extra text. Highest priority: completely uniform solid orange background, perfectly uniform solid magenta screen, correct tall phone screen proportions and cropped phone bottom.
+
+FINAL COLOUR EDIT
+
+Precise colour-only finishing edit of this advertisement. Preserve ALL composition, exact Danish text, typography, hand anatomy, silver phone edges, chips, button, dimensions and cropping.
+The orange and magenta regions must be GRAPHIC FLAT FILLS, not photographic surfaces. Remove all grain, dithering, mottling, compression-like noise, shading, variations and gradients from these two regions:
+BACKGROUND: every unobstructed background pixel must have exactly RGB(212,80,15), HEX #D4500F. One uniform solid colour, no texture. All four exposed corners and empty bottom left must match this same exact fill. Preserve only small localized soft deep orange-brown cast shadows immediately behind the hand/phone and benefit chips. Do not add a broad shadow or gradient.
+SCREEN: replace all magenta INSIDE phone's black bezel with one perfectly uniform bright RGB(255,0,255), HEX #FF00FF fill, corner to corner, edge to edge. Only preserve the black Dynamic Island. The magenta screen must be visually absolutely flat like a pure digital shape, with zero lighting/reflections/glare/noise/gradients/UI/statusbar/home indicator. Screen will be keyed and replaced with a screenshot. Colour exactness is essential.
+The hand and silver phone body remain photographic and beautifully lit. The floating chips stay white. All lettering and layout stay exactly as input, including headline on exactly two lines, comma, period, æ/ø/å. Phone stays perfectly front facing, narrow tall real 402:874 screen proportions, bottom cropped.
+Export one finished PNG portrait 4:5. Prefer 1080x1350 pixels. No additional elements or text.

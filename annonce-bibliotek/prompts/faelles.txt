@@ -1,0 +1,17 @@
+Use your built-in image generation tool to create ONE finished Facebook/Instagram feed ad image, portrait 4:5 (1080x1350, or the closest 4:5 size you support). Generate it as an image; do not write code to draw it.
+
+Client: Kinly, a two-person web studio in Herning, Denmark, that designs and codes websites from scratch for local businesses.
+
+Attached style references:
+- ref-booksy.png: real high-performing Meta ads from Booksy. Copy their level of polish and STRUCTURE: bold solid background, very large headline at the top, devices and floating UI chips with soft layered shadows, a pill CTA inside the image.
+- ref-kinly-enheder.png: how Kinly's own website shows devices: real Apple devices, slight perspective, soft realistic floor shadows, premium and calm.
+- ref-font-spacegrotesk.png: Kinly's headline typeface, Space Grotesk. Match this exact typeface for ALL text (geometric grotesk; the y has a flat hooked descender).
+
+Hard rules for every device:
+- Real current Apple hardware: iPhone 17 Pro (thin even black bezels, Dynamic Island, real metal edge highlights and side buttons) and MacBook Pro 14-inch (thin black bezel with notch, aluminium body). Correct proportions.
+- Every device SCREEN is a perfectly flat, uniform, pure key colour fill, edge to edge inside the black bezel, with NO UI, no status bar, no reflections, no glare, no gradient, no shadow on it. Only the black Dynamic Island or notch sits on top. Real screenshots are placed there afterwards. Use exactly the key colour given per device.
+- Shadows: soft and layered, tinted with the background hue (never flat grey), one light source from the top left, contact shadow where a device touches a surface.
+- Danish letters exactly right (æ ø å). Only the text given below, nothing else. No logo, no watermark. Keep the stated empty area free for the real logo, which is added later.
+- Professional agency quality. Clean, photographic devices. Not illustrated, not 3D cartoon.
+
+- Geometry (strict, screens are replaced later): every phone is flat to the camera with no 3D turn; only the in-plane rotation stated may be used. iPhone screen proportion exactly 402:874 (width:height). MacBook screen proportion exactly 1512:982 and all four screen corners visible. Floating chips and labels may overlap a device bezel by at most 40px and must never cover more than a sliver of a screen.

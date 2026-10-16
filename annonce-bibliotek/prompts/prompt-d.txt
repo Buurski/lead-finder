@@ -1,0 +1,11 @@
+Ad D: see the site before you choose us.
+- Background: warm white #FAF6EF, flat, subtle soft shadows only.
+- Top-left, ~64px margin, Space Grotesk Medium, very large, left aligned, two lines:
+  line 1: Se jeres side,          (#191713)
+  line 2: før I vælger os.        (ember #D4500F)
+- Below, Space Grotesk Regular ~36px #55504A: I ser et rigtigt udkast, før I siger ja.
+- Below that, a pill button #191713 with #FAF6EF text ~32px: Se jeres udkast
+- Lower 55%, composed like ref-kinly-enheder.png: a MacBook Pro 14-inch (silver) open, slight perspective turned a little to the right, its screen key colour pure green #00FF00; and an iPhone 17 Pro (silver) standing in front of the laptop's left corner, overlapping it, nearly front facing, its screen key colour pure magenta #FF00FF. Soft warm floor shadows.
+- One floating white chip with a soft layered shadow near the phone, with a small ember check mark and #191713 Space Grotesk text: Fra 3.997 kr. ekskl. moms
+- Keep the bottom-right (x 780-1020, y 1240-1310) empty for the logo.
+When done, copy the generated PNG into the current working directory as kinly-d-udkast.png and print its absolute path and pixel size.

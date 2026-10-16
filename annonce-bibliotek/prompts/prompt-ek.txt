@@ -1,0 +1,12 @@
+Ad E: one page per service, three phones fanned out.
+- Background: deep ink #191713, flat, with a very soft warm ember light pool (#D4500F at low strength) behind the phones. No gradient banding.
+- Top-left, ~64px margin, Space Grotesk Medium, #FAF6EF, very large, left aligned, tight leading, three lines:
+  line 1: Én side
+  line 2: pr. ydelse.
+  line 3: Klar til Google fra dag ét.   (this line in ember #D4500F, about 60% of the headline size)
+- Lower 60%: three iPhone 17 Pro phones (silver) standing upright side by side like a fanned hand of cards, overlapping about 25%: left phone rotated -9 degrees, middle phone straight and 8% larger and in front, right phone rotated +9 degrees. Front facing, correct Dynamic Island, thin even black bezels, metal edge highlights, side buttons. Soft warm layered shadows between the overlapping phones and a soft floor shadow below.
+- Screen key colours (flat, uniform, edge to edge inside the bezel): left phone pure green #00FF00, middle phone pure magenta #FF00FF, right phone pure cyan #00FFFF.
+- Three small white pill labels (#FFFFFF, #191713 Space Grotesk text, soft shadow), one floating above each phone: Værksted · Webbureau · Vipper og bryn   (left, middle, right)
+- Bottom right, small Space Grotesk Regular #FAF6EF at 70% opacity: kinly.dk
+- Keep the bottom-left (x 60-300, y 1240-1310) empty and dark for the logo.
+When done, copy the generated PNG into the current working directory as kinly-ek-undersider.png and print its absolute path and pixel size.

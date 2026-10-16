@@ -1,0 +1,49 @@
+Built-in image_gen. Initial generation prompt:
+
+Use case: ads-marketing.
+Create ONE finished, premium Facebook/Instagram feed ad image for Kinly, a two-person web studio in Herning, Denmark. Portrait exactly 4:5, 1080 x 1350 pixels if supported; otherwise closest exact 4:5 size. Deliver PNG. This is a completely designed final ad, not a presentation board.
+
+REFERENCE ROLES: The three images supplied by the user are style references only. Image 1 (Booksy) supplies bold ad hierarchy, gigantic top headline, photographic devices, floating white pills and softly layered shadows. Image 2 supplies Kinly's calm premium real Apple device photography. Image 3 supplies exact Space Grotesk letterforms. Match Space Grotesk for ALL text, especially its geometric forms and flat hooked y descender. Do not reproduce reference text or logos.
+
+BACKGROUND: Deep ink #191713, almost entirely flat. Only a very soft low-intensity warm ember #D4500F light pool behind the lower phone group. No banding, texture or distracting decoration.
+
+TYPOGRAPHY: Top-left at approximately x64 y64 in 1080x1350 coordinates. Space Grotesk Medium, large, left aligned, tight leading. Exactly these three lines:
+Én side
+pr. ydelse.
+Klar til Google fra dag ét.
+First two lines off-white #FAF6EF, approximately 130px, visually dominant. Third line ember #D4500F, around 60% of main headline size, sized to fit on ONE line within the canvas with a safe right margin. Preserve É, æ and é perfectly. No other headline. Respect the line breaks. Keep a clear gap between headline block and device labels.
+
+DEVICES: In lower 60% show exactly THREE silver iPhone 17 Pro devices, portrait, a fanned hand of cards. Beautiful realistic current Apple hardware photographed in a studio, thin even black bezels, correct black Dynamic Islands, real silver metal edge highlights and side buttons. No laptop in this ad. All phones perfectly FRONT FACING with absolutely no 3D turn, no perspective taper or foreshortening. Only rotate within the plane: left -9 degrees, middle 0 degrees, right +9 degrees. Middle phone exactly 8% larger, centrally placed and in front. Neighbouring phones overlap approximately 25%. Keep entire hardware outlines within image. Have phone group fill the lower portion with calm premium balance; keep bottom-left x60–300 y1240–1310 empty and dark for a logo to be inserted later. Phone bases and shadows should finish above that reserved logo zone. Avoid sprawling composition.
+
+SCREEN GEOMETRY AND KEY COLOURS ARE CRITICAL, because real screenshots will be inserted later:
+Every phone's inner screen has exact width:height proportion 402:874, measured before its in-plane rotation. Consistent natural rounded corners. Entire visible screen is a PERFECTLY FLAT UNIFORM PURE SOLID KEY COLOUR edge to edge inside black bezel.
+LEFT screen: RGB(0,255,0), #00FF00.
+MIDDLE screen: RGB(255,0,255), #FF00FF.
+RIGHT screen: RGB(0,255,255), #00FFFF.
+The screen key colours are emissive flat graphic surfaces, 100% constant from edge to edge. No light falls on any screen. NO reflection, NO glare, NO gradient, NO shadow, NO website, NO UI, NO status bar, NO clock, NO icons, NO camera UI, NO text. Only each black Dynamic Island sits on top of its key-colour screen. Shadows from overlapping phones must fall on background or hardware, NEVER darken the key-colour screens. Do not put any key colour outside its phone screen.
+
+FLOATING LABELS: Exactly three SMALL white #FFFFFF horizontal pill labels, Space Grotesk text #191713, soft warm tinted shadows. One floating just above each corresponding phone with a few pixels clear air. Left reads exactly "Værksted". Middle reads exactly "Webbureau". Right reads exactly "Vipper og bryn". The middle dots in the user's specification separate the three labels; do NOT print middle dots. Pills must remain horizontal and legible. Position labels so none obscures any screen; may overlap device bezel by at most 40px in 1080px-width coordinates, but preferably float fully outside screen. No extra CTA wording since none is supplied for this specific ad.
+
+LIGHTING: One main soft studio light from upper left. Photographic silver devices, soft realistic warm layered occlusion shadows between hardware, soft floor contact shadow beneath phone group. All shadows tinted by warm background hue, never flat neutral grey. Phones must look photographic, not illustrated or 3D cartoon.
+
+FOOTER: Bottom-right approximately x1016 y1285, right aligned, small Space Grotesk Regular, off-white #FAF6EF at 70% opacity: "kinly.dk".
+Bottom-left x60–300 y1240–1310 remains EMPTY, DARK and CLEAN for real logo later. Do not draw any logo.
+
+ONLY these literal text strings may appear: "Én side", "pr. ydelse.", "Klar til Google fra dag ét.", "Værksted", "Webbureau", "Vipper og bryn", "kinly.dk". No extra words, logos, watermark, arrows, badges, UI or fabricated screenshot details. Final image: polished professional Danish agency quality, precise typography, crisp geometry and clean flat screen replacement keys.
+
+Final correction prompt:
+
+Precise production correction of this existing Kinly ad. Deliver ONE final PNG, portrait 4:5. Target 1080x1350 or closest supported 4:5 size.
+Preserve existing layout, exact Danish text, typeface, phone placements, sizes, fan rotations, silver hardware, black bezels, Dynamic Islands, white service pills and kinly.dk footer. Do not introduce any new text or objects. Keep logo space at bottom left empty.
+
+CRITICAL CHANGE: Replace ALL visible display pixels INSIDE each of the three phone bezels with a mathematically uniform, flat chroma-key colour. These are opaque SCREEN REPLACEMENT MATTES, NOT photographic lit screens.
+LEFT: pure sRGB #00FF00 (R=0 G=255 B=0) EVERYWHERE on display.
+MIDDLE: pure sRGB #FF00FF (R=255 G=0 B=255) EVERYWHERE on display.
+RIGHT: pure sRGB #00FFFF (R=0 G=255 B=255) EVERYWHERE on display.
+Retain black Dynamic Island above each fill. Fill right to inside black bezel. NO lighting, NO reflection, NO glare, NO bloom, NO tonal variation, NO colour noise, NO texture, NO shadows or shading or darkening anywhere within those screen fills. Absolutely no UI or status bar. Keep black rounded bezel crisp. Preserve screen shapes and 402:874 pre-rotation proportion. This precision overrides photographic realism on SCREEN SURFACES ONLY. Hardware still photographic.
+
+Background must be flat exact #191713. Existing orange pool is too bright and expansive: reduce its intensity by 80%, making it a barely perceptible warm #D4500F pool just behind phones. Remove mottled floor texture. Keep very soft restrained warm tinted contact shadows and soft layered hardware shadows. Do not cast any shadow onto key colour screen fills.
+Third headline line must be actual ember #D4500F. First two lines #FAF6EF. Typeface all text Space Grotesk, preserving current hierarchy.
+Exact only text: Én side / pr. ydelse. / Klar til Google fra dag ét. / Værksted / Webbureau / Vipper og bryn / kinly.dk.
+No logo. No watermark. No extra CTA.
+Output final polished ad, with perfectly solid unlit chroma screens.

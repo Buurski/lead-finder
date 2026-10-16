@@ -1,0 +1,22 @@
+Use your built-in image generation tool to create ONE finished Facebook/Instagram feed ad image, portrait 4:5 (1080x1350 or the closest 4:5 size you support). Generate it as an image; do not write code to draw it.
+
+Client: Planuko, a Danish meal-planning app. You set a weekly food budget and get the week's dinners with a shopping list from REMA 1000.
+
+Style benchmark: like Booksy's best Meta ads: solid colour background, very large headline at the top, a real photographic hand holding the phone, floating UI chips with soft shadows. Premium, calm, real.
+
+Composition:
+- Background: flat warm cream #FFF7EC with a very soft pale yellow #F6EAD6 band behind the phone. No gradient banding, no texture.
+- Top-left, ~64px margin, headline in Plus Jakarta Sans ExtraBold, colour #2B2B2B, very large, left aligned, tight leading, exactly two lines:
+  line 1: Hele ugens
+  line 2: aftensmad.   (this line in burgundy #7A1F2B)
+- Below, one line in Nunito SemiBold ~38px, #6E5B4E: Retter, pris og indkøbsliste til jeres budget.
+- Lower right: a photorealistic human hand (natural skin, short clean nails, no rings, plain knit sleeve in oatmeal) holding a current Apple iPhone 17 Pro in silver, front facing, tilted at most 7 degrees, large (about 68% of the canvas height), cropped by the bottom edge. Correct Dynamic Island, thin even black bezels, realistic metal edges and side buttons.
+- The phone SCREEN is a perfectly flat, uniform, pure magenta #FF00FF fill edge to edge inside the black bezel; only the black Dynamic Island on top. No UI, no glare, no reflections, no gradient.
+- Two floating white chips (#FFFFFF, ~20px radius, soft layered warm shadow) overlapping the left edge of the phone, each with a small burgundy check mark and #2B2B2B Nunito Bold text:
+  Indkøbsliste fra REMA 1000
+  7 dages gratis prøve
+- Keep the bottom-left corner (x 60-320, y 1230-1310) empty flat cream; the real logo is added later.
+- Shadows soft and layered, tinted warm brown (never grey), one light from the top left.
+- Danish letters exactly right (æ ø å). Only the text given here. No logo, no watermark, no food photos, no fridge, no clock.
+
+When done, copy the generated PNG into the current working directory as planuko-p2-haand.png and print its absolute path and pixel size.

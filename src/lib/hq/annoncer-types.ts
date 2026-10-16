@@ -53,6 +53,8 @@ export function motiver(rows: Annonce[]): AnnonceMotiv[] {
 
 /** Må motivet bruges i en annonce? Nej, så længe en kunde er med og ikke har sagt ja. */
 export const venterPaaKunde = (a: Pick<Annonce, "kunde" | "kunde_ja">) => a.kunde !== null && !a.kunde_ja;
+/** Mærket på kladden og i rapporten, så længe kundens skriftlige ja mangler. */
+export const kundeOkMaerke = (a: Pick<Annonce, "kunde" | "kunde_ja">) => (venterPaaKunde(a) ? `KRÆVER KUNDE-OK (${a.kunde})` : null);
 
 export const ANNONCE_STATUSES = ["godkendt", "droppet", "afventer"] as const;
 export type AnnonceStatus = (typeof ANNONCE_STATUSES)[number];

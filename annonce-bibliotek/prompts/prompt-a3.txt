@@ -1,0 +1,27 @@
+Use your built-in image generation tool to create ONE finished Facebook/Instagram feed ad image, portrait 4:5 (1080x1350 or the closest 4:5 size you support). Do not write code to draw it; generate it as an image.
+
+Client: Kinly, a two-person web studio in Herning, Denmark, that designs and codes websites from scratch for local businesses.
+
+Attached style references:
+- ref-booksy.png: real high-performing Meta ads from Booksy. Copy their STRUCTURE: bold solid brand-colour background, very large headline at the top, a real photographic hand holding the phone, floating white UI chips with soft shadows, a pill CTA button inside the image.
+- ref-kinly-enheder.png: how Kinly's own website shows devices (premium, soft realistic floor shadows, real devices).
+- ref-font-spacegrotesk.png: Kinly's headline typeface, Space Grotesk. Match this exact typeface look for ALL text (geometric grotesk, the y has a flat hooked descender).
+
+Composition:
+- Background: solid Kinly ember orange #D4500F, flat. No gradient, no vignette.
+- Top-left with a generous ~64px margin: headline in Space Grotesk Medium, colour #FAF6EF, left aligned, tight leading, very large (each line spanning about 80% of the width), exactly two lines:
+  line 1: Ny hjemmeside,
+  line 2: kodet fra bunden.
+- Below it, one line in Space Grotesk Regular, about 38px, colour #FAF6EF: Fra 3.997 kr. ekskl. moms
+- Below that, a pill button in #191713 with #FAF6EF text, about 34px: Se jeres udkast
+- Lower right: a photorealistic right human hand holding a current Apple iPhone 17 Pro in silver from below, perfectly front facing and flat to the camera (no perspective, no 3D turn, rotated at most 2 degrees). The WHOLE phone is visible: its bottom edge ends about 90px above the canvas bottom; the phone is about 62% of the canvas height. Real iPhone 17 Pro body proportion 71.9 x 150.0 mm (height = 2.09 x width) and screen proportion 402:874. Never elongated.
+- Hand anatomy (strict): exactly ONE hand with exactly FIVE digits. The thumb rests on the phone's right edge; the index, middle, ring and little finger curl around the left edge, so at most FOUR fingertips are visible on the left edge, evenly spaced and of natural decreasing size. The palm and wrist come from the bottom right corner. Natural light skin, short clean nails, no rings, plain sleeve. No extra fingers, no fused fingers.
+- The phone SCREEN must be a perfectly flat, uniform, pure magenta #FF00FF fill edge to edge inside the black bezel, with only the black Dynamic Island pill on top of it. NO UI, no status bar, no reflections, no glare, no gradient, no shadow on the screen. A real screenshot will be placed there afterwards.
+- Two floating white rounded chips (#FFFFFF, ~18px radius, soft layered shadow) to the LEFT of the phone, each overlapping the phone's left bezel by at most 40px so the screen stays almost fully visible, each with a small ember check mark and #191713 text in Space Grotesk:
+  Gratis demo, før I betaler
+  Siden er 100 % jeres
+- Keep the bottom-left corner (x 60-300, y 1220-1300) empty flat orange; a logo is added later.
+- Shadows: soft and layered, tinted deep orange-brown (never grey), one light source from the top left.
+- Professional agency quality, clean, photographic hand and phone. Danish letters must be exactly right (æ ø å). No other text, no logo, no watermark.
+
+When done, copy the generated PNG into the current working directory as kinly-a3-haand.png and print its absolute path and pixel size.
