@@ -107,7 +107,7 @@ type VersionDel = Pick<Annonce, "billede_hash" | "cta" | "gruppe" | "overskrift"
 /** Kort, stabil hash (djb2) af standardteksten, så en ændring i annoncer.json også kræver ny godkendelse. */
 const hashTekst = (t: string) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(16); };
 export function versionAf(a: VersionDel, gemt: Record<string, TekstSaet>): string {
-  return `${a.billede_hash}:${gemt[a.gruppe]?.at ?? `std-${hashTekst(`${a.overskrift}\n${a.primaer_tekst}\n${a.beskrivelse}`)}`}:${a.cta}`;
+  return `${a.billede_hash}:${gemt[a.gruppe]?.at ?? `std-${hashTekst(`${a.overskrift}\n${a.primaer_tekst}`)}`}:${hashTekst(a.beskrivelse)}:${a.cta}`;
 }
 export function erGodkendt(b: AnnonceBeslutning | undefined, version: string): boolean {
   return b?.status === "godkendt" && b.version === version;
@@ -159,7 +159,7 @@ export function foldTests(rows: unknown[]): AbTest[] {
     const t = tests.get(e.id);
     if (!t) continue;
     const tal = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
-    if (e.type === "resultat" && t.arme.includes(e.slug)) t.resultater.push({ rid: e.rid, slug: e.slug, fra: e.fra, til: e.til, forbrug: tal(e.forbrug), visninger: tal(e.visninger), klik: tal(e.klik), leads: tal(e.leads), kvalificerede: tal(e.kvalificerede), kunder: tal(e.kunder), by: e.by, at: e.at });
+    if (e.type === "resultat" && t.arme.includes(e.slug) && typeof e.rid === "string" && typeof e.fra === "string" && typeof e.til === "string") t.resultater.push({ rid: e.rid, slug: e.slug, fra: e.fra, til: e.til, forbrug: tal(e.forbrug), visninger: tal(e.visninger), klik: tal(e.klik), leads: tal(e.leads), kvalificerede: tal(e.kvalificerede), kunder: tal(e.kunder), by: e.by, at: e.at });
     else if (e.type === "fortryd") t.resultater = t.resultater.filter((x) => x.rid !== e.rid);
     else if (e.type === "afslut") Object.assign(t, { status: "afsluttet", vinder: e.vinder, slutnote: e.note });
   }

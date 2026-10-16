@@ -137,6 +137,8 @@ test("bestillinger: ny, status, og agenten kan kun markere", async () => {
 test("version: ændret standardtekst i annoncer.json kræver ny godkendelse", () => {
   const a = fri()[0];
   assert.notEqual(versionAf(a, {}), versionAf({ ...a, overskrift: a.overskrift + " x" }, {}));
+  const gemt = { [a.gruppe]: { gruppe: a.gruppe, overskrifter: ["x"], primaere: ["y"], fakta_id: [], kilde: "manuel" as const, by: "l", at: "2026-10-16T00:00:00Z" } };
+  assert.notEqual(versionAf(a, gemt), versionAf({ ...a, beskrivelse: a.beskrivelse + " x" }, gemt), "beskrivelsen er med i versionen");
 });
 
 test("kørende test: tekster kan ikke ændres, og tal for en ændret version afvises", async () => {
@@ -164,7 +166,9 @@ test("vurderTest: sikker kun mod ALLE andre arme, ikke kun nummer to", () => {
 
 test("defekte gemte rækker vælter ikke visningen", () => {
   assert.deepEqual(foldTests([{ type: "opret", id: "bad", arme: [], at: "2026-10-01" }]), []);
-  const t = foldTests([{ type: "opret", id: "ok", navn: "n", arme: ["a", "b"], start: "2026-10-01", at: "2026-10-01" }, { type: "resultat", id: "ok", slug: "a", forbrug: "x", leads: null }]);
+  const t = foldTests([{ type: "opret", id: "ok", navn: "n", arme: ["a", "b"], start: "2026-10-01", at: "2026-10-01" }, { type: "resultat", id: "ok", slug: "a", rid: "r1", fra: "2026-10-01", til: "2026-10-02", forbrug: "x", leads: null },
+    { type: "resultat", id: "ok", slug: "a", rid: "r2", fra: { bad: true }, til: "2026-10-02", forbrug: 1, leads: 0 }]);
+  assert.equal(t[0].resultater.length, 1, "række med ugyldig dato springes over");
   assert.equal(t.length, 1);
   assert.doesNotThrow(() => vurderTest(t[0]));
 });
