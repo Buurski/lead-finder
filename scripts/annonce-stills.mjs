@@ -4,12 +4,17 @@
 //   -> src/data/annoncer.json               (tekst, kilder, advarsler, test-celle pr. still)
 // Kilde-skærmbilleder ligger i public/annoncer/kilde (taget live 16/10-2026). Tekst må kun bruge fakta med kilde (fil:linje).
 import fs from "node:fs";
+import crypto from "node:crypto";
+import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 import { FORMATS, ROOT, SKABELONER } from "./annonce-skabeloner.mjs";
 
 const OUT = path.join(ROOT, "public", "annoncer");
 const DATA = path.join(ROOT, "src", "data", "annoncer.json");
+const BIB = path.join(ROOT, "annonce-bibliotek", "skabeloner");
+const KILDE = path.join(OUT, "kilde");
 const DATO = "16. oktober 2026";
 
 // ---------------------------------------------------------------- fakta (fil:linje i vaulten, læst 16/10-2026)
@@ -82,34 +87,103 @@ const TEKST_FOER = ["Samme værksted.", "Ny hjemmeside.", "Før", "Efter", "Ikas
 const TEKST_UNDERSIDER_IKAST =["Én side pr. ydelse.", "Klar til Google fra dag ét.", "Dæk", "Tesla-værksted", "Lånebil", "Ikast AutoService, kodet af Kinly"];
 
 const STILLS = [
-  { slug: "gpt-haand-kinly", skabelon: "gpt", gpt: gpt("haand-kinly.png"), test_celle: "K1", koncept: "Hånd med telefon (Booksy-format)", anbefalet_start: true, kunde: null,
-    meta: META_HAAND, still: TEKST_HAAND, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer],
-    kilder: ["public/annoncer/kilde/skaerm-kinly-side-hjem.png (live kinly.dk forside)"], advarsler: [AI, KINLY_SKÆRM] },
-  { slug: "gpt-foer-efter-ikast", skabelon: "gpt", gpt: gpt("foer-efter-ikast.png"), test_celle: "K5", koncept: "Før og efter", anbefalet_start: false, kunde: "Ikast AutoService",
+  { slug: "gpt-foer-efter-ikast", gruppe: "foer-efter-ikast", skaerm: "autoservice.nu → ikastautoservice.dk", kunder: ["Ikast AutoService"], skabelon: "gpt", gpt: gpt("foer-efter-ikast.png"), test_celle: "K5", koncept: "Før og efter", anbefalet_start: false, kunde: "Ikast AutoService",
     meta: META_FOER, still: TEKST_FOER, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ikastFoer, ...IKAST_FAKTA],
     kilder: ["public/annoncer/kilde/skaerm-ikast-gammel.png (autoservice.nu) + skaerm-ikast-side-daek.png (live ikastautoservice.dk/service/daek/)"], advarsler: [KUNDE_IKAST, IKAST_SIDE, "Før-skærmen viser det gamle site autoservice.nu, som stadig er online.", AI] },
-  { slug: "gpt-haand-ikast", skabelon: "gpt", gpt: gpt("haand-ikast.png"), test_celle: "K1", koncept: "Hånd med telefon (Booksy-format)", anbefalet_start: false, kunde: "Ikast AutoService",
+  { slug: "gpt-haand-ikast", gruppe: "haand-ikast", skaerm: "Ikast: dæk", kunder: ["Ikast AutoService"], skabelon: "gpt", gpt: gpt("haand-ikast.png"), test_celle: "K1", koncept: "Hånd med telefon (Booksy-format)", anbefalet_start: false, kunde: "Ikast AutoService",
     meta: META_HAAND, still: TEKST_HAAND, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer, ...IKAST_FAKTA],
     kilder: ["public/annoncer/kilde/skaerm-ikast-lang-daek.png (live ikastautoservice.dk/service/daek/)"], advarsler: [KUNDE_IKAST, IKAST_SIDE, AI] },
-  { slug: "gpt-pris-kinly", skabelon: "gpt", gpt: gpt("pris-kinly.png"), test_celle: "K2", koncept: "Pris i mørk stil", anbefalet_start: true, kunde: null,
-    meta: META_PRIS, still: TEKST_PRIS, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer, FAKTA.skrift],
-    kilder: ["public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"], advarsler: [AI, KINLY_SKÆRM] },
-  { slug: "gpt-pris-ikast", skabelon: "gpt", gpt: gpt("pris-ikast.png"), test_celle: "K2", koncept: "Pris i mørk stil", anbefalet_start: false, kunde: "Ikast AutoService",
+  { slug: "gpt-pris-ikast", gruppe: "pris-ikast", skaerm: "Ikast: forside + dæk", kunder: ["Ikast AutoService"], skabelon: "gpt", gpt: gpt("pris-ikast.png"), test_celle: "K2", koncept: "Pris i mørk stil", anbefalet_start: false, kunde: "Ikast AutoService",
     meta: META_PRIS, still: TEKST_PRIS, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer, FAKTA.skrift, ...IKAST_FAKTA],
     kilder: ["public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"], advarsler: [KUNDE_IKAST, IKAST_SIDE, AI] },
-  { slug: "gpt-udkast-kinly", skabelon: "gpt", gpt: gpt("udkast-kinly.png"), test_celle: "K3", koncept: "Se jeres side, før I vælger os", anbefalet_start: true, kunde: null,
-    meta: META_UDKAST, still: TEKST_UDKAST, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.regning],
-    kilder: ["public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"], advarsler: [AI, KINLY_SKÆRM] },
-  { slug: "gpt-udkast-ikast", skabelon: "gpt", gpt: gpt("udkast-ikast.png"), test_celle: "K3", koncept: "Se jeres side, før I vælger os", anbefalet_start: false, kunde: "Ikast AutoService",
+  { slug: "gpt-udkast-ikast", gruppe: "udkast-ikast", skaerm: "Ikast: forside + dæk", kunder: ["Ikast AutoService"], skabelon: "gpt", gpt: gpt("udkast-ikast.png"), test_celle: "K3", koncept: "Se jeres side, før I vælger os", anbefalet_start: false, kunde: "Ikast AutoService",
     meta: META_UDKAST, still: TEKST_UDKAST, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.regning, ...IKAST_FAKTA],
     kilder: ["public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"], advarsler: [KUNDE_IKAST, IKAST_SIDE, AI] },
-  { slug: "gpt-undersider-kinly", skabelon: "gpt", gpt: gpt("undersider-kinly.png"), test_celle: "K4", koncept: "Én side pr. ydelse", anbefalet_start: true, kunde: null,
-    meta: META_UNDERSIDER, still: TEKST_UNDERSIDER_KINLY, fakta: [FAKTA.pris, FAKTA.undersider, FAKTA.google],
-    kilder: ["public/annoncer/kilde/skaerm-kinly-side-automekaniker.png, -herning.png, -oejenvipper.png (live kinly.dk-undersider)"], advarsler: [AI, KINLY_SKÆRM] },
-  { slug: "gpt-undersider-ikast", skabelon: "gpt", gpt: gpt("undersider-ikast.png"), test_celle: "K4", koncept: "Én side pr. ydelse", anbefalet_start: false, kunde: "Ikast AutoService",
+  { slug: "gpt-undersider-ikast", gruppe: "undersider-ikast", skaerm: "Ikast: dæk · Tesla · lånebil", kunder: ["Ikast AutoService"], skabelon: "gpt", gpt: gpt("undersider-ikast.png"), test_celle: "K4", koncept: "Én side pr. ydelse", anbefalet_start: false, kunde: "Ikast AutoService",
     meta: META_UNDERSIDER, still: TEKST_UNDERSIDER_IKAST, fakta: [FAKTA.pris, FAKTA.undersider, FAKTA.google, ...IKAST_FAKTA],
     kilder: ["public/annoncer/kilde/skaerm-ikast-side-daek.png, -tesla.png, -laanebil.png (live ikastautoservice.dk)"], advarsler: [KUNDE_IKAST, `Skærmene viser tre Ikast-undersider, taget live ${DATO}.`, "Ikast har flere undersider end 4.997-pakkens 3. Teksten nævner pakkeprisen, ikke hvad Ikast har betalt.", AI] },
 ];
+
+// ---------------------------------------------------------------- skærmvalg: Kinly-koncepter × kinly.dk-skærme (16/10)
+// Lucas vælger i HQ, hvilken side der står på telefonen/laptoppen. Hver variant bygges her på forhånd fra den rå
+// GPT-skabelon i annonce-bibliotek/skabeloner/ med scripts/annonce-indsaet.py. `kunder` = alle kunder/emner, hvis
+// side kan ses på skærmen (også små billeder i kinly.dk's projekt-række): HQ spærrer godkendelse, til hver har sagt ja.
+const SKÆRM = {
+  "skaerm-kinly-side-hjem.png": { label: "Forsiden", kunder: ["Vida Klinik", "KT VVS"] },
+  "skaerm-kinly-laptop-hjem.png": { label: "Forsiden", kunder: ["Vida Klinik", "Ikast AutoService", "KT VVS"] },
+  "skaerm-kinly-side-priser.png": { label: "Priser", kunder: [] },
+  "skaerm-kinly-laptop-priser.png": { label: "Priser", kunder: [] },
+  "skaerm-kinly-side-herning-2.png": { label: "0 kr før I har set siden", kunder: [] },
+  "skaerm-kinly-side-herning.png": { label: "Webbureau Herning", kunder: ["KT VVS"] },
+  "skaerm-kinly-side-automekaniker.png": { label: "Automekaniker", kunder: [] },
+  "skaerm-kinly-laptop-automekaniker.png": { label: "Automekaniker", kunder: [] },
+  "skaerm-kinly-side-oejenvipper.png": { label: "Vipper og bryn", kunder: [] },
+  "skaerm-kinly-laptop-oejenvipper.png": { label: "Vipper og bryn", kunder: [] },
+};
+const KUNDE_TEKST = (k) => `Kunde-ja mangler: ${k} kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.`;
+const KONCEPTER = [
+  { gruppe: "haand-kinly", fil: "kinly-a3-haand.png", logo: "logo-paa-ember.png@64,1250,240", test_celle: "K1", koncept: "Hånd med telefon (Booksy-format)",
+    meta: META_HAAND, still: TEKST_HAAND, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer],
+    sæt: [
+      { id: "priser", magenta: "skaerm-kinly-side-priser.png", start: true },
+      { id: "tal", magenta: "skaerm-kinly-side-herning-2.png" },
+      { id: "automekaniker", magenta: "skaerm-kinly-side-automekaniker.png" },
+      { id: "vipper", magenta: "skaerm-kinly-side-oejenvipper.png" },
+      { id: "forside", magenta: "skaerm-kinly-side-hjem.png" },
+    ] },
+  { gruppe: "pris-kinly", fil: "kinly-c-pris.png", logo: "logo-lys.png@64,1285,190", test_celle: "K2", koncept: "Pris i mørk stil",
+    meta: META_PRIS, still: TEKST_PRIS, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer, FAKTA.skrift],
+    sæt: [
+      { id: "priser", groen: "skaerm-kinly-laptop-priser.png", magenta: "skaerm-kinly-side-herning-2.png", start: true },
+      { id: "automekaniker", groen: "skaerm-kinly-laptop-automekaniker.png", magenta: "skaerm-kinly-side-automekaniker.png" },
+      { id: "vipper", groen: "skaerm-kinly-laptop-oejenvipper.png", magenta: "skaerm-kinly-side-oejenvipper.png" },
+      { id: "forside", groen: "skaerm-kinly-laptop-hjem.png", magenta: "skaerm-kinly-side-hjem.png" },
+    ] },
+  { gruppe: "udkast-kinly", fil: "kinly-d-udkast.png", logo: "logo-moerk.png@835,1245,190", test_celle: "K3", koncept: "Se jeres side, før I vælger os",
+    meta: META_UDKAST, still: TEKST_UDKAST, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.regning],
+    sæt: [
+      { id: "automekaniker", groen: "skaerm-kinly-laptop-automekaniker.png", magenta: "skaerm-kinly-side-automekaniker.png", start: true },
+      { id: "vipper", groen: "skaerm-kinly-laptop-oejenvipper.png", magenta: "skaerm-kinly-side-oejenvipper.png" },
+      { id: "priser", groen: "skaerm-kinly-laptop-priser.png", magenta: "skaerm-kinly-side-priser.png" },
+      { id: "forside", groen: "skaerm-kinly-laptop-hjem.png", magenta: "skaerm-kinly-side-hjem.png" },
+    ] },
+  { gruppe: "undersider-kinly", fil: "kinly-ek-undersider.png", logo: "logo-lys.png@64,1285,190", test_celle: "K4", koncept: "Én side pr. ydelse",
+    meta: META_UNDERSIDER, still: TEKST_UNDERSIDER_KINLY, fakta: [FAKTA.pris, FAKTA.undersider, FAKTA.google],
+    sæt: [
+      { id: "uden-kunder", groen: "skaerm-kinly-side-automekaniker.png", magenta: "skaerm-kinly-side-herning-2.png", cyan: "skaerm-kinly-side-oejenvipper.png", start: true },
+      { id: "webbureau", groen: "skaerm-kinly-side-automekaniker.png", magenta: "skaerm-kinly-side-herning.png", cyan: "skaerm-kinly-side-oejenvipper.png" },
+    ] },
+];
+const SLOT_NAVN = { magenta: "telefon", groen: "laptop", cyan: "3. telefon" };
+for (const k of KONCEPTER) {
+  for (const v of k.sæt) {
+    const slots = ["groen", "magenta", "cyan"].filter((c) => v[c]);
+    const kunder = [...new Set(slots.flatMap((c) => SKÆRM[v[c]].kunder))];
+    const label = k.gruppe === "undersider-kinly" ? slots.map((c) => SKÆRM[v[c]].label).join(" · ") : SKÆRM[v.magenta].label;
+    STILLS.push({
+      slug: `gpt-${k.gruppe}-${v.id}`, gruppe: k.gruppe, skaerm: label, byg: { fil: k.fil, logo: k.logo, slots: Object.fromEntries(slots.map((c) => [c, v[c]])) },
+      skabelon: "gpt", gpt: gpt(`${k.gruppe}-${v.id}.png`), test_celle: k.test_celle, koncept: k.koncept, anbefalet_start: Boolean(v.start),
+      kunde: kunder.length ? kunder.join(", ") : null, kunder, meta: k.meta, still: k.still, fakta: k.fakta,
+      kilder: slots.map((c) => `public/annoncer/kilde/${v[c]} (${SLOT_NAVN[c]}, live ${DATO})`),
+      advarsler: [...kunder.map(KUNDE_TEKST), AI],
+    });
+  }
+}
+
+// Bygger en variant: rå skabelon + skærme -> 1080x1350 PNG i public/annoncer/gpt/. Springes over, hvis den findes og er nyere
+// end alle input (kør med --byg-alle for at tvinge).
+function bygVariant(s) {
+  const ud = path.join(OUT, s.gpt["1080x1350"]);
+  const ind = [path.join(BIB, s.byg.fil), ...Object.values(s.byg.slots).map((f) => path.join(KILDE, f))];
+  if (!process.argv.includes("--byg-alle") && fs.existsSync(ud) && ind.every((f) => fs.statSync(f).mtimeMs < fs.statSync(ud).mtimeMs)) return;
+  const [logoFil, pos] = s.byg.logo.split("@");
+  const tmp = path.join(os.tmpdir(), `annonce-${path.basename(ud)}`);
+  const args = ["-I", path.join(ROOT, "scripts", "annonce-indsaet.py"), ind[0], tmp,
+    ...Object.entries(s.byg.slots).map(([c, f]) => `${c}=${path.join(KILDE, f)}`), `logo=${path.join(KILDE, logoFil)}@${pos}`];
+  execFileSync("python", args, { stdio: ["ignore", "ignore", "inherit"] });
+  execFileSync("python", ["-I", "-c", "import sys;from PIL import Image;Image.open(sys.argv[1]).convert('RGB').resize((1080,1350),Image.LANCZOS).save(sys.argv[2],optimize=True)", tmp, ud]);
+  console.log("bygget", path.relative(ROOT, ud));
+}
 
 // ---------------------------------------------------------------- tekster i billedet (til tjek af pris/moms og tankestreger)
 const SKIP = new Set(["fil", "alt"]);
@@ -143,6 +217,7 @@ for (const s of STILLS) {
     if (s.gpt) {
       // GPT Image-annonce: færdigt billede (rigtige skærme sat ind af annonce-indsaet.py), kun de formater der findes
       if (!s.gpt[f.key]) continue;
+      if (s.byg) bygVariant(s);
       fs.copyFileSync(path.join(OUT, s.gpt[f.key]), path.join(OUT, file));
     } else {
       const page = await browser.newPage({ viewport: { width: f.w, height: f.h }, deviceScaleFactor: 1 });
@@ -164,7 +239,11 @@ for (const s of STILLS) {
       kilde_fakta: s.fakta,
       billede_kilder: s.kilder,
       kunde: s.kunde,
+      kunder: s.kunder ?? (s.kunde ? [s.kunde] : []),
       kunde_ja: false,
+      gruppe: s.gruppe ?? s.slug,
+      skaerm: s.skaerm ?? "",
+      billede_hash: crypto.createHash("sha256").update(fs.readFileSync(path.join(OUT, file))).digest("hex").slice(0, 16),
       skabelon: s.skabelon,
       test_celle: s.test_celle,
       koncept: s.koncept,

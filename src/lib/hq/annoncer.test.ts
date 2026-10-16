@@ -15,12 +15,12 @@ const ROOT = process.cwd();
 const rows = JSON.parse(fs.readFileSync(path.join(ROOT, "src", "data", "annoncer.json"), "utf8")) as Annonce[];
 const FELTER = [
   "id", "slug", "format", "billede", "overskrift", "primaer_tekst", "beskrivelse", "cta", "still_tekst", "kilde_fakta",
-  "billede_kilder", "kunde", "kunde_ja", "skabelon", "test_celle", "koncept", "anbefalet_start", "advarsler",
+  "billede_kilder", "kunde", "kunder", "kunde_ja", "gruppe", "skaerm", "billede_hash", "skabelon", "test_celle", "koncept", "anbefalet_start", "advarsler",
 ] as const;
 const tekster = (a: Annonce) => [a.overskrift, a.primaer_tekst, a.beskrivelse, a.still_tekst];
 
-test("annoncer.json: 8 til 14 stills, og hver har alle felter med den rigtige type", () => {
-  assert.ok(rows.length >= 8 && rows.length <= 14, `antal: ${rows.length}`);
+test("annoncer.json: 8 til 40 stills, og hver har alle felter med den rigtige type", () => {
+  assert.ok(rows.length >= 8 && rows.length <= 40, `antal: ${rows.length}`);
   assert.equal(new Set(rows.map((r) => r.id)).size, rows.length, "id skal være unikke");
   for (const r of rows) {
     for (const f of FELTER) assert.ok(f in r, `${r.id}: mangler ${f}`);
@@ -72,6 +72,8 @@ test("annoncer.json: kilder med fil:linje, og kunde-ja er falsk for alle", () =>
     assert.equal(r.kunde_ja, false, `${r.id}: kunde_ja må ikke sættes uden Lucas`);
     if (mentionsCustomer(...tekster(r))) assert.ok(r.kunde !== null, `${r.id}: teksten nævner en kunde, men kunde er null`);
     if (r.kunde !== null) assert.ok(venterPaaKunde(r), `${r.id}: kunde uden ja skal vente`);
+    assert.equal(r.kunde === null, r.kunder.length === 0, `${r.id}: kunde og kunder skal passe sammen`);
+    assert.match(r.billede_hash, /^[0-9a-f]{16}$/);
   }
 });
 

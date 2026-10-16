@@ -26,7 +26,15 @@ export interface Annonce {
   kilde_fakta: AnnonceFakta[];
   billede_kilder: string[];
   kunde: string | null;
+  /** Alle kunder/emner, hvis side kan ses i billedet (også små projektbilleder på kinly.dk). */
+  kunder: string[];
   kunde_ja: boolean;
+  /** Koncept-gruppe: varianter med samme budskab, men forskellig skærm, deler gruppe og tekster. */
+  gruppe: string;
+  /** Hvilken side der står på skærmen, i hverdagssprog ("Priser", "Automekaniker"). */
+  skaerm: string;
+  /** Første 16 tegn af billedets sha256. Del af versionen, der godkendes. */
+  billede_hash: string;
   skabelon: string;
   test_celle: string;
   koncept: string;
@@ -51,16 +59,21 @@ export function motiver(rows: Annonce[]): AnnonceMotiv[] {
   return [...out.values()];
 }
 
-/** Må motivet bruges i en annonce? Nej, så længe en kunde er med og ikke har sagt ja. */
-export const venterPaaKunde = (a: Pick<Annonce, "kunde" | "kunde_ja">) => a.kunde !== null && !a.kunde_ja;
-/** Mærket på kladden og i rapporten, så længe kundens skriftlige ja mangler. */
-export const kundeOkMaerke = (a: Pick<Annonce, "kunde" | "kunde_ja">) => (venterPaaKunde(a) ? `KRÆVER KUNDE-OK (${a.kunde})` : null);
+/** Må motivet bruges i en annonce? Nej, så længe én kunde i billedet ikke har sagt skriftligt ja (ja = HQ's kunde-ja-liste). */
+export const venterPaaKunde = (a: Pick<Annonce, "kunder">, ja: Record<string, { ja: boolean }> = {}) => a.kunder.some((k) => !ja[k]?.ja);
+/** Mærket på kladden og i rapporten, så længe en kundes skriftlige ja mangler. */
+export const kundeOkMaerke = (a: Pick<Annonce, "kunder">, ja: Record<string, { ja: boolean }> = {}) => {
+  const mangler = a.kunder.filter((k) => !ja[k]?.ja);
+  return mangler.length ? `KRÆVER KUNDE-OK (${mangler.join(", ")})` : null;
+};
 
 export const ANNONCE_STATUSES = ["godkendt", "droppet", "afventer"] as const;
 export type AnnonceStatus = (typeof ANNONCE_STATUSES)[number];
 export interface AnnonceBeslutning {
   slug: string;
   status: AnnonceStatus;
+  /** Versionen (billede + tekster + knap), der blev godkendt. Ændres den, er annoncen ikke længere godkendt. */
+  version?: string;
   by: string;
   at: string;
 }
@@ -73,7 +86,7 @@ export function foldBeslutninger(rows: unknown[]): Record<string, AnnonceBeslutn
     const x = r as Record<string, unknown>;
     if (typeof x.slug !== "string" || typeof x.by !== "string" || typeof x.at !== "string") continue;
     if (!(ANNONCE_STATUSES as readonly unknown[]).includes(x.status)) continue;
-    out[x.slug] = { slug: x.slug, status: x.status as AnnonceStatus, by: x.by, at: x.at };
+    out[x.slug] = { slug: x.slug, status: x.status as AnnonceStatus, ...(typeof x.version === "string" ? { version: x.version } : {}), by: x.by, at: x.at };
   }
   return out;
 }

@@ -13,6 +13,7 @@ import { DraftInputError } from "./company-draft.ts";
 import { StamdataError } from "./stamdata.ts";
 import { CompetitorInputError } from "./competitors.ts";
 import { MarketingConflictError } from "./marketing-types.ts";
+import { StudieInputError } from "./annonce-studie-types.ts";
 
 export class HqInputError extends Error {}
 
@@ -28,7 +29,7 @@ export async function hqWrite<T>(req: Request, handler: (actor: string) => Promi
     return NextResponse.json(await handler(actor));
   } catch (err) {
     if (err instanceof MarketingConflictError) return NextResponse.json({ error: err.message }, { status: 409 });
-    if (err instanceof HqInputError || err instanceof DealInputError || err instanceof BlogInputError || err instanceof MergeError || err instanceof BillingError || err instanceof UpdateError || err instanceof DraftInputError || err instanceof NoteError || err instanceof StamdataError || err instanceof CompetitorInputError) {
+    if (err instanceof HqInputError || err instanceof DealInputError || err instanceof BlogInputError || err instanceof MergeError || err instanceof BillingError || err instanceof UpdateError || err instanceof DraftInputError || err instanceof NoteError || err instanceof StamdataError || err instanceof CompetitorInputError || err instanceof StudieInputError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error(JSON.stringify({ evt: "hq.write.failed", error: String(err).slice(0, 300) }));

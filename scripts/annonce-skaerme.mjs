@@ -34,6 +34,7 @@ export const SKÆRME = [
   { ud: "skaerm-vida-lang-microneedling.png", fil: "vida-lang-microneedling.png", type: "telefon", lang: true },
   { ud: "skaerm-kinly-side-automekaniker.png", fil: "kinly-side-automekaniker.png", type: "telefon" },
   { ud: "skaerm-kinly-side-herning.png", fil: "kinly-side-herning.png", type: "telefon" },
+  { ud: "skaerm-kinly-side-herning-2.png", fil: "kinly-side-herning-2.png", type: "telefon" },
   { ud: "skaerm-kinly-side-oejenvipper.png", fil: "kinly-side-oejenvipper.png", type: "telefon" },
   { ud: "skaerm-kinly-lang-automekaniker.png", fil: "kinly-lang-automekaniker.png", type: "telefon", lang: true },
   { ud: "skaerm-kinly-lang-herning.png", fil: "kinly-lang-herning.png", type: "telefon", lang: true },
@@ -42,6 +43,9 @@ export const SKÆRME = [
   { ud: "skaerm-kinly-side-priser.png", fil: "kinly-side-priser.png", type: "telefon" },
   { ud: "skaerm-kinly-laptop-hjem.png", fil: "kinly-desktop-hjem-2x.png", type: "laptop" },
   { ud: "skaerm-kinly-laptop.png", fil: "kinly-desktop-2x.png", type: "laptop" },
+  { ud: "skaerm-kinly-laptop-automekaniker.png", fil: "kinly-desktop-automekaniker-2x.png", type: "laptop" },
+  { ud: "skaerm-kinly-laptop-priser.png", fil: "kinly-desktop-priser-2x.png", type: "laptop" },
+  { ud: "skaerm-kinly-laptop-oejenvipper.png", fil: "kinly-desktop-oejenvipper-2x.png", type: "laptop" },
   { ud: "skaerm-ikast-laptop.png", fil: "ikast-desktop-2x.png", type: "laptop" },
   { ud: "skaerm-vida-laptop.png", fil: "vida-desktop-2x.png", type: "laptop" },
 ];

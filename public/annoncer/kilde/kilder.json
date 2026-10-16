@@ -194,5 +194,33 @@
     "top": "rgb(250, 246, 239)",
     "bund": "rgb(243, 237, 226)",
     "taget": "2026-10-16"
+  },
+  "kinly-desktop-automekaniker-2x.png": {
+    "url": "https://kinly.dk/automekaniker-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-priser-2x.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 1720,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(243, 237, 226)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-oejenvipper-2x.png": {
+    "url": "https://kinly.dk/oejenvipper-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-herning-2.png": {
+    "url": "https://kinly.dk/webbureau-herning/",
+    "scroll": 640,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
   }
 }

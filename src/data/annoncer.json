@@ -1,43 +1,5 @@
 [
   {
-    "id": "gpt-haand-kinly-1080x1350",
-    "slug": "gpt-haand-kinly",
-    "format": "1080x1350",
-    "billede": "/annoncer/gpt-haand-kinly-1080x1350.png",
-    "overskrift": "Ny hjemmeside, kodet fra bunden",
-    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
-    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
-    "cta": "Få tilbud",
-    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (live kinly.dk forside)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "gpt",
-    "test_celle": "K1",
-    "koncept": "Hånd med telefon (Booksy-format)",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
-      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
-    ]
-  },
-  {
     "id": "gpt-foer-efter-ikast-1080x1350",
     "slug": "gpt-foer-efter-ikast",
     "format": "1080x1350",
@@ -69,7 +31,13 @@
       "public/annoncer/kilde/skaerm-ikast-gammel.png (autoservice.nu) + skaerm-ikast-side-daek.png (live ikastautoservice.dk/service/daek/)"
     ],
     "kunde": "Ikast AutoService",
+    "kunder": [
+      "Ikast AutoService"
+    ],
     "kunde_ja": false,
+    "gruppe": "foer-efter-ikast",
+    "skaerm": "autoservice.nu → ikastautoservice.dk",
+    "billede_hash": "c00c6bbd90f83059",
     "skabelon": "gpt",
     "test_celle": "K5",
     "koncept": "Før og efter",
@@ -113,7 +81,13 @@
       "public/annoncer/kilde/skaerm-ikast-lang-daek.png (live ikastautoservice.dk/service/daek/)"
     ],
     "kunde": "Ikast AutoService",
+    "kunder": [
+      "Ikast AutoService"
+    ],
     "kunde_ja": false,
+    "gruppe": "haand-ikast",
+    "skaerm": "Ikast: dæk",
+    "billede_hash": "2e7b5d7406c7c202",
     "skabelon": "gpt",
     "test_celle": "K1",
     "koncept": "Hånd med telefon (Booksy-format)",
@@ -122,48 +96,6 @@
       "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
-    ]
-  },
-  {
-    "id": "gpt-pris-kinly-1080x1350",
-    "slug": "gpt-pris-kinly",
-    "format": "1080x1350",
-    "billede": "/annoncer/gpt-pris-kinly-1080x1350.png",
-    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
-    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
-    "beskrivelse": "Endelig pris aftales på skrift.",
-    "cta": "Få tilbud",
-    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:25",
-        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:48",
-        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "gpt",
-    "test_celle": "K2",
-    "koncept": "Pris i mørk stil",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
-      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
@@ -202,7 +134,13 @@
       "public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"
     ],
     "kunde": "Ikast AutoService",
+    "kunder": [
+      "Ikast AutoService"
+    ],
     "kunde_ja": false,
+    "gruppe": "pris-ikast",
+    "skaerm": "Ikast: forside + dæk",
+    "billede_hash": "2b9362f24da860ae",
     "skabelon": "gpt",
     "test_celle": "K2",
     "koncept": "Pris i mørk stil",
@@ -211,44 +149,6 @@
       "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
-    ]
-  },
-  {
-    "id": "gpt-udkast-kinly-1080x1350",
-    "slug": "gpt-udkast-kinly",
-    "format": "1080x1350",
-    "billede": "/annoncer/gpt-udkast-kinly-1080x1350.png",
-    "overskrift": "Se jeres side, før I vælger os",
-    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
-    "beskrivelse": "Gratis udkast før betaling.",
-    "cta": "Få tilbud",
-    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:46",
-        "fakta": "Alle priser er vejledende og ekskl. moms"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:49",
-        "fakta": "Regningen kommer først, når siden er godkendt og klar"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png + skaerm-kinly-side-hjem.png (live kinly.dk forside)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "gpt",
-    "test_celle": "K3",
-    "koncept": "Se jeres side, før I vælger os",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
-      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
@@ -283,7 +183,13 @@
       "public/annoncer/kilde/skaerm-ikast-laptop.png + skaerm-ikast-side-daek.png (live ikastautoservice.dk)"
     ],
     "kunde": "Ikast AutoService",
+    "kunder": [
+      "Ikast AutoService"
+    ],
     "kunde_ja": false,
+    "gruppe": "udkast-ikast",
+    "skaerm": "Ikast: forside + dæk",
+    "billede_hash": "eed762785201e979",
     "skabelon": "gpt",
     "test_celle": "K3",
     "koncept": "Se jeres side, før I vælger os",
@@ -292,44 +198,6 @@
       "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
-    ]
-  },
-  {
-    "id": "gpt-undersider-kinly-1080x1350",
-    "slug": "gpt-undersider-kinly",
-    "format": "1080x1350",
-    "billede": "/annoncer/gpt-undersider-kinly-1080x1350.png",
-    "overskrift": "Én side pr. ydelse",
-    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
-    "beskrivelse": "Forside + undersider, kodet fra bunden.",
-    "cta": "Få tilbud",
-    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Værksted Webbureau Vipper og bryn kinly.dk",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:22",
-        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Klar til Google og Maps fra dag ét"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png, -herning.png, -oejenvipper.png (live kinly.dk-undersider)"
-    ],
-    "kunde": null,
-    "kunde_ja": false,
-    "skabelon": "gpt",
-    "test_celle": "K4",
-    "koncept": "Én side pr. ydelse",
-    "anbefalet_start": true,
-    "advarsler": [
-      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.",
-      "Skærmene viser kinly.dk (Kinlys egne undersider), taget live 16. oktober 2026. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk."
     ]
   },
   {
@@ -364,7 +232,13 @@
       "public/annoncer/kilde/skaerm-ikast-side-daek.png, -tesla.png, -laanebil.png (live ikastautoservice.dk)"
     ],
     "kunde": "Ikast AutoService",
+    "kunder": [
+      "Ikast AutoService"
+    ],
     "kunde_ja": false,
+    "gruppe": "undersider-ikast",
+    "skaerm": "Ikast: dæk · Tesla · lånebil",
+    "billede_hash": "d0e04e295a5e035a",
     "skabelon": "gpt",
     "test_celle": "K4",
     "koncept": "Én side pr. ydelse",
@@ -373,6 +247,671 @@
       "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
       "Skærmene viser tre Ikast-undersider, taget live 16. oktober 2026.",
       "Ikast har flere undersider end 4.997-pakkens 3. Teksten nævner pakkeprisen, ikke hvad Ikast har betalt.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-haand-kinly-priser-1080x1350",
+    "slug": "gpt-haand-kinly-priser",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-kinly-priser-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-priser.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "haand-kinly",
+    "skaerm": "Priser",
+    "billede_hash": "01db35c6a0a626b2",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": true,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-haand-kinly-tal-1080x1350",
+    "slug": "gpt-haand-kinly-tal",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-kinly-tal-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-herning-2.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "haand-kinly",
+    "skaerm": "0 kr før I har set siden",
+    "billede_hash": "dbcf5141b9441249",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-haand-kinly-automekaniker-1080x1350",
+    "slug": "gpt-haand-kinly-automekaniker",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-kinly-automekaniker-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "haand-kinly",
+    "skaerm": "Automekaniker",
+    "billede_hash": "9d4ff939fc7d36b8",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-haand-kinly-vipper-1080x1350",
+    "slug": "gpt-haand-kinly-vipper",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-kinly-vipper-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "haand-kinly",
+    "skaerm": "Vipper og bryn",
+    "billede_hash": "bcc26154ac39c169",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-haand-kinly-forside-1080x1350",
+    "slug": "gpt-haand-kinly-forside",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-haand-kinly-forside-1080x1350.png",
+    "overskrift": "Ny hjemmeside, kodet fra bunden",
+    "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
+    "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside, kodet fra bunden. Fra 3.997 kr. ekskl. moms Se jeres udkast Gratis demo, før I betaler Siden er 100 % jeres",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": "Vida Klinik, KT VVS",
+    "kunder": [
+      "Vida Klinik",
+      "KT VVS"
+    ],
+    "kunde_ja": false,
+    "gruppe": "haand-kinly",
+    "skaerm": "Forsiden",
+    "billede_hash": "4be692f8440ccb56",
+    "skabelon": "gpt",
+    "test_celle": "K1",
+    "koncept": "Hånd med telefon (Booksy-format)",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-pris-kinly-priser-1080x1350",
+    "slug": "gpt-pris-kinly-priser",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-pris-kinly-priser-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:48",
+        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-priser.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-herning-2.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "pris-kinly",
+    "skaerm": "0 kr før I har set siden",
+    "billede_hash": "c8109dc1c6e586e6",
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
+    "anbefalet_start": true,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-pris-kinly-automekaniker-1080x1350",
+    "slug": "gpt-pris-kinly-automekaniker",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-pris-kinly-automekaniker-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:48",
+        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-automekaniker.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "pris-kinly",
+    "skaerm": "Automekaniker",
+    "billede_hash": "8f5a7c7aa342e273",
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-pris-kinly-vipper-1080x1350",
+    "slug": "gpt-pris-kinly-vipper",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-pris-kinly-vipper-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:48",
+        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-oejenvipper.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "pris-kinly",
+    "skaerm": "Vipper og bryn",
+    "billede_hash": "2d2875fd3604b9c3",
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-pris-kinly-forside-1080x1350",
+    "slug": "gpt-pris-kinly-forside",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-pris-kinly-forside-1080x1350.png",
+    "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
+    "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
+    "beskrivelse": "Endelig pris aftales på skrift.",
+    "cta": "Få tilbud",
+    "still_tekst": "Ny hjemmeside 3.997 kr. ekskl. moms. Kodet fra bunden.",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:25",
+        "fakta": "Alle pakker er kodet til kunden (ingen skabelon), og kunden ejer koden 100 %"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:48",
+        "fakta": "Endelig pris bekræftes på skrift, før kunden siger ja"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": "Vida Klinik, Ikast AutoService, KT VVS",
+    "kunder": [
+      "Vida Klinik",
+      "Ikast AutoService",
+      "KT VVS"
+    ],
+    "kunde_ja": false,
+    "gruppe": "pris-kinly",
+    "skaerm": "Forsiden",
+    "billede_hash": "e1b88b7a5011b0b3",
+    "skabelon": "gpt",
+    "test_celle": "K2",
+    "koncept": "Pris i mørk stil",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Kunde-ja mangler: Ikast AutoService kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-udkast-kinly-automekaniker-1080x1350",
+    "slug": "gpt-udkast-kinly-automekaniker",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-udkast-kinly-automekaniker-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:49",
+        "fakta": "Regningen kommer først, når siden er godkendt og klar"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-automekaniker.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "udkast-kinly",
+    "skaerm": "Automekaniker",
+    "billede_hash": "7bc9bcdaf896ade7",
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": true,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-udkast-kinly-vipper-1080x1350",
+    "slug": "gpt-udkast-kinly-vipper",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-udkast-kinly-vipper-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:49",
+        "fakta": "Regningen kommer først, når siden er godkendt og klar"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-oejenvipper.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "udkast-kinly",
+    "skaerm": "Vipper og bryn",
+    "billede_hash": "f4d54ba6e14cf704",
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-udkast-kinly-priser-1080x1350",
+    "slug": "gpt-udkast-kinly-priser",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-udkast-kinly-priser-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:49",
+        "fakta": "Regningen kommer først, når siden er godkendt og klar"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-priser.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-priser.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "udkast-kinly",
+    "skaerm": "Priser",
+    "billede_hash": "1ca4a65f179c7be0",
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-udkast-kinly-forside-1080x1350",
+    "slug": "gpt-udkast-kinly-forside",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-udkast-kinly-forside-1080x1350.png",
+    "overskrift": "Se jeres side, før I vælger os",
+    "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
+    "beskrivelse": "Gratis udkast før betaling.",
+    "cta": "Få tilbud",
+    "still_tekst": "Se jeres side, før I vælger os. I ser et rigtigt udkast, før I siger ja. Se jeres udkast Fra 3.997 kr. ekskl. moms",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:46",
+        "fakta": "Alle priser er vejledende og ekskl. moms"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:49",
+        "fakta": "Regningen kommer først, når siden er godkendt og klar"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+    ],
+    "kunde": "Vida Klinik, Ikast AutoService, KT VVS",
+    "kunder": [
+      "Vida Klinik",
+      "Ikast AutoService",
+      "KT VVS"
+    ],
+    "kunde_ja": false,
+    "gruppe": "udkast-kinly",
+    "skaerm": "Forsiden",
+    "billede_hash": "aecb4d75255326a9",
+    "skabelon": "gpt",
+    "test_celle": "K3",
+    "koncept": "Se jeres side, før I vælger os",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Kunde-ja mangler: Ikast AutoService kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-undersider-kinly-uden-kunder-1080x1350",
+    "slug": "gpt-undersider-kinly-uden-kunder",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-undersider-kinly-uden-kunder-1080x1350.png",
+    "overskrift": "Én side pr. ydelse",
+    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
+    "beskrivelse": "Forside + undersider, kodet fra bunden.",
+    "cta": "Få tilbud",
+    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Værksted Webbureau Vipper og bryn kinly.dk",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:22",
+        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Klar til Google og Maps fra dag ét"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-herning-2.png (telefon, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (3. telefon, live 16. oktober 2026)"
+    ],
+    "kunde": null,
+    "kunder": [],
+    "kunde_ja": false,
+    "gruppe": "undersider-kinly",
+    "skaerm": "Automekaniker · 0 kr før I har set siden · Vipper og bryn",
+    "billede_hash": "3a33bda82021e22e",
+    "skabelon": "gpt",
+    "test_celle": "K4",
+    "koncept": "Én side pr. ydelse",
+    "anbefalet_start": true,
+    "advarsler": [
+      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
+    ]
+  },
+  {
+    "id": "gpt-undersider-kinly-webbureau-1080x1350",
+    "slug": "gpt-undersider-kinly-webbureau",
+    "format": "1080x1350",
+    "billede": "/annoncer/gpt-undersider-kinly-webbureau-1080x1350.png",
+    "overskrift": "Én side pr. ydelse",
+    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
+    "beskrivelse": "Forside + undersider, kodet fra bunden.",
+    "cta": "Få tilbud",
+    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Værksted Webbureau Vipper og bryn kinly.dk",
+    "kilde_fakta": [
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:22",
+        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
+      },
+      {
+        "fil": "KnowledgeOS/context/priser.md:21",
+        "fakta": "Klar til Google og Maps fra dag ét"
+      }
+    ],
+    "billede_kilder": [
+      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-herning.png (telefon, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (3. telefon, live 16. oktober 2026)"
+    ],
+    "kunde": "KT VVS",
+    "kunder": [
+      "KT VVS"
+    ],
+    "kunde_ja": false,
+    "gruppe": "undersider-kinly",
+    "skaerm": "Automekaniker · Webbureau Herning · Vipper og bryn",
+    "billede_hash": "02a27894028da199",
+    "skabelon": "gpt",
+    "test_celle": "K4",
+    "koncept": "Én side pr. ydelse",
+    "anbefalet_start": false,
+    "advarsler": [
+      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   }

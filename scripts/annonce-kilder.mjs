@@ -30,6 +30,7 @@ const SKUD = [
   // kinly.dk egne undersider: varianter uden kundesider, som kan bruges uden kunde-OK
   { fil: "kinly-side-automekaniker.png", url: "https://kinly.dk/automekaniker-herning/", scroll: 0 },
   { fil: "kinly-side-herning.png", url: "https://kinly.dk/webbureau-herning/", scroll: 0 },
+  { fil: "kinly-side-herning-2.png", url: "https://kinly.dk/webbureau-herning/", scroll: 640 }, // under hero-billedet (KT VVS-demo)
   { fil: "kinly-side-oejenvipper.png", url: "https://kinly.dk/oejenvipper-herning/", scroll: 0 },
   { fil: "kinly-lang-automekaniker.png", url: "https://kinly.dk/automekaniker-herning/", scroll: 0, hoej: 1300 },
   { fil: "kinly-lang-herning.png", url: "https://kinly.dk/webbureau-herning/", scroll: 0, hoej: 1300 },
@@ -38,6 +39,10 @@ const SKUD = [
   { fil: "kinly-side-priser.png", url: "https://kinly.dk/", scroll: 2100 },
   { fil: "kinly-desktop-hjem-2x.png", url: "https://kinly.dk/", scroll: 0, desktop: true },
   { fil: "kinly-desktop-2x.png", url: "https://kinly.dk/webbureau-herning/", scroll: 0, desktop: true },
+  // kundefri laptop-skærme (16/10): forsidens og Hernings hero viser KT VVS-demo, Vida og Ikast
+  { fil: "kinly-desktop-automekaniker-2x.png", url: "https://kinly.dk/automekaniker-herning/", scroll: 0, desktop: true },
+  { fil: "kinly-desktop-priser-2x.png", url: "https://kinly.dk/", scroll: 1720, desktop: true },
+  { fil: "kinly-desktop-oejenvipper-2x.png", url: "https://kinly.dk/oejenvipper-herning/", scroll: 0, desktop: true },
   { fil: "ikast-desktop-2x.png", url: "https://ikastautoservice.dk/", scroll: 0, desktop: true },
   { fil: "vida-desktop-2x.png", url: "https://vida-klinik.dk/", scroll: 0, desktop: true },
 ];
