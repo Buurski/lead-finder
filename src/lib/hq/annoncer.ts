@@ -7,7 +7,7 @@ import { store } from "../store.ts";
 import data from "../../data/annoncer.json" with { type: "json" };
 import { ANNONCE_STATUSES, foldBeslutninger, type Annonce, type AnnonceBeslutning, type AnnonceStatus } from "./annoncer-types.ts";
 import {
-  BESTILLING_STATUSES, StudieInputError, foldBestillinger, foldKundeJa, foldTekster, foldTests, manglerJa, validerTekster, versionAf, erGodkendt, vurderTest,
+  BESTILLING_STATUSES, StudieInputError, foldBestillinger, foldKundeJa, foldTekster, foldTests, manglerJa, validerTekster, erBrugbar, versionAf, vurderTest,
   type AbTest, type Bestilling, type KundeJaMap, type ResultatInput, type TekstSaet,
 } from "./annonce-studie-types.ts";
 
@@ -87,6 +87,10 @@ export async function setKundeJa(kunde: unknown, ja: unknown, note: unknown, act
 export async function gemTekster(gruppe: unknown, input: Record<string, unknown>, kilde: "ai" | "manuel", actor: string): Promise<Record<string, TekstSaet>> {
   if (typeof gruppe !== "string" || !grupper().has(gruppe)) throw new StudieInputError("Ukendt koncept.");
   const v = validerTekster({ overskrifter: input.overskrifter, primaere: input.primaere, fakta_id: input.fakta_id });
+  const iGruppe = new Set(loadAnnoncer().filter((a) => a.gruppe === gruppe).map((a) => a.slug));
+  if ((await loadStudie()).tests.some((t) => t.status === "kører" && t.arme.some((s) => iGruppe.has(s)))) {
+    throw new StudieInputError("Konceptet er med i en test, der kører. Afslut testen, før du ændrer teksterne (ellers blandes tallene fra to versioner).");
+  }
   await store.append(TEKST_KEY, { gruppe, ...v, kilde, by: actor, at: nu() });
   return foldTekster(await store.readAll(TEKST_KEY));
 }
@@ -101,10 +105,11 @@ export async function opretTest(input: Record<string, unknown>, actor: string): 
   const s = await loadStudie();
   for (const slug of slugs) {
     const m = motivAf(slug);
-    if (!erGodkendt(s.beslutninger[slug], versionAf(m, s.tekster))) throw new StudieInputError(`"${m.koncept} · ${m.skaerm}" er ikke godkendt i den nuværende version. Godkend den først.`);
+    if (!erBrugbar(m, s)) throw new StudieInputError(`"${m.koncept} · ${m.skaerm}" er ikke godkendt i den nuværende version, eller kundens ja mangler. Godkend den først.`);
   }
   if (s.tests.some((t) => t.status === "kører" && t.arme.some((a) => slugs.includes(a)))) throw new StudieInputError("En af annoncerne er allerede med i en test, der kører.");
-  await store.append(TEST_KEY, { type: "opret", id: crypto.randomUUID(), navn, hypotese, arme: slugs, start, by: actor, at: nu() });
+  const versioner = Object.fromEntries(slugs.map((slug) => [slug, versionAf(motivAf(slug), s.tekster)]));
+  await store.append(TEST_KEY, { type: "opret", id: crypto.randomUUID(), navn, hypotese, arme: slugs, versioner, start, by: actor, at: nu() });
   return foldTests(await store.readAll(TEST_KEY));
 }
 
@@ -118,6 +123,10 @@ const aktivTest = async (id: unknown): Promise<AbTest> => {
 export async function tilfoejResultat(input: Record<string, unknown>, actor: string): Promise<AbTest[]> {
   const t = await aktivTest(input.id);
   if (typeof input.slug !== "string" || !t.arme.includes(input.slug)) throw new StudieInputError("Annoncen er ikke med i testen.");
+  const fra = t.versioner[input.slug];
+  if (fra && fra !== versionAf(motivAf(input.slug), (await loadStudie()).tekster)) {
+    throw new StudieInputError("Billede eller tekst er ændret, siden testen startede. Tallene hører til den gamle version: afslut testen og start en ny.");
+  }
   const r: ResultatInput = {
     fra: dato(input.fra, "Fra"), til: dato(input.til, "Til"),
     forbrug: heltal(input.forbrug, "Forbrug (kr)", 100_000), visninger: heltal(input.visninger ?? 0, "Visninger", 10_000_000),
@@ -175,7 +184,7 @@ export async function studieOversigt() {
   };
   const godkendte = [...new Set(alle.map((a) => a.slug))].filter((slug) => {
     const a = alle.find((x) => x.slug === slug)!;
-    return erGodkendt(s.beslutninger[slug], versionAf(a, s.tekster));
+    return erBrugbar(a, s);
   });
   return {
     godkendte: godkendte.map((slug) => ({ slug, navn: navn(slug) })),

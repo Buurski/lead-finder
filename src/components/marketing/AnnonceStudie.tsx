@@ -7,19 +7,19 @@ import Info from "./Info";
 import Field from "./Field";
 import { PLAN, PLAN_TAL, type Annonce } from "@/lib/hq/annoncer-types";
 import {
-  MIN_FORBRUG_FOER_DOM, STOP_EN_LEAD, STOP_UDEN_LEAD, versionAf, vurderTest,
+  MIN_FORBRUG_FOER_DOM, STOP_EN_LEAD, STOP_UDEN_LEAD, manglerJa, versionAf, vurderTest,
   type AbTest, type Bestilling, type KundeJaMap,
 } from "@/lib/hq/annonce-studie-types";
 import type { StudieState } from "@/lib/hq/annoncer";
 import "./marketing.css";
 
 type Props = { rows: Annonce[]; s: StudieState; set: (p: Partial<StudieState>) => void };
-type Status = "godkendt" | "aendret" | "droppet" | "afventer";
-export const STATUS_TEKST: Record<Status, string> = { godkendt: "Godkendt", aendret: "Ændret efter godkendelse", droppet: "Droppet", afventer: "Ikke godkendt endnu" };
+type Status = "godkendt" | "aendret" | "kunde" | "droppet" | "afventer";
+export const STATUS_TEKST: Record<Status, string> = { godkendt: "Godkendt", aendret: "Ændret efter godkendelse", kunde: "Godkendt, men kundens ja mangler nu", droppet: "Droppet", afventer: "Ikke godkendt endnu" };
 
-export function statusAf(a: Annonce, s: Pick<StudieState, "beslutninger" | "tekster">): Status {
+export function statusAf(a: Annonce, s: Pick<StudieState, "beslutninger" | "tekster" | "kundeJa">): Status {
   const b = s.beslutninger[a.slug];
-  if (b?.status === "godkendt") return b.version === versionAf(a, s.tekster) ? "godkendt" : "aendret";
+  if (b?.status === "godkendt") return b.version !== versionAf(a, s.tekster) ? "aendret" : manglerJa(a, s.kundeJa).length ? "kunde" : "godkendt";
   return b?.status === "droppet" ? "droppet" : "afventer";
 }
 

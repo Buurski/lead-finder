@@ -103,11 +103,18 @@ export function teksterFor(a: Pick<Annonce, "gruppe" | "overskrift" | "primaer_t
 }
 
 /** Versionen af det, der godkendes: billede + tekster + knap. Ændres én af dem, skal annoncen godkendes igen. */
-export function versionAf(a: Pick<Annonce, "billede_hash" | "cta" | "gruppe">, gemt: Record<string, TekstSaet>): string {
-  return `${a.billede_hash}:${gemt[a.gruppe]?.at ?? "std"}:${a.cta}`;
+type VersionDel = Pick<Annonce, "billede_hash" | "cta" | "gruppe" | "overskrift" | "primaer_tekst" | "beskrivelse">;
+/** Kort, stabil hash (djb2) af standardteksten, så en ændring i annoncer.json også kræver ny godkendelse. */
+const hashTekst = (t: string) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(16); };
+export function versionAf(a: VersionDel, gemt: Record<string, TekstSaet>): string {
+  return `${a.billede_hash}:${gemt[a.gruppe]?.at ?? `std-${hashTekst(`${a.overskrift}\n${a.primaer_tekst}\n${a.beskrivelse}`)}`}:${a.cta}`;
 }
 export function erGodkendt(b: AnnonceBeslutning | undefined, version: string): boolean {
   return b?.status === "godkendt" && b.version === version;
+}
+/** Må bruges i test og Meta-pakke: godkendt i den nuværende version OG alle kunder i billedet har (stadig) sagt ja. */
+export function erBrugbar(a: VersionDel & Pick<Annonce, "slug" | "kunder">, s: { beslutninger: Record<string, AnnonceBeslutning>; tekster: Record<string, TekstSaet>; kundeJa: KundeJaMap }): boolean {
+  return erGodkendt(s.beslutninger[a.slug], versionAf(a, s.tekster)) && manglerJa(a, s.kundeJa).length === 0;
 }
 
 // ---------------------------------------------------------------- A/B-tests
@@ -119,6 +126,8 @@ export interface AbTest {
   navn: string;
   hypotese: string;
   arme: string[];
+  /** Versionen af hver annonce, da testen startede. Tal må kun skrives ind for den version. */
+  versioner: Record<string, string>;
   start: string;
   status: "kører" | "afsluttet";
   vinder: string | null;
@@ -129,7 +138,7 @@ export interface AbTest {
 }
 
 type TestEvent =
-  | { type: "opret"; id: string; navn: string; hypotese: string; arme: string[]; start: string; by: string; at: string }
+  | { type: "opret"; id: string; navn: string; hypotese: string; arme: string[]; versioner?: Record<string, string>; start: string; by: string; at: string }
   | ({ type: "resultat"; id: string } & Resultat)
   | { type: "fortryd"; id: string; rid: string; by: string; at: string }
   | { type: "afslut"; id: string; vinder: string | null; note: string; by: string; at: string };
@@ -139,13 +148,18 @@ export function foldTests(rows: unknown[]): AbTest[] {
   for (const r of rows) {
     const e = r as TestEvent | null;
     if (!e || typeof e !== "object" || typeof e.id !== "string") continue;
-    if (e.type === "opret" && Array.isArray(e.arme)) {
-      tests.set(e.id, { id: e.id, navn: e.navn, hypotese: e.hypotese ?? "", arme: e.arme, start: e.start, status: "kører", vinder: null, slutnote: "", resultater: [], by: e.by, at: e.at });
+    if (e.type === "opret") {
+      const ok = Array.isArray(e.arme) && e.arme.length >= 2 && e.arme.length <= 3 && e.arme.every((x) => typeof x === "string")
+        && typeof e.navn === "string" && typeof e.start === "string" && typeof e.at === "string";
+      if (ok) tests.set(e.id, { id: e.id, navn: e.navn, hypotese: typeof e.hypotese === "string" ? e.hypotese : "", arme: e.arme,
+        versioner: e.versioner && typeof e.versioner === "object" ? e.versioner : {}, start: e.start, status: "kører", vinder: null, slutnote: "", resultater: [],
+        by: typeof e.by === "string" ? e.by : "?", at: e.at });
       continue;
     }
     const t = tests.get(e.id);
     if (!t) continue;
-    if (e.type === "resultat" && t.arme.includes(e.slug)) t.resultater.push({ rid: e.rid, slug: e.slug, fra: e.fra, til: e.til, forbrug: e.forbrug, visninger: e.visninger, klik: e.klik, leads: e.leads, kvalificerede: e.kvalificerede, kunder: e.kunder, by: e.by, at: e.at });
+    const tal = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    if (e.type === "resultat" && t.arme.includes(e.slug)) t.resultater.push({ rid: e.rid, slug: e.slug, fra: e.fra, til: e.til, forbrug: tal(e.forbrug), visninger: tal(e.visninger), klik: tal(e.klik), leads: tal(e.leads), kvalificerede: tal(e.kvalificerede), kunder: tal(e.kunder), by: e.by, at: e.at });
     else if (e.type === "fortryd") t.resultater = t.resultater.filter((x) => x.rid !== e.rid);
     else if (e.type === "afslut") Object.assign(t, { status: "afsluttet", vinder: e.vinder, slutnote: e.note });
   }
@@ -171,16 +185,15 @@ export function pVaerdi(leadsA: number, leadsB: number, forbrugA: number, forbru
   const n = leadsA + leadsB;
   if (n === 0 || forbrugA <= 0 || forbrugB <= 0) return 1;
   const p = forbrugA / (forbrugA + forbrugB);
-  const pmf = (k: number) => {
-    let c = 1;
-    for (let i = 0; i < k; i++) c = (c * (n - i)) / (i + 1);
-    return c * p ** k * (1 - p) ** (n - k);
-  };
-  const obs = pmf(leadsA);
+  // I log-rum: med tusinder af henvendelser løber c * p^k ellers over/under (og identiske arme blev "sikre").
+  const logC: number[] = [0];
+  for (let k = 0; k < n; k++) logC.push(logC[k] + Math.log(n - k) - Math.log(k + 1));
+  const lpmf = (k: number) => logC[k] + k * Math.log(p) + (n - k) * Math.log(1 - p);
+  const obs = lpmf(leadsA);
   let sum = 0;
   for (let k = 0; k <= n; k++) {
-    const v = pmf(k);
-    if (v <= obs * (1 + 1e-9)) sum += v;
+    const v = lpmf(k);
+    if (v <= obs + 1e-9) sum += Math.exp(v);
   }
   return Math.min(1, sum);
 }
@@ -199,16 +212,18 @@ export function vurderTest(t: AbTest): TestVurdering {
     stop: a.leads === 0 && a.forbrug >= STOP_UDEN_LEAD ? `Har brugt ${kr(a.forbrug)} uden en eneste henvendelse: sæt den på pause.`
       : a.leads <= 1 && a.forbrug >= STOP_EN_LEAD ? `Har brugt ${kr(a.forbrug)} og højst én henvendelse: sæt den på pause.` : null,
   }));
+  if (vs.length < 2) return { arme: vs, fører: null, sikker: false, tekst: "Testen mangler annoncer." };
   if (vs.some((a) => a.forbrug < MIN_FORBRUG_FOER_DOM)) {
     const mangler = vs.filter((a) => a.forbrug < MIN_FORBRUG_FOER_DOM).length;
     return { arme: vs, fører: null, sikker: false, tekst: `For tidligt: ${mangler} af ${vs.length} annoncer har brugt under ${kr(MIN_FORBRUG_FOER_DOM)}. Lad dem køre.` };
   }
   // Bedst = lavest pris pr. henvendelse (uden henvendelser = uendelig); lige = flest henvendelser.
   const rang = [...vs].sort((a, b) => (a.cpl ?? Infinity) - (b.cpl ?? Infinity) || b.leads - a.leads);
-  const [bedst, næst] = rang;
+  const [bedst, ...andre] = rang;
   if (bedst.leads === 0) return { arme: vs, fører: null, sikker: false, tekst: "Ingen af annoncerne har givet en henvendelse endnu." };
-  const p = pVaerdi(bedst.leads, næst.leads, bedst.forbrug, næst.forbrug);
-  const n = bedst.leads + næst.leads;
+  // Sikker kun hvis den er tydeligt bedre end HVER af de andre (ikke kun nummer to).
+  const p = Math.max(...andre.map((o) => pVaerdi(bedst.leads, o.leads, bedst.forbrug, o.forbrug)));
+  const n = Math.min(...andre.map((o) => bedst.leads + o.leads));
   const sikker = p < 0.1 && n >= 6;
   const cpl = `${kr(bedst.cpl!)} pr. henvendelse`;
   return {
