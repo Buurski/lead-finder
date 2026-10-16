@@ -140,4 +140,10 @@ test("A/B: dommen bruger testens primære metrik, ikke altid gem + delinger (Sol
   const ukendt = abBoard([ab("Stemning i kommentarfeltet")], measures)[0].call;
   assert.equal(ukendt.verdict, "ingen-afgoerelse");
   assert.equal(ukendt.ahead, null);
+  // Samme ord, anden enhed: ingen dom (re-review).
+  assert.equal(abBoard([ab("Gem + delinger pr. opslag")], measures)[0].call.verdict, "ingen-afgoerelse");
+  // Visninger: 0 er et gyldigt tal og tæller med i medianen.
+  const vis = (arm: "A" | "B", views: number, n: number) => rep(n, 0).map(() => ({ abId: "t1", arm, views, saves: null, shares: null, newFollowers: null, note: "" }) as unknown as MeasureDto);
+  const v = abBoard([ab("Visninger pr. opslag (median)")], [...vis("A", 0, 6), ...vis("A", 100, 5), ...vis("B", 50, 11)])[0].call;
+  assert.deepEqual([v.medA, v.medB, v.ahead], [0, 50, "B"]);
 });

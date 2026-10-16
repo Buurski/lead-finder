@@ -179,13 +179,14 @@ const per1000 = (n: number | null | undefined, m: MeasureDto) => (n == null || !
  */
 export function metricValue(metric: string): ((m: MeasureDto) => number | null) | null {
   const t = metric.trim().toLowerCase();
-  if (t === "" || t.startsWith("gem + delinger")) return savesSharesPer1000;
-  if (t.startsWith("kommentarer pr. 1000")) return (m) => {
+  // Enheden skal stå der ("pr. 1000" / "pr. opslag"): "gem + delinger pr. opslag" er en anden metrik og regnes ikke.
+  if (t === "" || /^gem \+ delinger pr\. 1000(?!\d)/.test(t)) return savesSharesPer1000;
+  if (/^kommentarer pr\. 1000(?!\d)/.test(t)) return (m) => {
     const k = /\bkom=(\d+)\b/.exec(m.note ?? "");
     return k ? per1000(Number(k[1]), m) : null;
   };
-  if (t.startsWith("følgere pr. 1000")) return (m) => per1000(m.newFollowers, m);
-  if (t.startsWith("visninger pr. opslag")) return (m) => (m.views != null && m.views > 0 ? m.views : null);
+  if (/^følgere pr\. 1000(?!\d)/.test(t)) return (m) => per1000(m.newFollowers, m);
+  if (/^visninger pr\. opslag\b/.test(t)) return (m) => m.views; // 0 visninger er et gyldigt tal; kun ukendt (null) udelades
   return null;
 }
 
