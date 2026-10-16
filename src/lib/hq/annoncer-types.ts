@@ -129,7 +129,7 @@ export const PLAN: PlanGruppe[] = [
       },
       {
         id: "form",
-        tekst: "Formular i annoncen med tre spørgsmål: Har du en virksomhed med CVR? Har du en hjemmeside i dag? Hvornår skal du bruge en ny?",
+        tekst: "Formular i annoncen med navn, telefon, firmanavn og nuværende hjemmeside (\"har ingen\" er et svar). Ikke flere felter: hvert ekstra felt koster henvendelser.",
         info: "Det er Metas færdige tilmeldingsformular (Instant Form). Den, der trykker på annoncen, udfylder den uden at forlade Facebook eller Instagram. Du får et navn og en kontaktmulighed.",
       },
       { id: "privat", tekst: "Formularen linker til privatlivspolitikken og siger, hvad svaret bruges til, og hvornår det slettes." },
@@ -141,13 +141,13 @@ export const PLAN: PlanGruppe[] = [
     id: "koerer",
     titel: "Mens det kører (4 uger)",
     punkter: [
-      { id: "dag", tekst: "150 kr om dagen i 4 uger. Én kampagne, ét bredt målgruppe-sæt, hele Danmark. \"Fra Herning\" må stå i teksten, aldrig adressen." },
+      { id: "dag", tekst: "150 kr om dagen i 4 uger. Én kampagne med én annoncegruppe pr. annonce og samme budget i hver (ABO), bred målgruppe, hele Danmark. \"Fra Herning\" må stå i teksten, aldrig adressen." },
       { id: "syv", tekst: "Ret ikke i budgettet de første 7 dage. Eneste undtagelse er at sætte kampagnen på pause." },
-      { id: "svar", tekst: "Svar på hver henvendelse inden for 24 timer. Ligger der flere ubesvarede, end du kan nå (4), sætter du kampagnen på pause." },
+      { id: "svar", tekst: "Ring hver henvendelse op inden for 1 til 2 timer i dagtimerne. Efter et døgn er de fleste kolde. Ligger der flere ubesvarede, end du kan nå (4), sætter du kampagnen på pause." },
       {
         id: "vinkler",
-        tekst: "Start med 4 til 5 helt forskellige annoncer. Skift de dårligste ud efter 7 til 10 dage, og tilføj 1 til 2 nye om ugen.",
-        info: "Hver slags annonce her er en test (K1 til K6). Meta viser den, der får flest henvendelser, mest. Derfor virker det bedre med få, forskellige annoncer end mange næsten ens.",
+        tekst: "Test 2 til 3 meget forskellige annoncer ad gangen i 14 til 21 dage. Skriv tallene ind i studiets Test-fane én gang om ugen.",
+        info: "Med 150 kr om dagen kommer der måske 10 til 15 henvendelser på 4 uger. Det rækker kun til at se forskel på få, meget forskellige annoncer. Studiet siger, hvornår en vinder er sikker, og hvornår det bare er held.",
       },
     ],
   },
