@@ -1,10 +1,11 @@
 // Seed til /marketing: læser reel-system-mappen i vaulten og lægger kladder, hooks, A/B-tests,
-// inspiration og noter i databasen. KUN lokal brug: scriptet nægter at køre mod en database,
-// der ikke ligger på localhost. Idempotent (samme nøgle sættes aldrig to gange).
+// inspiration og noter i databasen. Nægter en database, der ikke ligger på localhost, medmindre
+// --prod er givet eksplicit. Idempotent (samme nøgle sættes aldrig to gange; kun INSERT).
 //
 //   node --experimental-strip-types scripts/seed-marketing.ts --dry            (kun parse + tal)
 //   DATABASE_URL=postgres://postgres@127.0.0.1:5433/postgres \
 //     node --experimental-strip-types scripts/seed-marketing.ts [vault-mappe]
+//   Prod: DATABASE_URL=<prod unpooled> node --experimental-strip-types scripts/seed-marketing.ts --prod
 //
 // Lokal pglite-server: npx pglite-server --db=.pglite-dev --port=5433 -m 8 (se dev-db-snapshot.mjs).
 import fs from "node:fs";
@@ -60,8 +61,8 @@ if (!url) {
   process.exit(1);
 }
 const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
-if (!["localhost", "127.0.0.1", "::1"].includes(host)) {
-  console.error(`nægter at seede mod ${host}: kun localhost`);
+if (!["localhost", "127.0.0.1", "::1"].includes(host) && !args.includes("--prod")) {
+  console.error(`nægter at seede mod ${host}: kun localhost (eller eksplicit --prod)`);
   process.exit(1);
 }
 const client = postgres(url, { prepare: false, max: 1 });
