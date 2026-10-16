@@ -6,7 +6,6 @@ import {
   abBoard, addInspiration, addMeasure, approvalBlockers, createAb, createDraft, draftAction, listDrafts,
   listMeasures, listRefs, setAbStatus, setChecks, updateDraft,
 } from "./marketing.ts";
-import { MarketingConflictError } from "./marketing-types.ts";
 import { marketingDraft } from "../db/schema.ts";
 
 let db: Db;
@@ -193,11 +192,26 @@ test("tjek fjernet paa godkendt kladde sender den tilbage til kladde; postet kra
   await assert.rejects(draftAction(db, p.id, "posted", "lucas"), /Kan ikke markeres som postet/);
 });
 
-test("optimistisk laas: to samtidige handlinger paa samme kladde giver konflikt til den ene", async () => {
+test("laas: to samtidige godkendelser af samme kladde, kun den ene lykkes", async () => {
   const d = await checked();
   const res = await Promise.allSettled([draftAction(db, d.id, "approve", "lucas"), draftAction(db, d.id, "approve", "charlie")]);
   assert.equal(res.filter((r) => r.status === "fulfilled").length, 1);
   const lost = res.find((r) => r.status === "rejected") as PromiseRejectedResult;
-  assert.ok(lost.reason instanceof MarketingConflictError, String(lost.reason));
+  // Rækkelåsen serialiserer: nummer to ser den godkendte version og får en præcis besked frem for en generisk konflikt.
+  assert.match(String(lost.reason), /Kun en kladde kan godkendes/);
   assert.equal((await listDrafts(db))[0].status, "godkendt");
+});
+
+test("godkend og ret samtidig: kladden bliver aldrig godkendt med indhold, godkendelsen ikke tjekkede (Sol 16/10)", async () => {
+  const d = await checked();
+  // Ret starter først; godkend i samme tick. Uden rækkelås læste godkend det gamle hook og godkendte det nye.
+  const [ret, godkend] = await Promise.allSettled([
+    updateDraft(db, d.id, { hook: "Dag [N] af at bygge Kinly." }, "charlie"),
+    draftAction(db, d.id, "approve", "lucas"),
+  ]);
+  assert.equal(ret.status, "fulfilled");
+  assert.equal(godkend.status, "rejected");
+  const [row] = await db.select().from(marketingDraft);
+  assert.equal(row.status, "kladde");
+  assert.match(row.hook, /\[N\]/);
 });

@@ -167,15 +167,40 @@ export function weekGrid(from: string, weeks: number): string[][] {
 export interface AbBoardItem {
   test: RefDto;
   call: AbCall;
-  /** Tal pr. opslag pr. arm (gem + delinger pr. 1000), til visning. */
+  /** Tal pr. opslag pr. arm for testens metrik, til visning. */
   values: { A: number[]; B: number[] };
 }
 
-/** Dommen pr. test: opslag uden visninger tæller ikke med (kan ikke regnes pr. 1000). */
+const per1000 = (n: number | null | undefined, m: MeasureDto) => (n == null || !m.views || m.views <= 0 ? null : Math.round((n / m.views) * 10_000) / 10);
+
+/**
+ * Tallet pr. opslag for testens primære metrik (07-AB-TEST.md). null-funktion = metrikken
+ * kan ikke regnes her, så der gives ingen automatisk dom (aldrig en dom på en anden metrik).
+ */
+export function metricValue(metric: string): ((m: MeasureDto) => number | null) | null {
+  const t = metric.trim().toLowerCase();
+  // Enheden skal stå der ("pr. 1000" / "pr. opslag"): "gem + delinger pr. opslag" er en anden metrik og regnes ikke.
+  if (t === "" || /^gem \+ delinger pr\. 1000(?!\d)/.test(t)) return savesSharesPer1000;
+  if (/^kommentarer pr\. 1000(?!\d)/.test(t)) return (m) => {
+    const k = /\bkom=(\d+)\b/.exec(m.note ?? "");
+    return k ? per1000(Number(k[1]), m) : null;
+  };
+  if (/^følgere pr\. 1000(?!\d)/.test(t)) return (m) => per1000(m.newFollowers, m);
+  if (/^visninger pr\. opslag\b/.test(t)) return (m) => m.views; // 0 visninger er et gyldigt tal; kun ukendt (null) udelades
+  return null;
+}
+
+/** Dommen pr. test: opslag uden tal for metrikken tæller ikke med (fx uden visninger, når der regnes pr. 1000). */
 export function abBoard(tests: RefDto[], measures: MeasureDto[]): AbBoardItem[] {
   return tests.map((test) => {
+    const metric = typeof test.data.metric === "string" ? test.data.metric : "";
+    const value = metricValue(metric);
+    if (!value) {
+      const call: AbCall = { verdict: "ingen-afgoerelse", ahead: null, nA: 0, nB: 0, medA: null, medB: null, text: `Ingen automatisk dom: "${metric}" kan ikke regnes her. Vurder testen selv.` };
+      return { test, values: { A: [], B: [] }, call };
+    }
     const mine = measures.filter((m) => m.abId === test.id);
-    const pick = (arm: string) => mine.filter((m) => m.arm === arm).map(savesSharesPer1000).filter((x): x is number => x != null);
+    const pick = (arm: string) => mine.filter((m) => m.arm === arm).map(value).filter((x): x is number => x != null);
     const values = { A: pick("A"), B: pick("B") };
     return { test, values, call: abVerdict(values.A, values.B) };
   });

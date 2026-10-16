@@ -139,8 +139,12 @@ export async function listDrafts(db: Db): Promise<DraftDto[]> {
   return rows.map(toDraft).sort((a, b) => a.priority - b.priority || (TRACK_ORDER[a.track] ?? 9) - (TRACK_ORDER[b.track] ?? 9));
 }
 
-async function getRow(db: Db, id: unknown): Promise<DraftRow> {
-  const [row] = await db.select().from(marketingDraft).where(eq(marketingDraft.id, uuid(id)));
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** lock=true: rækkelås til transaktionens slutning, så tjek og skrivning sker på samme version (ingen redigering imellem). */
+async function getRow(db: Db | Tx, id: unknown, lock = false): Promise<DraftRow> {
+  const q = db.select().from(marketingDraft).where(eq(marketingDraft.id, uuid(id)));
+  const [row] = lock ? await q.for("update") : await q;
   if (!row) fail("kladden findes ikke");
   return row!;
 }
@@ -149,7 +153,7 @@ export async function getDraft(db: Db, id: unknown): Promise<DraftDto> {
 }
 
 /** Optimistisk lås: opdaterer kun hvis status stadig er den, vi læste. 0 rækker = en anden nåede først (409). */
-async function saveIf(db: Db, row: DraftRow, set: Partial<typeof marketingDraft.$inferInsert>): Promise<DraftDto> {
+async function saveIf(db: Db | Tx, row: DraftRow, set: Partial<typeof marketingDraft.$inferInsert>): Promise<DraftDto> {
   const [next] = await db
     .update(marketingDraft)
     .set({ ...set, updatedAt: new Date() })
@@ -174,70 +178,76 @@ export async function createDraft(db: Db, raw: unknown, actor: string, via: "hum
 
 /** Ret (menneske): et ændret indhold på en godkendt kladde sender den tilbage til kladde. */
 export async function updateDraft(db: Db, id: unknown, raw: unknown, actor: string): Promise<DraftDto> {
-  const row = await getRow(db, id);
-  const o = obj(raw, "kladde");
-  noUnknownKeys(o, HUMAN_KEYS, "kladde");
-  const p = parseDraftPatch(o, false);
-  if (p.title === "") fail("title mangler");
-  const cur = row as unknown as Record<string, unknown>;
-  const changedContent = CONTENT_KEYS.some((k) => k in p && (p as Record<string, unknown>)[k] !== cur[k]);
-  const status = row.status === "godkendt" && changedContent ? "kladde" : row.status;
-  // Nyt indhold på en godkendt kladde: alle menneske-tjek gælder den gamle version og nulstilles.
-  const reset = row.status === "godkendt" && changedContent ? { charlieOk: false, customerOk: false, trueCheckedOn: null } : {};
-  return saveIf(db, row, { ...p, ...reset, status, updatedBy: actor });
+  return db.transaction(async (tx) => {
+    const row = await getRow(tx, id, true);
+    const o = obj(raw, "kladde");
+    noUnknownKeys(o, HUMAN_KEYS, "kladde");
+    const p = parseDraftPatch(o, false);
+    if (p.title === "") fail("title mangler");
+    const cur = row as unknown as Record<string, unknown>;
+    const changedContent = CONTENT_KEYS.some((k) => k in p && (p as Record<string, unknown>)[k] !== cur[k]);
+    const status = row.status === "godkendt" && changedContent ? "kladde" : row.status;
+    // Nyt indhold på en godkendt kladde: alle menneske-tjek gælder den gamle version og nulstilles.
+    const reset = row.status === "godkendt" && changedContent ? { charlieOk: false, customerOk: false, trueCheckedOn: null } : {};
+    return saveIf(tx, row, { ...p, ...reset, status, updatedBy: actor });
+  });
 }
 
 export type DraftAction = "approve" | "drop" | "restore" | "posted";
 
 /** Godkend / drop / tilbage til kladde / markér postet. Drop er en status — intet slettes. */
 export async function draftAction(db: Db, id: unknown, action: unknown, actor: string): Promise<DraftDto> {
-  const row = await getRow(db, id);
-  const a = enumOf(action, "action", ["approve", "drop", "restore", "posted"] as const, true)!;
-  const d = toDraft(row);
-  let status: DraftStatus;
-  switch (a) {
-    case "approve": {
-      if (d.status !== "kladde") fail(`Kun en kladde kan godkendes (den står som "${d.status}").`);
-      const blockers = approvalBlockers(d);
-      if (blockers.length) fail(`Kan ikke godkendes endnu. ${blockers.join(" ")}`);
-      status = "godkendt";
-      break;
+  return db.transaction(async (tx) => {
+    const row = await getRow(tx, id, true);
+    const a = enumOf(action, "action", ["approve", "drop", "restore", "posted"] as const, true)!;
+    const d = toDraft(row);
+    let status: DraftStatus;
+    switch (a) {
+      case "approve": {
+        if (d.status !== "kladde") fail(`Kun en kladde kan godkendes (den står som "${d.status}").`);
+        const blockers = approvalBlockers(d);
+        if (blockers.length) fail(`Kan ikke godkendes endnu. ${blockers.join(" ")}`);
+        status = "godkendt";
+        break;
+      }
+      case "drop":
+        if (d.status === "postet") fail("En postet video kan ikke droppes.");
+        status = "droppet";
+        break;
+      case "restore":
+        if (d.status !== "droppet") fail("Kun en droppet kladde kan hentes tilbage.");
+        status = "kladde";
+        break;
+      case "posted": {
+        if (d.status !== "godkendt") fail("Kun en godkendt kladde kan markeres som postet.");
+        const blockers = approvalBlockers(d);
+        if (blockers.length) fail(`Kan ikke markeres som postet endnu. ${blockers.join(" ")}`);
+        status = "postet";
+        break;
+      }
     }
-    case "drop":
-      if (d.status === "postet") fail("En postet video kan ikke droppes.");
-      status = "droppet";
-      break;
-    case "restore":
-      if (d.status !== "droppet") fail("Kun en droppet kladde kan hentes tilbage.");
-      status = "kladde";
-      break;
-    case "posted": {
-      if (d.status !== "godkendt") fail("Kun en godkendt kladde kan markeres som postet.");
-      const blockers = approvalBlockers(d);
-      if (blockers.length) fail(`Kan ikke markeres som postet endnu. ${blockers.join(" ")}`);
-      status = "postet";
-      break;
-    }
-  }
-  return saveIf(db, row, { status, updatedBy: actor });
+    return saveIf(tx, row, { status, updatedBy: actor });
+  });
 }
 
 /** Menneskets egne tjek: Charlies ja, kundens ok og "sandt pr. dato". Agenten kan aldrig sætte dem. */
 export async function setChecks(db: Db, id: unknown, raw: unknown, actor: string): Promise<DraftDto> {
-  const row = await getRow(db, id);
-  const o = obj(raw, "tjek");
-  noUnknownKeys(o, ["charlieOk", "customerOk", "trueCheckedOn"], "tjek");
-  const set: Partial<typeof marketingDraft.$inferInsert> = {};
-  const c = bool(o.charlieOk, "charlieOk");
-  if (c !== undefined) set.charlieOk = c;
-  const k = bool(o.customerOk, "customerOk");
-  if (k !== undefined) set.customerOk = k;
-  const t = day(o.trueCheckedOn, "trueCheckedOn");
-  if (t !== undefined) set.trueCheckedOn = t;
-  // Fjernes et ok på en godkendt kladde, er den ikke længere godkendt.
-  const merged = { ...toDraft(row), ...set } as DraftDto;
-  const status = row.status === "godkendt" && approvalBlockers(merged).length ? "kladde" : row.status;
-  return saveIf(db, row, { ...set, status, updatedBy: actor });
+  return db.transaction(async (tx) => {
+    const row = await getRow(tx, id, true);
+    const o = obj(raw, "tjek");
+    noUnknownKeys(o, ["charlieOk", "customerOk", "trueCheckedOn"], "tjek");
+    const set: Partial<typeof marketingDraft.$inferInsert> = {};
+    const c = bool(o.charlieOk, "charlieOk");
+    if (c !== undefined) set.charlieOk = c;
+    const k = bool(o.customerOk, "customerOk");
+    if (k !== undefined) set.customerOk = k;
+    const t = day(o.trueCheckedOn, "trueCheckedOn");
+    if (t !== undefined) set.trueCheckedOn = t;
+    // Fjernes et ok på en godkendt kladde, er den ikke længere godkendt.
+    const merged = { ...toDraft(row), ...set } as DraftDto;
+    const status = row.status === "godkendt" && approvalBlockers(merged).length ? "kladde" : row.status;
+    return saveIf(tx, row, { ...set, status, updatedBy: actor });
+  });
 }
 
 // ---------------------------------------------------------------- hooks, tests, inspiration

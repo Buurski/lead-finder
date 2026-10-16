@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { abVerdict, funnel, measurePayload, mondayOf, median, savesSharesPer1000, slippedBefore, todayCph, weekGrid } from "./marketing-calc.ts";
-import { approvalBlockers, hasPlaceholder } from "./marketing-types.ts";
+import { abBoard, abVerdict, funnel, measurePayload, mondayOf, median, savesSharesPer1000, slippedBefore, todayCph, weekGrid } from "./marketing-calc.ts";
+import { approvalBlockers, hasPlaceholder, type MeasureDto, type RefDto } from "./marketing-types.ts";
 
 const rep = (n: number, v: number) => Array.from({ length: n }, () => v);
 
@@ -124,4 +124,26 @@ test("kalender: 'foer denne uge' viser aldrig postet eller droppet", () => {
     { status: "godkendt", plannedFor: null },
   ];
   assert.deepEqual(slippedBefore(rows, "2026-10-12").map((r) => r.status + r.plannedFor), ["godkendt2026-10-05", "kladde2026-10-09"]);
+});
+
+test("A/B: dommen bruger testens primære metrik, ikke altid gem + delinger (Sol 16/10)", () => {
+  const ab = (metric: string) => ({ id: "t1", data: { metric } }) as unknown as RefDto;
+  // AB-03-scenariet: A har mange kommentarer, B mange gem. Kommentar-testen må ikke dømmes på gem.
+  const ms = (arm: "A" | "B", kom: number, saves: number) =>
+    rep(5, 0).map(() => ({ abId: "t1", arm, views: 1000, saves, shares: 0, newFollowers: null, note: `kom=${kom}` }) as unknown as MeasureDto);
+  const measures = [...ms("A", 100, 10), ...ms("B", 10, 20)];
+  const kom = abBoard([ab("Kommentarer pr. 1000 visninger (skriv `kom=N` i `note`)")], measures)[0].call;
+  assert.equal(kom.verdict, "skaer");
+  assert.equal(kom.ahead, "A");
+  assert.equal(abBoard([ab("Gem + delinger pr. 1000")], measures)[0].call.ahead, "B");
+  // Ukendt metrik: ingen automatisk dom.
+  const ukendt = abBoard([ab("Stemning i kommentarfeltet")], measures)[0].call;
+  assert.equal(ukendt.verdict, "ingen-afgoerelse");
+  assert.equal(ukendt.ahead, null);
+  // Samme ord, anden enhed: ingen dom (re-review).
+  assert.equal(abBoard([ab("Gem + delinger pr. opslag")], measures)[0].call.verdict, "ingen-afgoerelse");
+  // Visninger: 0 er et gyldigt tal og tæller med i medianen.
+  const vis = (arm: "A" | "B", views: number, n: number) => rep(n, 0).map(() => ({ abId: "t1", arm, views, saves: null, shares: null, newFollowers: null, note: "" }) as unknown as MeasureDto);
+  const v = abBoard([ab("Visninger pr. opslag (median)")], [...vis("A", 0, 6), ...vis("A", 100, 5), ...vis("B", 50, 11)])[0].call;
+  assert.deepEqual([v.medA, v.medB, v.ahead], [0, 50, "B"]);
 });
