@@ -119,7 +119,10 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
       {hasPlaceholder(d.hook) && <div className="mk-warn">Hooket har en pladsholder (fx [N]). Skriv det rigtige tal ind, før det kan godkendes.</div>}
 
       {editing ? (
-        <EditForm d={d} busy={busy} onCancel={() => setEditing(false)} onSave={(p) => update(p, () => setEditing(false))} />
+        <>
+          <EditForm d={d} busy={busy} onCancel={() => setEditing(false)} onSave={(p) => update(p, () => setEditing(false))} />
+          {error && <p className="mk-err" role="alert">{error}</p>}
+        </>
       ) : (
         <>
           {live && (d.status === "kladde") && blockers.length > 0 && (
