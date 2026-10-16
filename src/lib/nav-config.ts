@@ -54,6 +54,7 @@ const NAV_SEARCHABLE_EXTRA: NavItem[] = [
   { href: "/marketing/tests", label: "Marketing: A/B-tests", icon: "Scale", hint: "Hvilken udgave virker bedst" },
   { href: "/marketing/maaling", label: "Marketing: måling", icon: "BarChart3", hint: "Læg tal ind fra opslag" },
   { href: "/marketing/musik", label: "Marketing: musik", icon: "Mic", hint: "Licens og regler for lyd" },
+  { href: "/marketing/annoncer", label: "Marketing: annoncer", icon: "Megaphone", hint: "Billeder og tekster til Facebook og Instagram" },
 ];
 
 // Flad liste til ⌘K: hele IA'en, rail-item først.
@@ -96,6 +97,7 @@ export const SECTIONS: Section[] = [
       { href: "/marketing/tests", label: "A/B-tests" },
       { href: "/marketing/maaling", label: "Måling" },
       { href: "/marketing/inspiration", label: "Inspiration" },
+      { href: "/marketing/annoncer", label: "Annoncer" },
       { href: "/marketing/musik", label: "Musik" },
     ],
   },
