@@ -24,7 +24,7 @@ Alt fra annonce-arbejdet 16/10. Bliver ikke deployet (`.vercelignore`). HQ viser
 | `kinly-d-udkast.png` | Laptop + telefon | grøn = laptop, magenta = telefon | `faerdige/kinly/udkast.png` |
 | `kinly-e-undersider.png` / `kinly-ek-undersider.png` | Tre telefoner, én pr. ydelse | magenta, grøn, cyan | `faerdige/*/undersider.png` |
 | `planuko-p1-budget.png` | To telefoner, budget | magenta + grøn | `faerdige/planuko/budget.png` |
-| `planuko-p2-haand.png` | Hånd, creme | magenta | `faerdige/planuko/haand.png`. Chip "7 dages gratis prøve" skal være "7 dage gratis på årsplanen" (prøve kun på årsplan) |
+| `planuko-p2-haand.png` | Hånd, creme | magenta | `faerdige/planuko/haand.png`. Prøve-chippen fjernet 16/10 på Lucas' ordre (prøve kun på årsplan). Indsæt: `magenta=planuko-skaerme/skaerm-A-uge.png logo=planuko-skaerme/logo-moerk.png@64,1250,256`. AI-hænder er ok for Planuko |
 
 ## Lav en ny variant med en anden skærm
 ```bash

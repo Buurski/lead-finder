@@ -1,0 +1,5 @@
+Use your built-in image generation/editing tool to edit the supplied image kilde.png and save the result as p2-uden-chip.png in the current directory.
+
+Edit: REMOVE the second white chip that reads "7 dages gratis prøve" (the lower of the two white chips left of the phone) completely, including its check mark and its drop shadow. Fill the area naturally with what would be behind it: the same cream background band, and the phone's silver bezel and the hand/thumb exactly as they continue above and below. Nothing new in its place.
+
+Keep EVERYTHING else pixel-identical: same canvas size and aspect ratio, headline, subline, the remaining chip "Indkøbsliste fra REMA 1000", phone, hand (five digits), colours, and the solid flat magenta #FF00FF screen area with no UI on it. Do not add text, logo or watermark.
