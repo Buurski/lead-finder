@@ -225,9 +225,9 @@ export default function Annoncer({ rows, initial }: { rows: Annonce[]; initial: 
         <Plan />
       </section>
 
-      <div className="mk-seg" role="tablist" aria-label="Del af studiet">
+      <div className="mk-seg" role="group" aria-label="Del af studiet">
         {FANER.map(([k, l, n]) => (
-          <button key={k} type="button" role="tab" className="mk-seg-btn" aria-selected={fane === k} aria-pressed={fane === k} onClick={() => setFane(k)}>
+          <button key={k} type="button" className="mk-seg-btn" aria-pressed={fane === k} onClick={() => setFane(k)}>
             {l}{n !== null && <span className="mk-seg-count">{n}</span>}
           </button>
         ))}
