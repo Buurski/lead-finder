@@ -1,7 +1,7 @@
 "use client";
 // Inspiration: formater og mønstre fra research (W2/W4) + egne links. Det stærkeste står øverst.
 import { useState } from "react";
-import type { RefDto } from "@/lib/hq/marketing-types";
+import { EXPLAIN, type RefDto } from "@/lib/hq/marketing-types";
 import Info from "./Info";
 import { mk } from "./api";
 import "./marketing.css";
@@ -22,7 +22,7 @@ function Item({ r }: { r: RefDto }) {
       <div className="mk-chips">
         {str(r.data.code) && <span className="cc-chip">{str(r.data.code)}</span>}
         {strong && <span className="cc-chip mk-chip-nu">Stærkest</span>}
-        {str(r.data.evidence) && <span className="cc-chip">Belæg {str(r.data.evidence)}</span>}
+        {str(r.data.evidence) && <><span className="cc-chip">Belæg {str(r.data.evidence)}</span><Info label="Hvad er belæg?">{EXPLAIN.belaeg}</Info></>}
       </div>
       <h3 className="mk-item-title">{r.title}</h3>
       {r.body && <p className="mk-p mk-small" style={{ whiteSpace: "pre-wrap" }}>{r.body}</p>}

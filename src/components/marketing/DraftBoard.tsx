@@ -5,11 +5,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import MarkdownLite from "@/components/shell/MarkdownLite";
 import {
-  MUSIC_KINDS, MUSIC_LABEL, MUSIC_LICENSE_OK, PRIORITY_LABEL, STATUS_LABEL, TRACKS, TRACK_LABEL, TRACK_NOTE,
-  approvalBlockers, hasPlaceholder, type DraftDto, type MusicKind, type Track,
+  EXPLAIN, MUSIC_KINDS, MUSIC_LABEL, MUSIC_LICENSE_OK, PRIORITY_LABEL, STATUS_LABEL, TRACKS, TRACK_LABEL, TRACK_NOTE,
+  approvalIssues, fillPlaceholders, hasPlaceholder, placeholders, type DraftDto, type MusicKind, type Track,
 } from "@/lib/hq/marketing-types";
 import DateInput from "./DateInput";
 import Field from "./Field";
+import Info from "./Info";
 import { mk, niceDay } from "./api";
 import "./marketing.css";
 
@@ -76,11 +77,115 @@ function EditForm({ d, onSave, onCancel, busy }: { d: DraftDto; onSave: (p: Patc
   );
 }
 
+/** "Tallet mangler": et felt pr. pladsholder ([N]) lige under hooket. Gemmer det rigtige tal ind i hooket. */
+function PlaceholderFill({ d, busy, onSave }: { d: DraftDto; busy: boolean; onSave: (hook: string) => void }) {
+  const found = placeholders(d.hook);
+  const [vals, setVals] = useState<string[]>(() => found.map(() => ""));
+  if (found.length === 0) return null;
+  const any = vals.some((v) => v.trim() !== "");
+  return (
+    <form className="mk-need" onSubmit={(e) => { e.preventDefault(); if (any) onSave(fillPlaceholders(d.hook, vals)); }}>
+      <strong>Tallet mangler</strong>
+      <span className="mk-small">Skriv det rigtige tal, og tryk Sæt ind. Kun tal, der er målt eller sande.</span>
+      <div className="mk-row">
+        {found.map((p, i) => (
+          <label key={p + i} className="mk-need-field">
+            <span className="mk-small">Erstat {p}</span>
+            <input className="cc-input mk-input" inputMode="text" value={vals[i] ?? ""} maxLength={24} onChange={(e) => setVals((v) => v.map((x, j) => (j === i ? e.target.value : x)))} />
+          </label>
+        ))}
+        <button type="submit" className="cc-btn" disabled={busy || !any}>Sæt ind</button>
+      </div>
+    </form>
+  );
+}
+
+/** Det der mangler før Godkend, med feltet lige ved siden af (ikke gemt i en lukket menu). */
+function ApprovalPanel({ d, today, busy, checks, onEdit }: { d: DraftDto; today: string; busy: boolean; checks: (c: Patch) => void; onEdit: () => void }) {
+  const issues = approvalIssues(d);
+  const dateId = useId();
+  if (issues.length === 0) return null;
+  return (
+    <div className="mk-warn mk-need" role="group" aria-label="Mangler før godkendelse">
+      <strong>Mangler før godkendelse</strong>
+      {issues.map((i) => (
+        <div key={i.key} className="mk-need-item">
+          {i.key === "hook" && (<><span>Hooket mangler.</span><button type="button" className="cc-btn" disabled={busy} onClick={onEdit}>Skriv hooket</button></>)}
+          {i.key === "placeholder" && <span>Tallet i hooket mangler. Skriv det i feltet lige over.</span>}
+          {i.key === "charlie" && (
+            <label className="mk-check"><input type="checkbox" checked={d.charlieOk} disabled={busy} onChange={(e) => checks({ charlieOk: e.target.checked })} />
+              <span>Charlie har sagt ja, skriftligt, til ansigt, navn og ord</span></label>
+          )}
+          {i.key === "customer" && (
+            <>
+              <label className="mk-check"><input type="checkbox" checked={d.customerOk} disabled={busy} onChange={(e) => checks({ customerOk: e.target.checked })} />
+                <span>Kunden har sagt ja, skriftligt</span></label>
+              <button type="button" className="cc-btn" disabled={busy} onClick={() => checks({ customerCase: false })} title="Fjerner kun kundekravet. Dine andre tjek bliver stående.">Ikke en kundecase</button>
+            </>
+          )}
+          {i.key === "true" && (
+            <Field label="Sandt i dag?" forId={dateId} info="Alt vi siger om AI, tal og tider skal være sandt den dag, videoen lægges ud. Sæt en dato, når du har tjekket det.">
+              <div className="mk-row">
+                <DateInput id={dateId} className="cc-input mk-input mk-grow" value={d.trueCheckedOn} disabled={busy} onCommit={(v) => checks({ trueCheckedOn: v })} />
+                <button type="button" className="cc-btn" disabled={busy} onClick={() => checks({ trueCheckedOn: today })}>I dag</button>
+              </div>
+            </Field>
+          )}
+          {i.key === "license" && (<><span>{i.text}</span><button type="button" className="cc-btn" disabled={busy} onClick={onEdit}>Ret lyden</button></>)}
+        </div>
+      ))}
+      <p className="mk-small mk-dim">Lyd: {MUSIC_LABEL[d.musicKind]}{d.musicKind === "licenseret" && ` · licens: ${d.musicLicense || "ikke skrevet"}`}{d.musicNote && ` · ${d.musicNote}`}</p>
+    </div>
+  );
+}
+
+/** "Jeg har lagt den ud": spørger efter opslagets link i samme trin, så Måling kan bruge det. */
+function PostedForm({ busy, onPosted, onCancel }: { busy: boolean; onPosted: (url: string) => void; onCancel: () => void }) {
+  const [url, setUrl] = useState("");
+  const id = useId();
+  return (
+    <form className="mk-need" onSubmit={(e) => { e.preventDefault(); onPosted(url.trim()); }}>
+      <Field label="Link til opslaget" forId={id} info="Indsæt linket til opslaget på Instagram eller TikTok. Måling bruger det, så du ikke skal finde det igen.">
+        <input id={id} type="url" className="cc-input mk-input" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
+      </Field>
+      <div className="mk-actions">
+        <button type="submit" className="cc-btn cc-btn-accent" disabled={busy}>{url.trim() ? "Gem link og marker som lagt ud" : "Marker som lagt ud uden link"}</button>
+        <button type="button" className="cc-btn" disabled={busy} onClick={onCancel}>Annullér</button>
+      </div>
+    </form>
+  );
+}
+
+/** Postet kladde: vis linket, eller lad dem tilføje det bagefter. */
+function PostLink({ d, busy, onSave }: { d: DraftDto; busy: boolean; onSave: (url: string) => void }) {
+  const [url, setUrl] = useState("");
+  const id = useId();
+  if (d.postUrl) {
+    return (
+      <p className="mk-p mk-small">
+        Opslaget: <a className="cc-link" style={{ textDecoration: "underline" }} href={d.postUrl} target="_blank" rel="noreferrer noopener">åbn linket</a>
+        {" · "}<a className="cc-link" style={{ textDecoration: "underline" }} href="/marketing/maaling">Læg måling ind</a>
+      </p>
+    );
+  }
+  return (
+    <form className="mk-need" onSubmit={(e) => { e.preventDefault(); if (url.trim()) onSave(url.trim()); }}>
+      <Field label="Link til opslaget mangler" forId={id} info="Måling bruger linket. Indsæt det her, når opslaget er lagt ud.">
+        <div className="mk-row">
+          <input id={id} type="url" className="cc-input mk-input mk-grow" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <button type="submit" className="cc-btn" disabled={busy || !url.trim()}>Gem link</button>
+        </div>
+      </Field>
+    </form>
+  );
+}
+
 function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; onChange: (d: DraftDto) => void; focus?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
-  const blockers = useMemo(() => approvalBlockers(d), [d]);
+  const [posting, setPosting] = useState(false);
+  const blockers = useMemo(() => approvalIssues(d), [d]);
   const trueId = useId();
   const dateId = useId();
   const ref = useRef<HTMLElement>(null);
@@ -99,7 +204,7 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
       setBusy(false);
     }
   }
-  const op = (o: string) => run({ action: "draftAction", id: d.id, op: o });
+  const op = (o: string, extra: Record<string, unknown> = {}, after?: () => void) => run({ action: "draftAction", id: d.id, op: o, ...extra }, after);
   const update = (p: Patch, after?: () => void) => run({ action: "draftUpdate", id: d.id, draft: p }, after);
   const checks = (c: Patch) => run({ action: "draftChecks", id: d.id, checks: c });
 
@@ -107,7 +212,7 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
   return (
     <article ref={ref} className="cc-card mk-draft" data-status={d.status} aria-label={d.title}>
       <div className="mk-chips">
-        {d.label && <span className={`cc-chip mk-chip-${d.label.toLowerCase()}`}>{d.label}</span>}
+        {d.label && <><span className={`cc-chip mk-chip-${d.label.toLowerCase()}`}>{d.label}</span><Info label="Hvad betyder NU, TEST og SENERE?">{EXPLAIN.label}</Info></>}
         <span className="cc-chip">{STATUS_LABEL[d.status]}</span>
         {d.track === "duo" && <span className="cc-chip mk-chip-warn">Fase 2 · kræver Charlies ja</span>}
         {d.customerCase && <span className={`cc-chip ${d.customerOk ? "mk-chip-ok" : "mk-chip-warn"}`}>{d.customerOk ? "Kunden har sagt ja" : "Kundecase · kundens ja mangler"}</span>}
@@ -116,7 +221,7 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
       </div>
       <h3 className="mk-draft-title">{d.title}</h3>
       {d.hook ? <p className="mk-hook">{d.hook}</p> : <p className="mk-p mk-dim">Der er ikke skrevet et hook endnu.</p>}
-      {hasPlaceholder(d.hook) && <div className="mk-warn">Hooket har en pladsholder (fx [N]). Skriv det rigtige tal ind, før det kan godkendes.</div>}
+      {live && d.status === "kladde" && hasPlaceholder(d.hook) && !editing && <PlaceholderFill key={d.hook} d={d} busy={busy} onSave={(hook) => update({ hook })} />}
 
       {editing ? (
         <>
@@ -125,12 +230,11 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
         </>
       ) : (
         <>
-          {live && (d.status === "kladde") && blockers.length > 0 && (
-            <div className="mk-warn"><strong>Mangler før godkendelse</strong>{blockers.map((b) => <span key={b}>{b}</span>)}</div>
-          )}
+          {live && d.status === "kladde" && <ApprovalPanel d={d} today={today} busy={busy} checks={checks} onEdit={() => setEditing(true)} />}
+          {posting && d.status === "godkendt" && <PostedForm busy={busy} onCancel={() => setPosting(false)} onPosted={(url) => op("posted", url ? { postUrl: url } : {}, () => setPosting(false))} />}
           <div className="mk-actions">
             {d.status === "kladde" && <button type="button" className="cc-btn cc-btn-accent" disabled={busy || blockers.length > 0} onClick={() => op("approve")}>Godkend</button>}
-            {d.status === "godkendt" && <button type="button" className="cc-btn cc-btn-accent" disabled={busy} onClick={() => op("posted")} title="Tryk når du selv har lagt den ud. HQ poster ikke noget.">Jeg har lagt den ud</button>}
+            {d.status === "godkendt" && !posting && <button type="button" className="cc-btn cc-btn-accent" disabled={busy} onClick={() => setPosting(true)} title="Tryk når du selv har lagt den ud. HQ poster ikke noget.">Jeg har lagt den ud</button>}
             {live && d.status !== "postet" && <button type="button" className="cc-btn" disabled={busy} onClick={() => setEditing(true)}>Ret</button>}
             {live && d.status !== "postet" && <button type="button" className="cc-btn" disabled={busy} onClick={() => op("drop")}>Drop</button>}
             {d.status === "droppet" && <button type="button" className="cc-btn" disabled={busy} onClick={() => op("restore")}>Hent tilbage</button>}
@@ -150,7 +254,9 @@ function DraftCard({ d, today, onChange, focus }: { d: DraftDto; today: string; 
             </div>
           )}
 
-          {live && (
+          {d.status === "postet" && <PostLink d={d} busy={busy} onSave={(postUrl) => update({ postUrl })} />}
+
+          {live && !(d.status === "kladde" && blockers.length > 0) && (
             <details className="mk-details">
               <summary>Tjek og lyd</summary>
               <div className="mk-form" style={{ marginTop: 10 }}>
@@ -236,11 +342,13 @@ function NewDraft({ track, onCreated }: { track: Track; onCreated: (d: DraftDto)
   );
 }
 
-export default function DraftBoard({ initial, today, duoNotes = [] }: { initial: DraftDto[]; today: string; duoNotes?: { id: string; title: string; body: string }[] }) {
+export default function DraftBoard({ initial, today, duoNotes = [], openId }: { initial: DraftDto[]; today: string; duoNotes?: { id: string; title: string; body: string }[]; openId?: string }) {
   const [items, setItems] = useState(initial);
-  const [track, setTrack] = useState<Track>("faceless");
-  const [filter, setFilter] = useState<Filter>("aktive");
-  const [focusId, setFocusId] = useState<string | null>(null);
+  // Kommer man fra Hooks ("Se kladden"), åbner siden på det spor og den fane, kladden står i.
+  const target = openId ? initial.find((x) => x.id === openId) : undefined;
+  const [track, setTrack] = useState<Track>(target?.track ?? "faceless");
+  const [filter, setFilter] = useState<Filter>(target ? (target.status === "droppet" ? "droppet" : target.status === "postet" ? "postet" : "aktive") : "aktive");
+  const [focusId, setFocusId] = useState<string | null>(target?.id ?? null);
   const upsert = (d: DraftDto) => setItems((xs) => (xs.some((x) => x.id === d.id) ? xs.map((x) => (x.id === d.id ? d : x)) : [d, ...xs]));
   // Ny eller flyttet kladde: vis det spor og den fane, den står i, og scroll ned til den, så man ser, at det lykkedes.
   const reveal = (d: DraftDto) => { upsert(d); setTrack(d.track); setFilter(d.status === "droppet" ? "droppet" : d.status === "postet" ? "postet" : "aktive"); setFocusId(d.id); };
@@ -263,7 +371,7 @@ export default function DraftBoard({ initial, today, duoNotes = [] }: { initial:
           </button>
         ))}
       </div>
-      <p className="mk-p">{TRACK_NOTE[track]}{track === "dag-n" && " Kundecases med en skarp hook slår Dag N klart, så prøv dem først."}</p>
+      <p className="mk-p">{TRACK_NOTE[track]}{track === "dag-n" && <> Kundecases med en skarp hook slår Dag N klart, så prøv dem først. <Info label="Hvad er Dag N?">{EXPLAIN.dagN}</Info></>}</p>
 
       {track === "duo" && duoNotes.map((n) => (
         <details key={n.id} className="cc-card mk-card">

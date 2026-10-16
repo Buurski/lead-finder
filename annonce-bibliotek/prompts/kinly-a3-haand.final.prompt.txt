@@ -1,0 +1,17 @@
+Precise layout edit of this ad. Preserve canvas aspect ratio and exact headline, price, CTA, all font appearance, two white chips, flat ember-orange background, silver phone appearance, and one realistic five-digit hand. Create ONE final 4:5 portrait ad.
+
+Change ONLY hand/phone scale and placement, plus make background and magenta screen entirely flat untextured colour. Phone is too small and too high in source. ENLARGE phone 15% anchored near its existing TOP LEFT corner so it extends farther DOWN and RIGHT. In a 1122x1402 image the finished phone outer bounds must be x=613 to1029, y=439 to1308. Therefore width416 and height869, maintaining real 2.09 height:width ratio. Bottom of phone is94 pixels above bottom of canvas. Current phone bottom around1180 is much too high: move its bottom to1308 by enlarging, not stretching. Full phone visible. No extra foreground devices. Larger phone occupies62% of image height.
+
+Resize and reposition the hand naturally to grip this enlarged phone: exactly ONE thumb on right outer edge and exactly FOUR fingertips along left outer edge, exactly FIVE total digits, no fused or extra fingers, wrist enters bottom-right. Do not let phone or hand overlap top copy. Perfectly front-facing unrotated screen flat parallel to camera.
+
+SCREEN entire interior black bezel: pure #FF00FF solid flat magenta fill, without texture/grain/gradients/reflections/glare/shadows/colour shifts or any UI. Only solid black Dynamic Island pill at top center. This is a digital chroma replacement colour, not photographed or lit material; every interior magenta pixel identical RGB255,0,255.
+BACKGROUND: entirely solid flat #D4500F, every unobstructed background pixel identical RGB212,80,15; no gradient, noise, vignette or texture. Local soft warm orange-brown object shadows only. Realistic photographic lighting and skin texture confined to hand and phone rim, never screen.
+Keep bottom-left rectangle x60..310,y1265..1350 totally empty flat orange with no shadow.
+All copy unchanged verbatim:
+Ny hjemmeside,
+kodet fra bunden.
+Fra 3.997 kr. ekskl. moms
+Se jeres udkast
+Gratis demo, før I betaler
+Siden er 100 % jeres
+No other text, no logo or watermark. Output exactly ONE finished portrait 4:5 image.

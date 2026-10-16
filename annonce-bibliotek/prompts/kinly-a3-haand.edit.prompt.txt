@@ -1,0 +1,25 @@
+Edit the supplied ad into the ONE final deliverable. Correct its canvas and layout geometry, and flatten solid-colour areas. Preserve exact Danish copy, Space Grotesk appearance, photographic silver device, natural five-digit hand, two chips and overall orange brand composition.
+
+MANDATORY OUTPUT CANVAS: portrait EXACT 4:5. Use 1152 px wide by 1440 px tall (or 1080 by 1350). The source is 1092 by 1440, which is wrong: widen canvas rather than retaining that aspect ratio. No border.
+
+All coordinates that follow use a 1080x1350 design grid; scale uniformly to 1152x1440 if used.
+HEADER: Top-left x64 y64. Reposition headline UP, and keep precisely TWO lines with same Space Grotesk Medium size around 100px, #FAF6EF:
+Ny hjemmeside,
+kodet fra bunden.
+Headline bottom around y260. Price ONE line at y300, Space Grotesk Regular 38px, #FAF6EF:
+Fra 3.997 kr. ekskl. moms
+Dark #191713 CTA pill at x64 y358 with #FAF6EF 34px:
+Se jeres udkast
+Keep these elements fully visible, separated, above phone.
+
+PHONE GEOMETRY CORRECTION: Enlarge and move phone down so its full outer rectangle is approximately x590 to990, y423 to1260 on 1080x1350 grid. Phone height837 =62% of canvas height, width400. Its bottom edge ends90px above canvas bottom. Entire phone must remain visible. Perfectly front-facing, flat to camera, unrotated, no perspective; real silver iPhone 17 Pro ratio height:width=150.0:71.9 (2.09:1), inner screen proportion402:874. Do NOT stretch phone. Resize hand naturally to grip larger phone.
+
+HAND: Preserve exactly ONE anatomically plausible right hand with FIVE total digits: exactly ONE thumb along RIGHT outer edge, exactly FOUR fingertips curling around LEFT edge, natural decreasing size, no extra/fused digits. Photographic light skin, pores, creases, short clean nails, no jewellery, plain dark sleeve. Wrist enters from bottom-right. Keep palm behind phone; screen unobscured.
+
+FLAT FILL CORRECTION: Source orange and magenta contain unwanted subtle colour variation. Treat these as digitally designed flat unlit colour planes, not photographic surfaces. Background must be EXACT uniform RGB(212,80,15), hexadecimal #D4500F. Screen must be EXACT uniform RGB(255,0,255), hexadecimal #FF00FF. Every pixel well inside the screen has this same solid magenta value. Neither plane gets any noise, grain, mottling, texture, lighting, colour grading, glow, gradient, reflection or vignette. Phone SCREEN inside black bezel is magenta edge to edge with ONLY a solid black Dynamic Island pill at its top center; no statusbar/UI/clock/text/glare/shadows/reflections. Preserve realistic photographic shading on hand and metallic bezel only. Local soft deep orange-brown cast shadows may appear right around hand/phone/chips; other background remains solid flat #D4500F. Never put shadows onto magenta screen.
+
+CHIPS: White #FFFFFF radius18px, two chips LEFT of phone around y700 and y865. Each extends from x64 to at most x620: only up to30px over left phone bezel, almost entire screen visible. Small ember check, Space Grotesk #191713 around30px. Copy exactly:
+Gratis demo, før I betaler
+Siden er 100 % jeres
+
+Keep bottom-left x60..300 y1220..1300 totally EMPTY #D4500F without objects or shadows. No logo, no watermark, no other text. Single finished premium ad. Exact portrait4:5 output essential.

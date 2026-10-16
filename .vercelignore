@@ -1,0 +1,4 @@
+annonce-bibliotek/
+# Mellemprodukter til scripts/annonce-*.{mjs,py}; HQ serverer kun public/annoncer/gpt-*-1080x1350.png
+public/annoncer/kilde/
+public/annoncer/gpt/

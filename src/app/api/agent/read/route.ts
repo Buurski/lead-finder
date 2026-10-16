@@ -17,13 +17,14 @@ import { listCustomerContacts } from "@/lib/hq/customer-contacts";
 import { searchAll } from "@/lib/hq/search";
 import { listMyDay, type Owner } from "@/lib/hq/tasks";
 import { loadDigest, summarizeDigest } from "@/lib/inbox-digest";
-import { noegletal, projectForLucasOs, readerOf, udgifterResponse } from "@/lib/lucas-os-read";
+import { annonceTal, noegletal, projectForLucasOs, readerOf, udgifterResponse } from "@/lib/lucas-os-read";
+import { studieOversigt } from "@/lib/hq/annoncer";
 import { getHqSummary } from "@/lib/hq/summary";
 import { copenhagenNow } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
-const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts", "udgifter", "noegletal"] as const;
+const WHATS = ["opmaerksomhed", "min-dag", "pipeline", "sog", "kundeopdateringer", "feed", "cms", "replies", "blog", "blog-post", "customer-contacts", "udgifter", "noegletal", "annoncer"] as const;
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
   // Lucas OS-nøglen får kun de tilladte felter (V3-1); Hermes-nøglen uændret.
   const out = (body: Record<string, unknown>) => NextResponse.json(reader === "lucas-os" && what !== "udgifter" && what !== "noegletal" ? projectForLucasOs(what, body) : body);
   if (what === "udgifter") return udgifterResponse(); // KV, ikke Postgres → før pg-tjekket
+  if (what === "annoncer") return NextResponse.json({ ok: true, ...annonceTal(await studieOversigt()) }); // KV; kun tal til begge nøgler
   if (!pgEnabled()) return NextResponse.json({ ok: false, error: "CRM kører ikke på Postgres" }, { status: 503 });
   const db = getDb();
   const today = copenhagenNow().date;

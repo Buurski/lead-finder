@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import {
-  abBoard, addInspiration, addMeasure, approvalBlockers, createAb, createDraft, draftAction, listDrafts,
+  abBoard, addInspiration, addMeasure, approvalBlockers, createAb, createDraft, createDraftFromHook, draftAction, listDrafts,
   listMeasures, listRefs, setAbStatus, setChecks, updateDraft,
 } from "./marketing.ts";
+import { EXPLAIN, TRACK_NOTE, approvalIssues, fillPlaceholders, findDraftByHook, hasPlaceholder, mentionsCustomer, placeholders } from "./marketing-types.ts";
 import { marketingDraft } from "../db/schema.ts";
 
 let db: Db;
@@ -37,9 +38,100 @@ test("agent-oprettelse: kun indhold, aldrig status/prioritet/godkendelser", asyn
     await assert.rejects(createDraft(db, { ...ok, [key]: key === "status" ? "godkendt" : 1 }, "hermes", "agent"), /kendes ikke/, key);
   }
   assert.equal((await listDrafts(db)).length, 1);
-  // agent-kladder er konservativt kundecase (kundens ok sættes af et menneske) og har aldrig en licens
-  assert.equal(d.customerCase, true);
+  // agentens kladde er kun en kundecase, når teksten nævner en kunde (kundens ok sættes af et menneske); aldrig en licens
+  assert.equal(d.customerCase, false);
   assert.equal(d.musicLicense, "");
+});
+
+test("kundecase: kun sand når kladden nævner en kunde (agent og menneske)", async () => {
+  assert.equal((await createDraft(db, ok, "hermes", "agent")).customerCase, false);
+  assert.equal((await createDraft(db, { title: "Sådan så VIDA ud før og efter", hook: "Før og efter." }, "hermes", "agent")).customerCase, true);
+  assert.equal((await createDraft(db, { title: "x", hook: "Jernbanecaféen har fået ny side." }, "hermes", "agent")).customerCase, true);
+  assert.equal((await createDraft(db, { title: "x", hook: "Dag 3 med evidans." }, "hermes", "agent")).customerCase, false); // hele ord: "evidans" er ikke VIDA
+  assert.equal((await createDraft(db, ok, "lucas")).customerCase, false);
+  assert.equal((await createDraft(db, { ...ok, customerCase: true }, "lucas")).customerCase, true); // menneskets eget valg vinder
+  assert.equal((await createDraft(db, { title: "VIDA", hook: "x", customerCase: false }, "lucas")).customerCase, false);
+  assert.equal(mentionsCustomer("ikastautoservice.dk"), true);
+  assert.equal(mentionsCustomer("vida-klinik.dk"), true);
+  assert.equal(mentionsCustomer("En almindelig hook uden kunder."), false);
+});
+
+test("kundecase: begynder en rettet tekst at nævne en kunde, bliver den en kundecase", async () => {
+  const d = await createDraft(db, ok, "lucas");
+  assert.equal(d.customerCase, false);
+  assert.equal((await updateDraft(db, d.id, { hook: "Se hvad vi byggede til Ikast AutoService." }, "lucas")).customerCase, true);
+  // et menneske der har sagt "ikke en kundecase" bliver ikke overrulet, når teksten rettes igen
+  await setChecks(db, d.id, { customerCase: false }, "lucas");
+  assert.equal((await updateDraft(db, d.id, { hook: "Se hvad vi byggede til Ikast AutoService. Igen." }, "lucas")).customerCase, false);
+});
+
+test("'Ikke en kundecase' nulstiller ikke de andre tjek", async () => {
+  const d = await createDraft(db, { title: "Case", hook: "VIDA før og efter.", track: "duo" }, "hermes", "agent");
+  assert.equal(d.customerCase, true);
+  await setChecks(db, d.id, { charlieOk: true, customerOk: true, trueCheckedOn: DAY }, "lucas");
+  const after = await setChecks(db, d.id, { customerCase: false }, "lucas");
+  assert.equal(after.customerCase, false);
+  assert.equal(after.charlieOk, true);
+  assert.equal(after.customerOk, true);
+  assert.equal(after.trueCheckedOn, DAY);
+  // og på en godkendt kladde ændrer det hverken status eller de andre tjek
+  assert.equal((await draftAction(db, d.id, "approve", "lucas")).status, "godkendt");
+  const still = await setChecks(db, d.id, { customerCase: false }, "lucas");
+  assert.equal(still.status, "godkendt");
+  assert.equal(still.trueCheckedOn, DAY);
+  // omvendt: kundecase tilbage uden kundens ok sender en godkendt kladde tilbage
+  await setChecks(db, d.id, { customerOk: false }, "lucas");
+  assert.equal((await setChecks(db, d.id, { customerCase: true }, "lucas")).status, "kladde");
+});
+
+test("hooks: 'lav kladde' laver ingen dublet, men returnerer den eksisterende (også en droppet)", async () => {
+  const first = await createDraftFromHook(db, { title: "Gem den her", hook: "7 ting din forside skal have.", track: "faceless" }, "lucas");
+  assert.equal(first.existing, false);
+  const again = await createDraftFromHook(db, { title: "Gem den her", hook: "  \"7 ting din forside skal have\" ", track: "faceless" }, "charlie");
+  assert.equal(again.existing, true);
+  assert.equal(again.draft.id, first.draft.id);
+  assert.equal((await listDrafts(db)).length, 1);
+  await draftAction(db, first.draft.id, "drop", "lucas");
+  const dropped = await createDraftFromHook(db, { title: "x", hook: "7 ting din forside skal have." }, "lucas");
+  assert.equal(dropped.existing, true);
+  assert.equal(dropped.draft.status, "droppet");
+  assert.equal((await listDrafts(db)).length, 1);
+  assert.equal((await createDraftFromHook(db, { title: "x", hook: "Noget helt andet." }, "lucas")).existing, false);
+  assert.equal((await listDrafts(db)).length, 2);
+  assert.equal(findDraftByHook([{ hook: "Dag 4 af at bygge Kinly." }], "dag 4 af at bygge kinly")?.hook, "Dag 4 af at bygge Kinly.");
+  assert.equal(findDraftByHook([{ hook: "Dag 4 af at bygge Kinly." }], "Dag 5 af at bygge Kinly."), undefined);
+  assert.equal(findDraftByHook([{ hook: "" }], ""), undefined);
+});
+
+test("pladsholder: tallet sættes ind i hooket; uudfyldte bliver stående", () => {
+  assert.deepEqual(placeholders("Efter [N] rettelser og [målt tal] sekunder."), ["[N]", "[målt tal]"]);
+  assert.equal(fillPlaceholders("Efter [N] rettelser.", ["12"]), "Efter 12 rettelser.");
+  assert.equal(fillPlaceholders("Efter [N] rettelser og [M] sekunder.", ["12", ""]), "Efter 12 rettelser og [M] sekunder.");
+  assert.equal(hasPlaceholder(fillPlaceholders("Efter [N] rettelser.", ["12"])), false);
+  const keys = approvalIssues({ hook: "Dag [N]", track: "duo", charlieOk: false, customerCase: true, customerOk: false, musicKind: "licenseret", musicLicense: "ukendt", trueCheckedOn: null }).map((i) => i.key);
+  assert.deepEqual(keys, ["placeholder", "charlie", "customer", "true", "license"]);
+});
+
+test("postet: linket til opslaget gemmes, tjekkes og kan tilføjes bagefter", async () => {
+  const d = await checked();
+  await draftAction(db, d.id, "approve", "lucas");
+  await assert.rejects(draftAction(db, d.id, "posted", "lucas", { postUrl: "javascript:alert(1)" }), /http/);
+  assert.equal((await listDrafts(db))[0].status, "godkendt"); // fejlen rullede alt tilbage
+  const posted = await draftAction(db, d.id, "posted", "lucas", { postUrl: "https://www.instagram.com/reel/abc/" });
+  assert.equal(posted.status, "postet");
+  assert.equal(posted.postUrl, "https://www.instagram.com/reel/abc/");
+
+  const e = await checked();
+  await draftAction(db, e.id, "approve", "lucas");
+  const noLink = await draftAction(db, e.id, "posted", "lucas");
+  assert.equal(noLink.postUrl, "");
+  assert.equal((await updateDraft(db, e.id, { postUrl: "https://www.tiktok.com/@kinly/video/1" }, "lucas")).postUrl, "https://www.tiktok.com/@kinly/video/1");
+  assert.equal((await updateDraft(db, e.id, { title: "Ny titel" }, "lucas")).status, "postet"); // linket ændrer ikke status
+});
+
+test("forklaringer: ingen intern jargon i teksterne", () => {
+  for (const t of Object.values(EXPLAIN)) assert.doesNotMatch(t, /\d{1,2}\/\d{1,2}|W\d|—/);
+  for (const t of Object.values(TRACK_NOTE)) assert.doesNotMatch(t, /\d{1,2}\/\d{1,2}|valgt/i);
 });
 
 test("godkend kraever hook uden pladsholder", async () => {

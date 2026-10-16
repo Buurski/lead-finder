@@ -1,0 +1,13 @@
+Precise color correction ONLY of this ad. Preserve every object's location, device proportions, typography, exact Danish wording, price capsule, shadows, lighting, materials and blank logo area. Do not redesign anything.
+
+The chroma-key display interiors must be mathematically flat solid colors, not photographic colored panels:
+1. Entire MacBook inner screen: EXACT sRGB HEX #00FF00, RGB 0 255 0. Every interior pixel the same. Black notch and bezel remain.
+2. Entire iPhone inner screen: EXACT sRGB HEX #FF00FF, RGB 255 0 255. Every interior pixel the same. Black Dynamic Island and bezel remain.
+Overlay clean digital solid-color vector-like matte plates within existing screen boundaries. Remove ALL existing noise, variation, texture, gradient, illumination, glow, glare, reflection, grain and shading from these two colored regions. NO photographic processing over these flat panels. No green or magenta reflection on floor. This absolute color uniformity and exact RGB values are essential for downstream compositing.
+
+All four laptop screen corners remain visible. Phone remains exactly front-on without any rotation, inner screen ratio 402:874; laptop screen native ratio 1512:982. Preserve Space Grotesk text exactly:
+Ny hjemmeside
+3.997 kr.
+ekskl. moms. Kodet fra bunden.
+
+Keep original portrait 4:5 design. Deliver one final PNG at 1080x1350 if supported. No extra text, no logo, no watermark.

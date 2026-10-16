@@ -1,0 +1,226 @@
+{
+  "ikast-16pro-top.png": {
+    "url": "https://ikastautoservice.dk/",
+    "scroll": 0,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(0, 50, 83)",
+    "taget": "2026-10-16"
+  },
+  "ikast-16pro-ydelser.png": {
+    "url": "https://ikastautoservice.dk/",
+    "scroll": 820,
+    "top": "rgba(255, 255, 255, 0.9)",
+    "bund": "rgb(255, 255, 255)",
+    "taget": "2026-10-16"
+  },
+  "vida-16pro-top.png": {
+    "url": "https://vida-klinik.dk/",
+    "scroll": 0,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "vida-16pro-2.png": {
+    "url": "https://vida-klinik.dk/",
+    "scroll": 760,
+    "top": "rgba(234, 226, 210, 0.82)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "ikast-gammel-16pro.png": {
+    "url": "https://autoservice.nu/",
+    "scroll": 0,
+    "top": "rgb(255, 255, 255)",
+    "bund": "rgb(255, 255, 255)",
+    "taget": "2026-10-16"
+  },
+  "ikast-desktop-2x.png": {
+    "url": "https://ikastautoservice.dk/",
+    "scroll": 0,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "vida-desktop-2x.png": {
+    "url": "https://vida-klinik.dk/",
+    "scroll": 0,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "ikast-side-daek.png": {
+    "url": "https://ikastautoservice.dk/service/daek/",
+    "scroll": 0,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "ikast-side-tesla.png": {
+    "url": "https://ikastautoservice.dk/service/tesla-vaerksted/",
+    "scroll": 0,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "ikast-side-laanebil.png": {
+    "url": "https://ikastautoservice.dk/laanebil/",
+    "scroll": 0,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "vida-side-behandlinger.png": {
+    "url": "https://vida-klinik.dk/behandlinger.html",
+    "scroll": 0,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(244, 236, 220)",
+    "taget": "2026-10-16"
+  },
+  "vida-side-microneedling.png": {
+    "url": "https://vida-klinik.dk/microneedling.html",
+    "scroll": 0,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "vida-side-lashlift.png": {
+    "url": "https://vida-klinik.dk/lash-lift.html",
+    "scroll": 0,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "ikast-lang-daek.png": {
+    "url": "https://ikastautoservice.dk/service/daek/",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "ikast-lang-tesla.png": {
+    "url": "https://ikastautoservice.dk/service/tesla-vaerksted/",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(0, 50, 83)",
+    "bund": "rgb(245, 246, 248)",
+    "taget": "2026-10-16"
+  },
+  "vida-lang-lashlift.png": {
+    "url": "https://vida-klinik.dk/lash-lift.html",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "vida-lang-microneedling.png": {
+    "url": "https://vida-klinik.dk/microneedling.html",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(234, 226, 210)",
+    "bund": "rgb(234, 226, 210)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-automekaniker.png": {
+    "url": "https://kinly.dk/automekaniker-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-herning.png": {
+    "url": "https://kinly.dk/webbureau-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-oejenvipper.png": {
+    "url": "https://kinly.dk/oejenvipper-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-lang-automekaniker.png": {
+    "url": "https://kinly.dk/automekaniker-herning/",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(25, 23, 19)",
+    "taget": "2026-10-16"
+  },
+  "kinly-lang-herning.png": {
+    "url": "https://kinly.dk/webbureau-herning/",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(25, 23, 19)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-2x.png": {
+    "url": "https://kinly.dk/webbureau-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-hjem.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-lang-hjem.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 0,
+    "hoej": 1300,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(243, 237, 226)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-priser.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 2100,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-hjem-2x.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(243, 237, 226)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-automekaniker-2x.png": {
+    "url": "https://kinly.dk/automekaniker-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-priser-2x.png": {
+    "url": "https://kinly.dk/",
+    "scroll": 1720,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(243, 237, 226)",
+    "taget": "2026-10-16"
+  },
+  "kinly-desktop-oejenvipper-2x.png": {
+    "url": "https://kinly.dk/oejenvipper-herning/",
+    "scroll": 0,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  },
+  "kinly-side-herning-2.png": {
+    "url": "https://kinly.dk/webbureau-herning/",
+    "scroll": 640,
+    "top": "rgb(250, 246, 239)",
+    "bund": "rgb(250, 246, 239)",
+    "taget": "2026-10-16"
+  }
+}

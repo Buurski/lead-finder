@@ -1,0 +1,8 @@
+Ad C: the price, in Kinly's dark style.
+- Background: deep ink #191713, flat, with a very soft warm light pool behind the devices.
+- Top-left, ~64px margin, Space Grotesk Medium, #FAF6EF, very large: Ny hjemmeside
+- Directly below it, a big fully rounded capsule in ember #D4500F containing Space Grotesk Medium #FAF6EF text, as large as the headline: 3.997 kr.
+- Below the capsule, Space Grotesk Regular ~36px, #FAF6EF at 75% opacity: ekskl. moms. Kodet fra bunden.
+- Lower 55%: an open MacBook Pro 14-inch (silver) in slight three-quarter perspective, standing on a dark surface, its screen key colour pure green #00FF00; and an iPhone 17 Pro (silver) standing in front of the laptop's right corner, nearly front facing, its screen key colour pure magenta #FF00FF. Soft warm contact and floor shadows. Devices large and crisp.
+- Keep the bottom-left (x 60-300, y 1240-1310) empty and dark for the logo.
+When done, copy the generated PNG into the current working directory as kinly-c-pris.png and print its absolute path and pixel size.

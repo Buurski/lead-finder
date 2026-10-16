@@ -9,7 +9,7 @@ import { store } from "./store.ts";
 // mailtekst, noter, links eller id'er). Kundeopdateringer, svar, søgning, feed, CMS og kontakter er aldrig med.
 // F3 (Lucas OS' Arbejde-side, spec §4 "klik åbner i HQ"): opake id'er + HQ-relative stier er med, så rækker kan linke ud og
 // afstemmes 1:1 — stadig ingen kontaktdata, noter eller mailtekst. noegletal = HQ's egne aggregater (kun tal).
-export const LUCAS_OS_WHATS = new Set(["udgifter", "opmaerksomhed", "min-dag", "pipeline", "blog", "noegletal"]);
+export const LUCAS_OS_WHATS = new Set(["udgifter", "opmaerksomhed", "min-dag", "pipeline", "blog", "noegletal", "annoncer"]);
 const LUCAS_OS_FIELDS: Record<string, { list: string; keep: string[] }> = {
   opmaerksomhed: { list: "items", keep: ["level", "kind", "text", "at", "href"] },
   "min-dag": { list: "items", keep: ["id", "kind", "title", "context", "companyId", "company", "owner", "due", "dueTime", "important", "bucket"] },
@@ -48,4 +48,19 @@ export async function udgifterResponse(): Promise<Response> {
     if (err instanceof ExpenseError) return Response.json({ ok: false, error: err.message }, { status: 413 });
     throw err;
   }
+}
+
+/** Annonce-studiet (HQ /marketing/annoncer) → kun tal til Lucas OS' forsidekort. Ingen tekster, noter eller kundenavne. */
+export function annonceTal(o: { godkendte: unknown[]; tests: Array<{ status: string; arme: Array<{ forbrug: number; leads: number; stop: string | null }> }>; bestillinger: unknown[] }) {
+  const koerer = o.tests.filter((t) => t.status === "kører");
+  const arme = koerer.flatMap((t) => t.arme);
+  return {
+    godkendte: o.godkendte.length,
+    testsKoerer: koerer.length,
+    forbrugKr: arme.reduce((n, a) => n + a.forbrug, 0),
+    henvendelser: arme.reduce((n, a) => n + a.leads, 0),
+    boerPauses: arme.filter((a) => a.stop).length,
+    nyeBestillinger: o.bestillinger.length,
+    href: "/marketing/annoncer",
+  };
 }

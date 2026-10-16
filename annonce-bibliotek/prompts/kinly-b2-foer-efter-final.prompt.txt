@@ -1,0 +1,80 @@
+Mode: built-in image_gen
+
+=== INITIAL GENERATION ===
+Use case: ads-marketing.
+Create ONE finished premium Facebook/Instagram feed ad, portrait 4:5, target 1080 x 1350 pixels (or closest native exact 4:5). Single complete image, no variants, no presentation border. Client Kinly, two-person web studio in Herning, Denmark.
+
+REFERENCES IN USER MESSAGE:
+Image 1 ref-booksy.png = reference only for highly polished Meta ad composition: huge headline, bold flat background, photographic devices, softly layered dimensional shadows and pill labels. Do not copy any Booksy text, logos or UI.
+Image 2 ref-kinly-enheder.png = reference only for premium realistic Apple product photography, calm studio light and soft realistic floor contact shadows. Phone geometry BELOW overrides any perspective in this reference.
+Image 3 ref-font-spacegrotesk.png = exact typography reference. ALL visible text must match Space Grotesk: Medium headline and labels; Regular small footer. Geometric grotesk, distinctive flat hooked y descender. No substitute neo-grotesk.
+
+LAYOUT / COLOUR:
+Top full-width band is precisely flat warm white #FAF6EF and occupies approximately 30% of height, from y=0 through y=405 at 1080x1350.
+Below y=405, split canvas vertically exactly in half at x=540: left soft warm grey #E7E2DA, right deep ink #191713. Large uninterrupted solid flat fields, no texture, no gradient backgrounds. No seam border.
+Top headline left aligned, x=64 margin, very large Space Grotesk Medium, two lines only, comfortable spacing and safe margins:
+Line 1 at upper part of band, colour #191713: "Samme værksted."
+Line 2 directly below, colour ember #D4500F: "Ny hjemmeside."
+Headline about 105 px at 1080 width, fits fully within image. Exact Danish æ and ø. Generous premium editorial spacing; no extra words.
+
+SUBJECTS: exactly TWO real photographic iPhone 17 Pro phones. No MacBook or other devices in this particular ad. Correct small Pro phone proportions and current Apple industrial design, thin EVEN black bezels, black Dynamic Island cutout, realistic machined metal edge highlights and physical side buttons. Front-facing product photographs. Both phones perfectly flat and parallel to image plane, no perspective yaw/pitch, no receding edge, no foreshortening. Only an in-plane rotation is allowed. Screens must each have exact local width:height proportion 402:874 before rotation. Realistic rounded rectangular display corners. No exposed back, no camera array. Metal depth only subtly visible at outline; must not imply a 3D turn.
+
+LEFT PHONE:
+Black titanium iPhone 17 Pro, upright portrait, 3 degrees counterclockwise in-plane. Entire phone visible within left half. Slightly smaller than right phone. Approx outer body 292 px wide and 638 px high; screen proportion fixed 402:874. Centre roughly x=270, bottom near y=1195, top near y=555. Above phone, near y=477, a small white rounded pill with dark #191713 Space Grotesk Medium text "Før". Pill separate from screen.
+SCREEN: every single screen pixel inside black bezel must be perfectly flat pure chroma key GREEN #00FF00, edge to edge including rounded corners. Only opaque black Dynamic Island sits on green at top. No UI, no status bar, no icons, no home indicator, no display shine, no reflection, no glare, no gradient, no screen shadows, no variation in green.
+
+RIGHT PHONE:
+Silver iPhone 17 Pro, upright portrait, 3 degrees clockwise in-plane. Entire phone visible within right half. Exactly about 12% larger than left phone in BOTH dimensions, approx 327 px wide and 715 px high. Screen proportion fixed 402:874. Centre roughly x=810, bottom near y=1210, top near y=495. Above phone near y=441, a small ember #D4500F rounded pill with warm white #FAF6EF Space Grotesk Medium text "Efter". Pill separate from screen.
+SCREEN: every single screen pixel inside black bezel must be perfectly flat pure chroma key MAGENTA #FF00FF, edge to edge including rounded corners. Only opaque black Dynamic Island sits on magenta at top. No UI, no status bar, no icons, no home indicator, no display shine, no reflection, no glare, no gradient, no screen shadows, no variation in magenta.
+
+ARROW:
+One thin ember #D4500F right-pointing arrow bridges gap between phones, crosses centre split at x=540 around y=845. Keep arrow entirely in free gap between phones, never crossing screen. Elegant small arrowhead. No extra copy.
+
+BOTTOM:
+Bottom RIGHT on ink background, small Space Grotesk Regular #FAF6EF text, exact one line: "Ikast AutoService, Ikast". Around x=650, baseline y=1295, right safe margin 64px. Clean readable.
+Bottom LEFT designated logo reserve x=60..300, y=1240..1310 must remain completely empty warm grey #E7E2DA: no text, no logo, no icon, no shadow, no ornament.
+
+PHOTOGRAPHIC QUALITY:
+High-end calm Apple studio product photography, crisp real metal highlights, exact hardware silhouette and restrained soft dimensionality. One key light from TOP LEFT. Devices appear upright with coherent soft layered contact shadows at lower edges and subtle drop shadows falling down-right. Left shadow tinted warm taupe by grey field; right shadow tinted deep warm ink by dark field, subtle visible depth. Shadow NEVER on chroma key screens. Shadows never flat generic grey and must not contaminate empty logo reserve. Premium finished agency ad, strong hierarchy, precise alignment.
+
+ONLY these five text strings, with exact capitalization and punctuation:
+Samme værksted.
+Ny hjemmeside.
+Før
+Efter
+Ikast AutoService, Ikast
+No CTA copy was supplied for Ad B; do not invent any extra text. No logo, no watermark, no website, no words on phones or hardware. Labels do not obscure screens. Flat screen colour accuracy, 402:874 screen aspect ratios, front-facing geometry, real hardware and exact typography are mandatory.
+
+=== TYPOGRAPHY AND GEOMETRY EDIT ===
+Edit the FIRST image into the final production ad. SECOND image is a font reference only; do not copy its text or layout. Preserve ad composition and exact five text strings, two phones and split colours. Output ONE portrait 4:5 final PNG, target 1080x1350.
+
+Correct strict compositing-template fidelity:
+1. ALL typography must match actual Space Grotesk from SECOND reference. Current headline is too heavy and generic. Set headline Space Grotesk MEDIUM, visibly match reference's geometric letter shapes, distinctive flat hooked y descender, open spacing. Same two lines, same very large size, same x64 left margin. Text line 1 "Samme værksted." in #191713, line 2 "Ny hjemmeside." in #D4500F. All other text same family.
+2. LEFT phone: reverse current lean. It must lean TOP LEFT, BOTTOM RIGHT, exactly 3 degrees counterclockwise. Perfect flat frontal elevation; no 3D yaw or pitch. RIGHT stays 3 degrees clockwise, leaning TOP RIGHT and BOTTOM LEFT. True in-plane rigid rotations. Local display width:height is exactly 402:874 for BOTH. Right phone precisely 12% bigger in width AND height than left. Both physically stand on lower edges, entire silhouettes visible.
+3. Screen fills must become UNIFORM DIGITAL SOLID KEY COLOUR. Left exactly RGB(0,255,0) / #00FF00; right exactly RGB(255,0,255) / #FF00FF. Every pixel inside each display excluding only black Dynamic Island must have identical RGB value. Remove all mottling, fake film grain, subtle display lighting, gradients, vignette, reflections or texture from screens. Display surfaces must look like flat digital colour placeholders, intentionally unlit, not luminous textured material. Metallic frames and exterior shadows remain photographic.
+4. Background panels perfectly flat #FAF6EF top 30%, #E7E2DA lower left, #191713 lower right except localized coherent device shadows. No paper texture or all-over background gradients.
+5. Keep bottom-left logo reserve x60-300 y1240-1310 completely empty and uniform #E7E2DA, without shadows. Keep small footer "Ikast AutoService, Ikast" on bottom right in Space Grotesk Regular #FAF6EF.
+
+Pill labels "Før" and "Efter" retain locations above phones; arrow stays in open gap crossing central seam. No extra text, no CTA, no logos. Photographic current iPhone 17 Pro, black titanium left, silver right, realistic current metal edges and physical buttons, thin even black bezel and Dynamic Island. Light from upper left; layered warm background-tinted shadows only outside devices.
+Do not add UI, status bars or home indicators. Main focus: exact Space Grotesk and the opposite phone rotations with perfectly uniform exact RGB key fills.
+
+=== FINAL SCREEN TEMPLATE EDIT ===
+Final precise compositing-template correction of this ad. Keep typography, all wording, colour scheme, arrow, pill labels, empty bottom-left logo reserve, photographic hardware and overall layout. ONE finished portrait 4:5 PNG, 1080x1350 or closest exact 4:5.
+
+The two phone displays are CHROMA KEY MASKS FOR LATER SCREEN REPLACEMENT, not photographed luminous screens. Replace ONLY their interiors with perfectly uniform digital solid colour, without rendering a material:
+LEFT display = solid RGB 0,255,0, hex #00FF00. NO other green tones.
+RIGHT display = solid RGB 255,0,255, hex #FF00FF. NO other magenta tones.
+Treat these as completely flat graphic colour mattes/compositor holdouts pasted into display openings after photographic rendering, every interior pixel identical. Exclude black Dynamic Islands, keep them.
+Zero film grain, zero diffusion, zero reflections, zero light falloff, zero highlights, zero shading or vignette within either screen. NO UI, NO status bar, NO home indicator.
+
+Correct BOTH display openings to exact 402:874 local width:height ratio (0.459954). Current left display is too narrow, so widen it slightly keeping height; same subtle correction for right. Make hardware proportionate around corrected opening, extremely thin even black bezel and metal frame. Right phone 12% larger than left in both dimensions. Front camera strictly perpendicular to both screens; no perspective distortion. Left entire phone in-plane rotation exactly -3 degrees (TOP leans LEFT); right +3 degrees (TOP leans RIGHT). Both upright, all corners visible. Do not change any text positions or generate extra words.
+
+Preserve exact text:
+Samme værksted.
+Ny hjemmeside.
+Før
+Efter
+Ikast AutoService, Ikast
+
+Every background area outside localized device shadows must be uniform digital colour, no mottling: top #FAF6EF, lower-left #E7E2DA, lower-right #191713. Top band ends at 30% image height. Empty logo reserve x60-300,y1240-1310 in 1080x1350 coordinate system stays completely plain #E7E2DA. Maintain premium photographic real Apple iPhone 17 Pro frames, soft layered warm-tinted shadows, top-left light. No logos or watermark.
+

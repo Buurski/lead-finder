@@ -1,0 +1,29 @@
+Use case: ads-marketing.
+Create ONE finished premium Danish Facebook/Instagram feed ad for Kinly. Portrait 4:5, requested 1080 x 1350 px, or nearest supported EXACT 4:5 canvas. Generate the complete ad as a single photographic raster image.
+
+Art direction: follow attached Booksy reference's confident large top headline, solid bold background, polished hardware composition and rounded pill. Follow Kinly device reference's quiet premium Apple product photography, precise metal edge detail and realistic soft floor shadows. Follow Space Grotesk reference for ALL typography, especially its characteristic flat hooked y descender. Do not copy any reference text, logos, screenshots or extra labels.
+
+BACKGROUND: deep ink solid #191713. A very soft, subtle warm light pool ONLY behind lower devices; rest flat and dark. One studio light from top left. Clean restrained Danish agency design, calm, premium, high contrast.
+
+TYPE / UPPER 45%, all left aligned at x approximately 64 on the 1080-wide layout:
+1. At y approximately 64, very large Space Grotesk Medium in warm ivory #FAF6EF, exact single-line headline:
+Ny hjemmeside
+2. Directly beneath headline, large fully rounded horizontal ember-orange capsule #D4500F. Generous internal padding, no outline, entirely inside canvas. Inside, Space Grotesk Medium warm ivory #FAF6EF, same large font size as headline, exact text:
+3.997 kr.
+3. Beneath capsule, on one line, Space Grotesk Regular approximately 36px, warm ivory at 75% opacity, exact text:
+ekskl. moms. Kodet fra bunden.
+
+Only these three text strings. Reproduce punctuation, capitalization and spacing exactly. No logo, no watermark, no additional CTA wording, no marks, no floating chips, no decorative symbols. Price capsule supplies rounded pill structure.
+
+LOWER 55%: two very large, crisp photographic silver Apple devices on dark matte surface. Open MacBook Pro 14-inch with believable current industrial design, aluminium body, thin black display bezel, centered real black notch, realistic keyboard and trackpad and correctly proportioned open display. Slight three-quarter perspective to the laptop, very mild perspective for convenient screenshot replacement. All FOUR inner screen corners fully visible and unobstructed. Its native screen aspect ratio exactly 1512:982, never a 16:9 display. Compose laptop across left and middle, display starting around y620, silver base grounded near y1200. Preserve room for phone at right.
+
+iPhone 17 Pro in silver stands upright on surface in front of laptop's right metal base corner. Front screen plane EXACTLY parallel to image plane: zero yaw, zero pitch, zero roll (0-degree in-plane rotation). This phone must NOT have a three-quarter turn. Correct tall modern iPhone proportions; INNER SCREEN aspect ratio EXACTLY 402:874 (width:height), never shortened or stretched. Thin even black bezels, rounded screen corners, genuine black Dynamic Island near top, real silver metal edge highlights, side buttons. Device approximately x810-1030, y750-1240, large enough to replace screen later. Position it so overlap is confined to laptop's right metal base/bezel; NO overlap of laptop colored display, all four laptop screen corners still visible.
+
+CRITICAL COMPOSITING SCREEN REQUIREMENTS, higher priority than photographic lighting:
+MacBook display = perfectly flat uniform PURE GREEN #00FF00 (RGB 0,255,0) edge-to-edge inside black bezel, interrupted ONLY by black centered notch.
+iPhone display = perfectly flat uniform PURE MAGENTA #FF00FF (RGB 255,0,255) edge-to-edge inside black bezel, interrupted ONLY by black Dynamic Island.
+Both are digital chroma-key plates. NO UI, NO status bar, NO icons, NO text, NO wallpaper, NO reflection, NO glare, NO gradient, NO vignette, NO glow, NO texture, NO shadow on either screen. Every interior screen pixel other than notch/island is exact same key color. Light and shadows affect hardware and floor ONLY. No colored light spilling from screens.
+
+Soft layered warm background-tinted contact and floor shadows under devices, same top-left light source. Subtle realistic light on aluminium. No flat grey shadows, no hard shadows, no plastic/toy/illustrated/cartoon appearance.
+
+KEEP EMPTY: bottom-left rectangle x60-300, y1240-1310 (coordinates for 1080x1350) completely dark, blank, clean and free of all text, device parts and distracting highlights; reserved for real logo added later. Entire composition stays inside frame; devices do not get cut off. Excellent typography, disciplined spacing, balanced scale, professional polished final ad.

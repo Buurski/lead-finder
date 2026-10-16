@@ -1,0 +1,17 @@
+Edit the attached ad into its final production-ready version. Image 1 is the ad to correct. Image 2 is supporting TYPOGRAPHY reference only, showing exact Space Grotesk. Keep the same portrait 4:5 composition, headline wording and positions, three white labels, bottom-right attribution and empty bottom-left logo zone. Output ONE final PNG, target 1080x1350 or closest native 4:5.
+
+CORRECT THE PHONE FAN GEOMETRY: The three phones currently sit almost side by side. Move left and right phones inward so the central phone in front physically overlaps roughly 25% of each side phone's width, like a real fanned hand of cards. Keep middle phone centered, straight, and exactly 8% larger than side phones. Side phones' only allowed transform is a 2D in-plane rotation: left -9°, right +9°. ALL three front screen planes must be absolutely parallel to the picture plane, NO yaw or 3D perspective and no foreshortening. No broad side faces. Each full unrotated SCREEN shape has width:height exactly 402:874. Correct iPhone 17 Pro silver hardware, thin even black bezels and black Dynamic Islands, clean photographic silver rims and side buttons. All bottoms visible above y1215, soft layered warm floor shadow, top-left illumination only. Move each service label to stay just above its own phone, never over its colored screen. Center phone may occlude the inner 25% of each side phone, but labels must not cover the screens.
+
+CORRECT CHROMA FILL: Visible pixels throughout each screen must be single perfectly even exact key color, like flat digital chroma cards, not a lit material. Left RGB 0,255,0 #00FF00. Center RGB 255,0,255 #FF00FF. Right RGB 0,255,255 #00FFFF. No shading whatsoever on these three solid color regions. No gradients, glare, reflections, shadows, texture, UI, status bar, color variation, light falloff, or white edges inside the color field. Only the black Dynamic Island is allowed on the color. Keep any photo lighting on the silver rims and background only. These are opaque perfectly uniform postproduction color plates.
+
+Match exact Space Grotesk from image 2 for ALL text; main headline is Medium weight 500, not extra-bold. Geometric grotesk with its recognizable flat hooked y descender. Exact text only:
+Én side
+pr. ydelse.
+Klar til Google fra dag ét.
+Dæk
+Tesla-værksted
+Lånebil
+Ikast AutoService, kodet af Kinly
+
+Keep first two headline lines very large, off-white #FAF6EF and tightly led, left margin around 64px. Keep third line one line, ember #D4500F, approximately 60% of headline size. White pill labels with dark Space Grotesk text. Small right-aligned attribution at bottom-right in off-white 70% opacity.
+Make the background flat ink #191713 with a MUCH SOFTER and more restrained warm ember pool behind phones, no strong orange spotlight. No banding. Blank dark bottom-left x60–300,y1240–1310. No extra text, no CTA, no logo, no watermark. Professional photographic agency ad.

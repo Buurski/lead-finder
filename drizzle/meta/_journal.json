@@ -141,6 +141,13 @@
       "when": 1792088988301,
       "tag": "0019_marketing_sektion",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792140102607,
+      "tag": "0020_marketing_post_url",
+      "breakpoints": true
     }
   ]
 }

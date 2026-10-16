@@ -84,7 +84,7 @@ export default function Measure({ drafts, tests, initial, today }: { drafts: Dra
           <div className="mk-field"><label className="mk-label" htmlFor="m-date">Dato for opslaget</label><input id="m-date" type="date" className="cc-input mk-input" value={f.postedOn ?? ""} onChange={(e) => set("postedOn", e.target.value)} required /></div>
           <div className="mk-field">
             <label className="mk-label" htmlFor="m-draft">Hvilken video?</label>
-            <select id="m-draft" className="cc-input mk-select" value={f.draftId ?? ""} onChange={(e) => set("draftId", e.target.value)}>
+            <select id="m-draft" className="cc-input mk-select" value={f.draftId ?? ""} onChange={(e) => setF((x) => ({ ...x, draftId: e.target.value, postUrl: x.postUrl || drafts.find((d) => d.id === e.target.value)?.postUrl || "" }))}>
               <option value="">Vælg (valgfrit)</option>
               {pickable.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>

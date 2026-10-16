@@ -1,0 +1,16 @@
+Edit this generated Kinly ad. Keep the headline, price pill, exact three Danish text strings, typographic layout, device photography style, portrait 4:5 composition, and reserved empty dark bottom-left logo area. Output ONE final PNG, preferably 1080x1350.
+
+Correct lower device composition so ALL FOUR corners of the laptop's GREEN inner display are fully visible. This is mandatory for later screenshot replacement. The phone currently covers laptop display: fix this. Reduce laptop scale approximately 12-15% anchored near the image's left margin and reposition laptop slightly left, so its entire green screen ends LEFT of phone's left edge, with at least 15px of dark separation between green display and phone. Keep laptop large. Its base can extend behind phone, but NO laptop green screen pixel or display corner may be hidden. Laptop should occupy lower-left, phone lower-right. Do not crop either device.
+
+Ensure MacBook Pro 14-inch display native rectangle ratio exactly 1512:982 with realistic very slight three-quarter perspective. Thin black bezel and central notch, silver aluminium current Apple hardware.
+iPhone 17 Pro silver: front plane exactly parallel to camera, zero yaw/pitch/roll. Its inner display has EXACT 402:874 width:height ratio, thin even black bezel, rounded corners, Dynamic Island, silver metal edges and side buttons.
+
+CRITICAL: Replace the green display with absolutely uniform flat pure #00FF00 RGB(0,255,0); replace phone display with absolutely uniform flat pure #FF00FF RGB(255,0,255). Edge to edge within each inner bezel, black notch / Dynamic Island ONLY interruptions. NO gradients, textures, glare, reflections, shadows, UI, status bars or colored spill. Treat these as solid flat digital chroma-key matte plates, not illuminated photographic surfaces. Every pixel across each screen's interior must be the same exact RGB. Shadows and lighting belong ONLY on hardware/floor.
+
+Background predominantly flat #191713 with only restrained soft warm pool behind hardware. Floor soft layered warm background-tinted contact shadows; single top-left light. Bottom-left x60-300 y1240-1310 relative to 1080x1350 remains clean dark empty for future logo.
+
+All text Space Grotesk: headline and price Medium, support line Regular. Exact strings only:
+Ny hjemmeside
+3.997 kr.
+ekskl. moms. Kodet fra bunden.
+No additional letters, logos, watermarks, chips or labels. Preserve original polished ad feel and crisp photographic hardware.

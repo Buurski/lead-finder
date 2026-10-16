@@ -9,7 +9,7 @@ import { marketingDraft, marketingMeasure, marketingRef } from "../db/schema.ts"
 import { CompetitorInputError, bool, enumOf, int, noUnknownKeys, num, obj, str } from "./competitors.ts";
 import { abBoard } from "./marketing-calc.ts";
 import {
-  AB_STATUSES, LABELS, MUSIC_KINDS, MarketingConflictError, TRACKS, approvalBlockers,
+  AB_STATUSES, LABELS, MUSIC_KINDS, MarketingConflictError, TRACKS, approvalBlockers, findDraftByHook, mentionsCustomer,
   type DraftDto, type DraftStatus, type MeasureDto, type MusicKind, type RefDto, type RefKind, type Track,
 } from "./marketing-types.ts";
 
@@ -32,7 +32,7 @@ export const toDraft = (r: DraftRow): DraftDto => ({
   shotlist: r.shotlist, caption: r.caption, label: r.label, priority: r.priority, score: r.score,
   status: r.status as DraftStatus, plannedFor: r.plannedFor, lengthS: r.lengthS, musicKind: r.musicKind as MusicKind,
   musicLicense: r.musicLicense, musicNote: r.musicNote, customerCase: r.customerCase, customerOk: r.customerOk,
-  charlieOk: r.charlieOk, trueCheckedOn: r.trueCheckedOn, risk: r.risk, note: r.note, source: r.source,
+  charlieOk: r.charlieOk, trueCheckedOn: r.trueCheckedOn, postUrl: r.postUrl, risk: r.risk, note: r.note, source: r.source,
   createdBy: r.createdBy, updatedBy: r.updatedBy, createdAt: iso(r.createdAt), updatedAt: iso(r.updatedAt),
 });
 export const toRef = (r: RefRow): RefDto => ({
@@ -84,7 +84,7 @@ function musicKind(v: unknown): MusicKind | undefined {
 
 // Felter der ændrer selve videoen: ændres de på en godkendt kladde, skal den godkendes igen.
 const CONTENT_KEYS = ["track", "title", "hook", "script", "shotlist", "caption", "lengthS", "musicKind", "musicLicense", "musicNote", "customerCase"] as const;
-const META_KEYS = ["label", "priority", "plannedFor", "note", "risk"] as const;
+const META_KEYS = ["label", "priority", "plannedFor", "note", "risk", "postUrl"] as const;
 // Agenten (Hermes) må kun skrive indholdet — aldrig prioritet, dato, godkendelser eller status.
 // musicLicense og customerCase er menneske-gates: agenten kan ikke opfylde dem (se createDraft).
 const AGENT_KEYS = ["track", "title", "hook", "script", "shotlist", "caption", "lengthS", "musicKind", "musicNote", "label", "note", "risk"] as const;
@@ -93,7 +93,7 @@ const HUMAN_KEYS = [...CONTENT_KEYS, ...META_KEYS] as const;
 type DraftPatch = Partial<{
   track: Track; title: string; hook: string; script: string; shotlist: string; caption: string; lengthS: number | null;
   musicKind: MusicKind; musicLicense: string; musicNote: string; customerCase: boolean; label: string; priority: number;
-  plannedFor: string | null; note: string; risk: string;
+  plannedFor: string | null; note: string; risk: string; postUrl: string;
 }>;
 
 function parseDraftPatch(o: Record<string, unknown>, required: boolean): DraftPatch {
@@ -127,6 +127,11 @@ function parseDraftPatch(o: Record<string, unknown>, required: boolean): DraftPa
   }
   const pf = day(o.plannedFor, "plannedFor");
   if (pf !== undefined) p.plannedFor = pf;
+  if (o.postUrl === "") p.postUrl = "";
+  else {
+    const url = httpUrl(o.postUrl, "postUrl");
+    if (url) p.postUrl = url;
+  }
   return p;
 }
 
@@ -163,17 +168,34 @@ async function saveIf(db: Db | Tx, row: DraftRow, set: Partial<typeof marketingD
   return toDraft(next);
 }
 
-/** Ny kladde. status er ALTID "kladde" — ingen vej herfra til godkendt/postet. */
+/**
+ * Ny kladde. status er ALTID "kladde" — ingen vej herfra til godkendt/postet.
+ * Kundecase er kun sand, når kladden nævner en kunde ved navn (titel, hook, manus, optagelse eller tekst).
+ * Agenten kan ikke selv sætte feltet, så for den afgør teksten alene; et menneske kan sætte det eksplicit.
+ */
 export async function createDraft(db: Db, raw: unknown, actor: string, via: "human" | "agent" = "human"): Promise<DraftDto> {
   const o = obj(raw, "kladde");
   noUnknownKeys(o, via === "agent" ? AGENT_KEYS : HUMAN_KEYS, "kladde");
   const p = parseDraftPatch(o, true);
+  const customerCase = via === "human" && p.customerCase !== undefined ? p.customerCase : mentionsCustomer(p.title, p.hook, p.script, p.shotlist, p.caption);
   const [row] = await db
     .insert(marketingDraft)
-    // Agent-kladder er konservativt "kundecase": kundens ok skal sættes af et menneske, før den kan godkendes.
-    .values({ ...p, ...(via === "agent" ? { customerCase: true } : {}), status: "kladde", source: via === "agent" ? "agent" : "manuel", createdBy: actor, updatedBy: actor })
+    .values({ ...p, customerCase, status: "kladde", source: via === "agent" ? "agent" : "manuel", createdBy: actor, updatedBy: actor })
     .returning();
   return toDraft(row);
+}
+
+/**
+ * "Lav kladde af den" fra Hooks: findes der allerede en kladde med samme hook (også en droppet), returneres den
+ * i stedet for at lave en dublet. Tjekket sker i databasen, så en gammel side aldrig kan lave en dublet.
+ */
+export async function createDraftFromHook(db: Db, raw: unknown, actor: string): Promise<{ draft: DraftDto; existing: boolean }> {
+  const o = obj(raw, "kladde");
+  const hook = typeof o.hook === "string" ? o.hook : "";
+  const all = await listDrafts(db);
+  const found = hook.trim() ? findDraftByHook(all.filter((d) => d.status !== "droppet"), hook) ?? findDraftByHook(all, hook) : undefined;
+  if (found) return { draft: found, existing: true };
+  return { draft: await createDraft(db, raw, actor), existing: false };
 }
 
 /** Ret (menneske): et ændret indhold på en godkendt kladde sender den tilbage til kladde. */
@@ -184,6 +206,9 @@ export async function updateDraft(db: Db, id: unknown, raw: unknown, actor: stri
     noUnknownKeys(o, HUMAN_KEYS, "kladde");
     const p = parseDraftPatch(o, false);
     if (p.title === "") fail("title mangler");
+    // Begynder teksten at nævne en kunde, bliver kladden en kundecase (medmindre et menneske selv har sat feltet).
+    const texts = (r: { title: string; hook: string; script: string; shotlist: string; caption: string }) => [r.title, r.hook, r.script, r.shotlist, r.caption];
+    if (p.customerCase === undefined && !mentionsCustomer(...texts(row)) && mentionsCustomer(...texts({ ...row, ...p }))) p.customerCase = true;
     const cur = row as unknown as Record<string, unknown>;
     const changedContent = CONTENT_KEYS.some((k) => k in p && (p as Record<string, unknown>)[k] !== cur[k]);
     const status = row.status === "godkendt" && changedContent ? "kladde" : row.status;
@@ -196,12 +221,13 @@ export async function updateDraft(db: Db, id: unknown, raw: unknown, actor: stri
 export type DraftAction = "approve" | "drop" | "restore" | "posted";
 
 /** Godkend / drop / tilbage til kladde / markér postet. Drop er en status — intet slettes. */
-export async function draftAction(db: Db, id: unknown, action: unknown, actor: string): Promise<DraftDto> {
+export async function draftAction(db: Db, id: unknown, action: unknown, actor: string, extra: { postUrl?: unknown } = {}): Promise<DraftDto> {
   return db.transaction(async (tx) => {
     const row = await getRow(tx, id, true);
     const a = enumOf(action, "action", ["approve", "drop", "restore", "posted"] as const, true)!;
     const d = toDraft(row);
     let status: DraftStatus;
+    let postUrl: string | undefined;
     switch (a) {
       case "approve": {
         if (d.status !== "kladde") fail(`Kun en kladde kan godkendes (den står som "${d.status}").`);
@@ -223,10 +249,11 @@ export async function draftAction(db: Db, id: unknown, action: unknown, actor: s
         const blockers = approvalBlockers(d);
         if (blockers.length) fail(`Kan ikke markeres som postet endnu. ${blockers.join(" ")}`);
         status = "postet";
+        postUrl = httpUrl(extra.postUrl, "postUrl"); // linket til det rigtige opslag: valgfrit her, kan tilføjes bagefter
         break;
       }
     }
-    return saveIf(tx, row, { status, updatedBy: actor });
+    return saveIf(tx, row, { status, ...(postUrl ? { postUrl } : {}), updatedBy: actor });
   });
 }
 
@@ -235,12 +262,15 @@ export async function setChecks(db: Db, id: unknown, raw: unknown, actor: string
   return db.transaction(async (tx) => {
     const row = await getRow(tx, id, true);
     const o = obj(raw, "tjek");
-    noUnknownKeys(o, ["charlieOk", "customerOk", "trueCheckedOn"], "tjek");
+    noUnknownKeys(o, ["charlieOk", "customerOk", "customerCase", "trueCheckedOn"], "tjek");
     const set: Partial<typeof marketingDraft.$inferInsert> = {};
     const c = bool(o.charlieOk, "charlieOk");
     if (c !== undefined) set.charlieOk = c;
     const k = bool(o.customerOk, "customerOk");
     if (k !== undefined) set.customerOk = k;
+    // "Ikke en kundecase": ændrer kun dette ene tjek. Charlies ja, kundens ok og sandt-datoen røres ikke.
+    const cc = bool(o.customerCase, "customerCase");
+    if (cc !== undefined) set.customerCase = cc;
     const t = day(o.trueCheckedOn, "trueCheckedOn");
     if (t !== undefined) set.trueCheckedOn = t;
     // Fjernes et ok på en godkendt kladde, er den ikke længere godkendt.

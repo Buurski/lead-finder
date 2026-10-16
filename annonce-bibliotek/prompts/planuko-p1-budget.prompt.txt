@@ -1,0 +1,46 @@
+Mode: built-in image_gen
+
+INITIAL GENERATION
+Use case: ads-marketing.
+Create ONE finished premium Facebook/Instagram feed ad image for Danish meal-planning app Planuko. Portrait 4:5, target 1080 x 1350 pixels (or nearest supported exact 4:5 size). A complete single ad, not a moodboard or grid. Premium Apple App Store feature-ad quality, photorealistic product hardware and exceptionally clean editorial typography. Bold direct Scandinavian meal-kit static-ad clarity. Use the supplied Booksy benchmark only for clarity and a big real product, not its actual imagery or copy.
+
+BACKGROUND: perfectly flat uniform Planuko burgundy #7A1F2B, opaque, no gradient, no texture, no vignette. Physical phone shadows may fall on this otherwise flat field.
+
+TYPOGRAPHY AND EXACT COPY: At top left, about 64 px inset on a 1080-wide canvas, cream #FFF7EC headline in Plus Jakarta Sans ExtraBold, geometric, friendly, tight letter spacing, very large, left aligned, tight leading. Exactly TWO lines, no other line breaks:
+Sæt et budget.
+Få ugens aftensmad.
+The second sentence MUST fit entirely on line two, with substantial right margin, never wrapping into a third line. Use the largest size that fits this exact layout, approximately 86–92 px at 1080 px width. Preserve correct Danish æ and å and all full stops.
+Below the headline, one single line, Nunito SemiBold approximately 38 px, cream #FFF7EC at 85% opacity:
+Retter og indkøbsliste fra REMA 1000
+Ensure this whole supporting line fits, is sharply legible, and remains a single line. Correct Danish ø.
+
+PRODUCT COMPOSITION: Two Apple iPhone 17 Pro phones, SILVER, occupying the lower 62% of the canvas. Photographic studio realism, front facing (fronts parallel to image plane), accurate rounded shape and proportions, correct black pill Dynamic Island centered near the top of each screen, thin even black bezels, precise silver metal edge highlights and side buttons. A slight in-plane tilt only: left phone smaller and rotated -6 degrees, set back; right phone 10% larger and rotated +4 degrees, in front, overlapping the left phone by about 20% of the left phone width. Product pair large, beautifully balanced, whole phones visible with breathing room. Upper phone edges around y=500–550 in a 1350-high canvas; bottom edges around y=1250–1290. Fit the pair naturally to the lower area while keeping typography cleanly separate. Reserve bottom-left logo area as specified below.
+One soft studio key light from upper left. Elegant soft layered contact and floor shadows tinted deep burgundy-brown, never grey. Photographic silver edge details; no screen reflections.
+
+SCREENS ARE COMPOSITING PLACEHOLDERS: left phone display filled completely with pure solid chroma green #00FF00. Right phone display filled completely with pure solid magenta #FF00FF. These screen colours must be completely FLAT, uniform, opaque and edge-to-edge inside the bezels, respecting rounded corners; only the black hardware Dynamic Island interrupts each field. No UI, no app screenshot, no status bar, no time, no battery, no home indicator, no labels, no symbols on the displays, no glare, no highlights, no gradients or texture on either coloured display. Screens will receive real screenshots later. Silver hardware remains photorealistic.
+
+FLOATING CHIP: One horizontal cream #FFF7EC chip, approximately 20 px corner radius, soft layered deep burgundy-brown shadow, floating across and overlapping the RIGHT phone's LEFT edge around the vertical middle. Small burgundy check mark followed by Nunito Bold #2B2B2B exact single-line text:
+Passer til jeres budget
+Chip compact and crisply readable. It may overlap the green display behind it. Keep most of both coloured screens visible.
+
+LOGO RESERVE: the entire rectangle x=60–320, y=1230–1310 (coordinates at 1080x1350) must remain EMPTY FLAT BURGUNDY #7A1F2B, clear of phones, shadows, chip, letters and other objects. The actual logo is added later.
+
+STRICT: Render only the four text strings specified above (headline is two strings), verbatim, no additional text. NO Planuko wordmark, NO logo, NO Apple logos, NO watermark, NO price or invented claim, NO CTA, NO food photos, NO fridge, NO clock, NO extra objects. No decorative background shapes. Precise Danish lettering, luxury product-ad finish.
+
+FINAL EDIT
+Edit this generated Planuko ad into the final production asset. Preserve its exact Danish text, excellent headline typography, chip typography, silver iPhone 17 Pro hardware, two-device order, relative scale, rotations, and overall premium design. Keep portrait 4:5, ideally 1080x1350 pixels.
+
+Necessary precise corrections:
+1. Remove ALL noise, grain, texture, shading variation and colour drift from the background. Background must be an absolutely uniform digitally flat solid RGB(122,31,43), hexadecimal #7A1F2B. No gradient or vignette. Retain only very localized soft deep burgundy-brown physical contact shadows immediately around the phone bottoms. Keep the entire bottom-left rectangle x60–320 y1230–1310 completely clear with exact solid #7A1F2B.
+2. The display fields must be perfectly smooth exact digital chroma fills: left RGB(0,255,0) #00FF00; right RGB(255,0,255) #FF00FF. Absolutely no photographic noise, reflections, shading, light falloff, glare, texture, dithering or gradients inside these fields. Flat edge-to-edge fills inside the rounded screen outlines. Keep the black Dynamic Island hardware and accurate thin black bezels. No UI of any sort.
+3. Scale the complete two-phone group and chip down about 10% and shift the group down, so phone tops start around y500 and phone bottoms stay around y1275 on the 1080x1350 layout. The group belongs in the lower 62% of the ad. Keep the right phone 10% bigger than left, left -6 degrees and right +4 degrees in-plane tilt, right overlapping left about 20%. Preserve ample readable coloured screen area and strong large-product presence. Keep all copy above the product untouched.
+
+Text must remain exactly, with original line breaks and no additions:
+Sæt et budget.
+Få ugens aftensmad.
+Retter og indkøbsliste fra REMA 1000
+Passer til jeres budget
+
+First two lines are the ExtraBold Plus Jakarta Sans headline in cream #FFF7EC, third is the single-line Nunito SemiBold subheading in 85% cream, last is Nunito Bold #2B2B2B on the one cream floating chip with burgundy check mark. Preserve all Danish æ ø å.
+No logo, wordmark, watermark, other copy, food, fridge, clock, extra objects or background decoration. This must look like a beautifully finished clean digital ad layout with photographic silver hardware, but totally uniform pixel-solid screen fields and burgundy background.
+
