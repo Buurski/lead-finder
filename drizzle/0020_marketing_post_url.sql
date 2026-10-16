@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_draft" ADD COLUMN "post_url" text DEFAULT '' NOT NULL;

@@ -388,6 +388,8 @@ export const marketingDraft = pgTable(
     customerOk: boolean("customer_ok").notNull().default(false),
     charlieOk: boolean("charlie_ok").notNull().default(false),
     trueCheckedOn: date("true_checked_on"),
+    // Link til det rigtige opslag. Skrives af et menneske, når kladden markeres postet; Måling bruger det.
+    postUrl: text("post_url").notNull().default(""),
     risk: text("risk").notNull().default(""),
     note: text("note").notNull().default(""),
     source: text("source").notNull().default("manuel"),

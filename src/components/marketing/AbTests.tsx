@@ -5,7 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AB_LABEL, abBoard, type AbBoardItem } from "@/lib/hq/marketing-calc";
-import { AB_STATUSES, type MeasureDto, type RefDto } from "@/lib/hq/marketing-types";
+import { AB_STATUSES, EXPLAIN, type MeasureDto, type RefDto } from "@/lib/hq/marketing-types";
 import Field from "./Field";
 import Info from "./Info";
 import { mk } from "./api";
@@ -40,12 +40,12 @@ function Card({ item, onStatus }: { item: AbBoardItem; onStatus: (t: RefDto) => 
       </div>
       <h3 className="mk-draft-title">{test.title}</h3>
       <div className="mk-arms">
-        <div className="mk-arm"><b>A</b><span>{arms.A || "–"}</span><span className="mk-dim">{call.nA} {call.nA === 1 ? "opslag" : "opslag"} · median {nf(call.medA)}</span></div>
-        <div className="mk-arm"><b>B</b><span>{arms.B || "–"}</span><span className="mk-dim">{call.nB} {call.nB === 1 ? "opslag" : "opslag"} · median {nf(call.medB)}</span></div>
+        <div className="mk-arm"><b>A</b><span>{arms.A || "–"}</span><span className="mk-dim">{call.nA} opslag · median {nf(call.medA)}<Info label="Hvad er median?">{EXPLAIN.median}</Info></span></div>
+        <div className="mk-arm"><b>B</b><span>{arms.B || "–"}</span><span className="mk-dim">{call.nB} opslag · median {nf(call.medB)}<Info label="Hvad er median?">{EXPLAIN.median}</Info></span></div>
       </div>
       <p className="mk-p mk-small">Måles på: {str(test.data.metric) || "Gem + delinger pr. 1000 visninger"}. Opslag uden visninger tæller ikke med.</p>
       <div className="mk-verdict" data-v={call.verdict} role="status">
-        <span className="mk-verdict-title">{AB_LABEL[call.verdict]}{call.ahead && call.verdict !== "for-tidligt" && <span className="cc-chip">{call.ahead} foran</span>}</span>
+        <span className="mk-verdict-title">{AB_LABEL[call.verdict]}{call.verdict === "skaer" && <Info label="Hvad betyder skær?">{EXPLAIN.skaer}</Info>}{call.ahead && call.verdict !== "for-tidligt" && <span className="cc-chip">{call.ahead} foran</span>}</span>
         <span>{call.text}</span>
       </div>
       <div className="mk-row">
@@ -122,7 +122,7 @@ export default function AbTests({ initialTests, measures }: { initialTests: RefD
         <ul className="mk-p" style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 4 }}>
           <li><strong>For tidligt</strong>: under 3 opslag på en af siderne.</li>
           <li><strong>Signal</strong>: mindst 3 opslag på hver. Der er en retning.</li>
-          <li><strong>Skær</strong>: mindst 5 opslag på hver, og den ene er mindst 25 % dårligere. Drop den dårligste.</li>
+          <li><strong>Skær</strong>: mindst 5 opslag på hver, og den ene er mindst 25 % dårligere. Drop den dårligste.<Info label="Hvad betyder skær?">{EXPLAIN.skaer}</Info></li>
           <li><strong>Ingen afgørelse</strong>: begge udgaver ligger på 0.</li>
         </ul>
       </section>

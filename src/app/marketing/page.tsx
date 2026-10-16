@@ -107,7 +107,7 @@ export default async function MarketingPage() {
 
         <div className="mk-note">
           <strong>Sådan arbejder vi</strong>
-          <span>Faceless/AI er hovedsporet nu (valgt 10/10). Lucas+Charlie-videoer er fase 2 og kræver Charlies ja. Kundecases kræver kundens ja. Intet lægges ud af HQ.</span>
+          <span>Faceless/AI er hovedsporet nu. Lucas+Charlie-videoer er fase 2 og kræver Charlies ja. Kundecases kræver kundens ja. Intet lægges ud af HQ.</span>
         </div>
       </div>
     </div>

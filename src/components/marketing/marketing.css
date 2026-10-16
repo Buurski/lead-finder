@@ -20,7 +20,7 @@
 /* ⓘ tryk-for-forklaring */
 .mk-info-btn { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0; flex-shrink: 0; }
 .mk-info-btn[aria-expanded="true"] { background: var(--text); color: #fff; border-color: var(--text); }
-.mk-info-text { flex-basis: 100%; margin: 4px 0 0; padding: 10px 12px; background: var(--bg-2); border-radius: 12px; font-size: 12.5px; font-weight: 400; line-height: 1.55; color: var(--text-muted); }
+.mk-info-text { display: block; flex-basis: 100%; margin: 4px 0 0; padding: 10px 12px; background: var(--bg-2); border-radius: 12px; font-size: 12.5px; font-weight: 400; line-height: 1.55; color: var(--text-muted); }
 
 /* spor-fane og filtre */
 .mk-seg { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
@@ -35,6 +35,15 @@
 .mk-chip-warn { background: var(--amber-dim); color: #8a5a12; }
 .mk-chip-bad { background: var(--red-dim); color: var(--mk-red); }
 .mk-chip-ok { background: var(--green-dim); color: var(--mk-green); }
+
+/* "mangler før godkendelse" og små felter direkte på kortet */
+.mk-need { display: grid; gap: 8px; border-radius: 14px; }
+form.mk-need { background: var(--amber-dim); padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #6b4a10; }
+.mk-need-item { display: grid; gap: 6px; justify-items: start; padding-top: 8px; border-top: 1px solid rgba(107, 74, 16, 0.18); }
+.mk-need-item:first-of-type { border-top: 0; padding-top: 0; }
+.mk-need-item .mk-field { width: 100%; }
+.mk-need-field { display: grid; gap: 2px; min-width: 120px; flex: 1 1 120px; }
+.mk-need .mk-label { color: inherit; }
 
 /* formularer */
 .mk-form { display: grid; gap: 12px; }
@@ -61,6 +70,7 @@
 .mk-hook { margin: 0; font-size: 14px; line-height: 1.5; font-weight: 600; background: var(--bg-2); border-radius: 12px; padding: 9px 12px; overflow-wrap: anywhere; }
 .mk-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .mk-actions .cc-btn { height: 40px; }
+.mk-actions .cc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .mk-meta { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 .mk-details { border-top: 1px solid var(--border); padding-top: 10px; }
 .mk-details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); list-style: none; min-height: 32px; display: flex; align-items: center; gap: 6px; }
@@ -136,3 +146,21 @@
   .mk-cal-dayname { font-size: 11.5px; }
 }
 @media (prefers-reduced-motion: reduce) { .mk-btn, .mk-seg-btn { transition: none; } }
+
+/* annoncer: plan som tjekliste + galleri af stills */
+.mk-plan-tal { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mk-plan-tal-i { background: var(--bg-2); border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.mk-plan-liste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mk-plan-liste li { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; min-width: 0; overflow-wrap: anywhere; }
+.mk-plan-liste li > .mk-check { flex: 0 1 auto; min-width: 0; }
+.mk-ann-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); align-items: start; }
+.mk-ann-imgs { display: flex; gap: 10px; align-items: flex-start; }
+.mk-ann-fig { margin: 0; display: grid; gap: 6px; min-width: 0; justify-items: start; }
+.mk-ann-fig[data-format="1080x1080"] { flex: 1 1 0; }
+.mk-ann-fig[data-format="1080x1350"] { flex: 0.8 1 0; }
+.mk-ann-fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-2); }
+.mk-ann-fig figcaption { display: grid; gap: 2px; justify-items: start; }
+.mk-ann-fig .cc-btn { height: auto; min-height: 38px; padding: 6px 12px; white-space: normal; text-align: center; text-decoration: none; }
+.mk-copy { display: grid; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+.mk-copy-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mk-copy-text { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; background: var(--bg-2); border-radius: 12px; padding: 9px 12px; }
