@@ -45,6 +45,12 @@ const SKUD = [
   { fil: "kinly-desktop-oejenvipper-2x.png", url: "https://kinly.dk/oejenvipper-herning/", scroll: 0, desktop: true },
   { fil: "ikast-desktop-2x.png", url: "https://ikastautoservice.dk/", scroll: 0, desktop: true },
   { fil: "vida-desktop-2x.png", url: "https://vida-klinik.dk/", scroll: 0, desktop: true },
+  // Buldr (kunde, møbelværksted; Lucas 17/10: må bruges i annoncer i stedet for KT VVS)
+  { fil: "buldr-16pro-top.png", url: "https://buldr-beige.vercel.app/", scroll: 0 },
+  { fil: "buldr-side-kollektion.png", url: "https://buldr-beige.vercel.app/kollektion/", scroll: 0 },
+  { fil: "buldr-side-vaev.png", url: "https://buldr-beige.vercel.app/kollektion/vaev/", scroll: 0 },
+  { fil: "buldr-desktop-2x.png", url: "https://buldr-beige.vercel.app/", scroll: 0, desktop: true },
+  { fil: "buldr-desktop-vaev-2x.png", url: "https://buldr-beige.vercel.app/kollektion/vaev/", scroll: 0, desktop: true },
 ];
 
 /** Sidens farve i en given højde (statuslinje øverst, Safari-pillen nederst), fra nærmeste element med baggrund. */

@@ -222,5 +222,40 @@
     "top": "rgb(250, 246, 239)",
     "bund": "rgb(250, 246, 239)",
     "taget": "2026-10-16"
+  },
+  "buldr-16pro-top.png": {
+    "url": "https://buldr-beige.vercel.app/",
+    "scroll": 0,
+    "top": "rgb(243, 239, 232)",
+    "bund": "rgb(231, 223, 210)",
+    "taget": "2026-10-17"
+  },
+  "buldr-side-kollektion.png": {
+    "url": "https://buldr-beige.vercel.app/kollektion/",
+    "scroll": 0,
+    "top": "rgb(243, 239, 232)",
+    "bund": "rgb(243, 239, 232)",
+    "taget": "2026-10-17"
+  },
+  "buldr-side-vaev.png": {
+    "url": "https://buldr-beige.vercel.app/kollektion/vaev/",
+    "scroll": 0,
+    "top": "rgb(243, 239, 232)",
+    "bund": "rgb(243, 239, 232)",
+    "taget": "2026-10-17"
+  },
+  "buldr-desktop-2x.png": {
+    "url": "https://buldr-beige.vercel.app/",
+    "scroll": 0,
+    "top": "rgb(243, 239, 232)",
+    "bund": "rgb(231, 223, 210)",
+    "taget": "2026-10-17"
+  },
+  "buldr-desktop-vaev-2x.png": {
+    "url": "https://buldr-beige.vercel.app/kollektion/vaev/",
+    "scroll": 0,
+    "top": "rgb(243, 239, 232)",
+    "bund": "rgb(231, 223, 210)",
+    "taget": "2026-10-17"
   }
 }
