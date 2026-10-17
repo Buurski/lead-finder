@@ -37,7 +37,7 @@ const FAKTA = {
   vidaKosmetik: { fil: `${V}wiki/kunder/vida-klinik.md:111`, fakta: "Markedsføringsregler for kosmetiske behandlinger er ikke tjekket" },
 };
 
-const KUNDE_IKAST = "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.";
+const KUNDE_IKAST = "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.";
 const LIVE_IKAST = `Skærmbilledet er taget live ${DATO}. Tjek at forsiden ikke er ændret, før annoncen går live.`;
 
 // ---------------------------------------------------------------- stills: GPT Image-annoncer (runde 2, 16/10-2026)
@@ -45,7 +45,6 @@ const LIVE_IKAST = `Skærmbilledet er taget live ${DATO}. Tjek at forsiden ikke 
 // skærme, og scripts/annonce-indsaet.py lægger RIGTIGE skærmbilleder ind (live undersider).
 // Hvert koncept findes med kinly.dk-skærme (kan bruges nu) og evt. med en kundes side (KRÆVER KUNDE-OK).
 const AI = "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen.";
-const KINLY_SKÆRM = `Skærmene viser kinly.dk (Kinlys egne undersider), taget live ${DATO}. Forsidens enhedsrække viser små billeder af kundesider (Vida, Ikast) og KT VVS-demoen, som de står på kinly.dk.`;
 const IKAST_SIDE = `Skærmen viser ikastautoservice.dk/service/daek/, taget live ${DATO}.`;
 const gpt = (fil) => ({ "1080x1350": `gpt/${fil}` });
 const META_HAAND = {
@@ -119,8 +118,15 @@ const SKÆRM = {
   "skaerm-kinly-laptop-automekaniker.png": { label: "Automekaniker", kunder: [] },
   "skaerm-kinly-side-oejenvipper.png": { label: "Vipper og bryn", kunder: [] },
   "skaerm-kinly-laptop-oejenvipper.png": { label: "Vipper og bryn", kunder: [] },
+  // Buldr (17/10): erstatter kinly.dk-forsiden, hvis projekt-række viser KT VVS-demoen. KT VVS har IKKE sagt ja (17/10).
+  "skaerm-buldr-top.png": { label: "Buldr", kunder: ["Buldr"] },
+  "skaerm-buldr-side-vaev.png": { label: "Buldr", kunder: ["Buldr"] },
+  "skaerm-buldr-laptop.png": { label: "Buldr", kunder: ["Buldr"] },
+  "skaerm-buldr-laptop-vaev.png": { label: "Buldr", kunder: ["Buldr"] },
 };
-const KUNDE_TEKST = (k) => `Kunde-ja mangler: ${k} kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.`;
+const KUNDE_TEKST = (k) => k === "Buldr"
+  ? "Buldr (Bertram) kan ses på skærmen (buldr-beige.vercel.app, taget live 17/10). Lucas 17/10: må bruges. Registrér ja i fanen Kunde-ja, så låses annoncen op."
+  : `Kunde-ja mangler: ${k} kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.`;
 const KONCEPTER = [
   { gruppe: "haand-kinly", fil: "kinly-a3-haand.png", logo: "logo-paa-ember.png@64,1250,240", test_celle: "K1", koncept: "Hånd med telefon (Booksy-format)",
     meta: META_HAAND, still: TEKST_HAAND, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer],
@@ -129,7 +135,7 @@ const KONCEPTER = [
       { id: "tal", magenta: "skaerm-kinly-side-herning-2.png" },
       { id: "automekaniker", magenta: "skaerm-kinly-side-automekaniker.png" },
       { id: "vipper", magenta: "skaerm-kinly-side-oejenvipper.png" },
-      { id: "forside", magenta: "skaerm-kinly-side-hjem.png" },
+      { id: "buldr", magenta: "skaerm-buldr-top.png" },
     ] },
   { gruppe: "pris-kinly", fil: "kinly-c-pris.png", logo: "logo-lys.png@64,1285,190", test_celle: "K2", koncept: "Pris i mørk stil",
     meta: META_PRIS, still: TEKST_PRIS, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.ejer, FAKTA.skrift],
@@ -137,7 +143,7 @@ const KONCEPTER = [
       { id: "priser", groen: "skaerm-kinly-laptop-priser.png", magenta: "skaerm-kinly-side-herning-2.png", start: true },
       { id: "automekaniker", groen: "skaerm-kinly-laptop-automekaniker.png", magenta: "skaerm-kinly-side-automekaniker.png" },
       { id: "vipper", groen: "skaerm-kinly-laptop-oejenvipper.png", magenta: "skaerm-kinly-side-oejenvipper.png" },
-      { id: "forside", groen: "skaerm-kinly-laptop-hjem.png", magenta: "skaerm-kinly-side-hjem.png" },
+      { id: "buldr", groen: "skaerm-buldr-laptop.png", magenta: "skaerm-buldr-side-vaev.png" },
     ] },
   { gruppe: "udkast-kinly", fil: "kinly-d-udkast.png", logo: "logo-moerk.png@835,1245,190", test_celle: "K3", koncept: "Se jeres side, før I vælger os",
     meta: META_UDKAST, still: TEKST_UDKAST, fakta: [FAKTA.pris, FAKTA.moms, FAKTA.regning],
@@ -145,13 +151,12 @@ const KONCEPTER = [
       { id: "automekaniker", groen: "skaerm-kinly-laptop-automekaniker.png", magenta: "skaerm-kinly-side-automekaniker.png", start: true },
       { id: "vipper", groen: "skaerm-kinly-laptop-oejenvipper.png", magenta: "skaerm-kinly-side-oejenvipper.png" },
       { id: "priser", groen: "skaerm-kinly-laptop-priser.png", magenta: "skaerm-kinly-side-priser.png" },
-      { id: "forside", groen: "skaerm-kinly-laptop-hjem.png", magenta: "skaerm-kinly-side-hjem.png" },
+      { id: "buldr", groen: "skaerm-buldr-laptop-vaev.png", magenta: "skaerm-buldr-top.png" },
     ] },
   { gruppe: "undersider-kinly", fil: "kinly-ek-undersider.png", logo: "logo-lys.png@64,1285,190", test_celle: "K4", koncept: "Én side pr. ydelse",
     meta: META_UNDERSIDER, still: TEKST_UNDERSIDER_KINLY, fakta: [FAKTA.pris, FAKTA.undersider, FAKTA.google],
     sæt: [
       { id: "uden-kunder", groen: "skaerm-kinly-side-automekaniker.png", magenta: "skaerm-kinly-side-herning-2.png", cyan: "skaerm-kinly-side-oejenvipper.png", start: true },
-      { id: "webbureau", groen: "skaerm-kinly-side-automekaniker.png", magenta: "skaerm-kinly-side-herning.png", cyan: "skaerm-kinly-side-oejenvipper.png" },
     ] },
 ];
 const SLOT_NAVN = { magenta: "telefon", groen: "laptop", cyan: "3. telefon" };

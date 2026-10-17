@@ -43,7 +43,7 @@
     "koncept": "Før og efter",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Før-skærmen viser det gamle site autoservice.nu, som stadig er online.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
@@ -93,7 +93,7 @@
     "koncept": "Hånd med telefon (Booksy-format)",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
@@ -146,7 +146,7 @@
     "koncept": "Pris i mørk stil",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
@@ -195,7 +195,7 @@
     "koncept": "Se jeres side, før I vælger os",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Skærmen viser ikastautoservice.dk/service/daek/, taget live 16. oktober 2026.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
@@ -244,7 +244,7 @@
     "koncept": "Én side pr. ydelse",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Ikast AutoService (Allan) skal sige ja til skærmbillede, navn og medarbejderfoto i en annonce.",
+      "Ikast AutoService (Allan) har sagt ja 17/10 (Lucas). Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Skærmene viser tre Ikast-undersider, taget live 16. oktober 2026.",
       "Ikast har flere undersider end 4.997-pakkens 3. Teksten nævner pakkeprisen, ikke hvad Ikast har betalt.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
@@ -415,10 +415,10 @@
     ]
   },
   {
-    "id": "gpt-haand-kinly-forside-1080x1350",
-    "slug": "gpt-haand-kinly-forside",
+    "id": "gpt-haand-kinly-buldr-1080x1350",
+    "slug": "gpt-haand-kinly-buldr",
     "format": "1080x1350",
-    "billede": "/annoncer/gpt-haand-kinly-forside-1080x1350.png",
+    "billede": "/annoncer/gpt-haand-kinly-buldr-1080x1350.png",
     "overskrift": "Ny hjemmeside, kodet fra bunden",
     "primaer_tekst": "Vi koder jeres hjemmeside fra bunden i Herning. I ser et gratis udkast, før I betaler, og siden er 100 % jeres.",
     "beskrivelse": "Fra 3.997 kr. ekskl. moms.",
@@ -439,24 +439,22 @@
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+      "public/annoncer/kilde/skaerm-buldr-top.png (telefon, live 16. oktober 2026)"
     ],
-    "kunde": "Vida Klinik, KT VVS",
+    "kunde": "Buldr",
     "kunder": [
-      "Vida Klinik",
-      "KT VVS"
+      "Buldr"
     ],
     "kunde_ja": false,
     "gruppe": "haand-kinly",
-    "skaerm": "Forsiden",
-    "billede_hash": "4be692f8440ccb56",
+    "skaerm": "Buldr",
+    "billede_hash": "4262431aeb1f90e4",
     "skabelon": "gpt",
     "test_celle": "K1",
     "koncept": "Hånd med telefon (Booksy-format)",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
-      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Buldr (Bertram) kan ses på skærmen (buldr-beige.vercel.app, taget live 17/10). Lucas 17/10: må bruges. Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   },
@@ -599,10 +597,10 @@
     ]
   },
   {
-    "id": "gpt-pris-kinly-forside-1080x1350",
-    "slug": "gpt-pris-kinly-forside",
+    "id": "gpt-pris-kinly-buldr-1080x1350",
+    "slug": "gpt-pris-kinly-buldr",
     "format": "1080x1350",
-    "billede": "/annoncer/gpt-pris-kinly-forside-1080x1350.png",
+    "billede": "/annoncer/gpt-pris-kinly-buldr-1080x1350.png",
     "overskrift": "Ny hjemmeside, 3.997 kr. ekskl. moms",
     "primaer_tekst": "Kodet fra bunden, ingen skabelon. I ser et gratis udkast, før I betaler. Prisen er ekskl. moms.",
     "beskrivelse": "Endelig pris aftales på skrift.",
@@ -627,27 +625,23 @@
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png (laptop, live 16. oktober 2026)",
-      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+      "public/annoncer/kilde/skaerm-buldr-laptop.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-buldr-side-vaev.png (telefon, live 16. oktober 2026)"
     ],
-    "kunde": "Vida Klinik, Ikast AutoService, KT VVS",
+    "kunde": "Buldr",
     "kunder": [
-      "Vida Klinik",
-      "Ikast AutoService",
-      "KT VVS"
+      "Buldr"
     ],
     "kunde_ja": false,
     "gruppe": "pris-kinly",
-    "skaerm": "Forsiden",
-    "billede_hash": "e1b88b7a5011b0b3",
+    "skaerm": "Buldr",
+    "billede_hash": "becc2dc7a9442ba2",
     "skabelon": "gpt",
     "test_celle": "K2",
     "koncept": "Pris i mørk stil",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
-      "Kunde-ja mangler: Ikast AutoService kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
-      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Buldr (Bertram) kan ses på skærmen (buldr-beige.vercel.app, taget live 17/10). Lucas 17/10: må bruges. Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   },
@@ -778,10 +772,10 @@
     ]
   },
   {
-    "id": "gpt-udkast-kinly-forside-1080x1350",
-    "slug": "gpt-udkast-kinly-forside",
+    "id": "gpt-udkast-kinly-buldr-1080x1350",
+    "slug": "gpt-udkast-kinly-buldr",
     "format": "1080x1350",
-    "billede": "/annoncer/gpt-udkast-kinly-forside-1080x1350.png",
+    "billede": "/annoncer/gpt-udkast-kinly-buldr-1080x1350.png",
     "overskrift": "Se jeres side, før I vælger os",
     "primaer_tekst": "Vi bygger et rigtigt udkast af jeres nye hjemmeside. I siger ja eller nej bagefter. Fra 3.997 kr. ekskl. moms.",
     "beskrivelse": "Gratis udkast før betaling.",
@@ -802,27 +796,23 @@
       }
     ],
     "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-laptop-hjem.png (laptop, live 16. oktober 2026)",
-      "public/annoncer/kilde/skaerm-kinly-side-hjem.png (telefon, live 16. oktober 2026)"
+      "public/annoncer/kilde/skaerm-buldr-laptop-vaev.png (laptop, live 16. oktober 2026)",
+      "public/annoncer/kilde/skaerm-buldr-top.png (telefon, live 16. oktober 2026)"
     ],
-    "kunde": "Vida Klinik, Ikast AutoService, KT VVS",
+    "kunde": "Buldr",
     "kunder": [
-      "Vida Klinik",
-      "Ikast AutoService",
-      "KT VVS"
+      "Buldr"
     ],
     "kunde_ja": false,
     "gruppe": "udkast-kinly",
-    "skaerm": "Forsiden",
-    "billede_hash": "aecb4d75255326a9",
+    "skaerm": "Buldr",
+    "billede_hash": "cde0439ab26ca93d",
     "skabelon": "gpt",
     "test_celle": "K3",
     "koncept": "Se jeres side, før I vælger os",
     "anbefalet_start": false,
     "advarsler": [
-      "Kunde-ja mangler: Vida Klinik kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
-      "Kunde-ja mangler: Ikast AutoService kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
-      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
+      "Buldr (Bertram) kan ses på skærmen (buldr-beige.vercel.app, taget live 17/10). Lucas 17/10: må bruges. Registrér ja i fanen Kunde-ja, så låses annoncen op.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   },
@@ -866,52 +856,6 @@
     "koncept": "Én side pr. ydelse",
     "anbefalet_start": true,
     "advarsler": [
-      "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
-    ]
-  },
-  {
-    "id": "gpt-undersider-kinly-webbureau-1080x1350",
-    "slug": "gpt-undersider-kinly-webbureau",
-    "format": "1080x1350",
-    "billede": "/annoncer/gpt-undersider-kinly-webbureau-1080x1350.png",
-    "overskrift": "Én side pr. ydelse",
-    "primaer_tekst": "Hver ydelse får sin egen side med SEO indbygget, så kunderne lander det rigtige sted. Fra 4.997 kr. ekskl. moms.",
-    "beskrivelse": "Forside + undersider, kodet fra bunden.",
-    "cta": "Få tilbud",
-    "still_tekst": "Én side pr. ydelse. Klar til Google fra dag ét. Værksted Webbureau Vipper og bryn kinly.dk",
-    "kilde_fakta": [
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Forside 3.997 kr engangsbeløb, designet og kodet fra bunden, gratis demo før betaling"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:22",
-        "fakta": "Forside + undersider 4.997 kr: op til 3 undersider + SEO indbygget på alle sider"
-      },
-      {
-        "fil": "KnowledgeOS/context/priser.md:21",
-        "fakta": "Klar til Google og Maps fra dag ét"
-      }
-    ],
-    "billede_kilder": [
-      "public/annoncer/kilde/skaerm-kinly-side-automekaniker.png (laptop, live 16. oktober 2026)",
-      "public/annoncer/kilde/skaerm-kinly-side-herning.png (telefon, live 16. oktober 2026)",
-      "public/annoncer/kilde/skaerm-kinly-side-oejenvipper.png (3. telefon, live 16. oktober 2026)"
-    ],
-    "kunde": "KT VVS",
-    "kunder": [
-      "KT VVS"
-    ],
-    "kunde_ja": false,
-    "gruppe": "undersider-kinly",
-    "skaerm": "Automekaniker · Webbureau Herning · Vipper og bryn",
-    "billede_hash": "02a27894028da199",
-    "skabelon": "gpt",
-    "test_celle": "K4",
-    "koncept": "Én side pr. ydelse",
-    "anbefalet_start": false,
-    "advarsler": [
-      "Kunde-ja mangler: KT VVS kan ses på skærmen (kinly.dk viser siden som projekt). Kræver skriftligt ja, før annoncen bruges.",
       "Baggrund, hånd og enheder er lavet med GPT Image; skærmene er ægte skærmbilleder. Meta kan vise 'AI-info' på annoncen."
     ]
   }
