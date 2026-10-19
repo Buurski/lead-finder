@@ -57,3 +57,9 @@ export async function withCronLog<T>(
     throw err;
   }
 }
+
+// Forældet = har ikke kørt længe nok til at et grønt flag stadig er sandt (council 19/10:
+// en cron der holder op med at køre stod grøn for altid). Ugentlige (… * * 1) får 8 døgn, resten 26 t.
+export function isStale(schedule: string, ageMinutes: number): boolean {
+  return ageMinutes > (/\* \* \d$/.test(schedule.trim()) ? 8 * 24 * 60 : 26 * 60);
+}

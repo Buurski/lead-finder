@@ -10,14 +10,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   let dbMs: number | null = null;
-  if (pgEnabled() && new URL(req.url).searchParams.get("db") === "1") {
+  const wantDb = pgEnabled() && new URL(req.url).searchParams.get("db") === "1";
+  if (wantDb) {
     try {
       const t0 = performance.now();
       await getDb().execute(sql`select 1`);
       dbMs = Math.round(performance.now() - t0);
     } catch {
-      /* db_ms forbliver null — liveness må ikke falde på en db-fejl */
+      /* db_ms forbliver null */
     }
   }
-  return NextResponse.json({ ok: true, service: "command-center", ts: new Date().toISOString(), region: process.env.VERCEL_REGION ?? null, db_ms: dbMs });
+  // Uden ?db=1 er det ren liveness (altid ok). Med ?db=1 beder kalderen om DB-readiness: fejl = 503.
+  const ok = !wantDb || dbMs !== null;
+  return NextResponse.json({ ok, service: "command-center", ts: new Date().toISOString(), region: process.env.VERCEL_REGION ?? null, db_ms: dbMs }, { status: ok ? 200 : 503 });
 }
