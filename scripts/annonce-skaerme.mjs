@@ -48,6 +48,11 @@ export const SKÆRME = [
   { ud: "skaerm-kinly-laptop-oejenvipper.png", fil: "kinly-desktop-oejenvipper-2x.png", type: "laptop" },
   { ud: "skaerm-ikast-laptop.png", fil: "ikast-desktop-2x.png", type: "laptop" },
   { ud: "skaerm-vida-laptop.png", fil: "vida-desktop-2x.png", type: "laptop" },
+  { ud: "skaerm-buldr-top.png", fil: "buldr-16pro-top.png", type: "telefon" },
+  { ud: "skaerm-buldr-side-kollektion.png", fil: "buldr-side-kollektion.png", type: "telefon" },
+  { ud: "skaerm-buldr-side-vaev.png", fil: "buldr-side-vaev.png", type: "telefon" },
+  { ud: "skaerm-buldr-laptop.png", fil: "buldr-desktop-2x.png", type: "laptop" },
+  { ud: "skaerm-buldr-laptop-vaev.png", fil: "buldr-desktop-vaev-2x.png", type: "laptop" },
 ];
 
 // iPhone 17 Pro: 402 x 874 pt. Statuslinje 62 pt (Dynamic Island-modeller), Safari-pille flyder over siden.
@@ -107,8 +112,9 @@ img{display:block;width:1512px}
 </body></html>`;
 }
 
+const kun = process.argv.slice(2); // fx skaerm-buldr-top.png: byg kun dem
 const browser = await chromium.launch();
-for (const s of SKÆRME) {
+for (const s of SKÆRME.filter((s) => !kun.length || kun.includes(s.ud))) {
   const tlf = s.type === "telefon";
   const page = await browser.newPage({ viewport: tlf ? { width: 402, height: høj(s) } : { width: 1512, height: 982 }, deviceScaleFactor: tlf ? 3 : 2 });
   await page.setContent(tlf ? telefon(s) : laptop(s), { waitUntil: "load" });
