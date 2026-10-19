@@ -5,64 +5,56 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/pre-cleanup",
-      "schedule": "30 4 * * *"
-    },
-    {
       "path": "/api/cron/sync-replies",
       "schedule": "30 4 * * *"
     },
     {
-      "path": "/api/cron/ingest-leadgen",
-      "schedule": "30 6 * * *"
-    },
-    {
       "path": "/api/cron/newsletter-sync",
-      "schedule": "20 5 * * *"
+      "schedule": "34 4 * * *"
     },
     {
       "path": "/api/cron/snapshot",
-      "schedule": "45 3 * * *"
+      "schedule": "31 4 * * *"
     },
     {
       "path": "/api/cron/invoices",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/jev-rescore",
-      "schedule": "30 3,13 * * *"
+      "schedule": "31 4 * * *"
     },
     {
       "path": "/api/cron/kv-crm-bridge",
-      "schedule": "20 */3 * * *"
+      "schedule": "15 5-20/3 * * *"
     },
     {
       "path": "/api/cron/site-health",
-      "schedule": "15 5 * * *"
+      "schedule": "33 4 * * *"
     },
     {
       "path": "/api/cron/seo-snapshot",
-      "schedule": "40 4 * * 1"
+      "schedule": "35 4 * * 1"
     },
     {
       "path": "/api/cron/followups",
-      "schedule": "10 5 * * *"
+      "schedule": "32 4 * * *"
     },
     {
       "path": "/api/cron/calendar-sync",
-      "schedule": "15 * * * *"
+      "schedule": "15 5-19 * * *"
     },
     {
       "path": "/api/cron/moede-udfald",
-      "schedule": "40 * * * *"
+      "schedule": "15 5-19 * * *"
     },
     {
       "path": "/api/cron/gsc-snapshot",
-      "schedule": "30 6 * * 1"
+      "schedule": "35 4 * * 1"
     },
     {
       "path": "/api/cron/kunde-rapport",
-      "schedule": "5 * * * *"
+      "schedule": "15 5-19 * * *"
+    },
+    {
+      "path": "/api/cron/neon-quota",
+      "schedule": "0 */4 * * *"
     }
   ]
 }

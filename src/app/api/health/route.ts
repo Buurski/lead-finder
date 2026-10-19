@@ -5,11 +5,12 @@ import { getDb, pgEnabled } from "@/lib/db/client";
 // GET /api/health — unauthenticated liveness check (excluded from the auth
 // middleware). Used by uptime checks and the welcome flow.
 // `region` + `db_ms` (ét `select 1`) gør funktionsregion vs. Neon-region målbar.
+// DB-tjekket kun ved ?db=1: et offentligt endpoint må ikke kunne holde Neon vågen (kvote 19/10).
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   let dbMs: number | null = null;
-  if (pgEnabled()) {
+  if (pgEnabled() && new URL(req.url).searchParams.get("db") === "1") {
     try {
       const t0 = performance.now();
       await getDb().execute(sql`select 1`);

@@ -3,12 +3,15 @@
 // Route-level error boundary: en uncaught render-fejl gav før Next.js' rå,
 // hvide fejlskærm. Denne fallback holder tonen (rolig, dansk) og giver en
 // vej tilbage uden at maskere fejlen — digest logges til konsollen.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // Prod skjuler serverfejlens tekst; cron-loggen (KV, virker uden DB) afslører Neon-kvoten (19/10).
+  const [quota, setQuota] = useState(false);
   useEffect(() => {
     console.error("route error:", error);
+    fetch("/api/cron/health").then((r) => r.text()).then((t) => setQuota(t.includes("exceeded the quota"))).catch(() => {});
   }, [error]);
 
   return (
@@ -18,7 +21,9 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
           Noget gik galt her.
         </h1>
         <p style={{ marginTop: 10, fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.6 }}>
-          Siden ramte en fejl under visning. Dine data er der stadig — prøv igen, eller gå til Mission Control.
+          {quota
+            ? "Databasens kvote (Neon) er brugt op, så HQ kan ikke hente data lige nu. Dine data er der stadig."
+            : "Siden ramte en fejl under visning. Dine data er der stadig — prøv igen, eller gå til Mission Control."}
           {error.digest ? <span style={{ display: "block", marginTop: 6, fontSize: 11.5, color: "var(--text-dim)" }}>ref: {error.digest}</span> : null}
         </p>
         <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center" }}>
