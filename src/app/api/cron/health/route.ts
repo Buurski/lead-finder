@@ -21,7 +21,6 @@ interface CronStatus {
 const SCHEDULE: Record<string, string> = {
   "pre-cleanup": "30 4 * * *",
   "sync-replies": "30 4 * * *",
-  "engine": "0 * * * *",
   "ingest-leadgen": "30 6 * * *",
   "newsletter-sync": "20 5 * * *",
   "jev-rescore": "30 3,13 * * *",
