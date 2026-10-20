@@ -11,7 +11,12 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
   const [quota, setQuota] = useState(false);
   useEffect(() => {
     console.error("route error:", error);
-    fetch("/api/cron/health").then((r) => r.text()).then((t) => setQuota(t.includes("exceeded the quota"))).catch(() => {});
+    // Kun en frisk kvote-fejl (< 3 t): en gammel log-post må ikke give en aktuel fejl den forkerte forklaring.
+    fetch("/api/cron/health")
+      .then((r) => r.json())
+      .then((d: { crons?: { error: string | null; ageMinutes: number | null }[] }) =>
+        setQuota((d.crons ?? []).some((c) => c.error?.includes("exceeded the quota") && (c.ageMinutes ?? Infinity) < 180)))
+      .catch(() => {});
   }, [error]);
 
   return (

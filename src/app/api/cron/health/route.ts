@@ -3,7 +3,7 @@
 // locally) and returns the latest entry per cron plus a top-level ok flag.
 // No auth: cheap polling endpoint for the Mission Control widget.
 import { NextResponse } from "next/server";
-import { readCronLog } from "@/lib/cron-log";
+import { isStale, readCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +41,12 @@ function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallO
       return { cron: name, ok: false, lastRunAt: null, durationMs: null, note: null,
         error: "aldrig kørt siden log blev tilføjet", ageMinutes: null, scheduled: SCHEDULE[name] };
     }
+    const ageMinutes = Math.max(0, Math.round((now - Date.parse(e.at)) / 60_000));
+    const stale = isStale(SCHEDULE[name], ageMinutes);
     return {
-      cron: name, ok: e.ok, lastRunAt: e.at, durationMs: e.durationMs,
-      note: e.note ?? null, error: e.error ?? null,
-      ageMinutes: Math.max(0, Math.round((now - Date.parse(e.at)) / 60_000)),
-      scheduled: SCHEDULE[name],
+      cron: name, ok: e.ok && !stale, lastRunAt: e.at, durationMs: e.durationMs,
+      note: e.note ?? null, error: stale ? `forældet: sidst kørt for ${Math.round(ageMinutes / 60)} t siden` : e.error ?? null,
+      ageMinutes, scheduled: SCHEDULE[name],
     };
   });
   return { overallOk: crons.every((c) => c.ok), crons };
