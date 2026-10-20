@@ -3,6 +3,7 @@ import { getDb, pgEnabled } from "@/lib/db/client";
 import { applyNoThanks, createFollowUpDrafts } from "@/lib/hq/sequence";
 import { loadDigest } from "@/lib/inbox-digest";
 import { copenhagenNow } from "@/lib/settings";
+import { withCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -16,10 +17,13 @@ export async function GET(req: Request) {
   }
   if (!pgEnabled()) return NextResponse.json({ ok: true, skipped: "DATA_BACKEND er ikke pg" });
   try {
-    const digest = await loadDigest();
-    const noThanks = digest ? await applyNoThanks(digest.items) : 0;
-    const followUps = await createFollowUpDrafts(getDb(), copenhagenNow().date);
-    return NextResponse.json({ ok: true, noThanks, ...followUps });
+    const out = await withCronLog("followups", async () => {
+      const digest = await loadDigest();
+      const noThanks = digest ? await applyNoThanks(digest.items) : 0;
+      const followUps = await createFollowUpDrafts(getDb(), copenhagenNow().date);
+      return { result: { noThanks, ...followUps } };
+    });
+    return NextResponse.json({ ok: true, ...out });
   } catch (err) {
     console.error(JSON.stringify({ evt: "followups.failed", error: String(err).slice(0, 300) }));
     return NextResponse.json({ ok: false, error: "opfølgninger fejlede" }, { status: 500 });

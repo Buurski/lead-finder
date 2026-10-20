@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { bridgeKvCrm, loadKvCrm } from "@/lib/pg/kv-bridge";
+import { withCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,20 +15,23 @@ export async function GET(req: Request) {
   }
   if (!pgEnabled()) return NextResponse.json({ ok: true, skipped: "DATA_BACKEND er ikke pg" });
   try {
-    const added = await bridgeKvCrm(getDb(), await loadKvCrm());
-    // Genkobl henvendelser fra de sidste 30 dage: en fejl ved modtagelsen må aldrig
-    // efterlade en kinly.dk-henvendelse uden for CRM'et (Sol 23/9). Idempotent.
-    const { readPreviewRequests } = await import("@/lib/preview-queue");
-    const { linkPreview } = await import("@/lib/hq/inbound");
-    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    let relinked = 0;
-    for (const r of await readPreviewRequests()) {
-      if (r.createdAt < since) continue;
-      try { await linkPreview(getDb(), r); relinked++; } catch (e) {
-        console.error(JSON.stringify({ evt: "inbound.relink.failed", id: r.id, error: String(e).slice(0, 200) }));
+    const out = await withCronLog("kv-crm-bridge", async () => {
+      const added = await bridgeKvCrm(getDb(), await loadKvCrm());
+      // Genkobl henvendelser fra de sidste 30 dage: en fejl ved modtagelsen må aldrig
+      // efterlade en kinly.dk-henvendelse uden for CRM'et (Sol 23/9). Idempotent.
+      const { readPreviewRequests } = await import("@/lib/preview-queue");
+      const { linkPreview } = await import("@/lib/hq/inbound");
+      const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      let relinked = 0;
+      for (const r of await readPreviewRequests()) {
+        if (r.createdAt < since) continue;
+        try { await linkPreview(getDb(), r); relinked++; } catch (e) {
+          console.error(JSON.stringify({ evt: "inbound.relink.failed", id: r.id, error: String(e).slice(0, 200) }));
+        }
       }
-    }
-    return NextResponse.json({ ok: true, added, relinked });
+      return { result: { added, relinked }, note: `+${added} relinket ${relinked}` };
+    });
+    return NextResponse.json({ ok: true, ...out });
   } catch (err) {
     console.error(JSON.stringify({ evt: "kv-crm-bridge.failed", error: String(err).slice(0, 300) }));
     return NextResponse.json({ ok: false, error: "bro fejlede" }, { status: 500 });

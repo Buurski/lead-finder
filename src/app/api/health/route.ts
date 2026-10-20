@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   let dbMs: number | null = null;
-  const wantDb = pgEnabled() && new URL(req.url).searchParams.get("db") === "1";
-  if (wantDb) {
+  // ?db=1 uden pg-backend er fejlkonfiguration, ikke "ok": dbMs forbliver null → 503.
+  const wantDb = new URL(req.url).searchParams.get("db") === "1";
+  if (wantDb && pgEnabled()) {
     try {
       const t0 = performance.now();
       await getDb().execute(sql`select 1`);

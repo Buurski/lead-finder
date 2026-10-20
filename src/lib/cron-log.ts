@@ -18,17 +18,19 @@ export interface CronLogEntry {
 }
 
 const KEY = "cron-log";
+// ~65 poster/døgn → ca. 30 dage. Skal dække mindst 8 døgn, ellers falder ugentlige jobs ud (isStale).
+const MAX = 2000;
 
 export async function appendCronLog(entry: CronLogEntry): Promise<void> {
   try {
-    await store.append(KEY, entry);
+    await store.append(KEY, entry, MAX);
   } catch (e) {
     // Never let logging take down the actual cron.
     console.error("cron-log append failed:", e);
   }
 }
 
-export async function readCronLog(max = 500): Promise<CronLogEntry[]> {
+export async function readCronLog(max = MAX): Promise<CronLogEntry[]> {
   try {
     const raw = await store.readAll(KEY);
     const arr = Array.isArray(raw) ? raw : [];
@@ -44,12 +46,13 @@ export async function readCronLog(max = 500): Promise<CronLogEntry[]> {
 
 export async function withCronLog<T>(
   name: string,
-  fn: () => Promise<{ result: T; note?: string; meta?: Record<string, unknown> }>,
+  // ok:false = blød fejl (jobbet svarer selv pænt, fx én kundes rapport fejlede): logges rødt uden at kaste.
+  fn: () => Promise<{ result: T; note?: string; meta?: Record<string, unknown>; ok?: boolean; error?: string }>,
 ): Promise<T> {
   const t0 = Date.now();
   try {
-    const { result, note, meta } = await fn();
-    await appendCronLog({ cron: name, at: new Date().toISOString(), ok: true, durationMs: Date.now() - t0, note, meta });
+    const { result, note, meta, ok = true, error } = await fn();
+    await appendCronLog({ cron: name, at: new Date().toISOString(), ok, durationMs: Date.now() - t0, note, meta, error });
     return result;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
