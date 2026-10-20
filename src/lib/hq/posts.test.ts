@@ -1020,3 +1020,40 @@ test("tjeklisten: kun kandidater der findes skal være komplette, og mindst ét 
   // SEO-gaten tjekker de valgte i rækkefølge — også C.
   assert.match(seoMissing(grund, { ...ordnet, c: { ...ABC.c, alt: "kort" } }).join(" "), /alt-tekst på C/);
 });
+
+test("max 3 claims pr. bestilling: 4. claim af hængt kort afvises og markeres fejlet; Prøv igen nulstiller", async () => {
+  const post = await seed("Hænger igen og igen");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  for (let i = 1; i <= 3; i++) {
+    const c = await claimWork(db, post.id);
+    assert.equal(c.work.attempts, i);
+    // Kørslen går i stå: ingen fremdrift i over 90 min.
+    await setWork(post.id, { ...(await workOf(post.id)), startedAt: ago(180), updatedAt: ago(95) });
+  }
+  await assert.rejects(claimWork(db, post.id), /max 3 forsøg/);
+  assert.match((await workOf(post.id)).error ?? "", /Prøv igen/);
+  assert.equal((await workQueue(db)).some((c) => c.id === post.id), false);
+  await retryWork(db, post.id, "lucas");
+  assert.equal((await claimWork(db, post.id)).work.attempts, 1);
+});
+
+test("forsøgstælleren overlever Hermes' egne flytninger, men ikke et menneskes nye bestilling", async () => {
+  const post = await seed("Stage-hop");
+  await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+  await setWork(post.id, { attempts: 3 });
+  await updatePost(db, post.id, { stage: "ide" }, "hermes");
+  await updatePost(db, post.id, { stage: "arbejder" }, "hermes");
+  assert.equal((await workOf(post.id)).attempts, 3);
+  await assert.rejects(claimWork(db, post.id), /max 3 forsøg/);
+  await updatePost(db, post.id, { stage: "ide" }, "lucas");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  assert.equal((await workOf(post.id)).attempts, undefined);
+  assert.equal((await claimWork(db, post.id)).work.attempts, 1);
+});
+
+test("ugyldig forsøgstæller tælles som opbrugt (fail-closed)", async () => {
+  const post = await seed("Ugyldig tæller");
+  await updatePost(db, post.id, { stage: "arbejder" }, "lucas");
+  await setWork(post.id, { ...(await workOf(post.id)), attempts: "oops" });
+  await assert.rejects(claimWork(db, post.id), /max 3 forsøg/);
+});

@@ -1187,6 +1187,8 @@ export interface BlogWork {
   updatedAt?: string;
   finishedAt?: string;
   error?: string;
+  /** Antal claims siden et menneske sidst bestilte (A1, council 20/10). Nulstilles kun af et menneske. */
+  attempts?: number;
   /** Menneskets besked: Hermes følger den før alt andet (og kortet går forrest i køen). */
   instructions?: string;
 }
@@ -1202,18 +1204,21 @@ export function readWork(v: unknown): BlogWork {
   for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error", "instructions"] as const) {
     if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
   }
-  for (const k of ["step", "steps"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
+  for (const k of ["step", "steps", "attempts"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
   return out;
 }
 
 /** Nyt work-objekt ved en flytning, eller null = uændret. */
 function workOnMove(before: BlogWork, from: BlogStage, target: BlogStage, actor: string, instructions?: string): BlogWork | null {
   const now = new Date().toISOString();
-  if (target === "ide") return {};
+  // Hermes' egne flytninger bevarer forsøgstælleren, så den ikke kan nulstilles ved at
+  // hoppe Idé → Arbejder. Kun et menneske (ny bestilling eller "Prøv igen") nulstiller.
+  const keep: BlogWork = actor === "hermes" && before.attempts ? { attempts: before.attempts } : {};
+  if (target === "ide") return keep;
   // Et menneske der lægger kortet i Arbejder bestiller arbejdet (friskt objekt, gammel
   // fremdrift væk). Flytter Hermes det selv derhen, er der ingen bestilling at vente på.
   if (target === "arbejder") {
-    if (actor === "hermes") return {};
+    if (actor === "hermes") return keep;
     return instructions ? { requestedBy: actor, requestedAt: now, instructions } : { requestedBy: actor, requestedAt: now };
   }
   if (from === "arbejder" && target === "klar" && actor === "hermes") return { ...before, finishedAt: now };
@@ -1227,15 +1232,23 @@ const IN_ARBEJDER = sql`${blogPost.stage} = 'arbejder'`;
 const staleSince = (cutoff: string) =>
   sql`(${W}->>'startedAt' is not null and ${W}->>'finishedAt' is null
        and coalesce(${W}->>'updatedAt', ${W}->>'startedAt')::timestamptz < ${cutoff}::timestamptz)`;
+// Max claims pr. bestilling: et kort der hænger igen og igen må ikke brænde et agent-run
+// (6-8 mio. tokens) af hver 90. minut. Ugyldig værdi tælles som opbrugt (fail-closed).
+export const WORK_MAX_ATTEMPTS = 3;
+const ATTEMPTS = sql`(case when ${W}->'attempts' is null or jsonb_typeof(${W}->'attempts') = 'null' then 0
+  when jsonb_typeof(${W}->'attempts') = 'number' then least(greatest((${W}->>'attempts')::numeric, 0), 1000)::int
+  else 1000 end)`;
+const UNDER_CAP = sql`${ATTEMPTS} < ${WORK_MAX_ATTEMPTS}`;
+const CAP_MSG = `max ${WORK_MAX_ATTEMPTS} forsøg uden at blive færdig — tryk "Prøv igen"`;
 // Fejlede kort er med vilje ikke med: de venter på et menneskes "Prøv igen", så en
 // fejl der bliver ved ikke brænder et agent-run af hver 90. minut.
 const claimable = (cutoff: string) =>
-  sql`${IN_ARBEJDER} and ${W}->>'requestedAt' is not null and ${W}->>'error' is null
+  sql`${IN_ARBEJDER} and ${W}->>'requestedAt' is not null and ${W}->>'error' is null and ${UNDER_CAP}
       and (${W}->>'startedAt' is null or ${staleSince(cutoff)})`;
 // Claim kræver ikke en bestilling: nat-kørslen flytter selv sin idé til Arbejder
 // (work = {}) og tager den. Køen (workQueue) viser stadig kun bestilte kort.
 const startable = (cutoff: string) =>
-  sql`${IN_ARBEJDER} and ${W}->>'error' is null
+  sql`${IN_ARBEJDER} and ${W}->>'error' is null and ${UNDER_CAP}
       and (${W}->>'startedAt' is null or ${staleSince(cutoff)})`;
 const staleCutoff = () => new Date(Date.now() - WORK_STALE_MS).toISOString();
 
@@ -1279,10 +1292,21 @@ export async function claimWork(db: Db, id: string) {
   const now = new Date().toISOString();
   const [row] = await db
     .update(blogPost)
-    .set({ work: sql`(${W} - 'label' - 'steps' - 'finishedAt') || jsonb_build_object('startedAt', ${now}::text, 'updatedAt', ${now}::text, 'step', 0)` })
+    .set({ work: sql`(${W} - 'label' - 'steps' - 'finishedAt') || jsonb_build_object('startedAt', ${now}::text, 'updatedAt', ${now}::text, 'step', 0, 'attempts', ${ATTEMPTS} + 1)` })
     .where(and(eq(blogPost.id, id), startable(staleCutoff())))
     .returning({ id: blogPost.id, title: blogPost.title, work: blogPost.work });
-  if (!row) throw await workRefusal(db, id, "kan ikke claimes");
+  if (!row) {
+    // Loftet nået på et ledigt/hængt kort: markér det fejlet, så det forlader køen og
+    // menneskets "Prøv igen" (som nulstiller tælleren) virker. Et run i gang røres ikke.
+    const [capped] = await db
+      .update(blogPost)
+      .set({ work: sql`${W} || jsonb_build_object('error', ${CAP_MSG}::text, 'updatedAt', ${now}::text)` })
+      .where(and(eq(blogPost.id, id), sql`${IN_ARBEJDER} and ${W}->>'error' is null and not ${UNDER_CAP}
+        and (${W}->>'startedAt' is null or ${staleSince(staleCutoff())})`))
+      .returning({ id: blogPost.id });
+    if (capped) throw new BlogInputError(`kan ikke claimes: ${CAP_MSG}`);
+    throw await workRefusal(db, id, "kan ikke claimes");
+  }
   return { id: row.id, title: row.title, work: readWork(row.work) };
 }
 
