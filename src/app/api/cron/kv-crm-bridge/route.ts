@@ -29,7 +29,7 @@ export async function GET(req: Request) {
           console.error(JSON.stringify({ evt: "inbound.relink.failed", id: r.id, error: String(e).slice(0, 200) }));
         }
       }
-      return { result: { added, relinked }, note: `+${added} relinket ${relinked}` };
+      return { result: { added, relinked }, note: `aktiviteter +${added.activities}, opgaver +${added.tasks}, kontakter +${added.contacts}, relinket ${relinked}` };
     });
     return NextResponse.json({ ok: true, ...out });
   } catch (err) {
