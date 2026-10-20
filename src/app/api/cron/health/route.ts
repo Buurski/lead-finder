@@ -26,6 +26,12 @@ const SCHEDULE: Record<string, string> = {
   "moede-udfald": "15 5-19 * * *",
   "gsc-snapshot": "35 4 * * 1",
   "neon-quota": "0 */4 * * *",
+  "invoices": "31 4 * * *",
+  "kv-crm-bridge": "15 5-20/3 * * *",
+  "site-health": "33 4 * * *",
+  "seo-snapshot": "35 4 * * 1",
+  "followups": "32 4 * * *",
+  "kunde-rapport": "15 5-19 * * *",
 };
 
 function summarize(entries: Awaited<ReturnType<typeof readCronLog>>): { overallOk: boolean; crons: CronStatus[] } {

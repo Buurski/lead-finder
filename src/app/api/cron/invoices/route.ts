@@ -4,6 +4,7 @@ import {
   getBusinessSettings, subscriptionsDue, isOverdue, buildStatusNote,
 } from "@/lib/invoices.ts";
 import { writeVaultNote } from "@/lib/vault.ts";
+import { withCronLog } from "@/lib/cron-log";
 
 // GET /api/cron/invoices — daglig cron (vercel.json, 05:00 UTC):
 //   (a) opretter kladder for abonnementer der er due (subscriptionsDue)
@@ -24,49 +25,54 @@ export async function GET(req: Request) {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const [subs, invoices, biz] = await Promise.all([getSubscriptions(), listInvoices(), getBusinessSettings()]);
+  const out = await withCronLog("invoices", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const [subs, invoices, biz] = await Promise.all([getSubscriptions(), listInvoices(), getBusinessSettings()]);
 
-  const due = subscriptionsDue(subs, invoices, today);
-  const created: string[] = [];
-  for (const sub of due) {
-    // Genbrug recipient fra seneste eksisterende faktura for samme kunde, så
-    // stamdata (adresse, CVR, ATT) følger med i den nye kladde.
-    const previous = invoices.find((inv) => inv.clientName === sub.clientName);
-    const recipient = previous?.recipient ?? { name: sub.clientName };
+    const due = subscriptionsDue(subs, invoices, today);
+    const created: string[] = [];
+    for (const sub of due) {
+      // Genbrug recipient fra seneste eksisterende faktura for samme kunde, så
+      // stamdata (adresse, CVR, ATT) følger med i den nye kladde.
+      const previous = invoices.find((inv) => inv.clientName === sub.clientName);
+      const recipient = previous?.recipient ?? { name: sub.clientName };
 
-    const number = await nextInvoiceNumber(today);
-    await saveInvoice({
-      number,
-      clientName: sub.clientName,
-      recipient,
-      issueDate: today,
-      dueDate: addDays(today, 14),
-      lines: sub.lines,
-      vatRate: 0,
-      status: "kladde",
-      payerType: biz.payerType,
-      kind: "abonnement",
-    });
-    created.push(number);
-  }
-
-  const overdue: string[] = [];
-  for (const inv of invoices) {
-    if (inv.status === "sendt" && isOverdue(inv, today)) {
-      await saveInvoice({ ...inv, status: "forfalden" });
-      overdue.push(inv.number);
+      const number = await nextInvoiceNumber(today);
+      await saveInvoice({
+        number,
+        clientName: sub.clientName,
+        recipient,
+        issueDate: today,
+        dueDate: addDays(today, 14),
+        lines: sub.lines,
+        vatRate: 0,
+        status: "kladde",
+        payerType: biz.payerType,
+        kind: "abonnement",
+      });
+      created.push(number);
     }
-  }
 
-  // Frisk læsning: created/overdue ovenfor har ændret state.
-  const current = await listInvoices();
-  const vault = await writeVaultNote(
-    "data/faktura-status",
-    buildStatusNote(current, subs, today),
-    `faktura-status ${today} (auto)`,
-  );
-  if (!vault.ok) return NextResponse.json({ ok: false, created, overdue, error: vault.reason }, { status: 502 });
+    const overdue: string[] = [];
+    for (const inv of invoices) {
+      if (inv.status === "sendt" && isOverdue(inv, today)) {
+        await saveInvoice({ ...inv, status: "forfalden" });
+        overdue.push(inv.number);
+      }
+    }
 
-  return NextResponse.json({ ok: true, created, overdue, vault });
+    // Frisk læsning: created/overdue ovenfor har ændret state.
+    const current = await listInvoices();
+    const vault = await writeVaultNote(
+      "data/faktura-status",
+      buildStatusNote(current, subs, today),
+      `faktura-status ${today} (auto)`,
+    );
+    return { result: { created, overdue, vault }, ok: vault.ok, error: vault.ok ? undefined : vault.reason,
+      note: `kladder ${created.length}, forfaldne ${overdue.length}` };
+  });
+  const { vault } = out;
+  if (!vault.ok) return NextResponse.json({ ok: false, created: out.created, overdue: out.overdue, error: vault.reason }, { status: 502 });
+
+  return NextResponse.json({ ok: true, ...out });
 }

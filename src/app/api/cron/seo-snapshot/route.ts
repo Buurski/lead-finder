@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { runSeoSnapshots } from "@/lib/hq/seo-history";
+import { withCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,7 +14,8 @@ export async function GET(req: Request) {
   }
   if (!pgEnabled()) return NextResponse.json({ ok: true, skipped: "DATA_BACKEND er ikke pg" });
   try {
-    return NextResponse.json({ ok: true, ...await runSeoSnapshots(getDb()) });
+    const out = await withCronLog("seo-snapshot", async () => ({ result: await runSeoSnapshots(getDb()) }));
+    return NextResponse.json({ ok: true, ...out });
   } catch (error) {
     console.error(JSON.stringify({ evt: "seo-snapshot.failed", error: String(error).slice(0, 300) }));
     return NextResponse.json({ ok: false, error: "måling fejlede" }, { status: 500 });

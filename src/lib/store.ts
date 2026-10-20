@@ -17,7 +17,8 @@ export interface PutAssetResult {
 
 export interface Store {
   // append-only logs (e.g. spend.jsonl)
-  append(key: string, entry: unknown): Promise<void>;
+  // maxLen: behold kun de seneste maxLen poster (KV + memory; FS er kun lokal og trimmes ikke)
+  append(key: string, entry: unknown, maxLen?: number): Promise<void>;
   readAll(key: string): Promise<unknown[]>;
   // documents (json)
   get<T = unknown>(key: string): Promise<T | null>;
@@ -172,7 +173,11 @@ export class InMemoryStore implements Store {
   private logs = new Map<string, unknown[]>();
   private docs = new Map<string, unknown>();
   private assets = new Map<string, { content: string | Uint8Array; url: string }>();
-  async append(key: string, entry: unknown) { (this.logs.get(key) ?? this.logs.set(key, []).get(key)!).push(entry); }
+  async append(key: string, entry: unknown, maxLen?: number) {
+    const l = this.logs.get(key) ?? this.logs.set(key, []).get(key)!;
+    l.push(entry);
+    if (maxLen && l.length > maxLen) l.splice(0, l.length - maxLen);
+  }
   async readAll(key: string) { return [...(this.logs.get(key) ?? [])]; }
   async get<T = unknown>(key: string) { return (this.docs.has(key) ? (this.docs.get(key) as T) : null); }
   async put(key: string, value: unknown) { this.docs.set(key, value); }
@@ -194,7 +199,11 @@ class KVStore implements Store {
     const mod = await import("@vercel/kv" as string);
     return mod.kv;
   }
-  async append(key: string, entry: unknown) { const kv = await this.kv(); await kv.rpush(`log:${key}`, JSON.stringify(entry)); }
+  async append(key: string, entry: unknown, maxLen?: number) {
+    const kv = await this.kv();
+    await kv.rpush(`log:${key}`, JSON.stringify(entry));
+    if (maxLen) await kv.ltrim(`log:${key}`, -maxLen, -1);
+  }
   async readAll(key: string) {
     const kv = await this.kv();
     const items = (await kv.lrange(`log:${key}`, 0, -1)) as unknown[];
@@ -284,7 +293,7 @@ class BlobStore {
 class ComposedStore implements Store {
   private kv = new KVStore();
   private blob = new BlobStore();
-  append(key: string, entry: unknown) { return this.kv.append(key, entry); }
+  append(key: string, entry: unknown, maxLen?: number) { return this.kv.append(key, entry, maxLen); }
   readAll(key: string) { return this.kv.readAll(key); }
   get<T = unknown>(key: string) { return this.kv.get<T>(key); }
   put(key: string, value: unknown) { return this.kv.put(key, value); }
@@ -323,7 +332,7 @@ export function __setStore(s: Store | null): void {
 // A stable facade that always delegates to the current driver. Importing this
 // const never pins a specific driver instance.
 export const store: Store = {
-  append: (k, e) => active().append(k, e),
+  append: (k, e, m) => active().append(k, e, m),
   readAll: (k) => active().readAll(k),
   get: (k) => active().get(k),
   put: (k, v) => active().put(k, v),

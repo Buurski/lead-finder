@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, pgEnabled } from "@/lib/db/client";
 import { checkAllSites } from "@/lib/hq/site-health";
+import { withCronLog } from "@/lib/cron-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -13,7 +14,8 @@ export async function GET(req: Request) {
   }
   if (!pgEnabled()) return NextResponse.json({ ok: true, skipped: "DATA_BACKEND er ikke pg" });
   try {
-    return NextResponse.json({ ok: true, ...(await checkAllSites(getDb())) });
+    const out = await withCronLog("site-health", async () => ({ result: await checkAllSites(getDb()) }));
+    return NextResponse.json({ ok: true, ...out });
   } catch (err) {
     console.error(JSON.stringify({ evt: "site-health.failed", error: String(err).slice(0, 300) }));
     return NextResponse.json({ ok: false, error: "tjek fejlede" }, { status: 500 });
