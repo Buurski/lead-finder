@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { __setStore, InMemoryStore } from "../store.ts";
 import type { CompetitorReport } from "./competitors.ts";
 import {
-  blogTraffic, compareWithCompetitors, geoCompetitorCounts, gscFlag, isMoneyQuery, loadBlogCheck, loadBlogReview, loadGeo,
+  blogTraffic, blogUpdateCandidates, compareWithCompetitors, geoCompetitorCounts, gscFlag, isMoneyQuery, loadBlogCheck, loadBlogReview, loadGeo,
   saveBlogCheck, saveBlogReview, saveGeo, seoActions, type KinlyGsc,
 } from "./seo-signals.ts";
 
@@ -109,4 +109,27 @@ test("saveBlogReview: ok kræver punkter; for-tidligt uden; lofter og ukendte fe
   await assert.rejects(saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "ok", measured: 3, points: [] }), /points mangler/);
   await assert.rejects(saveBlogReview({ reviewedAt: "2026-10-05T07:00:00Z", status: "ok", measured: 3, points: [{ title: "x", detail: "y", extra: 1 }] }), /kendes ikke/);
   await assert.rejects(saveBlogReview({ reviewedAt: "x", status: "ok", measured: 3, points: pts }), /ISO-dato/);
+});
+test("blogUpdateCandidates: pos. 8-20 med visninger, for tidlige og svage ude, max 2 efter visninger", () => {
+  const page = (path: string, position: number | null, impressions: number) => ({
+    path, clicks: 1, impressions, position, prev: null,
+    topQueries: [
+      { query: "side 1 allerede", clicks: 3, impressions: 90, position: 4 },
+      { query: "tæt på", clicks: 0, impressions: 60, position: 11 },
+    ],
+  });
+  const row = (id: string, p: ReturnType<typeof page> | null, tooEarlyUntil: string | null = null) =>
+    ({ id, title: id, url: `https://kinly.dk/blog/${id}/`, publishedAt: "2026-09-01", tooEarlyUntil, page: p, index: null });
+  const out = blogUpdateCandidates([
+    row("a", page("/blog/a", 12, 80)),
+    row("b", page("/blog/b", 9, 200)),
+    row("c", page("/blog/c", 15, 120)),
+    row("for-tidligt", page("/blog/x", 10, 500), "2026-11-01"),
+    row("side1", page("/blog/y", 3, 900)),
+    row("for-faa", page("/blog/z", 14, 10)),
+    row("ingen-data", null),
+  ]);
+  assert.deepEqual(out.map((c) => c.id), ["b", "c"]);
+  assert.deepEqual(out[0].queries, ["tæt på"]);
+  assert.equal(blogUpdateCandidates([]).length, 0);
 });
