@@ -343,6 +343,15 @@ test("opdateringskort: højst UPDATE_MAX_PER_WEEK genåbninger på 7 dage, også
   }
   await assert.rejects(updatePost(db, posts[UPDATE_MAX_PER_WEEK].id, ask, "lucas"), /højst 2/);
 
+  // Samme kort kan ikke genåbnes igen samme uge, heller ikke efter genudgivelse.
+  await updatePost(db, posts[1].id, { stage: "klar" }, "hermes");
+  await updatePost(db, posts[1].id, { stage: "publicer" }, "lucas");
+  await markPublished(db, posts[1].id, { url: liveUrl(posts[1]) }, "udgiver");
+  await assert.rejects(updatePost(db, posts[1].id, ask, "lucas"), /allerede åbnet for opdatering/);
+
+  // En ødelagt værdi i et andet kort giver ikke 500 på alle genåbninger (den tæller med i loftet).
+  await db.update(blogPost).set({ work: sql`jsonb_build_object('reopenedAt', 'ikke-en-dato')` }).where(eq(blogPost.id, posts[1].id));
+
   // Ældre end 7 dage tæller ikke.
   const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
   await db.update(blogPost).set({ work: sql`${blogPost.work} || jsonb_build_object('reopenedAt', ${old}::text)` }).where(eq(blogPost.id, posts[0].id));

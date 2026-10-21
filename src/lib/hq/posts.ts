@@ -962,9 +962,13 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       if (reopening) {
         if (!HUMAN_ACTORS.has(actor)) throw new BlogInputError("kun Lucas eller Charlie kan åbne et udgivet indlæg for opdatering");
         if (!instructions) throw new BlogInputError("en opdatering kræver en besked til Hermes: hvad skal opdateres");
-        // ponytail: tæl-så-skriv uden lås. To mennesker der genåbner i samme sekund kan
-        // nå 3; advisory lock hvis det bliver et reelt problem.
-        const [{ n }] = await tx.select({ n: count() }).from(blogPost).where(sql`(${blogPost.work}->>'reopenedAt')::timestamptz > now() - interval '7 days'`);
+        // Ét kort genåbnes højst én gang pr. 7 dage, så "kort med reopenedAt i vinduet"
+        // er præcis antallet af genåbninger. Låsen gør tæl-så-skriv serielt på tværs af kort.
+        // ISO-tekst sammenlignes som tekst: en ødelagt værdi kaster ikke (den tæller med, fail-closed).
+        const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        if ((readWork(before.work).reopenedAt ?? "") > cutoff) throw new BlogInputError("indlægget er allerede åbnet for opdatering inden for 7 dage");
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('blog-reopen'))`);
+        const [{ n }] = await tx.select({ n: count() }).from(blogPost).where(sql`${blogPost.work}->>'reopenedAt' > ${cutoff}`);
         if (n >= UPDATE_MAX_PER_WEEK) throw new BlogInputError(`højst ${UPDATE_MAX_PER_WEEK} opdateringer om ugen — prøv igen senere`);
       }
       // Et genåbnet indlæg er live: som idé kunne det hverken slettes eller komme tilbage,
