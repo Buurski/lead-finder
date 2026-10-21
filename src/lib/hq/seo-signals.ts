@@ -180,6 +180,30 @@ export function blogTraffic(posts: PublishedPost[], gsc: KinlyGsc | null, today:
   });
 }
 
+// Opdateringskort (blog v2, Opus-council 20/10): udgivne indlæg der står tæt på side 1
+// (pos. 8-20) med reelle visninger er den billigste vækst — én opdatering i stedet for et
+// nyt indlæg. Kun udvælgelse; selve kortet kræver Lucas' beslutning om at åbne Udgivet.
+export interface BlogUpdateCandidate { id: string; title: string; url: string | null; position: number; impressions: number; clicks: number; queries: string[] }
+export const UPDATE_POS = { min: 8, max: 20 } as const;
+export const UPDATE_MIN_IMPRESSIONS = 30;
+
+export function blogUpdateCandidates(rows: BlogTrafficRow[], max = 2): BlogUpdateCandidate[] {
+  const near = (pos: number | null): pos is number => pos !== null && pos >= UPDATE_POS.min && pos <= UPDATE_POS.max;
+  return rows
+    .filter((r) => !r.tooEarlyUntil && r.page && near(r.page.position) && r.page.impressions >= UPDATE_MIN_IMPRESSIONS)
+    .sort((a, b) => b.page!.impressions - a.page!.impressions)
+    .slice(0, max)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      url: r.url,
+      position: r.page!.position!,
+      impressions: r.page!.impressions,
+      clicks: r.page!.clicks,
+      queries: r.page!.topQueries.filter((q) => near(q.position)).sort((a, b) => b.impressions - a.impressions).slice(0, 3).map((q) => q.query),
+    }));
+}
+
 // ---------------------------------------------------------------- månedlig mønster-analyse (Hermes' blog_moenster.py)
 
 export interface BlogReviewPoint { title: string; detail: string }

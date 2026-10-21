@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
@@ -41,6 +41,7 @@ import {
   workProgress,
   workQueue,
   workRunning,
+  UPDATE_MAX_PER_WEEK,
 } from "./posts.ts";
 import type { BlogImages } from "./posts.ts";
 
@@ -286,6 +287,76 @@ test("et udgivet indlæg kan ikke flyttes tilbage", async () => {
   await assert.rejects(updatePost(db, post.id, { stage: "ide" }, "hermes"), /kan ikke flyttes tilbage/);
   const [after] = await db.select().from(blogPost).where(eq(blogPost.id, post.id));
   assert.equal(after.stage, "udgivet");
+});
+
+async function live(title: string) {
+  const post = await seed(title);
+  await publish(post.id);
+  return markPublished(db, post.id, { url: liveUrl(post) }, "hermes");
+}
+
+test("opdateringskort: et menneske genåbner Udgivet til Arbejder med besked; slug og sletning er låst", async () => {
+  const post = await live("Bliver opdateret");
+  const firstPublished = post.publishedAt!.getTime();
+  const ask = { stage: "arbejder", instructions: "Opdatér mod: hjemmeside pris herning" };
+  await assert.rejects(updatePost(db, post.id, ask, "hermes"), /Lucas eller Charlie/);
+  await assert.rejects(updatePost(db, post.id, { stage: "arbejder" }, "lucas"), /kræver en besked/);
+  await assert.rejects(updatePost(db, post.id, { stage: "ide", instructions: "x" }, "lucas"), /kan ikke flyttes tilbage/);
+
+  const reopened = await updatePost(db, post.id, ask, "charlie");
+  assert.equal(reopened.stage, "arbejder");
+  const w = readWork(reopened.work);
+  assert.equal(w.requestedBy, "charlie");
+  assert.equal(w.instructions, ask.instructions);
+  assert.ok(w.reopenedAt);
+
+  await assert.rejects(updatePost(db, post.id, { slug: "ny-url" }, "hermes"), /slugen er låst/);
+  await assert.rejects(deletePost(db, post.id, "lucas"), /udgivet på kinly\.dk/);
+  await assert.rejects(updatePost(db, post.id, { stage: "ide" }, "lucas"), /kan ikke blive en idé/);
+  await assert.rejects(updatePost(db, post.id, { stage: "ide" }, "hermes"), /kan ikke blive en idé/);
+
+  // Samme pipeline: Hermes til Klar, menneske til Publicer, udgiveren melder live.
+  await updatePost(db, post.id, { stage: "klar" }, "hermes");
+  await updatePost(db, post.id, { stage: "publicer" }, "lucas");
+  const again = await markPublished(db, post.id, { url: liveUrl(post) }, "udgiver");
+  assert.equal(again.stage, "udgivet");
+  assert.equal(again.publishedAt!.getTime(), firstPublished, "den oprindelige udgivelsesdato beholdes");
+  assert.equal(readWork(again.work).reopenedAt, w.reopenedAt, "genåbningen tæller stadig i ugeloftet");
+});
+
+test("opdateringskort: højst UPDATE_MAX_PER_WEEK genåbninger på 7 dage, også efter genudgivelse", async () => {
+  const ask = { stage: "arbejder", instructions: "Opdatér mod: søgning" };
+  const posts = [];
+  for (let i = 0; i <= UPDATE_MAX_PER_WEEK; i++) posts.push(await live(`Udgivet nummer ${i + 1} til loftet`));
+  for (const p of posts.slice(0, UPDATE_MAX_PER_WEEK)) await updatePost(db, p.id, ask, "lucas");
+  await assert.rejects(updatePost(db, posts[UPDATE_MAX_PER_WEEK].id, ask, "lucas"), /højst 2 opdateringer om ugen/);
+
+  // Hermes der skubber kortet frem og tilbage, eller "Prøv igen", nulstiller ikke loftet.
+  await updatePost(db, posts[0].id, { stage: "klar" }, "hermes");
+  await updatePost(db, posts[0].id, { stage: "arbejder" }, "lucas");
+  await claimWork(db, posts[1].id);
+  await failWork(db, posts[1].id, "test");
+  await retryWork(db, posts[1].id, "lucas");
+  for (const p of posts.slice(0, 2)) {
+    const [row] = await db.select().from(blogPost).where(eq(blogPost.id, p.id));
+    assert.ok(readWork(row.work).reopenedAt, "reopenedAt overlever flytninger og Prøv igen");
+  }
+  await assert.rejects(updatePost(db, posts[UPDATE_MAX_PER_WEEK].id, ask, "lucas"), /højst 2/);
+
+  // Samme kort kan ikke genåbnes igen samme uge, heller ikke efter genudgivelse.
+  await updatePost(db, posts[1].id, { stage: "klar" }, "hermes");
+  await updatePost(db, posts[1].id, { stage: "publicer" }, "lucas");
+  await markPublished(db, posts[1].id, { url: liveUrl(posts[1]) }, "udgiver");
+  await assert.rejects(updatePost(db, posts[1].id, ask, "lucas"), /allerede åbnet for opdatering/);
+
+  // En ødelagt værdi i et andet kort giver ikke 500 på alle genåbninger (den tæller med i loftet).
+  await db.update(blogPost).set({ work: sql`jsonb_build_object('reopenedAt', 'ikke-en-dato')` }).where(eq(blogPost.id, posts[1].id));
+
+  // Ældre end 7 dage tæller ikke.
+  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  await db.update(blogPost).set({ work: sql`${blogPost.work} || jsonb_build_object('reopenedAt', ${old}::text)` }).where(eq(blogPost.id, posts[0].id));
+  const ok = await updatePost(db, posts[UPDATE_MAX_PER_WEEK].id, ask, "lucas");
+  assert.equal(ok.stage, "arbejder");
 });
 
 test("sletning kræver menneske og kun i Idéer eller Arbejder", async () => {

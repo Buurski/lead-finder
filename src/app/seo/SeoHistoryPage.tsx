@@ -10,10 +10,11 @@ import { loadLatestReport } from "@/lib/hq/competitors";
 import { listPosts } from "@/lib/hq/posts";
 import { copenhagenNow } from "@/lib/settings";
 import {
-  blogTraffic, compareWithCompetitors, geoCompetitorCounts, gscFlag, GSC_URL, isMoneyQuery, KINLY_SITE_READ,
+  blogTraffic, blogUpdateCandidates, compareWithCompetitors, geoCompetitorCounts, gscFlag, GSC_URL, isMoneyQuery, KINLY_SITE_READ,
   loadBlogCheck, loadBlogReview, loadGeo, loadKinlyGsc, seoActions, type BlogTrafficRow, type GscTotals,
 } from "@/lib/hq/seo-signals";
 import BlogIdeaButton from "./BlogIdeaButton";
+import UpdatePostButton from "./UpdatePostButton";
 import RefreshGscButton from "./RefreshGscButton";
 import { ClicksChart } from "@/components/seo/GscCard";
 import AfproevButton from "@/components/konkurrenter/AfproevButton";
@@ -92,6 +93,7 @@ export default async function SeoHistoryPage() {
   const geoRivals = geoCompetitorCounts(geoResults).slice(0, 5);
   const t = (x: GscTotals | undefined) => x ?? { clicks: 0, impressions: 0, position: null };
   const traffic = blogTraffic(published, gsc, copenhagenNow().date);
+  const updates = blogUpdateCandidates(traffic);
 
   return <div className="cc-fade kinly-page" style={{ display: "grid", gap: 18 }}>
     <PageHeader icon="Search" title="SEO" subtitle="Kinlys egen synlighed: Google, AI-søgning og bloggen — og hvad vi gør ved det." />
@@ -218,6 +220,17 @@ export default async function SeoHistoryPage() {
             <Link href="/blog" className="cc-btn" style={{ width: "fit-content" }}>Åbn Blog</Link>
           </>}
         </>}
+      {updates.length > 0 && <>
+        <h3 className="seo-sub">Tæt på side 1: opdatér i stedet for at skrive nyt</h3>
+        <div className="konk-finding-grid">
+          {updates.map((u) => <div key={u.id} className="konk-finding-card">
+            <h3 className="konk-finding-title">{u.title}</h3>
+            <p className="konk-finding-detail konk-finding-detail-open">Position {nf(u.position)} · {u.impressions} visninger · {u.clicks} klik (28 dage){u.queries.length > 0 && <> · Søgninger: {u.queries.join(", ")}</>}</p>
+            <div className="konk-finding-actions"><UpdatePostButton id={u.id} queries={u.queries} /></div>
+          </div>)}
+        </div>
+        <div className="konk-dim" style={{ fontSize: 12 }}>Højst 2 opdateringer om ugen. Hermes skriver, du godkender og merger som altid.</div>
+      </>}
     </section>
 
     <section className="cc-card cc-card-pad seo-section" aria-labelledby="seo-konk">

@@ -3,7 +3,7 @@
 // findes ét sted. Mønster: hq/deals.ts.
 import "server-only";
 import crypto from "node:crypto";
-import { and, asc, desc, eq, max, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, max, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { blogPost } from "../db/schema.ts";
 
@@ -939,7 +939,9 @@ export async function createPost(db: Db, patch: BlogPatch, actor: string) {
 //   aflyst inden næste kørsel). Agenten må ikke selv kunne trække et kort ud af
 //   køen og dermed rydde aftalen i tavshed (review-fund 24-09).
 // - til Udgivet: afvist her — kun markPublished må gøre det
-// - fra Udgivet: afvist (v1 kan ikke trække et udgivet indlæg tilbage)
+// - fra Udgivet: kun til Arbejder, kun et menneske, med en besked (opdateringskort,
+//   Lucas 20/10 mulighed A), og højst UPDATE_MAX_PER_WEEK genåbninger på 7 dage.
+//   Den gamle version er live, indtil Lucas merger den nye. Slug'en er låst.
 // - agenten (hermes) må kun target'e ide/arbejder/klar
 // - ved stage-skift: position = max+1 i målkolonnen
 // Felt-rettelser (fx en ny note) uden stage-skift rører hverken position eller
@@ -955,7 +957,25 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
       const target = (fields.stage ?? from) as BlogStage;
       const moving = fields.stage !== undefined && fields.stage !== before.stage;
 
-      if (moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage");
+      const reopening = moving && from === "udgivet" && target === "arbejder";
+      if (moving && from === "udgivet" && !reopening) throw new BlogInputError("et udgivet indlæg kan ikke flyttes tilbage — kun til Arbejder som opdatering");
+      if (reopening) {
+        if (!HUMAN_ACTORS.has(actor)) throw new BlogInputError("kun Lucas eller Charlie kan åbne et udgivet indlæg for opdatering");
+        if (!instructions) throw new BlogInputError("en opdatering kræver en besked til Hermes: hvad skal opdateres");
+        // Ét kort genåbnes højst én gang pr. 7 dage, så "kort med reopenedAt i vinduet"
+        // er præcis antallet af genåbninger. Låsen gør tæl-så-skriv serielt på tværs af kort.
+        // ISO-tekst sammenlignes som tekst: en ødelagt værdi kaster ikke (den tæller med, fail-closed).
+        const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        if ((readWork(before.work).reopenedAt ?? "") > cutoff) throw new BlogInputError("indlægget er allerede åbnet for opdatering inden for 7 dage");
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('blog-reopen'))`);
+        const [{ n }] = await tx.select({ n: count() }).from(blogPost).where(sql`${blogPost.work}->>'reopenedAt' > ${cutoff}`);
+        if (n >= UPDATE_MAX_PER_WEEK) throw new BlogInputError(`højst ${UPDATE_MAX_PER_WEEK} opdateringer om ugen — prøv igen senere`);
+      }
+      // Et genåbnet indlæg er live: som idé kunne det hverken slettes eller komme tilbage,
+      // og natkørslen kunne skrive det om uden besked. Fortryd = lad det ligge i Klar.
+      if (moving && target === "ide" && before.publishedAt) {
+        throw new BlogInputError("et udgivet indlæg kan ikke blive en idé igen — lad opdateringen ligge i Til gennemlæsning, eller send den til Arbejder med en ny besked");
+      }
       if (moving && target === "udgivet") throw new BlogInputError("Udgivet sættes automatisk, når opslaget er live på kinly.dk");
       if (!moving && from === "udgivet") throw new BlogInputError("et udgivet indlæg er låst — ret det direkte på kinly.dk");
       // Arbejder er låst for alle andre end Hermes (spec 27-09) — også det fælles
@@ -997,6 +1017,10 @@ export async function updatePost(db: Db, id: string, patch: BlogPatch, actor: st
 
       // Tom slug betyder "udled af titlen" — af den nye titel hvis der kommer en.
       if (fields.slug === "") fields.slug = slugFrom(String(fields.title ?? before.title));
+      // Et indlæg der har været udgivet, beholder sin url — ellers dør den gamle side.
+      if (fields.slug !== undefined && fields.slug !== before.slug && before.publishedAt) {
+        throw new BlogInputError(`slugen er låst: indlægget er udgivet på ${before.publishedUrl ?? "kinly.dk"}`);
+      }
 
       // Samme sammenstøds-tjek som i createPost. Uden det rammer et slug der er i brug
       // den rå unique-violation fra Postgres, og ruten svarer 500 i stedet for 400.
@@ -1144,7 +1168,8 @@ export async function markPublished(db: Db, id: string, p: { url?: unknown; note
     if (!stored.ok || stored.revision !== revisionOf(before)) throw new BlogInputError("tjeklisten er ikke grøn for den nuværende tekst — kan ikke meldes udgivet");
     const set: Partial<typeof blogPost.$inferInsert> = {
       stage: "udgivet",
-      publishedAt: new Date(),
+      // En opdatering beholder den oprindelige udgivelsesdato (kinly.dk sætter `updated`).
+      publishedAt: before.publishedAt ?? new Date(),
       publishedUrl: url,
       updatedBy: actor,
       updatedAt: new Date(),
@@ -1167,6 +1192,7 @@ export async function deletePost(db: Db, id: string, actor: string) {
     if (before.stage !== "ide" && before.stage !== "arbejder") {
       throw new BlogInputError("kun indlæg i Idéer eller Arbejder kan slettes");
     }
+    if (before.publishedAt) throw new BlogInputError("indlægget er udgivet på kinly.dk og kan ikke slettes her");
     await tx.delete(blogPost).where(eq(blogPost.id, id));
     return { id: before.id, title: before.title };
   });
@@ -1191,7 +1217,12 @@ export interface BlogWork {
   attempts?: number;
   /** Menneskets besked: Hermes følger den før alt andet (og kortet går forrest i køen). */
   instructions?: string;
+  /** Hvornår et menneske åbnede det udgivne indlæg for opdatering. Følger kortet til næste genåbning (ugeloftet). */
+  reopenedAt?: string;
 }
+
+/** Opdateringskort: højst så mange udgivne indlæg genåbnes på 7 dage (Lucas 20/10). */
+export const UPDATE_MAX_PER_WEEK = 2;
 
 /** Et startet job uden fremdrift så længe regnes som hængt: det må claimes igen. */
 export const WORK_STALE_MS = 90 * 60_000;
@@ -1201,7 +1232,7 @@ export function readWork(v: unknown): BlogWork {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const o = v as Record<string, unknown>;
   const out: BlogWork = {};
-  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error", "instructions"] as const) {
+  for (const k of ["requestedBy", "requestedAt", "startedAt", "label", "updatedAt", "finishedAt", "error", "instructions", "reopenedAt"] as const) {
     if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
   }
   for (const k of ["step", "steps", "attempts"] as const) if (Number.isInteger(o[k])) out[k] = o[k] as number;
@@ -1213,13 +1244,17 @@ function workOnMove(before: BlogWork, from: BlogStage, target: BlogStage, actor:
   const now = new Date().toISOString();
   // Hermes' egne flytninger bevarer forsøgstælleren, så den ikke kan nulstilles ved at
   // hoppe Idé → Arbejder. Kun et menneske (ny bestilling eller "Prøv igen") nulstiller.
-  const keep: BlogWork = actor === "hermes" && before.attempts ? { attempts: before.attempts } : {};
+  // reopenedAt følger altid med: ugeloftet tæller genåbninger, ikke kortets nuværende stage.
+  const carry: BlogWork = before.reopenedAt ? { reopenedAt: before.reopenedAt } : {};
+  const keep: BlogWork = actor === "hermes" && before.attempts ? { ...carry, attempts: before.attempts } : carry;
   if (target === "ide") return keep;
   // Et menneske der lægger kortet i Arbejder bestiller arbejdet (friskt objekt, gammel
   // fremdrift væk). Flytter Hermes det selv derhen, er der ingen bestilling at vente på.
   if (target === "arbejder") {
     if (actor === "hermes") return keep;
-    return instructions ? { requestedBy: actor, requestedAt: now, instructions } : { requestedBy: actor, requestedAt: now };
+    const order: BlogWork = { ...carry, requestedBy: actor, requestedAt: now, ...(instructions ? { instructions } : {}) };
+    if (from === "udgivet") order.reopenedAt = now;
+    return order;
   }
   if (from === "arbejder" && target === "klar" && actor === "hermes") return { ...before, finishedAt: now };
   return null;
@@ -1355,7 +1390,7 @@ export async function retryWork(db: Db, id: string, actor: string) {
     .update(blogPost)
     .set({
       // Beskeden til Hermes følger med, når en fejlet rettelse prøves igen.
-      work: sql`jsonb_strip_nulls(jsonb_build_object('requestedBy', ${actor}::text, 'requestedAt', ${now.toISOString()}::text, 'instructions', ${W}->>'instructions'))`,
+      work: sql`jsonb_strip_nulls(jsonb_build_object('requestedBy', ${actor}::text, 'requestedAt', ${now.toISOString()}::text, 'instructions', ${W}->>'instructions', 'reopenedAt', ${W}->>'reopenedAt'))`,
       updatedBy: actor,
       updatedAt: now,
     })
