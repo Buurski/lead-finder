@@ -5,7 +5,7 @@
 import { and, eq, max, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact, task } from "../db/schema.ts";
-import { sourceLabel, type LeadSource } from "./lead-source.ts";
+import { cleanLeadSource, sourceLabel, type LeadSource } from "./lead-source.ts";
 
 export interface InboundInput {
   id: string; // preview-id — gør kaldet idempotent
@@ -165,11 +165,25 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
   });
 }
 
+export class InboundInputError extends Error {}
+
+/**
+ * Henvendelse uden demo-ønske (23/10, før K1): kun CRM — virksomhed, aktivitet med kilde og
+ * opgaven "Svar på henvendelse". Ingen preview-request, så Hermes bygger intet.
+ */
+export async function recordContactOnly(db: Db, input: Omit<InboundInput, "id">): Promise<{ companyId: string }> {
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new InboundInputError("gyldig email er påkrævet");
+  const r = await linkPreview(db, { ...input, id: `kontakt-${crypto.randomUUID()}`, email, company: input.company.trim() || email, source: cleanLeadSource(input.source) });
+  return { companyId: r.companyId };
+}
+
 /** Henvendelse → CRM + stop kolde kladder. Idempotent (legacyId), så den trygt kan køres igen. */
-export async function linkPreview(db: Db, request: InboundInput): Promise<void> {
+export async function linkPreview(db: Db, request: InboundInput): Promise<{ companyId: string }> {
   const r = await recordInbound(db, request);
   if (r.rowNo > 0) {
     const { stopOpenForRows } = await import("../pg/queue.ts");
     await stopOpenForRows([r.rowNo], "henvendte sig selv via kinly.dk", new Date().toISOString());
   }
+  return r;
 }
