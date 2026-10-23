@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact, task } from "../db/schema.ts";
-import { recordInbound } from "./inbound.ts";
+import { InboundInputError, recordContactOnly, recordInbound } from "./inbound.ts";
 
 let db: Db;
 beforeEach(async () => {
@@ -113,4 +113,17 @@ test("kilde fra kinly.dk (UTM) står i aktivitetens resumé, payload og opgaven"
   assert.deepEqual((a.payload as { source: unknown }).source, source);
   const [t] = await db.select().from(task).where(eq(task.companyId, r.companyId));
   assert.equal(t.title, "Svar på henvendelse fra kinly.dk (meta / paid / kin-k1 / K1-A-gpt1)");
+});
+
+test("henvendelse uden demo: kun CRM med kilde og opgave, ugyldig mail afvises", async () => {
+  const source = { utm: { source: "meta", campaign: "K1", content: "K1-A-gpt1" }, junk: "x" };
+  const r = await recordContactOnly(db, { channel: "mail", company: "Ingen Demo ApS", email: " Hej@IngenDemo.dk ", questionnaire: "Besked: ring mig op", source: source as never });
+  const [c] = await db.select().from(company).where(eq(company.id, r.companyId));
+  assert.equal(c.email, "hej@ingendemo.dk");
+  const [a] = await db.select().from(activity).where(eq(activity.companyId, r.companyId));
+  assert.match(a.summary, /^Henvendelse via kinly\.dk \(mail\) · kilde: meta \/ K1 \/ K1-A-gpt1: Besked: ring mig op/);
+  assert.deepEqual((a.payload as { source: unknown }).source, { utm: { source: "meta", campaign: "K1", content: "K1-A-gpt1" } });
+  const [t] = await db.select().from(task).where(eq(task.companyId, r.companyId));
+  assert.equal(t.title, "Svar på henvendelse fra kinly.dk (meta / K1 / K1-A-gpt1)");
+  await assert.rejects(recordContactOnly(db, { channel: "mail", company: "X", email: "ikke-en-mail" }), InboundInputError);
 });

@@ -41,10 +41,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; phone?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string; seoTjek?: unknown; newsletterConsent?: unknown; source?: unknown };
+  let body: { company?: string; channel?: PreviewChannel; email?: string; website?: string; phone?: string; contactName?: string; branch?: string; questionnaire?: string; sourceMessageId?: string; demoKey?: string; seoTjek?: unknown; newsletterConsent?: unknown; source?: unknown; demo?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
   if (body.channel !== "formular" && body.channel !== "mail") {
     return NextResponse.json({ error: "channel skal være formular eller mail" }, { status: 400 });
+  }
+  // kinly.dk uden demo-ønske (23/10, K1): kun CRM med kilde og opgave — intet udkast til Hermes.
+  if (body.demo === false) {
+    const { getDb, pgEnabled } = await import("@/lib/db/client");
+    if (!pgEnabled()) return NextResponse.json({ error: "CRM kører ikke på Postgres" }, { status: 503 });
+    const { InboundInputError, recordContactOnly } = await import("@/lib/hq/inbound");
+    try {
+      const r = await recordContactOnly(getDb(), { company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, phone: typeof body.phone === "string" ? body.phone : undefined, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, source: body.source as never });
+      return NextResponse.json({ ok: true, crmOnly: true, companyId: r.companyId }, { status: 201 });
+    } catch (error) {
+      if (error instanceof InboundInputError) return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error(JSON.stringify({ evt: "inbound.contact_only.failed", error: String(error).slice(0, 300) }));
+      return NextResponse.json({ error: "kunne ikke gemme henvendelsen" }, { status: 503 });
+    }
   }
   try {
     const request = await createPreviewRequest({ company: body.company || "", channel: body.channel, email: body.email || "", website: body.website, phone: typeof body.phone === "string" ? body.phone : undefined, contactName: body.contactName, branch: body.branch, questionnaire: body.questionnaire, sourceMessageId: body.sourceMessageId, demoKey: body.demoKey, seoTjek: body.seoTjek as never, newsletterConsent: body.newsletterConsent as never, source: body.source as never });
