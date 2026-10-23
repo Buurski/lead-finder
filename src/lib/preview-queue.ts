@@ -1,5 +1,6 @@
 import { store } from "./store.ts";
 import { withLock } from "./send-safety.ts";
+import { cleanLeadSource, type LeadSource } from "./hq/lead-source.ts";
 
 export const PREVIEW_STATUSES = [
   "ny",
@@ -30,6 +31,8 @@ export interface PreviewRequestInput {
   seoTjek?: SeoTjekResult;
   /** Samtykkebevis til nyhedsbrevet. Tilmelder IKKE: det sker først efter double opt-in i Brevo. */
   newsletterConsent?: NewsletterConsent;
+  /** Hvor henvendelsen kom fra (UTM fra landings-URL'en, blog-ref, seo-tjek). Se hq/lead-source.ts. */
+  source?: LeadSource;
 }
 
 export interface SeoTjekResult {
@@ -152,6 +155,7 @@ export async function createPreviewRequest(input: PreviewRequestInput): Promise<
     // Resultatet skal høre til den side henvendelsen handler om (Sol w4a R2) — ellers droppes det.
     seoTjek: ((r) => (r && hostOf(input.website) === hostOf(r.host) ? r : undefined))(cleanSeoTjek(input.seoTjek)),
     newsletterConsent: cleanNewsletterConsent(input.newsletterConsent),
+    source: cleanLeadSource(input.source),
     status: "ny",
     noindex: true,
     createdAt: now,

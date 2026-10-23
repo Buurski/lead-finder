@@ -6,6 +6,8 @@ import PageHeader from "@/components/shell/PageHeader";
 import Icon from "@/components/shell/Icon";
 import { timeAgo } from "@/components/hq/time";
 import "./gratis-udkast.css";
+import { sourceLabel, type LeadSource } from "@/lib/hq/lead-source";
+import MetaImportButton from "./MetaImportButton";
 
 type Status = "ny" | "researcher" | "bygger" | "preview klar" | "godkendt" | "kladde klar" | "afvist" | "sendt/lukket";
 
@@ -26,6 +28,8 @@ interface PreviewRequest {
   reviewNotes?: string;
   /** Fra SEO-tjekket på kinly.dk: ingen demo — besvares med rapportmailen og kan sendes med det samme. */
   seoTjek?: { host: string; score: number; mangler: string[] };
+  /** Hvor henvendelsen kom fra (UTM/blog/seo-tjek), se hq/lead-source.ts. */
+  source?: LeadSource;
   /** Afsendelseskrav fra Postgres: "sending" = uafklaret/låst, "uncertain" = registreret usikkert, "sent" = sendt. */
   sendClaim?: "sending" | "uncertain" | "sent";
   createdAt: string;
@@ -134,6 +138,8 @@ export default function GratisUdkast({ senders }: { senders: Senders }) {
         subtitle="Henvendelser fra kinly.dk og ja-tak-svar. Hermes forsker og bygger — I tjekker og sender."
         action={<button className="cc-btn" onClick={() => void load()}>Opdatér</button>}
       />
+
+      <MetaImportButton />
 
       {error && (
         <div className="cc-card cc-card-pad" role="alert" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -386,6 +392,12 @@ function Detail({ item, senders, onClose, onPatch, onSent }: {
           <span className="cc-kicker">Kanal</span>
           <div className="gu-field-value">{item.channel === "formular" ? "Formular på kinly.dk" : "Svar på mail (ja tak til udkast)"}</div>
         </div>
+        {sourceLabel(item.source) && (
+          <div>
+            <span className="cc-kicker">Kilde</span>
+            <div className="gu-field-value">{sourceLabel(item.source)}</div>
+          </div>
+        )}
         {item.questionnaire && (
           <div>
             <span className="cc-kicker">Hvad de skrev</span>

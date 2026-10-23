@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import { freshTestDb } from "../db/test-db.ts";
 import type { Db } from "../db/client.ts";
-import { activity, company, contact } from "../db/schema.ts";
+import { activity, company, contact, task } from "../db/schema.ts";
 import { recordInbound } from "./inbound.ts";
 
 let db: Db;
@@ -103,4 +103,14 @@ test("henvendelse opretter én 'svar'-opgave i dag til ejeren (idempotent)", asy
   assert.equal(tasks[0].owner, "lucas");
   assert.equal(tasks[0].important, true);
   assert.equal(tasks[0].due, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }));
+});
+
+test("kilde fra kinly.dk (UTM) står i aktivitetens resumé, payload og opgaven", async () => {
+  const source = { utm: { source: "meta", medium: "paid", campaign: "kin-k1", content: "K1-A-gpt1" } };
+  const r = await recordInbound(db, { ...base, id: "u1", company: "Kildefirma", email: "kilde@eksempel.dk", source });
+  const [a] = await db.select().from(activity).where(eq(activity.companyId, r.companyId));
+  assert.match(a.summary, /^Henvendelse via kinly\.dk \(formular\) · kilde: meta \/ paid \/ kin-k1 \/ K1-A-gpt1: Vi vil gerne/);
+  assert.deepEqual((a.payload as { source: unknown }).source, source);
+  const [t] = await db.select().from(task).where(eq(task.companyId, r.companyId));
+  assert.equal(t.title, "Svar på henvendelse fra kinly.dk (meta / paid / kin-k1 / K1-A-gpt1)");
 });

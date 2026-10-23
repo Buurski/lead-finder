@@ -5,6 +5,7 @@
 import { and, eq, max, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { activity, company, contact, task } from "../db/schema.ts";
+import { sourceLabel, type LeadSource } from "./lead-source.ts";
 
 export interface InboundInput {
   id: string; // preview-id — gør kaldet idempotent
@@ -19,6 +20,8 @@ export interface InboundInput {
   seoTjek?: { host: string; score: number; mangler: string[] };
   /** Bevis for nyhedsbrev-samtykke. newsletterOk forbliver false til Brevo bekræfter double opt-in. */
   newsletterConsent?: { at: string; source: string; textVersion: string; ipHash: string };
+  /** Kilden (UTM, blog-ref, seo-tjek eller Meta-lead). Gemmes på aktiviteten og vises i resuméet. */
+  source?: LeadSource;
 }
 
 function host(url: string): string {
@@ -98,7 +101,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
           phone: phone,
           website: input.website?.trim() ?? "",
           websiteStatus: input.website ? "has" : "none",
-          source: "kinly.dk",
+          source: input.source?.meta ? "meta" : "kinly.dk",
           leadStatus: "interested",
           lastUpdated: new Date().toISOString().slice(0, 10),
         })
@@ -125,13 +128,15 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
 
     const [co] = await tx.select({ name: company.name, rowNo: company.rowNo, owner: company.owner }).from(company).where(eq(company.id, companyId));
     const what = (input.questionnaire ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+    const kilde = sourceLabel(input.source);
+    const via = input.source?.meta ? "Meta-annonce" : "kinly.dk";
     await tx.insert(activity).values({
       legacyId,
       companyId,
       clientName: co.name,
       actor: "system",
       type: "henvendelse",
-      summary: `Henvendelse via kinly.dk (${input.channel})${what ? `: ${what}` : ""}`,
+      summary: `Henvendelse via ${via} (${input.channel})${kilde ? ` · kilde: ${kilde}` : ""}${what ? `: ${what}` : ""}`,
       payload: {
         previewId: input.id,
         contactName: input.contactName ?? "",
@@ -139,6 +144,7 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
         ...(phone ? { phone } : {}),
         ...(input.seoTjek ? { seoTjek: input.seoTjek } : {}),
         ...(input.newsletterConsent ? { newsletterConsent: input.newsletterConsent } : {}),
+        ...(input.source ? { source: input.source } : {}),
       },
     });
     // En varm henvendelse må ikke kunne glide igennem: opgave i dag til ejeren (E2E 25/9). Idempotent via legacyId.
@@ -147,7 +153,11 @@ export async function recordInbound(db: Db, input: InboundInput): Promise<{ comp
       companyId,
       clientName: co.name,
       owner: co.owner === "charlie" ? "charlie" : "lucas",
-      title: input.seoTjek ? `Svar på SEO-tjek (${input.seoTjek.score}/100)` : "Svar på henvendelse fra kinly.dk",
+      title: input.seoTjek
+        ? `Svar på SEO-tjek (${input.seoTjek.score}/100)`
+        : input.source?.meta
+          ? `Ring til Meta-lead${input.source.meta.adName ? ` (${input.source.meta.adName})` : ""}`
+          : `Svar på henvendelse fra kinly.dk${kilde ? ` (${kilde})` : ""}`,
       due: new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Copenhagen" }),
       important: true,
     }).onConflictDoNothing();
